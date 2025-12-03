@@ -1,0 +1,15 @@
+District Centroids (North to South):
+ID: kasaragod            X: 89.80    Y: 170.21   Length: 896
+ID: kannur               X: 74.79    Y: 190.42   Length: 4758
+ID: kozhikode            X: 246.28   Y: 256.26   Length: 2260
+ID: wayanad              X: 338.06   Y: 371.69   Length: 1576
+ID: palakkad             X: 377.10   Y: 410.29   Length: 2050
+ID: malappuram           X: 276.76   Y: 450.92   Length: 620
+ID: thrissur             X: 303.70   Y: 574.38   Length: 4008
+ID: idukki               X: 504.63   Y: 686.65   Length: 2280
+ID: ernakulam            X: 409.35   Y: 806.69   Length: 644
+ID: alappuzha            X: 473.83   Y: 902.83   Length: 2101
+ID: kottayam             X: 548.10   Y: 916.08   Length: 3259
+ID: pathanamthitta       X: 650.29   Y: 990.92   Length: 1905
+ID: kollam               X: 419.42   Y: 994.95   Length: 3670
+ID: thiruvananthapuram   X: 478.43   Y: 1089.37  Length: 1381

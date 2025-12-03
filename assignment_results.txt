@@ -1,0 +1,16 @@
+Kasaragod: 211.36, 393.85
+Kannur: 281.72, 484.03
+Wayanad: 665.28, 694.47
+Kozhikode: 511.21, 563.42
+Malappuram: 630.33, 911.21
+Palakkad: 793.66, 1026.73
+Thrissur: 708.59, 1316.90
+Ernakulam: 801.22, 1583.96
+Idukki: 1025.76, 1402.17
+Kottayam: 1013.93, 1734.06
+Alappuzha: 963.20, 1860.36
+Pathanamthitta: 1150.30, 1949.51
+Kollam: 1133.09, 2021.29
+Thiruvananthapuram: 1025.73, 2213.29
+path2988 (48.795499, 47.507096) closest to Kasaragod (382.60)
+path4286 (1151.2691, 100.9247) closest to Wayanad (767.13)
