@@ -6,8 +6,38 @@ class DataManager {
     constructor() {
         this.sheetUrl = 'https://docs.google.com/spreadsheets/d/1K6Aq1BVmqt7y8PfOecO8FteKO1ONtXEeTc6DIZUUnwA/gviz/tq?tqx=out:csv';
         this.zipApiUrl = 'https://api.postalpincode.in/pincode/';
-        this.zipCache = {}; // Cache for zip -> district mapping
+
+        // Load cache from localStorage or initialize empty
+        this.zipCache = this.loadCacheFromStorage();
         this.processedData = {};
+    }
+
+    /**
+     * Load zip code cache from localStorage
+     */
+    loadCacheFromStorage() {
+        try {
+            const cached = localStorage.getItem('zipCodeCache');
+            if (cached) {
+                console.log('Loaded zip code cache from localStorage');
+                return JSON.parse(cached);
+            }
+        } catch (e) {
+            console.warn('Failed to load cache from localStorage:', e);
+        }
+        return {};
+    }
+
+    /**
+     * Save zip code cache to localStorage
+     */
+    saveCacheToStorage() {
+        try {
+            localStorage.setItem('zipCodeCache', JSON.stringify(this.zipCache));
+            console.log('Saved zip code cache to localStorage');
+        } catch (e) {
+            console.warn('Failed to save cache to localStorage:', e);
+        }
     }
 
     /**
@@ -174,7 +204,8 @@ class DataManager {
             };
         }
 
-        // Process each row
+        // OPTIMIZATION 1: Collect unique zip codes that need resolution
+        const uniqueZips = new Set();
         for (const row of keralaData) {
             let zip = row['billing_zipcode'] || row['shipping_zipcode'];
             if (!zip) continue;
@@ -182,7 +213,44 @@ class DataManager {
             // Clean zip (remove spaces)
             zip = zip.replace(/\s/g, '');
 
-            const districtName = await this.getDistrictFromZip(zip);
+            // Only add to set if not already in cache
+            if (!this.zipCache[zip]) {
+                uniqueZips.add(zip);
+            }
+        }
+
+        // OPTIMIZATION 2: Resolve only unique uncached zip codes
+        if (uniqueZips.size > 0) {
+            console.log(`Resolving ${uniqueZips.size} unique uncached zip codes...`);
+            let resolvedCount = 0;
+
+            for (const zip of uniqueZips) {
+                await this.getDistrictFromZip(zip);
+                resolvedCount++;
+
+                // Log progress every 10 zip codes
+                if (resolvedCount % 10 === 0) {
+                    console.log(`Resolved ${resolvedCount}/${uniqueZips.size} zip codes...`);
+                }
+            }
+
+            // Save cache after resolving new zip codes
+            this.saveCacheToStorage();
+            console.log(`Resolved all ${uniqueZips.size} unique zip codes and saved to cache.`);
+        } else {
+            console.log('All zip codes found in cache - no API calls needed!');
+        }
+
+        // Process each row using cached data
+        for (const row of keralaData) {
+            let zip = row['billing_zipcode'] || row['shipping_zipcode'];
+            if (!zip) continue;
+
+            // Clean zip (remove spaces)
+            zip = zip.replace(/\s/g, '');
+
+            // Use cached district name
+            const districtName = this.zipCache[zip];
             const districtKey = this.normalizeDistrictName(districtName);
 
             if (districtKey && districtStats[districtKey]) {
