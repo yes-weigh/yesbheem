@@ -58,6 +58,48 @@ header {
     animation: fadeInDown 0.8s ease;
 }
 
+.logo-title-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.brand-logo {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.5));
+    animation: logoFloat 3s ease-in-out infinite;
+    transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.brand-logo:hover {
+    transform: scale(1.1) rotate(5deg);
+    filter: drop-shadow(0 0 30px rgba(139, 92, 246, 0.8));
+}
+
+@keyframes logoFloat {
+
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.title-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 h1 {
     font-size: 3.5rem;
     font-weight: 700;
@@ -73,6 +115,7 @@ h1 {
     font-size: 1.125rem;
     color: var(--text-secondary);
     font-weight: 400;
+    margin: 0;
 }
 
 .map-container {
@@ -239,6 +282,15 @@ h1 {
 
     header {
         margin-bottom: 2rem;
+    }
+
+    .logo-title-container {
+        gap: 1rem;
+    }
+
+    .brand-logo {
+        width: 60px;
+        height: 60px;
     }
 
     h1 {
