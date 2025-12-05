@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Lightweight India Map SVG -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   version="1.1"
+   width="800"
+   height="900"
+   viewBox="0 0 800 900"
+   id="india-map"
+   style="display:inline">
+  <metadata id="metadata8">
+    <rdf:RDF>
+      <cc:Work rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title>India States Map</dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs id="defs6" />
+  
+  <g id="states-layer">
+    
+    <!-- Jammu & Kashmir -->
+    <path id="jammu-kashmir" class="state"
+       d="M 120,30 L 180,25 L 220,40 L 250,35 L 280,50 L 290,80 L 270,110 L 240,120 L 200,115 L 170,105 L 140,90 L 110,70 Z"
+       style="fill:#fad0cc;stroke:#000;stroke-width:1px" />
+    
+    <!-- Ladakh -->
+    <path id="ladakh" class="state"
+       d="M 290,80 L 340,70 L 380,85 L 400,110 L 390,140 L 360,155 L 320,150 L 290,135 L 270,110 Z"
+       style="fill:#c1e0b2;stroke:#000;stroke-width:1px" />
+    
+    <!-- Himachal Pradesh -->
+    <path id="himachal-pradesh" class="state"
+       d="M 170,105 L 200,115 L 240,120 L 270,110 L 290,135 L 280,155 L 250,165 L 220,160 L 190,145 L 160,130 Z"
+       style="fill:#fdf9bb;stroke:#000;stroke-width:1px" />
+    
+    <!-- Punjab -->
+    <path id="punjab" class="state"
+       d="M 160,130 L 190,145 L 220,160 L 230,180 L 220,200 L 190,210 L 160,200 L 140,180 Z"
+       style="fill:#ebc5dd;stroke:#000;stroke-width:1px" />
+    
+    <!-- Uttarakhand -->
+    <path id="uttarakhand" class="state"
+       d="M 250,165 L 280,155 L 310,165 L 320,185 L 305,205 L 275,210 L 250,200 L 230,180 L 220,160 Z"
+       style="fill:#fad0cc;stroke:#000;stroke-width:1px" />
+    
+    <!-- Haryana -->
+    <path id="haryana" class="state"
+       d="M 140,180 L 160,200 L 190,210 L 220,200 L 230,180 L 250,200 L 240,225 L 210,235 L 180,230 L 150,215 Z"
+       style="fill:#c1e0b2;stroke:#000;stroke-width:1px" />
+    
+    <!-- Delhi -->
+    <path id="delhi" class="state"
+       d="M 180,210 L 195,215 L 200,225 L 190,235 L 175,230 Z"
+       style="fill:#fdf9bb;stroke:#000;stroke-width:2px" />
+    
+    <!-- Rajasthan -->
+    <path id="rajasthan" class="state"
+       d="M 60,200 L 140,180 L 150,215 L 180,230 L 210,235 L 240,225 L 250,255 L 240,290 L 220,320 L 190,350 L 150,365 L 110,360 L 80,340 L 60,310 L 50,270 L 55,230 Z"
+       style="fill:#ebc5dd;stroke:#000;stroke-width:1px" />
+    
+    <!-- Uttar Pradesh -->
+    <path id="uttar-pradesh" class="state"
+       d="M 250,200 L 275,210 L 305,205 L 330,215 L 360,230 L 385,250 L 400,275 L 405,305 L 390,330 L 365,345 L 340,355 L 310,360 L 280,350 L 250,340 L 220,320 L 240,290 L 250,255 L 240,225 Z"
+       style="fill:#fad0cc;stroke:#000;stroke-width:1px" />
+    
+    <!-- Bihar -->
+    <path id="bihar" class="state"
+       d="M 390,330 L 405,305 L 430,310 L 460,320 L 480,335 L 490,355 L 475,370 L 450,375 L 420,365 L 390,350 Z"
+       style="fill:#c1e0b2;stroke:#000;stroke-width:1px" />
+    
+    <!-- Sikkim -->
+    <path id="sikkim" class="state"
+       d="M 545,280 L 560,275 L 570,285 L 565,300 L 550,305 L 540,295 Z"
+       style="fill:#fdf9bb;stroke:#000;stroke-width:1px" />
+    
+    <!-- Arunachal Pradesh -->
+    <path id="arunachal-pradesh" class="state"
+       d="M 570,240 L 610,235 L 650,245 L 680,260 L 690,285 L 680,310 L 650,320 L 620,315 L 590,305 L 570,285 L 560,275 L 545,280 L 550,265 Z"
+       style="fill:#ebc5dd;stroke:#000;stroke-width:1px" />
+    
+    <!-- Nagaland -->
+    <path id="nagaland" class="state"
+       d="M 650,320 L 680,310 L 695,330 L 690,350 L 670,360 L 650,355 Z"
+       style="fill:#fad0cc;stroke:#000;stroke-width:1px" />
+    
+    <!-- Manipur -->
+    <path id="manipur" class="state"
+       d="M 650,355 L 670,360 L 675,380 L 665,395 L 645,390 Z"
+       style="fill:#c1e0b2;stroke:#000;stroke-width:1px" />
+    
+    <!-- Mizoram -->
+    <path id="mizoram" class="state"
+       d="M 645,390 L 665,395 L 670,415 L 660,435 L 640,430 Z"
+       style="fill:#fdf9bb;stroke:#000;stroke-width:1px" />
+    
+    <!-- Tripura -->
+    <path id="tripura" class="state"
+       d="M 620,385 L 645,390 L 640,410 L 625,420 L 610,410 Z"
+       style="fill:#ebc5dd;stroke:#000;stroke-width:1px" />
+    
+    <!-- Meghalaya -->
+    <path id="meghalaya" class="state"
+       d="M 580,345 L 620,350 L 625,370 L 610,385 L 580,375 Z"
+       style="fill:#fad0cc;stroke:#000;stroke-width:1px" />
+    
+    <!-- Assam -->
+    <path id="assam" class="state"
+       d="M 490,310 L 545,280 L 570,285 L 590,305 L 620,315 L 650,320 L 650,355 L 620,350 L 580,345 L 550,355 L 520,360 L 490,350 Z"
+       style="fill:#c1e0b2;stroke:#000;stroke-width:1px" />
+    
+    <!-- West Bengal -->
+    <path id="west-bengal" class="state"
+       d="M 490,355 L 520,360 L 540,385 L 545,410 L 535,440 L 510,455 L 480,450 L 460,430 L 450,405 L 455,380 L 475,370 Z"
+       style="fill:#fdf9bb;stroke:#000;stroke-width:1px" />
+    
+    <!-- Jharkhand -->
+    <path id="jharkhand" class="state"
+       d="M 390,350 L 420,365 L 450,375 L 455,400 L 445,425 L 420,435 L 390,430 L 365,415 L 355,390 Z"
+       style="fill:#ebc5dd;stroke:#000;stroke-width:1px" />
+    
+    <!-- Odisha -->
+    <path id="odisha" class="state"
+       d="M 355,390 L 390,430 L 420,435 L 445,425 L 460,450 L 465,485 L 445,515 L 415,530 L 385,520 L 360,495 L 345,465 L 340,430 Z"
+       style="fill:#fad0cc;stroke:#000;stroke-width:1px" />
+    
+    <!-- Chhattisgarh -->
+    <path id="chhattisgarh" class="state"
+       d="M 280,350 L 310,360 L 340,355 L 365,345 L 390,350 L 365,415 L 355,445 L 330,460 L 300,465 L 270,450 L 255,420 L 250,385 Z"
+       style="fill:#c1e0b2;stroke:#000;stroke-width:1px" />
+    
+    <!-- Madhya Pradesh -->
+    <path id="madhya-pradesh" class="state"
+       d="M 150,365 L 190,350 L 220,320 L 250,340 L 280,350 L 250,385 L 255,420 L 270,450 L 260,485 L 240,510 L 210,520 L 180,515 L 150,495 L 125,465 L 110,430 L 105,395 Z"
+       style="fill:#fdf9bb;stroke:#000;stroke-width:1px" />
+    
+    <!-- Gujarat -->
+    <path id="gujarat" class="state"
+       d="M 55,330 L 110,360 L 105,395 L 110,430 L 95,465 L 80,490 L 65,515 L 45,540 L 30,565 L 25,545 L 20,520 L 25,490 L 35,460 L 40,430 L 45,400 L 50,370 Z"
+       style="fill:#ebc5dd;stroke:#000;stroke-width:1px" />
+    
+    <!-- Daman & Diu / Dadra & Nagar Haveli -->
+    <path id="daman-diu" class="state"
+       d="M 75,485 L 85,480 L 90,490 L 85,500 L 75,495 Z"
+       style="fill:#fad0cc;stroke:#000;stroke-width:1px" />
+    
+    <!-- Maharashtra -->
+    <path id="maharashtra" class="state"
+       d="M 110,430 L 125,465 L 150,495 L 180,515 L 210,520 L 240,510 L 260,525 L 275,550 L 280,580 L 265,610 L 240,630 L 210,640 L 180,635 L 150,620 L 120,590 L 95,555 L 80,520 L 95,465 Z"
+       style="fill:#c1e0b2;stroke:#000;stroke-width:1px" />
+    
+    <!-- Goa -->
+    <path id="goa" class="state"
+       d="M 145,620 L 165,625 L 170,640 L 160,655 L 140,650 Z"
+       style="fill:#fdf9bb;stroke:#000;stroke-width:1px" />
+    
+    <!-- Karnataka -->
+    <path id="karnataka" class="state"
+       d="M 150,620 L 180,635 L 210,640 L 240,630 L 265,610 L 280,625 L 290,655 L 285,690 L 270,720 L 245,745 L 215,755 L 185,750 L 160,735 L 140,710 L 135,680 L 140,650 L 160,655 Z"
+       style="fill:#ebc5dd;stroke:#000;stroke-width:1px" />
+    
+    <!-- Telangana -->
+    <path id="telangana" class="state"
+       d="M 260,525 L 300,465 L 330,460 L 355,465 L 360,495 L 355,525 L 335,550 L 305,560 L 275,550 Z"
+       style="fill:#fad0cc;stroke:#000;stroke-width:1px" />
+    
+    <!-- Andhra Pradesh -->
+    <path id="andhra-pradesh" class="state"
+       d="M 275,550 L 305,560 L 335,550 L 355,525 L 385,520 L 410,545 L 425,575 L 420,610 L 400,640 L 370,660 L 340,665 L 310,655 L 280,625 L 265,610 L 280,580 Z"
+       style="fill:#c1e0b2;stroke:#000;stroke-width:1px" />
+    
+    <!-- Tamil Nadu -->
+    <path id="tamil-nadu" class="state"
+       d="M 215,755 L 245,745 L 270,720 L 285,690 L 310,655 L 340,665 L 360,690 L 365,720 L 355,750 L 330,775 L 300,790 L 270,795 L 240,785 L 220,770 Z"
+       style="fill:#fdf9bb;stroke:#000;stroke-width:1px" />
+    
+    <!-- Puducherry (small dots) -->
+    <circle id="puducherry" class="state" cx="365" cy="695" r="3" style="fill:#ebc5dd;stroke:#000;stroke-width:1px" />
+    
+    <!-- Kerala -->
+    <path id="kerala" class="state"
+       d="M 185,750 L 215,755 L 220,770 L 225,790 L 220,815 L 210,840 L 195,860 L 175,870 L 155,865 L 145,845 L 140,820 L 145,795 L 155,770 L 170,755 Z"
+       style="fill:#fad0cc;stroke:#000;stroke-width:1px" />
+    
+  </g>
+  
+  <g id="labels-layer">
+    <text x="400" y="30" style="font-size:28px;font-weight:bold;fill:#000;font-family:Arial" text-anchor="middle">India</text>
+  </g>
+  
+</svg>
