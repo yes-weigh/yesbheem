@@ -61,7 +61,12 @@
 
             if (info && info.available) {
                 // Navigate to state page
-                window.location.href = info.url;
+                // window.location.href = info.url;
+                console.log('Kerala clicked. View switching should be handled by ViewController.');
+
+                // If ViewController is globally available, we could trigger it here, 
+                // but ViewController attaches its own listeners. 
+                // We just prevent the redirect.
             } else {
                 // Show "coming soon" message
                 if (infoPanel) {

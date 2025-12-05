@@ -10,6 +10,11 @@ class DataManager {
         // Load cache from localStorage or initialize empty
         this.zipCache = this.loadCacheFromStorage();
         this.processedData = {};
+
+        // Cache for state-level aggregated data
+        this.stateDataCache = {};
+        this.rawDataCache = null; // Cache the raw sheet data
+        this.rawDataTimestamp = null;
     }
 
     /**
@@ -41,16 +46,33 @@ class DataManager {
     }
 
     /**
-     * Fetches data from the Google Sheet
+     * Fetches data from the Google Sheet (with caching)
      */
     async fetchSheetData() {
+        // Use cached data if it's less than 5 minutes old
+        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+        const now = Date.now();
+
+        if (this.rawDataCache && this.rawDataTimestamp && (now - this.rawDataTimestamp) < CACHE_DURATION) {
+            console.log('Using cached sheet data');
+            return this.rawDataCache;
+        }
+
         try {
             const response = await fetch(this.sheetUrl);
             const csvText = await response.text();
-            return this.parseCSV(csvText);
+            const data = this.parseCSV(csvText);
+
+            // Cache the data
+            this.rawDataCache = data;
+            this.rawDataTimestamp = now;
+            console.log('Fetched and cached fresh sheet data');
+
+            return data;
         } catch (error) {
             console.error('Error fetching sheet data:', error);
-            return [];
+            // Return cached data if available, even if stale
+            return this.rawDataCache || [];
         }
     }
 
@@ -292,6 +314,88 @@ class DataManager {
 
         console.log("Data processing complete:", districtStats);
         return districtStats;
+    }
+
+    /**
+     * Get aggregated data for a specific state (other than Kerala which uses districts)
+     * @param {string} stateId - State ID (e.g., 'IN-TN' for Tamil Nadu)
+     * @returns {Promise<object>} Aggregated state data
+     */
+    async getStateData(stateId) {
+        // Check if we have cached data for this state
+        if (this.stateDataCache[stateId]) {
+            console.log(`Using cached data for ${stateId}`);
+            return this.stateDataCache[stateId];
+        }
+
+        console.log(`Getting state data for ${stateId}...`);
+
+        // State ID to name mapping
+        const stateNames = {
+            'IN-AN': 'Andaman and Nicobar', 'IN-AP': 'Andhra Pradesh', 'IN-AR': 'Arunachal Pradesh',
+            'IN-AS': 'Assam', 'IN-BR': 'Bihar', 'IN-CH': 'Chandigarh', 'IN-CT': 'Chhattisgarh',
+            'IN-DD': 'Daman and Diu', 'IN-DL': 'Delhi', 'IN-DN': 'Dadra and Nagar Haveli',
+            'IN-GA': 'Goa', 'IN-GJ': 'Gujarat', 'IN-HP': 'Himachal Pradesh', 'IN-HR': 'Haryana',
+            'IN-JH': 'Jharkhand', 'IN-JK': 'Jammu and Kashmir', 'IN-KA': 'Karnataka', 'IN-KL': 'Kerala',
+            'IN-LD': 'Lakshadweep', 'IN-MH': 'Maharashtra', 'IN-ML': 'Meghalaya', 'IN-MN': 'Manipur',
+            'IN-MP': 'Madhya Pradesh', 'IN-MZ': 'Mizoram', 'IN-NL': 'Nagaland', 'IN-OR': 'Odisha',
+            'IN-PB': 'Punjab', 'IN-PY': 'Puducherry', 'IN-RJ': 'Rajasthan', 'IN-SK': 'Sikkim',
+            'IN-TG': 'Telangana', 'IN-TN': 'Tamil Nadu', 'IN-TR': 'Tripura', 'IN-UP': 'Uttar Pradesh'
+        };
+
+        const stateName = stateNames[stateId] || stateId;
+        const rawData = await this.fetchSheetData();
+
+        // Filter for this state
+        const stateData = rawData.filter(row => {
+            const bState = (row['billing_state'] || '').toLowerCase();
+            const sState = (row['shipping_state'] || '').toLowerCase();
+            const searchName = stateName.toLowerCase();
+            return bState.includes(searchName) || sState.includes(searchName);
+        });
+
+        console.log(`Found ${stateData.length} entries for ${stateName}`);
+
+        // Aggregate data
+        const aggregated = {
+            name: stateName,
+            population: 'N/A',
+            dealerCount: 0,
+            currentSales: 0,
+            monthlyTarget: 500000, // Fixed 5 lakh target
+            dealers: []
+        };
+
+        // Process each row
+        for (const row of stateData) {
+            aggregated.dealerCount += 1;
+
+            let sales = parseFloat(row['sales'] || 0);
+            if (isNaN(sales)) sales = 0;
+
+            aggregated.currentSales += sales;
+
+            aggregated.dealers.push({
+                name: row['customer_name'] || 'Unknown Dealer',
+                sales: sales
+            });
+        }
+
+        // Sort dealers by sales
+        aggregated.dealers.sort((a, b) => b.sales - a.sales);
+
+        // Calculate achievement
+        if (aggregated.monthlyTarget > 0) {
+            aggregated.achievement = ((aggregated.currentSales / aggregated.monthlyTarget) * 100).toFixed(1) + "%";
+        } else {
+            aggregated.achievement = "0.0%";
+        }
+
+        // Cache the result
+        this.stateDataCache[stateId] = aggregated;
+        console.log(`State data aggregated and cached for ${stateName}:`, aggregated);
+
+        return aggregated;
     }
 }
 
