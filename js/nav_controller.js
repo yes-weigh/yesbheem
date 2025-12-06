@@ -27,7 +27,13 @@ class NavigationController {
     }
 
     setupEventListeners() {
-        // Sidebar toggle
+        // Sidebar toggle via logo
+        const brandLogo = document.getElementById('brand-logo');
+        if (brandLogo) {
+            brandLogo.addEventListener('click', () => this.toggleSidebar());
+        }
+
+        // Keep toggle button as fallback
         const toggleBtn = document.getElementById('sidebar-toggle');
         if (toggleBtn) {
             toggleBtn.addEventListener('click', () => this.toggleSidebar());
