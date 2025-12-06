@@ -50,7 +50,7 @@ class ViewController {
         this.showLoading(true);
         try {
             // Updated path
-            const response = await fetch('/assets/maps/india_map_high_res.svg');
+            const response = await fetch('../assets/maps/india_map_high_res.svg');
             if (!response.ok) throw new Error('Failed to load India Map SVG');
             const svgText = await response.text();
 
@@ -259,7 +259,7 @@ class ViewController {
                 svgText = this.stateMapCache.get(stateId);
             } else {
                 // Updated path with dynamic filename
-                const response = await fetch(`/assets/maps/${mapFilename}?t=${Date.now()}`);
+                const response = await fetch(`../assets/maps/${mapFilename}?t=${Date.now()}`);
                 if (!response.ok) throw new Error(`Map not found: ${mapFilename}`);
                 svgText = await response.text();
                 this.stateMapCache.set(stateId, svgText);
