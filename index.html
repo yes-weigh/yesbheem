@@ -4,116 +4,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Interactive map of India with state and district-level sales intelligence">
-    <title>Yes Bheem - Sales Intelligence</title>
+    <meta name="description" content="Yes Bheem Dashboard - Sales intelligence and analytics platform">
+    <title>Yes Bheem - Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
-    <!-- Removed header-styles.css dependency for unified styling -->
 </head>
 
 <body>
-    <div class="app-container">
-        <!-- Floating Header -->
-        <header class="app-header">
-            <div class="header-left">
-                <img src="assets/yesbheem.png" alt="Logo" class="app-logo">
-                <div class="app-info">
-                    <h1>Yes Bheem</h1>
-                    <nav class="breadcrumb" id="breadcrumb">
-                        <span class="crumb-item active" id="crumb-india">India</span>
-                        <span class="crumb-sep" id="crumb-sep" style="display:none;">/</span>
-                        <span class="crumb-item" id="crumb-state" style="display:none;">State</span>
-                    </nav>
+    <div class="dashboard-container">
+        <!-- Collapsible Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="brand">
+                    <div class="brand-icon">
+                        <img src="assets/yesbheem.png" alt="Yes Bheem Logo"
+                            style="width: 32px; height: 32px; border-radius: 8px;">
+                    </div>
+                    <div class="brand-text">
+                        <h1>Yes Bheem</h1>
+                    </div>
                 </div>
+                <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle Sidebar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
             </div>
 
-            <div class="header-controls">
-                <div class="toggle-wrapper start-hidden" id="color-grade-wrapper">
-                    <label class="switch">
-                        <input type="checkbox" id="color-grade-toggle">
-                        <span class="slider round"></span>
-                    </label>
-                    <span class="label">Heat Map</span>
+            <!-- Navigation Menu -->
+            <nav class="nav-menu">
+                <div class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Dashboard</span>
+                </div>
+                <div class="nav-item" data-page="instance">
+                    <span class="nav-icon">🖥️</span>
+                    <span class="nav-text">Instance</span>
+                </div>
+                <div class="nav-item" data-page="message">
+                    <span class="nav-icon">💬</span>
+                    <span class="nav-text">Message</span>
+                </div>
+                <div class="nav-item" data-page="contacts">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">Contacts</span>
+                </div>
+                <div class="nav-item" data-page="yesbheam">
+                    <span class="nav-icon">⚡</span>
+                    <span class="nav-text">Yes bheam</span>
+                </div>
+                <div class="nav-item" data-page="template">
+                    <span class="nav-icon">📄</span>
+                    <span class="nav-text">Template</span>
+                </div>
+                <div class="nav-item" data-page="broadcast">
+                    <span class="nav-icon">📡</span>
+                    <span class="nav-text">Broadcast</span>
+                </div>
+                <div class="nav-item" data-page="welcome">
+                    <span class="nav-icon">👋</span>
+                    <span class="nav-text">Welcome</span>
+                </div>
+                <div class="nav-item" data-page="chatbot">
+                    <span class="nav-icon">🤖</span>
+                    <span class="nav-text">Chat bot</span>
+                </div>
+                <div class="nav-item" data-page="groupgrabber">
+                    <span class="nav-icon">🔗</span>
+                    <span class="nav-text">Group grabber</span>
+                </div>
+                <div class="nav-item" data-page="report">
+                    <span class="nav-icon">📈</span>
+                    <span class="nav-text">Report</span>
+                </div>
+                <div class="nav-item" data-page="integration">
+                    <span class="nav-icon">🔌</span>
+                    <span class="nav-text">Integration</span>
+                </div>
+                <div class="nav-item" data-page="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Settings</span>
+                </div>
+            </nav>
+
+            <!-- User Profile -->
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar">U</div>
+                    <div class="user-info">
+                        <div class="user-name">User</div>
+                        <div class="user-status">Online</div>
+                    </div>
                 </div>
             </div>
-        </header>
+        </aside>
 
-        <!-- Main Workspace -->
-        <main class="workspace">
-            <!-- Map Viewport -->
-            <section class="map-viewport" id="map-viewport">
-
-                <!-- Zoom Tools -->
-                <div class="map-tools">
-                    <button class="tool-btn" id="zoom-in" title="Zoom In">+</button>
-                    <button class="tool-btn" id="zoom-out" title="Zoom Out">-</button>
-                    <button class="tool-btn" id="zoom-reset" title="Reset View">⟲</button>
-                </div>
-
-                <!-- Floating Stats Tile -->
-                <div class="stats-floating-tile hidden" id="stats-floater">
-                    <div class="stats-grid-compact" id="stats-container">
-                        <!-- Dynamic Stats Here -->
-                    </div>
-                </div>
-
-                <!-- India Container -->
-                <div id="india-view" class="view-layer active">
-                    <div id="india-map-container" class="pan-zoom-layer">
-                        <!-- SVG Loaded Dynamically -->
-                    </div>
-                </div>
-
-                <!-- State Container -->
-                <div id="state-view" class="view-layer">
-                    <div id="state-map-container" class="pan-zoom-layer">
-                        <!-- SVG Loaded Dynamically -->
-                    </div>
-                </div>
-            </section>
-
-            <!-- Info Sidebar / Overlay -->
-            <aside class="info-sidebar" id="info-panel">
-                <div class="sidebar-content">
-                    <div class="sidebar-header">
-                        <h2 id="district-name">India Overview</h2>
-                        <p class="subtitle" id="district-description">Select a state to explore detailed analytics.</p>
-                    </div>
-
-                    <!-- Stats Grid Moved to Floating Tile -->
-
-                    <div id="dealer-section" class="dealer-section">
-                        <!-- Dealer List Here -->
-                    </div>
-                </div>
-
-                <!-- Collaborative/Chat Placeholder (Future) -->
-                <!-- <div class="ai-chat-minimized">
-                    <span>Ask YesBheem AI...</span>
-                </div> -->
-            </aside>
+        <!-- Main Content Area -->
+        <main class="main-content" id="main-content">
+            <!-- Dynamic page content loaded here -->
+            <div id="page-content">
+                <!-- Content will be loaded by nav_controller.js -->
+            </div>
         </main>
     </div>
 
-    <!-- Loading State -->
-    <div id="loading-overlay" class="loading-overlay hidden">
-        <div class="spinner-box">
-            <div class="pulse-ring"></div>
-            <img src="assets/yesbheem.png" alt="Loading" class="loader-logo">
-        </div>
-        <p>Loading Intelligence...</p>
-    </div>
-
-    <!-- Scripts -->
-    <!-- Order matters for dependency injection -->
-    <script src="js/pan_zoom_controller.js"></script>
-    <script src="js/data_manager.js"></script>
-    <script src="js/ui_renderer.js"></script>
-    <script src="js/map_interactions.js"></script>
-    <script src="js/view_controller.js"></script>
-    <!-- Removed legacy scripts -->
+    <!-- Navigation Controller -->
+    <script src="js/nav_controller.js"></script>
 </body>
 
 </html>

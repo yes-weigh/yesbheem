@@ -388,16 +388,20 @@ class DataManager {
             if (isNaN(sales)) sales = 0;
             aggregated.currentSales += sales;
 
-            // We don't store valid dealers list here to avoid memory bloat for the whole country,
-            // or we limits it to top 100?
-            // User just wants overview. Let's keep it light.
-            // aggregated.dealers.push(...) 
+            aggregated.dealers.push({
+                name: row['customer_name'] || 'Unknown Dealer',
+                sales: sales
+            });
         }
 
         // Dynamic Target Calculation?
         // If we assume every row represents a dealer, and every active district has a target...
         // For now, let's keep a static high target or leave it blank. 
         // Or calculate specific target based on active dealers?
+
+
+        // Sort dealers by sales (highest first)
+        aggregated.dealers.sort((a, b) => b.sales - a.sales);
 
         aggregated.monthlyTarget = 100000000; // 10 Cr placeholder or sum? 
 
