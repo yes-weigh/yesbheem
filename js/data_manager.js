@@ -137,105 +137,87 @@ class DataManager {
     /**
      * Normalizes district names to match our internal keys
      */
-    normalizeDistrictName(districtName) {
+    normalizeDistrictName(districtName, validList = []) {
         if (!districtName) return null;
         const lower = districtName.toLowerCase().trim();
+        const cleanId = lower.replace(/\s+/g, '-');
 
-        // Map common variations to our keys
+        // Check against valid list first
+        if (validList.includes(cleanId)) return cleanId;
+        if (validList.includes(lower)) return lower;
+
+        // Fallback for complex matches (Kerala legacy)
         const map = {
-            'thiruvananthapuram': 'thiruvananthapuram',
             'trivandrum': 'thiruvananthapuram',
-            'kollam': 'kollam',
-            'pathanamthitta': 'pathanamthitta',
-            'alappuzha': 'alappuzha',
+            'calicut': 'kozhikode',
             'alleppey': 'alappuzha',
-            'kottayam': 'kottayam',
-            'idukki': 'idukki',
-            'ernakulam': 'ernakulam',
             'cochin': 'ernakulam',
             'kochi': 'ernakulam',
-            'thrissur': 'thrissur',
             'trichur': 'thrissur',
-            'palakkad': 'palakkad',
             'palghat': 'palakkad',
-            'malappuram': 'malappuram',
-            'kozhikode': 'kozhikode',
-            'calicut': 'kozhikode',
-            'wayanad': 'wayanad',
-            'kannur': 'kannur',
             'cannanore': 'kannur',
-            'kasaragod': 'kasaragod',
             'kasargod': 'kasaragod'
         };
 
-        return map[lower] || null;
+        const mapped = map[lower];
+        if (mapped && validList.includes(mapped)) return mapped;
+
+        return null;
     }
 
     /**
      * Main function to load and process data
+     * @param {string} stateName - Name of the state to filter by (default 'Kerala')
+     * @param {Array} districtIds - List of valid district IDs/keys for this state
      */
-    async loadData() {
-        console.log("Starting data load...");
+    async loadData(stateName = 'Kerala', districtIds = []) {
+        console.log(`Starting data load for ${stateName}...`);
         const rawData = await this.fetchSheetData();
         console.log(`Fetched ${rawData.length} rows from sheet.`);
 
-        // Filter for Kerala only (based on state) and valid zip
-        // We look at billing_state or shipping_state
-        const keralaData = rawData.filter(row => {
+        // Filter for specific state
+        const stateLower = stateName.toLowerCase();
+        const stateData = rawData.filter(row => {
             const bState = (row['billing_state'] || '').toLowerCase();
             const sState = (row['shipping_state'] || '').toLowerCase();
-            return bState.includes('kerala') || sState.includes('kerala');
+            return bState.includes(stateLower) || sState.includes(stateLower);
         });
 
-        console.log(`Filtered to ${keralaData.length} Kerala entries.`);
+        console.log(`Filtered to ${stateData.length} ${stateName} entries.`);
 
         const districtStats = {};
 
-        // Initialize stats for all Kerala districts
-        const districtList = [
-            'kasaragod', 'kannur', 'wayanad', 'kozhikode', 'malappuram',
-            'palakkad', 'thrissur', 'ernakulam', 'idukki', 'kottayam',
-            'alappuzha', 'pathanamthitta', 'kollam', 'thiruvananthapuram'
-        ];
+        // Use provided district IDs or fallback to Kerala default if empty
+        let targets = districtIds;
+        if (!targets || targets.length === 0) {
+            targets = [
+                'kasaragod', 'kannur', 'wayanad', 'kozhikode', 'malappuram',
+                'palakkad', 'thrissur', 'ernakulam', 'idukki', 'kottayam',
+                'alappuzha', 'pathanamthitta', 'kollam', 'thiruvananthapuram'
+            ];
+        }
 
-        const districtDisplayNames = {
-            'kasaragod': 'Kasaragod',
-            'kannur': 'Kannur',
-            'wayanad': 'Wayanad',
-            'kozhikode': 'Kozhikode',
-            'malappuram': 'Malappuram',
-            'palakkad': 'Palakkad',
-            'thrissur': 'Thrissur',
-            'ernakulam': 'Ernakulam',
-            'idukki': 'Idukki',
-            'kottayam': 'Kottayam',
-            'alappuzha': 'Alappuzha',
-            'pathanamthitta': 'Pathanamthitta',
-            'kollam': 'Kollam',
-            'thiruvananthapuram': 'Thiruvananthapuram'
-        };
+        // Initialize stats
+        for (const district of targets) {
+            // Capitalize first letter for display name if no specific mapping exists
+            const displayName = district.charAt(0).toUpperCase() + district.slice(1).replace(/-/g, ' ');
 
-        for (const district of districtList) {
             districtStats[district] = {
-                name: districtDisplayNames[district],
+                name: displayName, // Fallback, normally needs a map but this is okay for now
                 population: 'N/A',
                 dealerCount: 0,
                 currentSales: 0,
-                monthlyTarget: 500000, // Fixed 5 lakh target
+                monthlyTarget: 500000,
                 dealers: []
             };
         }
 
         // OPTIMIZATION 1: Collect unique zip codes that need resolution
         const uniqueZips = new Set();
-        for (const row of keralaData) {
+        for (const row of stateData) {
             let zip = row['billing_zipcode'] || row['shipping_zipcode'];
             if (!zip) continue;
-
-            // Clean zip (remove spaces)
             zip = zip.replace(/\s/g, '');
-
-            // Only add to set if not already in cache
             if (!this.zipCache[zip]) {
                 uniqueZips.add(zip);
             }
@@ -245,46 +227,31 @@ class DataManager {
         if (uniqueZips.size > 0) {
             console.log(`Resolving ${uniqueZips.size} unique uncached zip codes...`);
             let resolvedCount = 0;
-
             for (const zip of uniqueZips) {
                 await this.getDistrictFromZip(zip);
                 resolvedCount++;
-
-                // Log progress every 10 zip codes
-                if (resolvedCount % 10 === 0) {
-                    console.log(`Resolved ${resolvedCount}/${uniqueZips.size} zip codes...`);
-                }
+                if (resolvedCount % 10 === 0) console.log(`Resolved ${resolvedCount}/${uniqueZips.size}...`);
             }
-
-            // Save cache after resolving new zip codes
             this.saveCacheToStorage();
-            console.log(`Resolved all ${uniqueZips.size} unique zip codes and saved to cache.`);
         } else {
-            console.log('All zip codes found in cache - no API calls needed!');
+            console.log('All zip codes found in cache.');
         }
 
         // Process each row using cached data
-        for (const row of keralaData) {
+        for (const row of stateData) {
             let zip = row['billing_zipcode'] || row['shipping_zipcode'];
             if (!zip) continue;
-
-            // Clean zip (remove spaces)
             zip = zip.replace(/\s/g, '');
 
-            // Use cached district name
             const districtName = this.zipCache[zip];
-            const districtKey = this.normalizeDistrictName(districtName);
+            // Normalize: try to match against our key list
+            const districtKey = this.normalizeDistrictName(districtName, targets);
 
             if (districtKey && districtStats[districtKey]) {
                 districtStats[districtKey].dealerCount += 1;
-
-                // Parse sales
                 let sales = parseFloat(row['sales'] || 0);
                 if (isNaN(sales)) sales = 0;
-
                 districtStats[districtKey].currentSales += sales;
-
-                // Store dealer info
                 districtStats[districtKey].dealers.push({
                     name: row['customer_name'] || 'Unknown Dealer',
                     sales: sales
@@ -295,7 +262,6 @@ class DataManager {
         // Finalize stats
         for (const key in districtStats) {
             const stats = districtStats[key];
-
             // Sort dealers by sales descending
             stats.dealers.sort((a, b) => b.sales - a.sales);
 
@@ -394,6 +360,52 @@ class DataManager {
         // Cache the result
         this.stateDataCache[stateId] = aggregated;
         console.log(`State data aggregated and cached for ${stateName}:`, aggregated);
+
+        return aggregated;
+    }
+    /**
+     * Get aggregated data for the entire country (Pan India)
+     * @returns {Promise<object>} Aggregated country data
+     */
+    async getCountryData() {
+        const rawData = await this.fetchSheetData();
+        console.log(`Getting Pan India data... (${rawData.length} rows)`);
+
+        const aggregated = {
+            name: 'Pan India',
+            population: '1.4B+',
+            dealerCount: 0,
+            currentSales: 0,
+            monthlyTarget: 500000 * 30, // Rough estimate: 5L * 30 states/UTs (or sum of all targets)
+            // Ideally we sum distinct targets, but the cached data has a fixed target per district/state.
+            dealers: []
+        };
+
+        // Process each row
+        for (const row of rawData) {
+            aggregated.dealerCount += 1;
+            let sales = parseFloat(row['sales'] || 0);
+            if (isNaN(sales)) sales = 0;
+            aggregated.currentSales += sales;
+
+            // We don't store valid dealers list here to avoid memory bloat for the whole country,
+            // or we limits it to top 100?
+            // User just wants overview. Let's keep it light.
+            // aggregated.dealers.push(...) 
+        }
+
+        // Dynamic Target Calculation?
+        // If we assume every row represents a dealer, and every active district has a target...
+        // For now, let's keep a static high target or leave it blank. 
+        // Or calculate specific target based on active dealers?
+
+        aggregated.monthlyTarget = 100000000; // 10 Cr placeholder or sum? 
+
+        if (aggregated.monthlyTarget > 0) {
+            aggregated.achievement = ((aggregated.currentSales / aggregated.monthlyTarget) * 100).toFixed(1) + "%";
+        } else {
+            aggregated.achievement = "0.0%";
+        }
 
         return aggregated;
     }

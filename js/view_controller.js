@@ -49,7 +49,8 @@ class ViewController {
     async loadIndiaMap() {
         this.showLoading(true);
         try {
-            const response = await fetch('india_map_high_res.svg');
+            // Updated path
+            const response = await fetch('assets/maps/india_map_high_res.svg');
             if (!response.ok) throw new Error('Failed to load India Map SVG');
             const svgText = await response.text();
 
@@ -67,11 +68,42 @@ class ViewController {
             }
 
             this.showIndiaView();
+            // Load initial overview data
+            await this.loadIndiaOverview();
         } catch (error) {
             console.error('Failed to load India map:', error);
         } finally {
             this.showLoading(false);
         }
+    }
+
+    async loadIndiaOverview() {
+        if (this.dataManager && this.dataManager.getCountryData) {
+            const data = await this.dataManager.getCountryData();
+            this.updateSidebarWithData(data);
+        }
+    }
+
+    updateSidebarWithData(data) {
+        const title = document.getElementById('district-name');
+        const desc = document.getElementById('district-description');
+        const statsContainer = document.getElementById('stats-container');
+        const dealerSection = document.getElementById('dealer-section');
+        const statsFloater = document.getElementById('stats-floater');
+
+        if (title) title.textContent = data.name;
+        if (desc) desc.textContent = `Overview of ${data.name}`;
+
+        // Update Floating Stats
+        if (statsContainer) {
+            statsContainer.innerHTML = UIRenderer.renderStats(data);
+        }
+
+        // Show Floater
+        if (statsFloater) statsFloater.classList.remove('hidden');
+
+        // Update Dealer List (remains in sidebar)
+        if (dealerSection) dealerSection.innerHTML = UIRenderer.renderDealerList(data.dealers);
     }
 
     initializeIndiaInteractions() {
@@ -86,9 +118,28 @@ class ViewController {
                 this.showStateView(stateId, stateName);
             });
 
-            state.addEventListener('mouseenter', () => {
-                this.updateSidebarPlaceholder(state.getAttribute('title'), 'India');
+            state.addEventListener('mouseenter', async () => {
+                // Show State Preview on Hover
+                const lookupId = state.id; // e.g. "IN-KL"
+                const data = await this.dataManager.getStateData(lookupId);
+                // We reuse the sidebar update to show stats
+                this.updateSidebarWithData(data);
+
+                // Optional: visual highlight is handled by CSS (:hover)
             });
+
+            state.addEventListener('mouseleave', () => {
+                // Revert to Pan India Overview
+                this.loadIndiaOverview();
+            });
+        });
+
+        // Background Click Listener for India Map
+        this.containers.indiaMap.addEventListener('click', (e) => {
+            // Check if clicked element is the SVG background or container, not a path
+            if (e.target.tagName === 'svg' || e.target.id === 'india-map-container') {
+                this.loadIndiaOverview();
+            }
         });
     }
 
@@ -98,9 +149,6 @@ class ViewController {
         const statsContainer = document.getElementById('stats-container');
         const dealerSection = document.getElementById('dealer-section');
 
-        // Only clear stats if we are resetting to a generic state (not updating with valid data)
-        // actually, we clear on hover for now or keep previous? user asked for data.
-        // Let's clear to avoid confusion.
         if (statsContainer) statsContainer.innerHTML = '';
         if (dealerSection) dealerSection.innerHTML = '';
 
@@ -162,67 +210,10 @@ class ViewController {
     async loadStateAggregateData(stateId, stateName) {
         this.showLoading(true);
         try {
-            // Re-prefix for DataManager if needed (it expects IN-TL format usually?? 
-            // Checking DataManager.js: it maps stateId 'IN-AP' etc. 
-            // My click handler strips 'IN-'. So I should re-add it or DataManager should handle it.
-            // DataManager has a map with 'IN-xx' keys. 
-            // Let's pass 'IN-' + stateId if length is 2.
-
             const lookupId = stateId.length === 2 ? `IN-${stateId}` : stateId;
-
             const data = await this.dataManager.getStateData(lookupId);
 
-            const title = document.getElementById('district-name');
-            const desc = document.getElementById('district-description');
-
-            if (title) title.textContent = data.name;
-            if (desc) desc.textContent = "State Performance Overview";
-
-            const statsContainer = document.getElementById('stats-container');
-            if (statsContainer) {
-                statsContainer.innerHTML = `
-                    <div class="stat-card">
-                        <span class="stat-label">Achievement</span>
-                        <div class="stat-value" style="color:${this.getColor(data.achievement)}">${data.achievement}</div>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label">Current Sales</span>
-                        <div class="stat-value">₹${this.formatNumber(data.currentSales)}</div>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label">Dealer Count</span>
-                        <div class="stat-value">${data.dealerCount}</div>
-                    </div>
-                     <div class="stat-card">
-                        <span class="stat-label">Monthly Target</span>
-                        <div class="stat-value">₹${this.formatNumber(data.monthlyTarget)}</div>
-                    </div>
-                `;
-            }
-
-            const dealerSection = document.getElementById('dealer-section');
-            if (dealerSection && data.dealers.length > 0) {
-                const maxSales = data.dealers[0].sales;
-                let dealerHtml = '<h3 style="margin-bottom:1rem;color:var(--text-muted);font-size:0.9rem;text-transform:uppercase;letter-spacing:0.05em;">Dealer Performance</h3>';
-                
-                data.dealers.forEach((d, i) => {
-                    const percent = maxSales > 0 ? (d.sales / maxSales) * 100 : 0;
-                    dealerHtml += `
-                        <div class="dealer-item" style="position:relative; overflow:hidden;">
-                            <div style="position:absolute; bottom:0; left:0; height:3px; background:var(--primary); width:${percent}%; opacity:0.7; transition:width 0.5s;"></div>
-                            <div class="dealer-rank">${i + 1}</div>
-                            <div style="flex:1; position:relative; z-index:1;">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <div class="dealer-name" style="font-weight:500;color:white;">${d.name}</div>
-                                    <div class="dealer-sales" style="font-size:0.85rem;color:var(--text-muted)">₹${this.formatNumber(d.sales)}</div>
-                                </div>
-                                <div style="font-size:0.7rem; color:rgba(255,255,255,0.3); margin-top:2px;">Contribution: ${percent.toFixed(1)}% of Top</div>
-                            </div>
-                        </div>
-                     `;
-                });
-                dealerSection.innerHTML = dealerHtml;
-            }
+            this.updateSidebarWithData(data);
 
         } catch (e) {
             console.error("Failed to load state data:", e);
@@ -246,7 +237,11 @@ class ViewController {
             this.panZoom.reset();
         }
 
-        this.updateSidebarPlaceholder('India Overview', 'India');
+        this.updateSidebarPlaceholder('India Overview', 'India'); // Temporary placholder
+
+        // Load Real Data
+        this.loadIndiaOverview();
+
         const toggle = document.getElementById('color-grade-wrapper');
         if (toggle) { toggle.classList.remove('visible'); toggle.classList.add('start-hidden'); }
     }
@@ -255,11 +250,17 @@ class ViewController {
         this.showLoading(true);
         try {
             let svgText;
+            let mapFilename = 'Kerala-map-en.svg';
+            if (stateId === 'TN') {
+                mapFilename = 'Tamil_Nadu-map-en.svg';
+            }
+
             if (this.stateMapCache.has(stateId)) {
                 svgText = this.stateMapCache.get(stateId);
             } else {
-                const response = await fetch(`Kerala-map-en.svg?t=${Date.now()}`);
-                if (!response.ok) throw new Error('Map not found');
+                // Updated path with dynamic filename
+                const response = await fetch(`assets/maps/${mapFilename}?t=${Date.now()}`);
+                if (!response.ok) throw new Error(`Map not found: ${mapFilename}`);
                 svgText = await response.text();
                 this.stateMapCache.set(stateId, svgText);
             }
@@ -268,6 +269,10 @@ class ViewController {
 
             const svg = this.containers.stateMap.querySelector('svg');
             if (svg) {
+                // Remove fixed dimensions to allow CSS scaling
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+
                 svg.style.width = '100%';
                 svg.style.height = '100%';
             }
@@ -277,8 +282,22 @@ class ViewController {
             }
 
             if (this.mapInteractions) {
-                this.mapInteractions.initializeKeralaDistricts();
-                await this.mapInteractions.loadDistrictData(); // LOAD DATA CALL ADDED
+                // PASS stateId to initializeDistricts
+                this.mapInteractions.initializeDistricts(stateId);
+
+                // Initialize with State Overview
+                const stateNames = {
+                    'KL': 'Kerala',
+                    'IN-KL': 'Kerala'
+                };
+                const stateName = stateNames[stateId] || stateId;
+
+                // Show overview initially
+                // We use aggregated data for initial view (matches "State Overview")
+                await this.loadStateAggregateData(stateId, stateName);
+
+                // Also load detailed district data in background for interactions
+                await this.mapInteractions.loadDistrictData(stateName);
             }
 
             this.panZoom = new PanZoomController('#map-viewport', '#state-map-container');
@@ -294,21 +313,6 @@ class ViewController {
         if (!this.loadingOverlay) return;
         if (show) this.loadingOverlay.classList.remove('hidden');
         else this.loadingOverlay.classList.add('hidden');
-    }
-
-    // Utilities for rendering
-    formatNumber(num) {
-        if (num >= 10000000) return (num / 10000000).toFixed(2) + ' Cr';
-        if (num >= 100000) return (num / 100000).toFixed(2) + ' L';
-        if (num >= 1000) return (num / 1000).toFixed(2) + ' K';
-        return num.toFixed(2);
-    }
-
-    getColor(achievement) {
-        const p = parseFloat(achievement);
-        if (p >= 100) return '#10b981';
-        if (p >= 70) return '#f59e0b';
-        return '#ef4444';
     }
 }
 
