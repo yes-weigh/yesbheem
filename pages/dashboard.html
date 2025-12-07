@@ -30,15 +30,20 @@
             const container = document.getElementById('dashboard-stats');
 
             if (container) {
-                // Determine Achievement Color/Status
-                // Reference uses colors for cards, so we stick to the card theme colors
-                // But we can add an icon or indicator if needed.
+                // Population data stored in code
+                const populationData = {
+                    'Kerala': '3.5 Cr',
+                    'India': '144 Cr',
+                    'INDIA': '144 Cr',
+                    'Pan India': '144 Cr'
+                };
+                const population = populationData[data.name] || '3.5 Cr';
 
                 container.innerHTML = `
-                    <!-- Population (Placeholder) -->
+                    <!-- Population -->
                     <div class="kpi-card card-blue">
                         <div class="kpi-content">
-                            <span class="kpi-value">3.5 Cr</span>
+                            <span class="kpi-value">${population}</span>
                             <span class="kpi-label">Population</span>
                         </div>
                         <div class="kpi-icon">
@@ -83,7 +88,7 @@
                     <div class="kpi-card card-red">
                         <div class="kpi-content">
                             <span class="kpi-value">₹${formatCurrency(data.monthlyTarget)}</span>
-                            <span class="kpi-label">Monthly Target</span>
+                            <span class="kpi-label">Target</span>
                         </div>
                         <div class="kpi-icon">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
