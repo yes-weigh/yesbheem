@@ -1,13 +1,60 @@
 <div class="page-container" id="dashboard-page">
+    <!-- Secondary Title Bar for Dashboard -->
+    <div class="page-title-bar">
+        <div class="page-title-content">
+            <div class="page-breadcrumb">
+                <span class="breadcrumb-item">Dashboard</span>
+                <span class="breadcrumb-separator">/</span>
+                <span class="breadcrumb-item active">India</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map Content -->
     <div class="dashboard-iframe-wrapper">
         <iframe src="pages/map.html" frameborder="0" class="dashboard-iframe" title="Sales Intelligence Map"></iframe>
     </div>
 </div>
 
 <style>
+    .page-title-bar {
+        height: 35px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+    }
+
+    .page-title-content {
+        display: flex;
+        align-items: center;
+        width: 100%;
+    }
+
+    .page-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+    }
+
+    .breadcrumb-item {
+        color: var(--text-muted);
+    }
+
+    .breadcrumb-item.active {
+        color: var(--text-main);
+    }
+
+    .breadcrumb-separator {
+        color: var(--text-muted);
+        user-select: none;
+    }
+
     .dashboard-iframe-wrapper {
         width: 100%;
-        height: 100%;
+        height: calc(100% - 35px);
         overflow: hidden;
     }
 

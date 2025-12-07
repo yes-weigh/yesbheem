@@ -29,9 +29,9 @@ class MapInteractions {
         districts.forEach(district => {
             district.addEventListener('click', (e) => {
                 e.stopPropagation(); // Prevent bubbling to background
-                // Remove active class from all
-                districts.forEach(d => d.classList.remove('highlighted'));
-                district.classList.add('highlighted');
+                // Remove selected class from all
+                districts.forEach(d => d.classList.remove('selected'));
+                district.classList.add('selected');
 
                 this.selectedDistrictId = district.id;
                 this.handleDistrictClick(district.id);
@@ -63,7 +63,7 @@ class MapInteractions {
                 // If clicked on SVG background (not a district)
 
                 // Deselect all districts
-                districts.forEach(d => d.classList.remove('highlighted'));
+                districts.forEach(d => d.classList.remove('selected'));
                 this.selectedDistrictId = null;
 
                 // Show State Overview

@@ -1,0 +1,80 @@
+:root {
+    /* VS Code Dark Modern Palette */
+    --bg-deep: #1e1e1e;
+    --bg-dark: #1e1e1e;
+    --bg-panel: #252526;
+    --bg-secondary: #2d2d2d;
+    /* Added for dashboard sub-header */
+    --bg-card: #252526;
+    /* Flat design, cards match panel */
+    --bg-sidebar: #252526;
+    --bg-sidebar-hover: #2a2d2e;
+    --bg-header: #3c3c3c;
+    /* Or slightly lighter than sidebar for differentiation, commonly just titlebar color */
+
+    --primary: #007acc;
+    /* VS Code Blue */
+    --primary-glow: rgba(0, 122, 204, 0.4);
+
+    --accent: #007acc;
+    --accent-glow: rgba(0, 122, 204, 0.4);
+
+    --text-main: #cccccc;
+    --text-muted: #969696;
+    --text-highlight: #ffffff;
+
+    --border-light: #333333;
+    /* subtle borders */
+    --border-highlight: #454545;
+
+    /* Map Colors - Dark */
+    --map-fill: #252526;
+    /* Slightly lighter than bg-deep (#1e1e1e) for visibility */
+    --map-stroke: #454545;
+    --map-hover: #264f78;
+    --map-text: #cccccc;
+
+    --font-main: 'Segoe UI', 'Outfit', sans-serif;
+    /* VS Code uses system fonts usually */
+
+    /* Metrics */
+    --header-height: 50px;
+    /* Reduced specific to VS Code feel */
+    --sidebar-width: 250px;
+    /* Slightly narrower */
+    --sidebar-collapsed-width: 50px;
+    --radius-lg: 0px;
+    /* Flat design */
+    --radius-md: 0px;
+}
+
+[data-theme="light"] {
+    /* VS Code Light Modern Palette */
+    --bg-deep: #ffffff;
+    --bg-dark: #ffffff;
+    --bg-panel: #f3f3f3;
+    --bg-secondary: #e5e5e5;
+    --bg-card: #f3f3f3;
+    --bg-sidebar: #f3f3f3;
+    --bg-sidebar-hover: #e8e8e8;
+    --bg-header: #dddddd;
+
+    --primary: #007acc;
+    --primary-glow: rgba(0, 122, 204, 0.2);
+
+    --accent: #007acc;
+    --accent-glow: rgba(0, 122, 204, 0.2);
+
+    --text-main: #333333;
+    --text-muted: #616161;
+    --text-highlight: #000000;
+
+    --border-light: #e5e5e5;
+    --border-highlight: #cecece;
+
+    /* Map Colors - Light */
+    --map-fill: #ebf1f5;
+    --map-stroke: #cbd5e1;
+    --map-hover: #b3d4fc;
+    --map-text: #333333;
+}

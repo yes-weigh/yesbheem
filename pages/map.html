@@ -9,40 +9,36 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css">
+
+    <!-- Modular CSS -->
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/header.css">
+    <link rel="stylesheet" href="../css/sidebar.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/map.css">
 </head>
 
 <body>
     <div class="app-container">
         <!-- Floating Header -->
-        <header class="app-header">
-            <div class="header-left">
-                <img src="../assets/yesbheem.png" alt="Logo" class="app-logo">
-                <div class="app-info">
-                    <h1>Dashboard</h1>
-                    <nav class="breadcrumb" id="breadcrumb">
-                        <span class="crumb-item active" id="crumb-india">India</span>
-                        <span class="crumb-sep" id="crumb-sep" style="display:none;">/</span>
-                        <span class="crumb-item" id="crumb-state" style="display:none;">State</span>
-                    </nav>
-                </div>
-            </div>
-
-            <div class="header-controls">
-                <div class="toggle-wrapper start-hidden" id="color-grade-wrapper">
-                    <label class="switch">
-                        <input type="checkbox" id="color-grade-toggle">
-                        <span class="slider round"></span>
-                    </label>
-                    <span class="label">Heat Map</span>
-                </div>
-            </div>
-        </header>
-
         <!-- Main Workspace -->
         <main class="workspace">
             <!-- Map Viewport -->
             <section class="map-viewport" id="map-viewport">
+
+                <!-- Top Right Controls (Heat Map) -->
+                <div class="map-controls-top-right" style="position: absolute; top: 1rem; right: 1rem; z-index: 10;">
+                    <div class="toggle-wrapper" id="color-grade-wrapper"
+                        style="background: var(--bg-panel); padding: 0.5rem; border-radius: 20px; border: 1px solid var(--border-light);">
+                        <label class="switch">
+                            <input type="checkbox" id="color-grade-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="label" style="margin-left: 0.5rem; font-size: 0.85rem;">Heat Map</span>
+                    </div>
+                </div>
 
                 <!-- Zoom Tools -->
                 <div class="map-tools">
@@ -89,15 +85,6 @@
                 </div>
             </aside>
         </main>
-    </div>
-
-    <!-- Loading State -->
-    <div id="loading-overlay" class="loading-overlay hidden">
-        <div class="spinner-box">
-            <div class="pulse-ring"></div>
-            <img src="../assets/yesbheem.png" alt="Loading" class="loader-logo">
-        </div>
-        <p>Loading Intelligence...</p>
     </div>
 
     <!-- Scripts -->

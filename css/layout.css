@@ -1,0 +1,87 @@
+/* ===== DASHBOARD CONTAINER ===== */
+.dashboard-container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    background: var(--bg-deep);
+    /* Use flat background */
+    padding-top: var(--header-height);
+    /* Push down for fixed header */
+}
+
+/* ===== MAIN CONTENT ===== */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: margin-left 0.3s;
+}
+
+.main-content.expanded {
+    margin-left: 0;
+}
+
+#page-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+/* ===== PAGE CONTAINERS ===== */
+.page-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* For placeholder pages */
+.page-content {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+    background: var(--bg-deep);
+}
+
+/* ===== DASHBOARD PAGE SPECIFIC ===== */
+/* For dashboard page that contains the map */
+#dashboard-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* App Container - For Dashboard Map Page */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    background: radial-gradient(circle at top right, #111827 0%, var(--bg-deep) 60%);
+}
+
+/* Workspace Layout */
+.workspace {
+    flex: 1;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Add mobile responsiveness for layout */
+@media (max-width: 900px) {
+    .app-container {
+        flex-direction: column;
+    }
+
+    .workspace {
+        flex-direction: column;
+    }
+
+    .main-content {
+        width: 100%;
+    }
+}

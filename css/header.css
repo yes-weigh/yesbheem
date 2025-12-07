@@ -1,0 +1,252 @@
+/* ===== TITLE BAR ===== */
+.title-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    /* Full screen width */
+    height: var(--header-height);
+    background: var(--bg-header);
+    /* Slightly distinct header color */
+    border-bottom: 1px solid var(--border-light);
+    z-index: 1001;
+    /* Above sidebar */
+    display: flex;
+    /* Always visible */
+}
+
+.title-bar-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 100%;
+    padding: 0 1rem;
+}
+
+.title-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.sidebar-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.sidebar-toggle-btn:hover {
+    background: var(--bg-sidebar-hover);
+    color: var(--text-main);
+    border-color: var(--border-highlight);
+}
+
+.title-bar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.title-bar-logo {
+    height: 32px;
+    width: 32px;
+    object-fit: contain;
+}
+
+.title-bar-brand h1 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+/* User Badge in Title Bar */
+.user-badge-container {
+    position: relative;
+}
+
+.user-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.user-badge:hover {
+    background: var(--bg-sidebar-hover);
+    border-color: var(--border-highlight);
+}
+
+.user-avatar-small {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.user-name-small {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+.dropdown-icon {
+    transition: transform 0.2s;
+}
+
+.user-badge-container:hover .dropdown-icon {
+    transform: rotate(180deg);
+}
+
+/* Theme Dropdown */
+.theme-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    min-width: 180px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.user-badge-container:hover .theme-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    color: var(--text-muted);
+}
+
+.dropdown-item:hover {
+    background: var(--bg-sidebar-hover);
+    color: var(--text-main);
+}
+
+.dropdown-item:first-child {
+    border-radius: 8px 8px 0 0;
+}
+
+.dropdown-item:last-child {
+    border-radius: 0 0 8px 8px;
+}
+
+.theme-icon {
+    font-size: 1.2rem;
+}
+
+.checkmark {
+    margin-left: auto;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.dropdown-item.active .checkmark {
+    opacity: 1;
+}
+
+/* Floating Header - For Dashboard Map */
+.app-header,
+.page-header {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    background: var(--bg-panel);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-light);
+    z-index: 100;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.app-logo {
+    height: 40px;
+    width: auto;
+    filter: drop-shadow(0 0 10px var(--primary-glow));
+    display: none !important;
+    /* Robot killer */
+}
+
+.app-info h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(to right, #fff, #94a3b8);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.crumb-item.active {
+    color: var(--accent);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.crumb-item.active:hover {
+    text-decoration: underline;
+}
+
+/* Page Header Simple */
+.page-header-simple {
+    margin-bottom: 2rem;
+}
+
+.page-header-simple h1 {
+    font-size: 1.5rem;
+    /* Smaller font */
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--text-highlight);
+    background: none;
+    -webkit-text-fill-color: initial;
+}
+
+.page-header-simple .subtitle {
+    color: var(--text-muted);
+    font-size: 1rem;
+}

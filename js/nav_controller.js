@@ -27,16 +27,16 @@ class NavigationController {
     }
 
     setupEventListeners() {
-        // Sidebar toggle via logo
-        const brandLogo = document.getElementById('brand-logo');
-        if (brandLogo) {
-            brandLogo.addEventListener('click', () => this.toggleSidebar());
-        }
-
         // Keep toggle button as fallback
         const toggleBtn = document.getElementById('sidebar-toggle');
         if (toggleBtn) {
             toggleBtn.addEventListener('click', () => this.toggleSidebar());
+        }
+
+        // Mobile sidebar toggle button in title bar
+        const mobileSidebarToggle = document.getElementById('mobile-sidebar-toggle');
+        if (mobileSidebarToggle) {
+            mobileSidebarToggle.addEventListener('click', () => this.toggleSidebar());
         }
 
         // Navigation items
@@ -52,11 +52,35 @@ class NavigationController {
             this.sidebarCollapsed = true;
             this.updateSidebarState();
         }
+        this.updateToggleIcon();
     }
 
     toggleSidebar() {
         this.sidebarCollapsed = !this.sidebarCollapsed;
         this.updateSidebarState();
+        this.updateToggleIcon();
+    }
+
+    updateToggleIcon() {
+        const toggleBtn = document.getElementById('mobile-sidebar-toggle');
+        if (!toggleBtn) return;
+
+        if (this.sidebarCollapsed) {
+            // Closed - Show Hamburger
+            toggleBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>`;
+        } else {
+            // Open - Show Close (X)
+            toggleBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>`;
+        }
     }
 
     updateSidebarState() {
@@ -85,6 +109,7 @@ class NavigationController {
         if (window.innerWidth <= 768) {
             this.sidebarCollapsed = true;
             this.updateSidebarState();
+            this.updateToggleIcon();
         }
     }
 

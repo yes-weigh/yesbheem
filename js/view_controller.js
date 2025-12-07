@@ -18,7 +18,7 @@ class ViewController {
             state: document.getElementById('crumb-state')
         };
 
-        this.loadingOverlay = document.getElementById('loading-overlay');
+        // Loading overlay removed
         this.mapInteractions = null;
         this.panZoom = null;
 
@@ -112,7 +112,8 @@ class ViewController {
         const states = this.containers.indiaMap.querySelectorAll('path');
         states.forEach(state => {
             state.addEventListener('click', (e) => {
-                let stateId = state.id;
+                e.stopPropagation(); // Prevent background click interference
+                let stateId = state.id.trim(); // Trim whitespace
                 if (stateId.startsWith('IN-')) stateId = stateId.replace('IN-', '');
                 const stateName = state.getAttribute('title') || stateId;
                 this.showStateView(stateId, stateName);
@@ -120,12 +121,10 @@ class ViewController {
 
             state.addEventListener('mouseenter', async () => {
                 // Show State Preview on Hover
-                const lookupId = state.id; // e.g. "IN-KL"
+                const lookupId = state.id.trim(); // e.g. "IN-KL"
                 const data = await this.dataManager.getStateData(lookupId);
                 // We reuse the sidebar update to show stats
                 this.updateSidebarWithData(data);
-
-                // Optional: visual highlight is handled by CSS (:hover)
             });
 
             state.addEventListener('mouseleave', () => {
@@ -136,7 +135,7 @@ class ViewController {
 
         // Background Click Listener for India Map
         this.containers.indiaMap.addEventListener('click', (e) => {
-            // Check if clicked element is the SVG background or container, not a path
+            // Check if clicked element is actually background
             if (e.target.tagName === 'svg' || e.target.id === 'india-map-container') {
                 this.loadIndiaOverview();
             }
@@ -172,8 +171,11 @@ class ViewController {
         this.containers.india.classList.remove('active');
         this.containers.state.classList.add('active');
 
+        // Normalize ID for check
+        const isKerala = stateId === 'KL' || stateId === 'IN-KL';
+
         const toggle = document.getElementById('color-grade-wrapper');
-        if (stateId === 'KL' && toggle) {
+        if (isKerala && toggle) {
             toggle.classList.remove('start-hidden');
             toggle.classList.add('visible');
         } else if (toggle) {
@@ -181,7 +183,7 @@ class ViewController {
             toggle.classList.add('start-hidden');
         }
 
-        if (stateId === 'KL') {
+        if (isKerala) {
             await this.loadStateContent(stateId);
         } else {
             // Show placeholder map but load data
@@ -198,7 +200,7 @@ class ViewController {
     }
 
     updateBreadcrumbs(stateName) {
-        this.breadcrumbs.india.classList.remove('active');
+        if (this.breadcrumbs.india) this.breadcrumbs.india.classList.remove('active');
         if (this.breadcrumbs.sep) this.breadcrumbs.sep.style.display = 'inline';
         if (this.breadcrumbs.state) {
             this.breadcrumbs.state.textContent = stateName;
@@ -230,7 +232,7 @@ class ViewController {
 
         if (this.breadcrumbs.sep) this.breadcrumbs.sep.style.display = 'none';
         if (this.breadcrumbs.state) this.breadcrumbs.state.style.display = 'none';
-        this.breadcrumbs.india.classList.add('active');
+        if (this.breadcrumbs.india) this.breadcrumbs.india.classList.add('active');
 
         if (this.containers.indiaMap.querySelector('svg')) {
             this.panZoom = new PanZoomController('#map-viewport', '#india-map-container');
@@ -256,25 +258,33 @@ class ViewController {
             }
 
             if (this.stateMapCache.has(stateId)) {
+                console.log('Using cached map for', stateId);
                 svgText = this.stateMapCache.get(stateId);
             } else {
                 // Updated path with dynamic filename
-                const response = await fetch(`../assets/maps/${mapFilename}?t=${Date.now()}`);
-                if (!response.ok) throw new Error(`Map not found: ${mapFilename}`);
+                const url = `../assets/maps/${mapFilename}?t=${Date.now()}`;
+                console.log('Fetching map from:', url);
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Map not found: ${mapFilename} (Status: ${response.status})`);
                 svgText = await response.text();
+                console.log('Map fetch successful, length:', svgText.length);
                 this.stateMapCache.set(stateId, svgText);
             }
 
+            console.log('Injecting SVG into state-map-container');
             this.containers.stateMap.innerHTML = svgText;
 
             const svg = this.containers.stateMap.querySelector('svg');
             if (svg) {
+                console.log('SVG element found, applying full width/height');
                 // Remove fixed dimensions to allow CSS scaling
                 svg.removeAttribute('width');
                 svg.removeAttribute('height');
 
                 svg.style.width = '100%';
                 svg.style.height = '100%';
+            } else {
+                console.warn('No SVG element found in injected content!');
             }
 
             if (!this.mapInteractions && typeof MapInteractions !== 'undefined') {
@@ -310,9 +320,9 @@ class ViewController {
     }
 
     showLoading(show) {
-        if (!this.loadingOverlay) return;
-        if (show) this.loadingOverlay.classList.remove('hidden');
-        else this.loadingOverlay.classList.add('hidden');
+        // Loading overlay removed - no-op
+        // The loading overlay was causing display issues with the large logo
+        return;
     }
 }
 
