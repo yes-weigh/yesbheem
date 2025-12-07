@@ -9,7 +9,7 @@ class DataManager {
         this.zipSheetUrl = 'https://docs.google.com/spreadsheets/d/1K6Aq1BVmqt7y8PfOecO8FteKO1ONtXEeTc6DIZUUnwA/gviz/tq?tqx=out:csv&sheet=zip_codes';
 
         // PASTE YOUR WEB APP URL HERE
-        this.zipWriteUrl = '';
+        this.zipWriteUrl = 'https://script.google.com/macros/s/AKfycbzUJRe5EGqoFV1AIT7XyjQafGkOOXaIYAeQIbRY0JT31g-_f4jYrltxiIbE_FSDF2Sw_A/exec';
 
         this.zipApiUrl = 'https://api.postalpincode.in/pincode/';
 
