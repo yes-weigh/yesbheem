@@ -156,11 +156,7 @@ class ViewController {
         if (title) title.textContent = titleText || `${context} Overview`;
 
         if (desc) {
-            if (titleText) {
-                desc.textContent = `Click to explore detailed analytics for ${titleText}.`;
-            } else {
-                desc.textContent = 'Select a region to explore detailed analytics.';
-            }
+            desc.style.display = 'none';
         }
     }
 
