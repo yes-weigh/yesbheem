@@ -130,7 +130,27 @@ class ViewController {
                 let stateId = state.id.trim(); // Trim whitespace
                 if (stateId.startsWith('IN-')) stateId = stateId.replace('IN-', '');
                 const stateName = state.getAttribute('title') || stateId;
-                this.showStateView(stateId, stateName);
+
+                // SPECIAL HANDLING FOR KERALA: Single click just shows details
+                if (stateId === 'KL' || stateId === 'IN-KL') {
+                    this.showStateDetails(stateId);
+                } else {
+                    // Other states: Single click shows details (same as existing behavior)
+                    this.showStateView(stateId, stateName);
+                }
+            });
+
+            state.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                let stateId = state.id.trim();
+                // Normalize ID
+                if (stateId.startsWith('IN-')) stateId = stateId.replace('IN-', '');
+                const stateName = state.getAttribute('title') || stateId;
+
+                // SPECIAL HANDLING FOR KERALA: Double click drills down
+                if (stateId === 'KL' || stateId === 'IN-KL') {
+                    this.showStateView(stateId, stateName);
+                }
             });
 
             // Hover effects removed for strict click-only interaction
@@ -160,6 +180,20 @@ class ViewController {
         }
     }
 
+    async showStateDetails(stateId) {
+        // Highlight Only - stay on India Map
+        this.highlightState(stateId);
+
+        // Fetch and display state data
+        try {
+            const lookupId = stateId.length === 2 ? `IN-${stateId}` : stateId;
+            const data = await this.dataManager.getStateData(lookupId);
+            this.updateSidebarWithData(data);
+        } catch (e) {
+            console.error("Failed to load state data:", e);
+        }
+    }
+
     async showStateView(stateId, stateName) {
         console.log(`State interaction: ${stateName} (${stateId})`);
 
@@ -168,28 +202,19 @@ class ViewController {
         const backBtn = document.getElementById('back-to-india-btn');
 
         if (isKerala) {
-            // Full Navigation for Kerala
+            // Full Navigation for Kerala (Drill Down)
             this.currentView = 'state';
 
             this.containers.india.classList.remove('active');
             this.containers.state.classList.add('active');
 
-            if (backBtn) backBtn.style.display = 'flex'; // Show Back Button
+            if (backBtn) backBtn.style.display = 'block'; // Show Back Button
 
             await this.loadStateContent(stateId);
 
         } else {
-            // Highlight Only for other states - stay on India Map
-            this.highlightState(stateId);
-
-            // Fetch and display state data
-            try {
-                const lookupId = stateId.length === 2 ? `IN-${stateId}` : stateId;
-                const data = await this.dataManager.getStateData(lookupId);
-                this.updateSidebarWithData(data);
-            } catch (e) {
-                console.error("Failed to load state data:", e);
-            }
+            // For other states (or if logic changes), just show details
+            this.showStateDetails(stateId);
         }
     }
 
