@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/png" href="./assets/yesbheem.png">
+    <!-- <link rel="icon" type="image/png" href="./assets/yesbheem.png"> -->
 
     <!-- Modular CSS -->
     <link rel="stylesheet" href="css/variables.css">
@@ -26,15 +26,10 @@
     <header class="title-bar">
         <div class="title-bar-content">
             <div class="title-bar-left">
-                <button class="sidebar-toggle-btn" id="mobile-sidebar-toggle" title="Toggle Sidebar">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
-                    </svg>
-                </button>
-                <div class="title-bar-brand">
-                    <!-- Branding removed as requested -->
+                <!-- Branding replaces toggle button -->
+                <div class="title-bar-brand" id="mobile-sidebar-toggle" style="cursor: pointer;" title="Toggle Sidebar">
+                    <!-- img removed -->
+                    <h1>Yes Bheem</h1>
                 </div>
             </div>
             <div class="title-bar-right">
@@ -83,9 +78,25 @@
                     <span class="nav-icon">💬</span>
                     <span class="nav-text">Message</span>
                 </div>
-                <div class="nav-item" data-page="contacts">
-                    <span class="nav-icon">👥</span>
-                    <span class="nav-text">Contacts</span>
+                <div class="nav-item" data-page="dealer">
+                    <span class="nav-icon">🤝</span>
+                    <span class="nav-text">Dealer</span>
+                </div>
+                <div class="nav-item" data-page="contact">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-text">Contact</span>
+                </div>
+                <div class="nav-item" data-page="product">
+                    <span class="nav-icon">📦</span>
+                    <span class="nav-text">Product</span>
+                </div>
+                <div class="nav-item" data-page="pricelist">
+                    <span class="nav-icon">🏷️</span>
+                    <span class="nav-text">Pricelist</span>
+                </div>
+                <div class="nav-item" data-page="media">
+                    <span class="nav-icon">🖼️</span>
+                    <span class="nav-text">Media</span>
                 </div>
                 <div class="nav-item" data-page="yesbheam">
                     <span class="nav-icon">⚡</span>

@@ -40,27 +40,27 @@ class UIRenderer {
         if (!dealers || dealers.length === 0) return '';
 
         const maxSales = dealers[0].sales;
-        let html = '<h3 style="margin:1.5rem 0 1rem 0; color:var(--text-muted); font-size:0.9rem; text-transform:uppercase; letter-spacing:0.05em;">Dealer Performance</h3>';
+        let html = '<h3 style="margin:1.5rem 0 0.5rem 0; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">Top Dealers</h3>';
+        html += '<div class="dealer-list">';
 
         dealers.forEach((d, i) => {
             const percent = maxSales > 0 ? (d.sales / maxSales) * 100 : 0;
             html += `
-                <div class="dealer-item" style="position:relative; overflow:hidden; margin-bottom:0.75rem; padding:1rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; display:flex; gap:1rem; align-items:center;">
-                    <!-- Contribution Bar -->
-                    <div style="position:absolute; bottom:0; left:0; height:3px; background:var(--primary); width:${percent}%; opacity:0.7; transition:width 0.5s;"></div>
-                    
-                    <div class="dealer-rank" style="background:var(--primary); width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:bold;">${i + 1}</div>
-                    
-                    <div style="flex:1; position:relative; z-index:1;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div class="dealer-name" style="font-weight:500; color:white;">${d.name}</div>
-                            <div class="dealer-sales" style="font-size:0.85rem; color:var(--text-muted)">₹${this.formatNumber(d.sales)}</div>
+                <div class="dealer-item-compact">
+                    <div class="dealer-rank">${i + 1}</div>
+                    <div class="dealer-info">
+                        <div class="dealer-row">
+                            <span class="dealer-name" title="${d.name}">${d.name}</span>
+                            <span class="dealer-sales">₹${this.formatNumber(d.sales)}</span>
                         </div>
-                        <div style="font-size:0.7rem; color:rgba(255,255,255,0.3); margin-top:2px;">Contribution: ${percent.toFixed(1)}% of Top</div>
+                        <div class="contribution-bar-bg">
+                            <div class="contribution-bar-fill" style="width:${percent}%"></div>
+                        </div>
                     </div>
                 </div>
             `;
         });
+        html += '</div>';
 
         return html;
     }

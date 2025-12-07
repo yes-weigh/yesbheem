@@ -34,6 +34,13 @@
     stroke: white;
 }
 
+/* Selected district styling (for Kerala districts) */
+.district.selected {
+    fill: var(--primary) !important;
+    stroke: white !important;
+    stroke-width: 2px !important;
+}
+
 /* View Layers */
 .view-layer {
     position: absolute;
@@ -137,7 +144,8 @@
 
 /* Info Sidebar (Map Details) */
 .info-sidebar {
-    width: var(--sidebar-width);
+    width: 320px;
+    /* Widened for single line view */
     background: var(--bg-panel);
     border-left: 1px solid var(--border-light);
     backdrop-filter: none;
@@ -145,8 +153,6 @@
     flex-direction: column;
     z-index: 20;
     box-shadow: none;
-    /* Flat design */
-    /* Transition for mobile toggle */
     transition: transform 0.3s ease;
 }
 
@@ -213,32 +219,83 @@
     color: white;
 }
 
-/* Dealer List */
+/* Dealer List Compact */
 .dealer-section {
-    margin-top: 2rem;
+    margin-top: 1rem;
 }
 
-.dealer-item {
+.dealer-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    /* Super compact VS Code style */
+}
+
+.dealer-item-compact {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-md);
-    margin-bottom: 0.75rem;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: default;
+    transition: background 0.1s;
+}
+
+.dealer-item-compact:hover {
+    background: var(--bg-sidebar-hover);
 }
 
 .dealer-rank {
-    background: var(--primary);
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
+    min-width: 20px;
+    text-align: right;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.dealer-info {
+    flex: 1;
     display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.dealer-row {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.dealer-name {
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 8px;
+    font-weight: 400;
+}
+
+.dealer-sales {
+    color: var(--text-highlight);
+    font-weight: 500;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.contribution-bar-bg {
+    width: 100%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 1px;
+    overflow: hidden;
+}
+
+.contribution-bar-fill {
+    height: 100%;
+    background: var(--primary);
+    opacity: 0.8;
 }
 
 /* Mobile Responsiveness for Map Elements */

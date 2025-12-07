@@ -37,38 +37,22 @@ class MapInteractions {
                 this.handleDistrictClick(district.id);
             });
 
-            district.addEventListener('mouseenter', () => {
-                district.style.opacity = '0.8';
-                // Show hover insight
-                const insights = this.districtInsights[district.id];
-                if (insights) {
-                    this.updateSidebar(insights);
-                }
-            });
-
-            district.addEventListener('mouseleave', () => {
-                district.style.opacity = '1';
-                // Revert to context: Selected District OR State Overview
-                if (this.selectedDistrictId && this.districtInsights[this.selectedDistrictId]) {
-                    this.updateSidebar(this.districtInsights[this.selectedDistrictId]);
-                } else if (this.stateOverviewData) {
-                    this.updateSidebar(this.stateOverviewData);
-                }
-            });
+            // Hover effects removed for strict click-only interaction
         });
 
         // Background Click Listener for State Map
         if (mapContainer) {
             mapContainer.addEventListener('click', async (e) => {
-                // If clicked on SVG background (not a district)
+                // Only reset to state overview if clicking directly on SVG background (not a district path)
+                if (e.target.tagName === 'svg' || e.target === mapContainer) {
+                    // Deselect all districts
+                    districts.forEach(d => d.classList.remove('selected'));
+                    this.selectedDistrictId = null;
 
-                // Deselect all districts
-                districts.forEach(d => d.classList.remove('selected'));
-                this.selectedDistrictId = null;
-
-                // Show State Overview
-                if (this.stateOverviewData) {
-                    this.updateSidebar(this.stateOverviewData);
+                    // Show State Overview
+                    if (this.stateOverviewData) {
+                        this.updateSidebar(this.stateOverviewData);
+                    }
                 }
             });
         }

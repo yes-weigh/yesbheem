@@ -40,11 +40,15 @@ class ViewController {
         const zoomIn = document.getElementById('zoom-in');
         const zoomOut = document.getElementById('zoom-out');
         const zoomReset = document.getElementById('zoom-reset');
+        const backBtn = document.getElementById('back-to-india-btn');
 
         if (zoomIn) zoomIn.addEventListener('click', () => this.panZoom?.zoomIn());
         if (zoomOut) zoomOut.addEventListener('click', () => this.panZoom?.zoomOut());
         if (zoomReset) zoomReset.addEventListener('click', () => this.panZoom?.reset());
+        if (backBtn) backBtn.addEventListener('click', () => this.showIndiaView());
     }
+
+
 
     async loadIndiaMap() {
         this.showLoading(true);
@@ -91,16 +95,36 @@ class ViewController {
         const dealerSection = document.getElementById('dealer-section');
         const statsFloater = document.getElementById('stats-floater');
 
-        if (title) title.textContent = data.name;
-        if (desc) desc.textContent = `Overview of ${data.name}`;
-
-        // Update Floating Stats
-        if (statsContainer) {
-            statsContainer.innerHTML = UIRenderer.renderStats(data);
+        let displayName = data.name;
+        if (displayName === 'Pan India' || displayName === 'India') {
+            displayName = 'INDIA';
         }
 
-        // Show Floater
-        if (statsFloater) statsFloater.classList.remove('hidden');
+        if (title) title.textContent = displayName;
+
+        if (desc) {
+            if (displayName === 'INDIA') {
+                desc.style.display = 'none';
+            } else {
+                desc.style.display = 'block';
+                desc.textContent = `Overview of ${data.name}`;
+            }
+        }
+
+        // Update Floating Stats -> Post Message to Parent Dashboard
+        window.parent.postMessage({
+            type: 'STATS_UPDATE',
+            data: {
+                name: data.name,
+                achievement: data.achievement,
+                currentSales: data.currentSales,
+                dealerCount: data.dealerCount ? data.dealerCount : (data.dealers ? data.dealers.length : 0),
+                monthlyTarget: data.monthlyTarget
+            }
+        }, '*');
+
+        // Show Floater (Legacy - Hiddden)
+        // if (statsFloater) statsFloater.classList.remove('hidden');
 
         // Update Dealer List (remains in sidebar)
         if (dealerSection) dealerSection.innerHTML = UIRenderer.renderDealerList(data.dealers);
@@ -119,24 +143,15 @@ class ViewController {
                 this.showStateView(stateId, stateName);
             });
 
-            state.addEventListener('mouseenter', async () => {
-                // Show State Preview on Hover
-                const lookupId = state.id.trim(); // e.g. "IN-KL"
-                const data = await this.dataManager.getStateData(lookupId);
-                // We reuse the sidebar update to show stats
-                this.updateSidebarWithData(data);
-            });
-
-            state.addEventListener('mouseleave', () => {
-                // Revert to Pan India Overview
-                this.loadIndiaOverview();
-            });
+            // Hover effects removed for strict click-only interaction
         });
 
         // Background Click Listener for India Map
         this.containers.indiaMap.addEventListener('click', (e) => {
-            // Check if clicked element is actually background
-            if (e.target.tagName === 'svg' || e.target.id === 'india-map-container') {
+            // Only reset to India overview if clicking directly on SVG background (not a path element)
+            if (e.target.tagName === 'svg' || e.target === this.containers.indiaMap) {
+                // Clear any selected state
+                this.highlightState(null);
                 this.loadIndiaOverview();
             }
         });
@@ -163,64 +178,58 @@ class ViewController {
     }
 
     async showStateView(stateId, stateName) {
-        console.log(`Navigating to state: ${stateName} (${stateId})`);
-
-        this.updateBreadcrumbs(stateName);
-        this.currentView = 'state';
-
-        this.containers.india.classList.remove('active');
-        this.containers.state.classList.add('active');
+        console.log(`State interaction: ${stateName} (${stateId})`);
 
         // Normalize ID for check
         const isKerala = stateId === 'KL' || stateId === 'IN-KL';
-
-        const toggle = document.getElementById('color-grade-wrapper');
-        if (isKerala && toggle) {
-            toggle.classList.remove('start-hidden');
-            toggle.classList.add('visible');
-        } else if (toggle) {
-            toggle.classList.remove('visible');
-            toggle.classList.add('start-hidden');
-        }
+        const backBtn = document.getElementById('back-to-india-btn');
 
         if (isKerala) {
-            await this.loadStateContent(stateId);
-        } else {
-            // Show placeholder map but load data
-            if (this.containers.stateMap) {
-                this.containers.stateMap.innerHTML = `
-                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-muted);text-align:center;">
-                        <h2 style="font-size:2rem;margin-bottom:1rem;color:var(--text-main);">${stateName}</h2>
-                        <p>Interactive map coming soon.</p>
-                        <p style="font-size:0.9rem;opacity:0.7;">Sales data is available in the sidebar.</p>
-                    </div>`;
+            // Full Navigation for Kerala
+            this.currentView = 'state';
+
+            this.containers.india.classList.remove('active');
+            this.containers.state.classList.add('active');
+
+            if (backBtn) backBtn.style.display = 'flex'; // Show Back Button
+
+            const toggle = document.getElementById('color-grade-wrapper');
+            if (toggle) {
+                toggle.classList.remove('start-hidden');
+                toggle.classList.add('visible');
             }
-            this.loadStateAggregateData(stateId, stateName);
+
+            await this.loadStateContent(stateId);
+
+        } else {
+            // Highlight Only for other states - stay on India Map
+            this.highlightState(stateId);
+
+            // Fetch and display state data
+            try {
+                const lookupId = stateId.length === 2 ? `IN-${stateId}` : stateId;
+                const data = await this.dataManager.getStateData(lookupId);
+                this.updateSidebarWithData(data);
+            } catch (e) {
+                console.error("Failed to load state data:", e);
+            }
         }
     }
 
-    updateBreadcrumbs(stateName) {
-        if (this.breadcrumbs.india) this.breadcrumbs.india.classList.remove('active');
-        if (this.breadcrumbs.sep) this.breadcrumbs.sep.style.display = 'inline';
-        if (this.breadcrumbs.state) {
-            this.breadcrumbs.state.textContent = stateName;
-            this.breadcrumbs.state.style.display = 'inline';
-            this.breadcrumbs.state.classList.add('active');
-        }
-    }
+    highlightState(stateId) {
+        if (!this.containers.indiaMap) return;
 
-    async loadStateAggregateData(stateId, stateName) {
-        this.showLoading(true);
-        try {
-            const lookupId = stateId.length === 2 ? `IN-${stateId}` : stateId;
-            const data = await this.dataManager.getStateData(lookupId);
+        // Remove existing highlights
+        const allPaths = this.containers.indiaMap.querySelectorAll('path');
+        allPaths.forEach(p => p.classList.remove('highlighted'));
 
-            this.updateSidebarWithData(data);
-
-        } catch (e) {
-            console.error("Failed to load state data:", e);
-        } finally {
-            this.showLoading(false);
+        // Add highlight to clicked state
+        // Try exact match or IN- prefix
+        if (stateId) {
+            let target = document.getElementById(stateId) || document.getElementById(`IN-${stateId}`);
+            if (target) {
+                target.classList.add('highlighted');
+            }
         }
     }
 
@@ -229,6 +238,11 @@ class ViewController {
 
         this.containers.state.classList.remove('active');
         this.containers.india.classList.add('active');
+
+        // Reset sidebar
+        this.highlightState(null); // Clear highlights
+        const backBtn = document.getElementById('back-to-india-btn');
+        if (backBtn) backBtn.style.display = 'none';
 
         if (this.breadcrumbs.sep) this.breadcrumbs.sep.style.display = 'none';
         if (this.breadcrumbs.state) this.breadcrumbs.state.style.display = 'none';
@@ -239,7 +253,7 @@ class ViewController {
             this.panZoom.reset();
         }
 
-        this.updateSidebarPlaceholder('India Overview', 'India'); // Temporary placholder
+        this.updateSidebarPlaceholder('INDIA', 'INDIA');
 
         // Load Real Data
         this.loadIndiaOverview();
@@ -302,9 +316,14 @@ class ViewController {
                 };
                 const stateName = stateNames[stateId] || stateId;
 
-                // Show overview initially
-                // We use aggregated data for initial view (matches "State Overview")
-                await this.loadStateAggregateData(stateId, stateName);
+                // Show overview initially - Load Kerala state data
+                try {
+                    const lookupId = stateId.length === 2 ? `IN-${stateId}` : stateId;
+                    const data = await this.dataManager.getStateData(lookupId);
+                    this.updateSidebarWithData(data);
+                } catch (e) {
+                    console.error("Failed to load state overview data:", e);
+                }
 
                 // Also load detailed district data in background for interactions
                 await this.mapInteractions.loadDistrictData(stateName);

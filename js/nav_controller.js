@@ -7,7 +7,11 @@ class NavigationController {
             { id: 'dashboard', name: 'Dashboard', icon: '📊' },
             { id: 'instance', name: 'Instance', icon: '🖥️' },
             { id: 'message', name: 'Message', icon: '💬' },
-            { id: 'contacts', name: 'Contacts', icon: '👥' },
+            { id: 'dealer', name: 'Dealer', icon: '🤝' },
+            { id: 'contact', name: 'Contact', icon: '👤' },
+            { id: 'product', name: 'Product', icon: '📦' },
+            { id: 'pricelist', name: 'Pricelist', icon: '🏷️' },
+            { id: 'media', name: 'Media', icon: '🖼️' },
             { id: 'yesbheam', name: 'Yes bheam', icon: '⚡' },
             { id: 'template', name: 'Template', icon: '📄' },
             { id: 'broadcast', name: 'Broadcast', icon: '📡' },
@@ -62,6 +66,9 @@ class NavigationController {
     }
 
     updateToggleIcon() {
+        // Branding is now the toggle, so we don't update the icon
+        return;
+
         const toggleBtn = document.getElementById('mobile-sidebar-toggle');
         if (!toggleBtn) return;
 

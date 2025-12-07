@@ -8,9 +8,29 @@
     transition: width 0.1s ease;
     /* Snappier transition */
     z-index: 100;
-    overflow: hidden;
+    z-index: 100;
+    overflow-y: auto;
+    overflow-x: hidden;
     height: 100%;
     /* Fill remaining height */
+}
+
+/* Custom Scrollbar for Sidebar */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: var(--border-light);
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--border-highlight);
 }
 
 .sidebar.collapsed {

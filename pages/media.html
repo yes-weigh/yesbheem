@@ -1,0 +1,99 @@
+<div class="page-container" id="media-page">
+    <div class="page-title-bar">
+        <div class="page-title-content">
+            <div class="page-breadcrumb">
+                <span class="breadcrumb-item">Yes Bheem</span>
+                <span class="breadcrumb-separator">/</span>
+                <span class="breadcrumb-item active">Media Library</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="construction-container">
+        <div class="construction-content">
+            <div class="icon">🖼️</div>
+            <h2>Media Library</h2>
+            <p>This module is currently under development.</p>
+            <div class="status-badge">Coming Soon</div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-title-bar {
+        height: 35px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+    }
+
+    .page-title-content {
+        display: flex;
+        align-items: center;
+        width: 100%;
+    }
+
+    .page-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+    }
+
+    .breadcrumb-item {
+        color: var(--text-muted);
+    }
+
+    .breadcrumb-item.active {
+        color: var(--text-main);
+    }
+
+    .breadcrumb-separator {
+        color: var(--text-muted);
+        user-select: none;
+    }
+
+    .construction-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: calc(100% - 35px);
+        background: var(--bg-primary);
+    }
+
+    .construction-content {
+        text-align: center;
+        padding: 2rem;
+        max-width: 400px;
+    }
+
+    .construction-content .icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.8;
+    }
+
+    .construction-content h2 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-main);
+    }
+
+    .construction-content p {
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: var(--bg-highlight);
+        color: var(--primary);
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        border: 1px solid var(--border-highlight);
+    }
+</style>
