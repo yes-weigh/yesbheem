@@ -28,18 +28,6 @@
             <!-- Map Viewport -->
             <section class="map-viewport" id="map-viewport">
 
-                <!-- Top Right Controls (Heat Map) -->
-                <div class="map-controls-top-right" style="position: absolute; top: 1rem; right: 1rem; z-index: 10;">
-                    <div class="toggle-wrapper" id="color-grade-wrapper"
-                        style="background: var(--bg-panel); padding: 0.5rem; border-radius: 20px; border: 1px solid var(--border-light);">
-                        <label class="switch">
-                            <input type="checkbox" id="color-grade-toggle">
-                            <span class="slider round"></span>
-                        </label>
-                        <span class="label" style="margin-left: 0.5rem; font-size: 0.85rem;">Heat Map</span>
-                    </div>
-                </div>
-
                 <!-- Zoom Tools -->
                 <div class="map-tools">
                     <button class="tool-btn" id="back-to-india-btn" title="Back to India"
@@ -47,13 +35,6 @@
                     <button class="tool-btn" id="zoom-in" title="Zoom In">+</button>
                     <button class="tool-btn" id="zoom-out" title="Zoom Out">-</button>
                     <button class="tool-btn" id="zoom-reset" title="Reset View">⟲</button>
-                </div>
-
-                <!-- Floating Stats Tile -->
-                <div class="stats-floating-tile hidden" id="stats-floater">
-                    <div class="stats-grid-compact" id="stats-container">
-                        <!-- Dynamic Stats Here -->
-                    </div>
                 </div>
 
                 <!-- India Container -->

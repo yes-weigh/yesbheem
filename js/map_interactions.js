@@ -6,7 +6,6 @@ class MapInteractions {
         this.dataManager = dataManager;
         this.viewController = viewController;
         this.districtInsights = {};
-        this.colorGradeEnabled = false;
         this.currentStateId = null;
         this.stateOverviewData = null; // Cache for state overview
         this.selectedDistrictId = null; // Track selected district
@@ -19,7 +18,6 @@ class MapInteractions {
     initializeDistricts(stateId) {
         this.currentStateId = stateId;
         const districts = document.querySelectorAll('.district');
-        const colorGradeToggle = document.getElementById('color-grade-toggle');
         const mapContainer = document.getElementById('state-map-container');
 
         // Cache initial state data for quick revert
@@ -56,18 +54,6 @@ class MapInteractions {
                 }
             });
         }
-
-        // Handle color grade toggle
-        if (colorGradeToggle) {
-            colorGradeToggle.addEventListener('change', (e) => {
-                this.colorGradeEnabled = e.target.checked;
-                if (this.colorGradeEnabled) {
-                    this.applyColorGrading();
-                } else {
-                    this.removeColorGrading();
-                }
-            });
-        }
     }
 
     async cacheStateData() {
@@ -101,9 +87,7 @@ class MapInteractions {
     updateSidebar(data) {
         const districtNameEl = document.getElementById('district-name');
         const districtDescriptionEl = document.getElementById('district-description');
-        const statsContainer = document.getElementById('stats-container');
         const dealerSection = document.getElementById('dealer-section');
-        const statsFloater = document.getElementById('stats-floater');
 
         if (!districtNameEl) return;
 
@@ -173,12 +157,6 @@ class MapInteractions {
                 if (data && Object.keys(data).length > 0) {
                     this.districtInsights = data;
                     console.log('District insights loaded:', Object.keys(data).length, 'districts');
-
-                    // Apply color grading if toggle is on
-                    const colorGradeToggle = document.getElementById('color-grade-toggle');
-                    if (colorGradeToggle && colorGradeToggle.checked) {
-                        this.applyColorGrading();
-                    }
                 }
             } catch (error) {
                 console.error('Failed to load district data:', error);

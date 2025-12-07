@@ -91,9 +91,7 @@ class ViewController {
     updateSidebarWithData(data) {
         const title = document.getElementById('district-name');
         const desc = document.getElementById('district-description');
-        const statsContainer = document.getElementById('stats-container');
         const dealerSection = document.getElementById('dealer-section');
-        const statsFloater = document.getElementById('stats-floater');
 
         let displayName = data.name;
         if (displayName === 'Pan India' || displayName === 'India') {
@@ -122,9 +120,6 @@ class ViewController {
                 monthlyTarget: data.monthlyTarget
             }
         }, '*');
-
-        // Show Floater (Legacy - Hiddden)
-        // if (statsFloater) statsFloater.classList.remove('hidden');
 
         // Update Dealer List (remains in sidebar)
         if (dealerSection) dealerSection.innerHTML = UIRenderer.renderDealerList(data.dealers);
@@ -160,10 +155,7 @@ class ViewController {
     updateSidebarPlaceholder(titleText, context = 'State') {
         const title = document.getElementById('district-name');
         const desc = document.getElementById('district-description');
-        const statsContainer = document.getElementById('stats-container');
         const dealerSection = document.getElementById('dealer-section');
-
-        if (statsContainer) statsContainer.innerHTML = '';
         if (dealerSection) dealerSection.innerHTML = '';
 
         if (title) title.textContent = titleText || `${context} Overview`;
@@ -192,12 +184,6 @@ class ViewController {
             this.containers.state.classList.add('active');
 
             if (backBtn) backBtn.style.display = 'flex'; // Show Back Button
-
-            const toggle = document.getElementById('color-grade-wrapper');
-            if (toggle) {
-                toggle.classList.remove('start-hidden');
-                toggle.classList.add('visible');
-            }
 
             await this.loadStateContent(stateId);
 
@@ -257,9 +243,6 @@ class ViewController {
 
         // Load Real Data
         this.loadIndiaOverview();
-
-        const toggle = document.getElementById('color-grade-wrapper');
-        if (toggle) { toggle.classList.remove('visible'); toggle.classList.add('start-hidden'); }
     }
 
     async loadStateContent(stateId) {

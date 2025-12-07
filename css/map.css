@@ -93,52 +93,6 @@ path.selected {
     filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));
 }
 
-/* Floating Stats Tile */
-.stats-floating-tile {
-    position: absolute;
-    top: 2rem;
-    right: 2rem;
-    width: 240px;
-    background: var(--bg-panel);
-    border: 1px solid var(--border-light);
-    backdrop-filter: none;
-    border-radius: 0;
-    /* Flat */
-    z-index: 50;
-    transition: all 0.3s ease;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.stats-floating-tile.hidden {
-    opacity: 0;
-    transform: translateY(-20px);
-    pointer-events: none;
-}
-
-.stats-grid-compact {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-    padding: 0.75rem;
-}
-
-.stats-grid-compact .stat-card {
-    padding: 0.5rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.stats-grid-compact .stat-label {
-    font-size: 0.6rem;
-    margin-bottom: 0.1rem;
-}
-
-.stats-grid-compact .stat-value {
-    font-size: 0.9rem;
-}
-
 /* Map Tools */
 .map-tools {
     position: absolute;
