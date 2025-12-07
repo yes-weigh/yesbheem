@@ -119,14 +119,14 @@ path.selected {
 }
 
 .sidebar-content {
-    padding: 2rem;
+    padding: 0.75rem 1rem;
     overflow-y: auto;
     flex: 1;
 }
 
 .sidebar-header {
-    margin-bottom: 1.5rem;
-    padding-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border-highlight);
 }
 
@@ -180,22 +180,22 @@ path.selected {
 
 /* Dealer List Compact */
 .dealer-section {
-    margin-top: 1rem;
+    margin-top: 0.5rem;
 }
 
 .dealer-list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
     /* Super compact VS Code style */
 }
 
 .dealer-item-compact {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 6px 8px;
-    border-radius: 4px;
+    gap: 8px;
+    padding: 4px 6px;
+    border-radius: 3px;
     cursor: default;
     transition: background 0.1s;
 }

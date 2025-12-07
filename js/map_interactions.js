@@ -95,12 +95,8 @@ class MapInteractions {
 
         // Determine description based on context (District vs State)
         if (districtDescriptionEl) {
-            // Simple check: if it has 'dealers' array and monthlyTarget > 500000 (likely state), OR check name
-            if (data.name === this.stateOverviewData?.name) {
-                districtDescriptionEl.textContent = "State Performance Overview";
-            } else {
-                districtDescriptionEl.textContent = `Detailed performance for ${data.name}`;
-            }
+            // Hide description for cleaner UI
+            districtDescriptionEl.style.display = 'none';
         }
 
         // Send stats to dashboard header via postMessage (instead of floating tile)

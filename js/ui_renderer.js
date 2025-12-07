@@ -40,7 +40,7 @@ class UIRenderer {
         if (!dealers || dealers.length === 0) return '';
 
         const maxSales = dealers[0].sales;
-        let html = '<h3 style="margin:1.5rem 0 0.5rem 0; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">Top Dealers</h3>';
+        let html = '<h3 style="margin:0.25rem 0; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">Top Dealers</h3>';
         html += '<div class="dealer-list">';
 
         dealers.forEach((d, i) => {
