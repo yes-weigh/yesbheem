@@ -101,12 +101,7 @@ class ViewController {
         if (title) title.textContent = displayName;
 
         if (desc) {
-            if (displayName === 'INDIA') {
-                desc.style.display = 'none';
-            } else {
-                desc.style.display = 'block';
-                desc.textContent = `Overview of ${data.name}`;
-            }
+            desc.style.display = 'none';
         }
 
         // Update Floating Stats -> Post Message to Parent Dashboard
