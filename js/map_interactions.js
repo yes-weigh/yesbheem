@@ -119,13 +119,17 @@ class MapInteractions {
             }
         }
 
-        // Update Floating Stats
-        if (statsContainer) {
-            statsContainer.innerHTML = UIRenderer.renderStats(data);
-        }
-
-        // Show Floater
-        if (statsFloater) statsFloater.classList.remove('hidden');
+        // Send stats to dashboard header via postMessage (instead of floating tile)
+        window.parent.postMessage({
+            type: 'STATS_UPDATE',
+            data: {
+                name: data.name,
+                achievement: data.achievement,
+                currentSales: data.currentSales,
+                dealerCount: data.dealerCount ? data.dealerCount : (data.dealers ? data.dealers.length : 0),
+                monthlyTarget: data.monthlyTarget
+            }
+        }, '*');
 
         // Update Dealer list in sidebar
         if (dealerSection) dealerSection.innerHTML = UIRenderer.renderDealerList(data.dealers);

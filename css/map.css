@@ -26,7 +26,14 @@
     stroke: var(--accent);
     stroke-width: 2px;
     filter: none;
-    /* Remove glow for flat look */
+}
+
+/* Don't apply hover to selected or highlighted elements */
+.map-viewport svg path.highlighted:hover,
+.map-viewport svg path.selected:hover {
+    fill: var(--primary);
+    stroke: white;
+    stroke-width: 2px;
 }
 
 .map-viewport svg path.highlighted {
@@ -35,7 +42,8 @@
 }
 
 /* Selected district styling (for Kerala districts) */
-.district.selected {
+.district.selected,
+path.selected {
     fill: var(--primary) !important;
     stroke: white !important;
     stroke-width: 2px !important;
