@@ -5,6 +5,12 @@
 class DataManager {
     constructor() {
         this.sheetUrl = 'https://docs.google.com/spreadsheets/d/1K6Aq1BVmqt7y8PfOecO8FteKO1ONtXEeTc6DIZUUnwA/gviz/tq?tqx=out:csv';
+        // URL for the 'zip_codes' sheet CSV export
+        this.zipSheetUrl = 'https://docs.google.com/spreadsheets/d/1K6Aq1BVmqt7y8PfOecO8FteKO1ONtXEeTc6DIZUUnwA/gviz/tq?tqx=out:csv&sheet=zip_codes';
+
+        // PASTE YOUR WEB APP URL HERE
+        this.zipWriteUrl = '';
+
         this.zipApiUrl = 'https://api.postalpincode.in/pincode/';
 
         // Load cache from localStorage or initialize empty
@@ -15,6 +21,43 @@ class DataManager {
         this.stateDataCache = {};
         this.rawDataCache = null; // Cache the raw sheet data
         this.rawDataTimestamp = null;
+
+        // Initialize by loading zip sheet
+        this.loadZipSheet();
+    }
+
+    /**
+     * Pre-load zip codes from the Google Sheet
+     */
+    async loadZipSheet() {
+        try {
+            console.log('Fetching zip_codes sheet...');
+            const response = await fetch(this.zipSheetUrl);
+            const csvText = await response.text();
+            // console.log('Raw CSV:', csvText.substring(0, 200)); // Debug raw
+
+            const data = this.parseCSV(csvText);
+            if (data.length > 0) {
+                console.log('First row of zip data:', data[0]);
+                console.log('Available keys:', Object.keys(data[0]));
+            }
+
+            let count = 0;
+            data.forEach(row => {
+                if (row.zip && row.district) {
+                    // Clean zip
+                    let zip = row.zip.toString().replace(/\s/g, '');
+                    // Update cache if new or overwrite? Let's treat sheet as source of truth
+                    this.zipCache[zip] = row.district;
+                    count++;
+                }
+            });
+            console.log(`Loaded ${count} zip codes from sheet into cache.`);
+            // Save to storage to persist across reloads even if offline
+            this.saveCacheToStorage();
+        } catch (e) {
+            console.warn('Failed to load zip_codes sheet:', e);
+        }
     }
 
     /**
@@ -24,7 +67,7 @@ class DataManager {
         try {
             const cached = localStorage.getItem('zipCodeCache');
             if (cached) {
-                console.log('Loaded zip code cache from localStorage');
+                // console.log('Loaded zip code cache from localStorage');
                 return JSON.parse(cached);
             }
         } catch (e) {
@@ -106,32 +149,52 @@ class DataManager {
     async getDistrictFromZip(zipCode) {
         if (!zipCode) return null;
 
-        // Check cache first
+        // Check cache first (now includes sheet data)
         if (this.zipCache[zipCode]) {
             return this.zipCache[zipCode];
         }
 
         try {
             // Add a small delay to be nice to the API if we are making many requests
-            // In a real bulk scenario, we'd want a proper queue. 
-            // For now, we'll rely on the fact that we process sequentially or the browser limits concurrent requests.
             const response = await fetch(`${this.zipApiUrl}${zipCode}`);
             const data = await response.json();
 
             if (data && data[0].Status === "Success" && data[0].PostOffice && data[0].PostOffice.length > 0) {
-                // Look for the district in the first PostOffice entry
-                // The API returns "District" field.
                 const district = data[0].PostOffice[0].District;
 
-                // Normalize district name to match our keys (lowercase, no spaces if needed)
-                // We'll return the raw API district name here and normalize later
+                // Update local cache
                 this.zipCache[zipCode] = district;
+
+                // Write back to Google Sheet if configured
+                this.writeZipToSheet(zipCode, district);
+
                 return district;
             }
         } catch (error) {
             console.warn(`Failed to resolve zip ${zipCode}:`, error);
         }
         return null;
+    }
+
+    /**
+     * Writes a resolved zip code back to the Google Sheet via Web App
+     */
+    async writeZipToSheet(zip, district) {
+        if (!this.zipWriteUrl) return; // User hasn't configured it yet
+
+        try {
+            await fetch(this.zipWriteUrl, {
+                method: 'POST',
+                mode: 'no-cors', // Important for Google Apps Script
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ zip: zip, district: district })
+            });
+            console.log(`Sent zip ${zip} -> ${district} to sheet.`);
+        } catch (e) {
+            console.warn('Failed to write zip to sheet:', e);
+        }
     }
 
     /**
