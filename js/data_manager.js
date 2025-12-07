@@ -23,6 +23,7 @@ class DataManager {
         this.rawDataTimestamp = null;
 
         // Initialize by loading zip sheet
+        this.sheetZips = new Set(); // Track what is IN the sheet
         this.loadZipSheet();
     }
 
@@ -38,8 +39,7 @@ class DataManager {
 
             const data = this.parseCSV(csvText);
             if (data.length > 0) {
-                console.log('First row of zip data:', data[0]);
-                console.log('Available keys:', Object.keys(data[0]));
+                // console.log('First row of zip data:', data[0]);
             }
 
             let count = 0;
@@ -49,6 +49,7 @@ class DataManager {
                     let zip = row.zip.toString().replace(/\s/g, '');
                     // Update cache if new or overwrite? Let's treat sheet as source of truth
                     this.zipCache[zip] = row.district;
+                    this.sheetZips.add(zip); // Mark as present in sheet
                     count++;
                 }
             });
@@ -180,20 +181,24 @@ class DataManager {
      * Writes a resolved zip code back to the Google Sheet via Web App
      */
     async writeZipToSheet(zip, district) {
-        if (!this.zipWriteUrl) return; // User hasn't configured it yet
+        if (!this.zipWriteUrl) {
+            console.warn('[Debug] Write URL not configured');
+            return;
+        }
 
         try {
+            console.log(`[Debug] Sending POST to Apps Script: ${zip}, ${district}`);
             await fetch(this.zipWriteUrl, {
                 method: 'POST',
-                mode: 'no-cors', // Important for Google Apps Script
+                mode: 'no-cors',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'text/plain;charset=utf-8',
                 },
                 body: JSON.stringify({ zip: zip, district: district })
             });
-            console.log(`Sent zip ${zip} -> ${district} to sheet.`);
+            console.log(`[Debug] Sent request to sheet for ${zip}`);
         } catch (e) {
-            console.warn('Failed to write zip to sheet:', e);
+            console.warn('[Debug] Failed to write zip to sheet:', e);
         }
     }
 
@@ -275,14 +280,23 @@ class DataManager {
             };
         }
 
-        // OPTIMIZATION 1: Collect unique zip codes that need resolution
+        // OPTIMIZATION 1: Collect unique zip codes that need resolution or syncing
         const uniqueZips = new Set();
+        const zipsToBackfill = new Set();
+
         for (const row of stateData) {
             let zip = row['billing_zipcode'] || row['shipping_zipcode'];
             if (!zip) continue;
             zip = zip.replace(/\s/g, '');
+
+            // Case 1: Completely unknown (not in cache)
             if (!this.zipCache[zip]) {
                 uniqueZips.add(zip);
+            }
+            // Case 2: In cache, but NOT in sheet (Needs backfill)
+            // We check if this.sheetZips has it. If not, we queue for write.
+            else if (this.sheetZips && !this.sheetZips.has(zip)) {
+                zipsToBackfill.add(zip);
             }
         }
 
@@ -297,7 +311,26 @@ class DataManager {
             }
             this.saveCacheToStorage();
         } else {
-            console.log('All zip codes found in cache.');
+            console.log('All required zip codes found in cache.');
+        }
+
+        // OPTIMIZATION 3: Backfill cached zips to sheet (Background process)
+        if (zipsToBackfill.size > 0) {
+            console.log(`Found ${zipsToBackfill.size} cached zips missing from sheet. Backfilling...`);
+            // We don't await this loop to avoid blocking UI, or we process quickly?
+            // Google Script might throttle. Let's send them ONE BY ONE.
+            // For safety, we can just process them.
+            let backfillCount = 0;
+            for (const zip of zipsToBackfill) {
+                const district = this.zipCache[zip];
+                if (district) {
+                    this.writeZipToSheet(zip, district);
+                    // Add to sheetZips so we don't try again this session
+                    if (this.sheetZips) this.sheetZips.add(zip);
+                    backfillCount++;
+                    // Tiny delay to avoid overwhelming browser/network if massive?
+                }
+            }
         }
 
         // Process each row using cached data
