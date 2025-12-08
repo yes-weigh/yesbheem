@@ -291,6 +291,12 @@ class ViewController {
     }
 
     async showStateDetails(stateId) {
+        // Reset view dropdown to 'dealers' automatically when a state is selected
+        const viewSelector = document.getElementById('view-selector');
+        if (viewSelector) {
+            viewSelector.value = 'dealers';
+        }
+
         // Highlight Only - stay on India Map
         this.highlightState(stateId);
 
