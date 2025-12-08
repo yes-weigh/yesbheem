@@ -73,16 +73,31 @@ class UIRenderer {
     static renderDistrictSalesList(districts) {
         if (!districts || districts.length === 0) return '';
 
-        let html = '<h3 style="margin:0.25rem 0; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">Districts by Sales</h3>';
+        // Calculate total sales and max for percentage bars (like dealer list)
+        const totalSales = districts.reduce((sum, d) => sum + d.totalSales, 0);
+        const maxSales = districts[0]?.totalSales || 0;
+
+        let html = '<h3 style="margin:0.25rem 0; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">Sales</h3>';
         html += '<div class="district-sales-list">';
 
         districts.forEach((district, i) => {
+            const percentage = totalSales > 0 ? ((district.totalSales / totalSales) * 100) : 0;
+            const percentageText = percentage.toFixed(1);
+            // Bar width based on max sales (same as dealer list)
+            const barWidth = maxSales > 0 ? (district.totalSales / maxSales) * 100 : 0;
+
             html += `
-                <div class="district-sales-item">
+                <div class="district-item-compact">
                     <div class="district-rank">${i + 1}</div>
-                    <div class="district-details">
-                        <div class="district-name">${district.name}</div>
-                        <div class="district-sales">₹${this.formatNumber(district.totalSales)}</div>
+                    <div class="district-info">
+                        <div class="district-row">
+                            <span class="district-name" title="${district.name}">${district.name}</span>
+                            <span class="district-percentage">${percentageText}%</span>
+                            <span class="district-sales">₹${this.formatNumber(district.totalSales)}</span>
+                        </div>
+                        <div class="contribution-bar-bg">
+                            <div class="contribution-bar-fill" style="width:${barWidth}%"></div>
+                        </div>
                     </div>
                 </div>
             `;
