@@ -379,6 +379,23 @@ class DataManager {
     }
 
     /**
+     * Get districts sorted by total sales (for Kerala)
+     * @param {Object} districtStats - District statistics object from loadData
+     * @returns {Array} Array of {name, totalSales} objects sorted by sales descending
+     */
+    getDistrictsSortedBySales(districtStats) {
+        if (!districtStats) return [];
+
+        const districtArray = Object.keys(districtStats).map(key => ({
+            name: districtStats[key].name,
+            totalSales: districtStats[key].currentSales || 0
+        }));
+
+        // Sort by total sales descending (highest first)
+        return districtArray.sort((a, b) => b.totalSales - a.totalSales);
+    }
+
+    /**
      * Get aggregated data for a specific state (other than Kerala which uses districts)
      * @param {string} stateId - State ID (e.g., 'IN-TN' for Tamil Nadu)
      * @returns {Promise<object>} Aggregated state data

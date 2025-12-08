@@ -65,6 +65,33 @@ class UIRenderer {
         return html;
     }
 
+    /**
+     * Render the District Sales List HTML (sorted by total sales)
+     * @param {Array} districts - Array of district objects {name, totalSales}
+     * @returns {string} HTML string
+     */
+    static renderDistrictSalesList(districts) {
+        if (!districts || districts.length === 0) return '';
+
+        let html = '<h3 style="margin:0.25rem 0; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">Districts by Sales</h3>';
+        html += '<div class="district-sales-list">';
+
+        districts.forEach((district, i) => {
+            html += `
+                <div class="district-sales-item">
+                    <div class="district-rank">${i + 1}</div>
+                    <div class="district-details">
+                        <div class="district-name">${district.name}</div>
+                        <div class="district-sales">₹${this.formatNumber(district.totalSales)}</div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        return html;
+    }
+
     // Utilities
     static formatNumber(num) {
         if (num >= 10000000) return (num / 10000000).toFixed(2) + ' Cr';

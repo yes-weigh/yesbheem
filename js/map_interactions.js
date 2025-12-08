@@ -153,6 +153,16 @@ class MapInteractions {
                 if (data && Object.keys(data).length > 0) {
                     this.districtInsights = data;
                     console.log('District insights loaded:', Object.keys(data).length, 'districts');
+
+                    // Show sorted district list in state overview
+                    // This displays when user is looking at Kerala state (not a specific district)
+                    if (!this.selectedDistrictId) {
+                        const sortedDistricts = this.dataManager.getDistrictsSortedBySales(data);
+                        const dealerSection = document.getElementById('dealer-section');
+                        if (dealerSection && sortedDistricts) {
+                            dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(sortedDistricts);
+                        }
+                    }
                 }
             } catch (error) {
                 console.error('Failed to load district data:', error);
