@@ -111,8 +111,51 @@ class MapInteractions {
             }
         }, '*');
 
-        // Update Dealer list in sidebar
-        if (dealerSection) dealerSection.innerHTML = UIRenderer.renderDealerList(data.dealers);
+        // Store data for view switching
+        this.currentData = data;
+
+        // Initialize view state if not set
+        if (!this.currentView) {
+            this.currentView = 'dealers';
+        }
+
+        // Render toggle + content
+        this.renderSidebarContent();
+    }
+
+    /**
+     * Render sidebar content with toggle
+     */
+    renderSidebarContent() {
+        const dealerSection = document.getElementById('dealer-section');
+        if (!dealerSection || !this.currentData) return;
+
+        // Render toggle and appropriate list
+        let html = UIRenderer.renderViewToggle(this.currentView);
+
+        if (this.currentView === 'dealers') {
+            html += UIRenderer.renderDealerList(this.currentData.dealers);
+        } else {
+            // For districts view, we need the district stats
+            if (this.districtInsights && Object.keys(this.districtInsights).length > 0) {
+                const sortedDistricts = this.dataManager.getDistrictsSortedBySales(this.districtInsights);
+                html += UIRenderer.renderDistrictSalesList(sortedDistricts);
+            }
+        }
+
+        dealerSection.innerHTML = html;
+
+        // Add click handlers to toggle buttons
+        const toggleButtons = dealerSection.querySelectorAll('.toggle-btn');
+        toggleButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const view = e.target.getAttribute('data-view');
+                if (view !== this.currentView) {
+                    this.currentView = view;
+                    this.renderSidebarContent();
+                }
+            });
+        });
     }
 
     /**

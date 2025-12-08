@@ -107,6 +107,24 @@ class UIRenderer {
         return html;
     }
 
+    /**
+     * Render view toggle for switching between Dealers and Districts
+     * @param {string} activeView - 'dealers' or 'districts'
+     * @returns {string} HTML string
+     */
+    static renderViewToggle(activeView = 'dealers') {
+        return `
+            <div class="view-toggle">
+                <button class="toggle-btn ${activeView === 'dealers' ? 'active' : ''}" data-view="dealers">
+                    Dealers
+                </button>
+                <button class="toggle-btn ${activeView === 'districts' ? 'active' : ''}" data-view="districts">
+                    Districts
+                </button>
+            </div>
+        `;
+    }
+
     // Utilities
     static formatNumber(num) {
         if (num >= 10000000) return (num / 10000000).toFixed(2) + ' Cr';
