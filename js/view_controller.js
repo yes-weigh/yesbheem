@@ -46,9 +46,108 @@ class ViewController {
         if (zoomOut) zoomOut.addEventListener('click', () => this.panZoom?.zoomOut());
         if (zoomReset) zoomReset.addEventListener('click', () => this.panZoom?.reset());
         if (backBtn) backBtn.addEventListener('click', () => this.showIndiaView());
+
+        // View toggle dropdown
+        const viewSelector = document.getElementById('view-selector');
+        if (viewSelector) {
+            viewSelector.addEventListener('change', (e) => {
+                e.preventDefault();
+                const view = e.target.value;
+                this.handleViewChange(view);
+            });
+        }
+
+        const viewToggleContainer = document.querySelector('.view-toggle-container');
+        if (viewToggleContainer) {
+            ['mousedown', 'click', 'dblclick', 'wheel', 'touchstart', 'touchend'].forEach(evt => {
+                viewToggleContainer.addEventListener(evt, (e) => e.stopPropagation());
+            });
+        }
     }
 
+    handleViewChange(view) {
+        // Update active state in dropdown if triggered programmatically
+        const viewSelector = document.getElementById('view-selector');
+        if (viewSelector && viewSelector.value !== view) {
+            viewSelector.value = view;
+        }
 
+        if (this.currentView === 'india') {
+            const dealerSection = document.getElementById('dealer-section');
+            if (!dealerSection || !this.indiaData) return;
+
+            if (view === 'states') {
+                const statesData = this.aggregateByState(this.indiaData.dealers);
+                dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(statesData);
+            } else {
+                dealerSection.innerHTML = UIRenderer.renderDealerList(this.indiaData.dealers);
+            }
+        } else if (this.mapInteractions) {
+            this.mapInteractions.handleViewChange(view);
+        }
+    }
+
+    aggregateByState(dealers) {
+        const stateMap = {};
+
+        // 1. Initialize with ALL states having 0 sales
+        if (this.dataManager && this.dataManager.getAllStateNames) {
+            const allStates = this.dataManager.getAllStateNames();
+            allStates.forEach(name => {
+                stateMap[name] = { name: name, totalSales: 0 };
+            });
+        }
+
+        if (!dealers) dealers = [];
+
+        // 2. Aggregate sales by state
+        dealers.forEach(dealer => {
+            let state = dealer.state || 'Unknown';
+            state = state.trim();
+            if (!state) state = 'Unknown';
+
+            // Try to find matching key in pre-filled map (case-insensitive check)
+            let matchedKey = null;
+            const stateLower = state.toLowerCase();
+
+            // Simple direct lookup first
+            if (stateMap[state]) {
+                matchedKey = state;
+            } else {
+                // Scan keys to find match
+                const keys = Object.keys(stateMap);
+                for (const key of keys) {
+                    if (key.toLowerCase() === stateLower) {
+                        matchedKey = key;
+                        break;
+                    }
+                    if (key.toLowerCase().includes(stateLower) || stateLower.includes(key.toLowerCase())) {
+                        matchedKey = key;
+                    }
+                }
+
+                if (!matchedKey) {
+                    const exactMatch = keys.find(k => k.toLowerCase() === stateLower);
+                    if (exactMatch) matchedKey = exactMatch;
+                }
+            }
+
+            if (matchedKey) {
+                stateMap[matchedKey].totalSales += dealer.sales || 0;
+            } else {
+                if (!stateMap[state]) {
+                    stateMap[state] = { name: state, totalSales: 0 };
+                }
+                stateMap[state].totalSales += dealer.sales || 0;
+            }
+        });
+
+        // Convert to array and sort by totalSales
+        const statesArray = Object.values(stateMap);
+        statesArray.sort((a, b) => b.totalSales - a.totalSales);
+
+        return statesArray;
+    }
 
     async loadIndiaMap() {
         this.showLoading(true);
@@ -84,6 +183,7 @@ class ViewController {
     async loadIndiaOverview() {
         if (this.dataManager && this.dataManager.getCountryData) {
             const data = await this.dataManager.getCountryData();
+            this.indiaData = data; // Cache data
             this.updateSidebarWithData(data);
         }
     }
@@ -117,7 +217,17 @@ class ViewController {
         }, '*');
 
         // Update Dealer List (remains in sidebar)
-        if (dealerSection) dealerSection.innerHTML = UIRenderer.renderDealerList(data.dealers);
+        const viewSelector = document.getElementById('view-selector');
+        const activeView = viewSelector ? viewSelector.value : 'dealers';
+
+        if (dealerSection) {
+            if (activeView === 'states' && this.currentView === 'india' && data.dealers) {
+                const statesData = this.aggregateByState(data.dealers);
+                dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(statesData);
+            } else {
+                dealerSection.innerHTML = UIRenderer.renderDealerList(data.dealers);
+            }
+        }
     }
 
     initializeIndiaInteractions() {

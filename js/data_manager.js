@@ -396,6 +396,20 @@ class DataManager {
     }
 
     /**
+     * Get list of all known state names
+     */
+    getAllStateNames() {
+        return [
+            'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
+            'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli', 'Daman and Diu', 'Delhi',
+            'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand',
+            'Karnataka', 'Kerala', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
+            'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan',
+            'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+        ];
+    }
+
+    /**
      * Get aggregated data for a specific state (other than Kerala which uses districts)
      * @param {string} stateId - State ID (e.g., 'IN-TN' for Tamil Nadu)
      * @returns {Promise<object>} Aggregated state data
@@ -411,7 +425,7 @@ class DataManager {
 
         // State ID to name mapping
         const stateNames = {
-            'IN-AN': 'Andaman and Nicobar', 'IN-AP': 'Andhra Pradesh', 'IN-AR': 'Arunachal Pradesh',
+            'IN-AN': 'Andaman and Nicobar Islands', 'IN-AP': 'Andhra Pradesh', 'IN-AR': 'Arunachal Pradesh',
             'IN-AS': 'Assam', 'IN-BR': 'Bihar', 'IN-CH': 'Chandigarh', 'IN-CT': 'Chhattisgarh',
             'IN-DD': 'Daman and Diu', 'IN-DL': 'Delhi', 'IN-DN': 'Dadra and Nagar Haveli',
             'IN-GA': 'Goa', 'IN-GJ': 'Gujarat', 'IN-HP': 'Himachal Pradesh', 'IN-HR': 'Haryana',
@@ -419,7 +433,8 @@ class DataManager {
             'IN-LD': 'Lakshadweep', 'IN-MH': 'Maharashtra', 'IN-ML': 'Meghalaya', 'IN-MN': 'Manipur',
             'IN-MP': 'Madhya Pradesh', 'IN-MZ': 'Mizoram', 'IN-NL': 'Nagaland', 'IN-OR': 'Odisha',
             'IN-PB': 'Punjab', 'IN-PY': 'Puducherry', 'IN-RJ': 'Rajasthan', 'IN-SK': 'Sikkim',
-            'IN-TG': 'Telangana', 'IN-TN': 'Tamil Nadu', 'IN-TR': 'Tripura', 'IN-UP': 'Uttar Pradesh'
+            'IN-TG': 'Telangana', 'IN-TN': 'Tamil Nadu', 'IN-TR': 'Tripura', 'IN-UP': 'Uttar Pradesh',
+            'IN-UT': 'Uttarakhand', 'IN-WB': 'West Bengal'
         };
 
         const stateName = stateNames[stateId] || stateId;
@@ -456,7 +471,8 @@ class DataManager {
 
             aggregated.dealers.push({
                 name: row['customer_name'] || 'Unknown Dealer',
-                sales: sales
+                sales: sales,
+                state: row['billing_state'] || row['shipping_state'] || 'Unknown'
             });
         }
 
@@ -503,7 +519,8 @@ class DataManager {
 
             aggregated.dealers.push({
                 name: row['customer_name'] || 'Unknown Dealer',
-                sales: sales
+                sales: sales,
+                state: row['billing_state'] || row['shipping_state'] || 'Unknown'
             });
         }
 

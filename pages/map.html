@@ -32,12 +32,21 @@
                 <img src="../assets/backicon.png" id="back-to-india-btn" class="back-icon-btn" title="Back to India"
                     alt="Back" style="display:none;">
 
+                <!-- View Toggle Dropdown -->
+                <div class="view-toggle-container">
+                    <select id="view-selector" class="view-dropdown">
+                        <option value="dealers">Dealers</option>
+                        <option value="states">States</option>
+                    </select>
+                </div>
+
                 <!-- Zoom Tools -->
                 <div class="map-tools">
                     <button class="tool-btn" id="zoom-in" title="Zoom In">+</button>
                     <button class="tool-btn" id="zoom-out" title="Zoom Out">-</button>
                     <button class="tool-btn" id="zoom-reset" title="Reset View">⟲</button>
                 </div>
+
 
                 <!-- India Container -->
                 <div id="india-view" class="view-layer active">
@@ -74,12 +83,12 @@
 
     <!-- Scripts -->
     <!-- Order matters for dependency injection -->
-    <script src="../js/pan_zoom_controller.js?v=202512084"></script>
-    <script src="../js/data_manager.js?v=202512084"></script>
-    <script src="../js/ui_renderer.js?v=202512084"></script>
-    <script src="../js/map_interactions.js?v=202512084"></script>
-    <script src="../js/view_controller.js?v=202512084"></script>
-    <script src="../js/theme_manager.js?v=202512084"></script>
+    <script src="../js/pan_zoom_controller.js?v=202512094"></script>
+    <script src="../js/data_manager.js?v=202512094"></script>
+    <script src="../js/ui_renderer.js?v=202512094"></script>
+    <script src="../js/map_interactions.js?v=202512094"></script>
+    <script src="../js/view_controller.js?v=202512094"></script>
+    <script src="../js/theme_manager.js?v=202512094"></script>
 </body>
 
 </html>
