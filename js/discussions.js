@@ -65,7 +65,8 @@ function subscribeToTasks() {
         tasks = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
-        }));
+        })).sort((a, b) => (a.order || 0) - (b.order || 0));
+
         renderBoard();
     }, (error) => {
         console.error("Error fetching tasks:", error);
@@ -120,11 +121,35 @@ function createCardElement(task) {
 
     // Drag events
     div.addEventListener('dragstart', handleDragStart);
+    div.addEventListener('dragend', handleDragEnd);
+
+    // Delete button
+    const deleteBtn = div.querySelector('.delete-task-btn');
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm('Are you sure you want to delete this task?')) {
+            deleteTask(task.id);
+        }
+    });
+
+    // Edit functionality
+    div.addEventListener('click', () => {
+        openEditModal(task);
+    });
+
+    return div;
+}
+
+// Task Operations
+async function addTask(title, description, status = 'todo') {
     try {
+        // Default order: max order + 1000, or Date.now() if lazy
+        // Let's use Date.now() for simplicity as it always increases
         await addDoc(collection(db, COLLECTION_NAME), {
             title,
             description,
             status,
+            order: Date.now(),
             createdAt: serverTimestamp()
         });
         return true;
@@ -135,16 +160,18 @@ function createCardElement(task) {
     }
 }
 
-async function updateTaskStatus(taskId, newStatus) {
+async function moveTask(taskId, newStatus, newOrder) {
     const taskRef = doc(db, COLLECTION_NAME, taskId);
     try {
         await updateDoc(taskRef, {
-            status: newStatus
+            status: newStatus,
+            order: newOrder
         });
     } catch (e) {
-        console.error("Error updating task status: ", e);
+        console.error("Error moving task: ", e);
     }
 }
+
 
 async function updateTask(taskId, title, description, status) {
     const taskRef = doc(db, COLLECTION_NAME, taskId);
@@ -197,9 +224,20 @@ function setupDragAndDrop() {
 
     columnElements.forEach(col => {
         col.addEventListener('dragover', (e) => {
-            e.preventDefault(); // Allow dropping
+            e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
             col.classList.add('drag-over');
+
+            // Visual Reordering
+            const afterElement = getDragAfterElement(col.querySelector('.column-content'), e.clientY);
+            const container = col.querySelector('.column-content');
+            if (draggedItem) {
+                if (afterElement == null) {
+                    container.appendChild(draggedItem);
+                } else {
+                    container.insertBefore(draggedItem, afterElement);
+                }
+            }
         });
 
         col.addEventListener('dragleave', (e) => {
@@ -210,15 +248,74 @@ function setupDragAndDrop() {
             e.preventDefault();
             col.classList.remove('drag-over');
 
-            const taskId = e.dataTransfer.getData('text/plain');
+            if (!draggedItem) return;
+
+            const taskId = draggedItem.dataset.id;
             const newStatus = col.dataset.status;
 
-            if (draggedItem && draggedItem.dataset.status !== newStatus) {
-                // Optimistic UI update could go here, but we'll rely on the snapshot listener for simplicity
-                await updateTaskStatus(taskId, newStatus);
+            // Calculate new Order
+            const prevCard = draggedItem.previousElementSibling;
+            const nextCard = draggedItem.nextElementSibling;
+
+            // Safe defaults
+            const prevOrder = prevCard ? getOrder(prevCard.dataset.id) : 0;
+            // If nextCard exists, use its order. If there is no next card, we are at bottom.
+            // If at bottom, we want a larger number. 
+            // However, our logic: New = (Prev + Next)/2
+            // Case 1: Insert at Top. Prev=null(0). Next=Exists(1000). New = 500.
+            // Case 2: Insert at Bottom. Prev=Exists(1000). Next=null. New = 1000 + 1000 = 2000.
+            // Case 3: Middle. Prev=1000. Next=2000. New=1500.
+
+            let newOrder;
+            if (!prevCard && !nextCard) {
+                // Only item in list
+                newOrder = Date.now();
+            } else if (!prevCard) {
+                // Top of list
+                const nextOrder = getOrder(nextCard.dataset.id);
+                newOrder = nextOrder - 10000; // Arbitrary gap
+            } else if (!nextCard) {
+                // Bottom of list
+                newOrder = prevOrder + 10000;
+            } else {
+                // Middle
+                const nextOrder = getOrder(nextCard.dataset.id);
+                newOrder = (prevOrder + nextOrder) / 2;
             }
+
+            // Optimistic update local model to prevent jitter on snapshot
+            updateLocalTask(taskId, newStatus, newOrder);
+
+            await moveTask(taskId, newStatus, newOrder);
         });
     });
+}
+
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.kanban-card:not(.dragging)')];
+
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function getOrder(id) {
+    const task = tasks.find(t => t.id === id);
+    return task ? (task.order || 0) : 0;
+}
+
+function updateLocalTask(id, status, order) {
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+        task.status = status;
+        task.order = order;
+    }
 }
 
 // Modal Handling
