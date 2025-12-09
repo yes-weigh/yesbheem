@@ -120,22 +120,6 @@ function createCardElement(task) {
 
     // Drag events
     div.addEventListener('dragstart', handleDragStart);
-    div.addEventListener('dragend', handleDragEnd);
-
-    // Delete button
-    const deleteBtn = div.querySelector('.delete-task-btn');
-    deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (confirm('Are you sure you want to delete this task?')) {
-            deleteTask(task.id);
-        }
-    });
-
-    return div;
-}
-
-// Task Operations
-async function addTask(title, description, status = 'todo') {
     try {
         await addDoc(collection(db, COLLECTION_NAME), {
             title,
@@ -158,8 +142,24 @@ async function updateTaskStatus(taskId, newStatus) {
             status: newStatus
         });
     } catch (e) {
+        console.error("Error updating task status: ", e);
+    }
+}
+
+async function updateTask(taskId, title, description, status) {
+    const taskRef = doc(db, COLLECTION_NAME, taskId);
+    try {
+        await updateDoc(taskRef, {
+            title,
+            description,
+            status,
+            updatedAt: serverTimestamp()
+        });
+        return true;
+    } catch (e) {
         console.error("Error updating task: ", e);
-        // Revert UI if needed (subscription will handle handle eventual consistency, but optimistic update might be better)
+        alert("Failed to update task.");
+        return false;
     }
 }
 
@@ -222,6 +222,30 @@ function setupDragAndDrop() {
 }
 
 // Modal Handling
+let isEditing = false;
+let currentTaskId = null;
+
+function openEditModal(task) {
+    const modalOverlay = document.getElementById('addTaskModal');
+    const titleInput = document.getElementById('taskTitle');
+    const descInput = document.getElementById('taskDescription');
+    const statusInput = document.getElementById('taskStatus');
+    const saveBtn = document.getElementById('saveTaskBtn');
+    const modalTitle = document.querySelector('.modal-title');
+
+    isEditing = true;
+    currentTaskId = task.id;
+
+    modalTitle.textContent = 'Edit Task';
+    titleInput.value = task.title;
+    descInput.value = task.description || '';
+    statusInput.value = task.status || 'todo';
+    saveBtn.textContent = 'Update Task';
+
+    modalOverlay.classList.add('active');
+    titleInput.focus();
+}
+
 function setupModal() {
     const modalOverlay = document.getElementById('addTaskModal');
     const openBtn = document.getElementById('openAddTaskBtn');
@@ -231,18 +255,25 @@ function setupModal() {
     const titleInput = document.getElementById('taskTitle');
     const descInput = document.getElementById('taskDescription');
     const statusInput = document.getElementById('taskStatus');
+    const modalTitle = document.querySelector('.modal-title');
 
     function openModal() {
+        isEditing = false;
+        currentTaskId = null;
+        modalTitle.textContent = 'Add New Task';
+        saveBtn.textContent = 'Add Task';
+
+        // Reset form
+        titleInput.value = '';
+        descInput.value = '';
+        statusInput.value = 'todo';
+
         modalOverlay.classList.add('active');
         titleInput.focus();
     }
 
     function closeModal() {
         modalOverlay.classList.remove('active');
-        // Reset form
-        titleInput.value = '';
-        descInput.value = '';
-        statusInput.value = 'todo';
     }
 
     openBtn.addEventListener('click', openModal);
@@ -265,12 +296,18 @@ function setupModal() {
         }
 
         saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving...';
 
-        const success = await addTask(title, description, status);
+        let success;
+        if (isEditing && currentTaskId) {
+            saveBtn.textContent = 'Updating...';
+            success = await updateTask(currentTaskId, title, description, status);
+        } else {
+            saveBtn.textContent = 'Saving...';
+            success = await addTask(title, description, status);
+        }
 
         saveBtn.disabled = false;
-        saveBtn.textContent = 'Add Task';
+        saveBtn.textContent = isEditing ? 'Update Task' : 'Add Task';
 
         if (success) {
             closeModal();

@@ -5,7 +5,7 @@ class NavigationController {
         this.sidebarCollapsed = false;
         this.pages = [
             { id: 'dashboard', name: 'Dashboard', icon: '📊' },
-            { id: 'discussions', name: 'Discussions', icon: '💬' },
+            { id: 'discussions', name: 'Tasks', icon: '📋' },
             { id: 'instance', name: 'Instance', icon: '🖥️' },
             { id: 'message', name: 'Message', icon: '💬' },
             { id: 'dealer', name: 'Dealer', icon: '🤝' },
