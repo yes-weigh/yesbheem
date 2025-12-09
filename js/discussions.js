@@ -108,6 +108,10 @@ function createCardElement(task) {
     div.dataset.id = task.id;
     div.dataset.status = task.status;
 
+    if (task.color) {
+        div.style.setProperty('--task-color', task.color);
+    }
+
     const dateStr = task.createdAt && task.createdAt.toDate ? task.createdAt.toDate().toLocaleDateString() : '';
 
     div.innerHTML = `
@@ -141,7 +145,7 @@ function createCardElement(task) {
 }
 
 // Task Operations
-async function addTask(title, description, status = 'todo') {
+async function addTask(title, description, status = 'todo', color = '') {
     try {
         // Default order: max order + 1000, or Date.now() if lazy
         // Let's use Date.now() for simplicity as it always increases
@@ -149,6 +153,7 @@ async function addTask(title, description, status = 'todo') {
             title,
             description,
             status,
+            color,
             order: Date.now(),
             createdAt: serverTimestamp()
         });
@@ -173,13 +178,14 @@ async function moveTask(taskId, newStatus, newOrder) {
 }
 
 
-async function updateTask(taskId, title, description, status) {
+async function updateTask(taskId, title, description, status, color) {
     const taskRef = doc(db, COLLECTION_NAME, taskId);
     try {
         await updateDoc(taskRef, {
             title,
             description,
             status,
+            color,
             updatedAt: serverTimestamp()
         });
         return true;
@@ -339,6 +345,11 @@ function openEditModal(task) {
     statusInput.value = task.status || 'todo';
     saveBtn.textContent = 'Update Task';
 
+    // Set color
+    const colorInput = document.querySelector(`input[name="taskColor"][value="${task.color || ''}"]`);
+    if (colorInput) colorInput.checked = true;
+    else document.getElementById('color-none').checked = true;
+
     modalOverlay.classList.add('active');
     titleInput.focus();
 }
@@ -364,6 +375,7 @@ function setupModal() {
         titleInput.value = '';
         descInput.value = '';
         statusInput.value = 'todo';
+        document.getElementById('color-none').checked = true;
 
         modalOverlay.classList.add('active');
         titleInput.focus();
@@ -386,6 +398,8 @@ function setupModal() {
         const title = titleInput.value.trim();
         const description = descInput.value.trim();
         const status = statusInput.value;
+        const colorInput = document.querySelector('input[name="taskColor"]:checked');
+        const color = colorInput ? colorInput.value : '';
 
         if (!title) {
             alert('Please enter a task title');
@@ -397,10 +411,10 @@ function setupModal() {
         let success;
         if (isEditing && currentTaskId) {
             saveBtn.textContent = 'Updating...';
-            success = await updateTask(currentTaskId, title, description, status);
+            success = await updateTask(currentTaskId, title, description, status, color);
         } else {
             saveBtn.textContent = 'Saving...';
-            success = await addTask(title, description, status);
+            success = await addTask(title, description, status, color);
         }
 
         saveBtn.disabled = false;

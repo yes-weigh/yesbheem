@@ -493,3 +493,50 @@
         opacity: 0.6;
     }
 }
+
+/* Color Picker */
+.color-picker {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.color-picker input[type="radio"] {
+    display: none;
+}
+
+.color-option {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    background-color: var(--opt-color, var(--bg-secondary));
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+}
+
+.color-none {
+    border: 2px solid var(--border-color);
+    background:
+        linear-gradient(to top left,
+            transparent calc(50% - 1px),
+            var(--text-tertiary) calc(50% - 1px),
+            var(--text-tertiary) calc(50% + 1px),
+            transparent calc(50% + 1px));
+}
+
+.color-picker input:checked+.color-option {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--primary-color);
+}
+
+/* Card Color indicator */
+.kanban-card[style*="--task-color"] {
+    border-top: 4px solid var(--task-color);
+}
+
+.kanban-card[style*="--task-color"]::before {
+    /* Hide the status accent if color is present, or maybe keep it? Let's hide sidebar accent if colored */
+    display: none;
+}
