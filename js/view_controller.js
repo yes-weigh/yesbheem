@@ -102,44 +102,18 @@ class ViewController {
 
         // 2. Aggregate sales by state
         dealers.forEach(dealer => {
-            let state = dealer.state || 'Unknown';
-            state = state.trim();
-            if (!state) state = 'Unknown';
-
-            // Try to find matching key in pre-filled map (case-insensitive check)
-            let matchedKey = null;
-            const stateLower = state.toLowerCase();
-
-            // Simple direct lookup first
-            if (stateMap[state]) {
-                matchedKey = state;
+            let rawState = dealer.state || 'Unknown';
+            let stateKey = 'Unknown';
+            if (this.dataManager && this.dataManager.normalizeStateName) {
+                stateKey = this.dataManager.normalizeStateName(rawState);
             } else {
-                // Scan keys to find match
-                const keys = Object.keys(stateMap);
-                for (const key of keys) {
-                    if (key.toLowerCase() === stateLower) {
-                        matchedKey = key;
-                        break;
-                    }
-                    if (key.toLowerCase().includes(stateLower) || stateLower.includes(key.toLowerCase())) {
-                        matchedKey = key;
-                    }
-                }
-
-                if (!matchedKey) {
-                    const exactMatch = keys.find(k => k.toLowerCase() === stateLower);
-                    if (exactMatch) matchedKey = exactMatch;
-                }
+                stateKey = rawState.trim();
             }
 
-            if (matchedKey) {
-                stateMap[matchedKey].totalSales += dealer.sales || 0;
-            } else {
-                if (!stateMap[state]) {
-                    stateMap[state] = { name: state, totalSales: 0 };
-                }
-                stateMap[state].totalSales += dealer.sales || 0;
+            if (!stateMap[stateKey]) {
+                stateMap[stateKey] = { name: stateKey, totalSales: 0 };
             }
+            stateMap[stateKey].totalSales += dealer.sales || 0;
         });
 
         // Convert to array and sort by totalSales
@@ -262,8 +236,6 @@ class ViewController {
                     this.showStateView(stateId, stateName);
                 }
             });
-
-            // Hover effects removed for strict click-only interaction
         });
 
         // Background Click Listener for India Map
@@ -455,7 +427,6 @@ class ViewController {
 
     showLoading(show) {
         // Loading overlay removed - no-op
-        // The loading overlay was causing display issues with the large logo
         return;
     }
 }

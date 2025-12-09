@@ -5,6 +5,7 @@ class NavigationController {
         this.sidebarCollapsed = false;
         this.pages = [
             { id: 'dashboard', name: 'Dashboard', icon: '📊' },
+            { id: 'discussions', name: 'Discussions', icon: '💬' },
             { id: 'instance', name: 'Instance', icon: '🖥️' },
             { id: 'message', name: 'Message', icon: '💬' },
             { id: 'dealer', name: 'Dealer', icon: '🤝' },
@@ -152,13 +153,12 @@ class NavigationController {
             const scripts = tempDiv.querySelectorAll('script');
             const scriptContents = [];
             scripts.forEach(script => {
-                if (script.src) {
-                    // External script
-                    scriptContents.push({ type: 'src', content: script.src });
-                } else {
-                    // Inline script
-                    scriptContents.push({ type: 'inline', content: script.textContent });
-                }
+                const scriptInfo = {
+                    type: script.src ? 'src' : 'inline',
+                    content: script.src || script.textContent,
+                    isModule: script.type === 'module'
+                };
+                scriptContents.push(scriptInfo);
                 script.remove();
             });
 
@@ -169,15 +169,20 @@ class NavigationController {
             for (const script of scriptContents) {
                 if (script.type === 'src') {
                     // Load external script
-                    await this.loadExternalScript(script.content);
+                    await this.loadExternalScript(script.content, script.isModule);
                 } else {
                     // Execute inline script
-                    try {
-                        // Use Function constructor for better error handling
-                        const scriptFunc = new Function(script.content);
-                        scriptFunc();
-                    } catch (err) {
-                        console.error('Error executing inline script:', err);
+                    if (script.isModule) {
+                        // Append inline modules to body to execute them
+                        await this.loadInlineModule(script.content);
+                    } else {
+                        try {
+                            // Use Function constructor for better error handling
+                            const scriptFunc = new Function(script.content);
+                            scriptFunc();
+                        } catch (err) {
+                            console.error('Error executing inline script:', err);
+                        }
                     }
                 }
             }
@@ -197,13 +202,26 @@ class NavigationController {
         }
     }
 
-    loadExternalScript(src) {
+    loadExternalScript(src, isModule = false) {
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
             script.src = src;
+            if (isModule) script.type = 'module';
             script.onload = resolve;
             script.onerror = reject;
             document.body.appendChild(script);
+        });
+    }
+
+    loadInlineModule(content) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.type = 'module';
+            script.textContent = content;
+            document.body.appendChild(script);
+            // Inline modules execute immediately but asynchronously. 
+            // We resolve immediately as we can't easily track completion without dispatching events.
+            resolve();
         });
     }
 }

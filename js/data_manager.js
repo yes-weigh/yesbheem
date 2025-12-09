@@ -396,6 +396,47 @@ class DataManager {
     }
 
     /**
+     * Normalize state name to handle variations (e.g. Tamilnadu -> Tamil Nadu)
+     */
+    normalizeStateName(rawStateName) {
+        if (!rawStateName) return 'Unknown';
+        let name = rawStateName.trim().replace(/\s+/g, ' ');
+
+        // Common variations map
+        const variations = {
+            'tamilnadu': 'Tamil Nadu',
+            'tamil nadu': 'Tamil Nadu',
+            'telengana': 'Telangana',
+            'telangana': 'Telangana',
+            'chattisgarh': 'Chhattisgarh',
+            'chhattisgarh': 'Chhattisgarh',
+            'orissa': 'Odisha',
+            'odisha': 'Odisha',
+            'west bengal': 'West Bengal',
+            'bengal': 'West Bengal',
+            'jammu & kashmir': 'Jammu and Kashmir',
+            'jammu and kashmir': 'Jammu and Kashmir',
+            'andaman & nicobar': 'Andaman and Nicobar Islands',
+            'andaman and nicobar': 'Andaman and Nicobar Islands',
+            'andaman and nicobar islands': 'Andaman and Nicobar Islands',
+            'maharasthra': 'Maharashtra',
+            'maharastra': 'Maharashtra'
+        };
+
+        const lower = name.toLowerCase();
+        if (variations[lower]) {
+            return variations[lower];
+        }
+
+        // Check against valid list (case-insensitive)
+        const validStates = this.getAllStateNames();
+        const found = validStates.find(s => s.toLowerCase() === lower);
+        if (found) return found;
+
+        return name; // Return original if no match found
+    }
+
+    /**
      * Get list of all known state names
      */
     getAllStateNames() {
