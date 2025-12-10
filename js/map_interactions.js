@@ -27,9 +27,9 @@ class MapInteractions {
         districts.forEach(district => {
             district.addEventListener('click', (e) => {
                 e.stopPropagation(); // Prevent bubbling to background
-                // Remove selected class from all
-                districts.forEach(d => d.classList.remove('selected'));
-                district.classList.add('selected');
+                // Remove highlighted class from all
+                districts.forEach(d => d.classList.remove('highlighted'));
+                district.classList.add('highlighted');
 
                 this.selectedDistrictId = district.id;
                 this.handleDistrictClick(district.id);
@@ -44,13 +44,27 @@ class MapInteractions {
                 // Only reset to state overview if clicking directly on SVG background (not a district path)
                 if (e.target.tagName === 'svg' || e.target === mapContainer) {
                     // Deselect all districts
-                    districts.forEach(d => d.classList.remove('selected'));
+                    districts.forEach(d => d.classList.remove('highlighted'));
                     this.selectedDistrictId = null;
 
                     // Show State Overview
                     if (this.stateOverviewData) {
                         this.updateSidebar(this.stateOverviewData);
                     }
+
+                    // Restore Districts View
+                    this.currentView = 'districts';
+                    const viewSelector = document.getElementById('view-selector');
+                    if (viewSelector) {
+                        const districtsOption = viewSelector.querySelector('option[value="districts"]');
+                        if (districtsOption) {
+                            districtsOption.hidden = false;
+                            districtsOption.disabled = false;
+                        }
+                        viewSelector.value = 'districts';
+                    }
+                    // Re-render sidebar
+                    this.renderSidebarContent();
                 }
             });
         }
@@ -79,6 +93,20 @@ class MapInteractions {
         }
 
         if (infoPanel) infoPanel.classList.add('active');
+
+        // FORCE Dealers View and Hide Districts Option
+        this.currentView = 'dealers';
+        const viewSelector = document.getElementById('view-selector');
+        if (viewSelector) {
+            viewSelector.value = 'dealers';
+            const districtsOption = viewSelector.querySelector('option[value="districts"]');
+            if (districtsOption) {
+                districtsOption.hidden = true;
+                districtsOption.disabled = true;
+            }
+        }
+        // Re-render sidebar to match new view
+        this.renderSidebarContent();
     }
 
     /**
@@ -116,7 +144,7 @@ class MapInteractions {
 
         // Initialize view state if not set
         if (!this.currentView) {
-            this.currentView = 'dealers';
+            this.currentView = 'districts'; // Default to districts for Kerala
         }
 
         // Render toggle + content
@@ -131,12 +159,13 @@ class MapInteractions {
         if (!dealerSection || !this.currentData) return;
 
         // Render toggle and appropriate list
-        let html = UIRenderer.renderViewToggle(this.currentView);
+        // Create HTML content directly (No toggle buttons)
+        let html = '';
 
         if (this.currentView === 'dealers') {
             html += UIRenderer.renderDealerList(this.currentData.dealers);
         } else {
-            // For districts view, we need the district stats
+            // For districts view (default or selected via dropdown)
             if (this.districtInsights && Object.keys(this.districtInsights).length > 0) {
                 const sortedDistricts = this.dataManager.getDistrictsSortedBySales(this.districtInsights);
                 html += UIRenderer.renderDistrictSalesList(sortedDistricts);
@@ -144,18 +173,7 @@ class MapInteractions {
         }
 
         dealerSection.innerHTML = html;
-
-        // Add click handlers to toggle buttons
-        const toggleButtons = dealerSection.querySelectorAll('.toggle-btn');
-        toggleButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const view = e.target.getAttribute('data-view');
-                if (view !== this.currentView) {
-                    this.currentView = view;
-                    this.renderSidebarContent();
-                }
-            });
-        });
+        // Toggle listeners removed
     }
 
     /**
@@ -244,12 +262,17 @@ class MapInteractions {
                 html = UIRenderer.renderDealerList(this.currentData.dealers);
             }
         } else if (viewType === 'states') {
-            // Show states aggregated from all dealers
             if (this.currentData && this.currentData.dealers) {
                 console.log('Aggregating states from dealers...');
                 const statesData = this.dataManager.aggregateByState(this.currentData.dealers);
                 console.log('States data:', statesData);
                 html = UIRenderer.renderDistrictSalesList(statesData);
+            }
+        } else if (viewType === 'districts') {
+            // Show districts list (Kerala view)
+            if (this.districtInsights && Object.keys(this.districtInsights).length > 0) {
+                const sortedDistricts = this.dataManager.getDistrictsSortedBySales(this.districtInsights);
+                html = UIRenderer.renderDistrictSalesList(sortedDistricts);
             }
         }
 

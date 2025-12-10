@@ -69,7 +69,7 @@ class BoardController {
             const li = document.createElement('li');
             li.className = `board-item ${board.id === this.taskService.currentBoardId ? 'active' : ''}`;
             li.innerHTML = `
-                <span>
+                <span class="board-item-content">
                     <span class="board-item-icon">📋</span>
                     ${this.escapeHtml(board.name)}
                 </span>
@@ -164,19 +164,73 @@ class BoardController {
         div.dataset.id = task.id;
         div.dataset.status = task.status;
 
+        // Label Section (using task.color)
+        let labelHtml = '';
         if (task.color) {
             div.style.setProperty('--task-color', task.color);
+            // Also add a visible label bar if color is present
+            labelHtml = `
+                <div class="card-labels">
+                    <div class="card-label" title="Label"></div>
+                </div>
+            `;
         }
 
-        const dateStr = task.createdAt && task.createdAt.toDate ? task.createdAt.toDate().toLocaleDateString() : '';
+        // Date Handling
+        const dateObj = task.createdAt && task.createdAt.toDate ? task.createdAt.toDate() : new Date();
+        const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-        div.innerHTML = `
-            <div class="card-title">${this.escapeHtml(task.title)}</div>
-            <div class="card-description">${this.escapeHtml(task.description || '')}</div>
-            <div class="card-footer">
-                <span class="card-date">📅 ${dateStr}</span>
-                <button class="delete-task-btn" type="button" title="Delete Task">🗑️</button>
+        // Mock Badges (Checklist logic placeholder)
+        // In a real app, this would come from task.checklist.length
+        const hasDescription = !!task.description;
+        const checklistCount = Math.floor(Math.random() * 5); // Mock for visual density
+
+        let badgesHtml = '<div class="card-badges">';
+
+        // Date Badge
+        badgesHtml += `
+            <div class="card-badge" title="Due Date">
+                <span class="card-badge-icon">🕒</span>
+                <span>${dateStr}</span>
             </div>
+        `;
+
+        if (hasDescription) {
+            badgesHtml += `
+                <div class="card-badge" title="This card has a description">
+                    <span class="card-badge-icon">≡</span>
+                </div>
+            `;
+        }
+
+        // Mock Checklist Badge
+        badgesHtml += `
+            <div class="card-badge" title="Checklist items">
+                <span class="card-badge-icon">☑</span>
+                <span>${Math.floor(Math.random() * 3)}/${checklistCount + 3}</span>
+            </div>
+        `;
+
+        badgesHtml += '</div>';
+
+        // Mock Members
+        const membersHtml = `
+            <div class="card-members">
+                 <div class="member-avatar" title="Member">MB</div>
+            </div>
+        `;
+
+        // Assemble HTML
+        div.innerHTML = `
+            ${labelHtml}
+            <div class="card-content">
+                <div class="card-title">${this.escapeHtml(task.title)}</div>
+            </div>
+            <div class="card-footer-row">
+                ${badgesHtml}
+                ${membersHtml}
+            </div>
+            <button class="delete-task-btn" type="button" title="Delete Task">🗑️</button>
         `;
 
         // Drag events

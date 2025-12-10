@@ -47,6 +47,8 @@
 
 /* Selected district styling (for Kerala districts) */
 .district.selected,
+.district.highlighted path,
+/* Ensure paths inside highlighted group get the style */
 path.selected {
     fill: var(--primary) !important;
     stroke: white !important;

@@ -208,6 +208,24 @@ class ViewController {
             if (e.target.tagName === 'svg' || e.target === this.containers.indiaMap) {
                 // Clear any selected state
                 this.highlightState(null);
+
+                // Reset view dropdown: Allow and Select 'States' view again
+                const viewSelector = document.getElementById('view-selector');
+                if (viewSelector) {
+                    const statesOption = viewSelector.querySelector('option[value="states"]');
+                    const districtsOption = viewSelector.querySelector('option[value="districts"]');
+
+                    if (statesOption) {
+                        statesOption.hidden = false;
+                        statesOption.disabled = false;
+                    }
+                    if (districtsOption) {
+                        districtsOption.hidden = true;
+                        districtsOption.disabled = true;
+                    }
+                    viewSelector.value = 'states'; // Auto-select States
+                }
+
                 this.loadIndiaOverview();
             }
         });
@@ -231,6 +249,20 @@ class ViewController {
         const viewSelector = document.getElementById('view-selector');
         if (viewSelector) {
             viewSelector.value = 'dealers';
+
+            // Disable and hide 'States' option when looking at a specific state
+            // Manage Options: Hide States, Show Districts
+            const statesOption = viewSelector.querySelector('option[value="states"]');
+            const districtsOption = viewSelector.querySelector('option[value="districts"]');
+
+            if (statesOption) {
+                statesOption.hidden = true;
+                statesOption.disabled = true;
+            }
+            if (districtsOption) {
+                districtsOption.hidden = true;
+                districtsOption.disabled = true;
+            }
         }
 
         // Highlight Only - stay on India Map
@@ -261,6 +293,26 @@ class ViewController {
             this.containers.state.classList.add('active');
 
             if (backBtn) backBtn.style.display = 'block'; // Show Back Button
+
+            // Also hide states option for full state view
+            // Also hide states option for full state view
+            const viewSelector = document.getElementById('view-selector');
+            if (viewSelector) {
+                // Set default to districts for full view
+                viewSelector.value = 'districts';
+
+                const statesOption = viewSelector.querySelector('option[value="states"]');
+                const districtsOption = viewSelector.querySelector('option[value="districts"]');
+
+                if (statesOption) {
+                    statesOption.hidden = true;
+                    statesOption.disabled = true;
+                }
+                if (districtsOption) {
+                    districtsOption.hidden = false;
+                    districtsOption.disabled = false;
+                }
+            }
 
             await this.loadStateContent(stateId);
 
@@ -305,6 +357,23 @@ class ViewController {
         if (this.containers.indiaMap.querySelector('svg')) {
             this.panZoom = new PanZoomController('#map-viewport', '#india-map-container');
             this.panZoom.reset();
+        }
+
+        // Reset view dropdown: Allow and Select 'States' view again
+        const viewSelector = document.getElementById('view-selector');
+        if (viewSelector) {
+            const statesOption = viewSelector.querySelector('option[value="states"]');
+            const districtsOption = viewSelector.querySelector('option[value="districts"]');
+
+            if (statesOption) {
+                statesOption.hidden = false;
+                statesOption.disabled = false;
+            }
+            if (districtsOption) {
+                districtsOption.hidden = true;
+                districtsOption.disabled = true;
+            }
+            viewSelector.value = 'states'; // Auto-select States
         }
 
         this.updateSidebarPlaceholder('INDIA', 'INDIA');
@@ -372,6 +441,12 @@ class ViewController {
                     const lookupId = stateId.length === 2 ? `IN-${stateId}` : stateId;
                     const data = await this.dataManager.getStateData(lookupId);
                     this.updateSidebarWithData(data);
+
+                    // Ensure MapInteractions has the data
+                    if (this.mapInteractions) {
+                        this.mapInteractions.currentData = data;
+                        this.mapInteractions.stateOverviewData = data;
+                    }
                 } catch (e) {
                     console.error("Failed to load state overview data:", e);
                 }
