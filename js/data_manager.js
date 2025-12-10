@@ -103,7 +103,7 @@ class DataManager {
         }
 
         try {
-            const response = await fetch(this.sheetUrl);
+            const response = await fetch(`${this.sheetUrl}&t=${Date.now()}`);
             const csvText = await response.text();
             const data = this.parseCSV(csvText);
 

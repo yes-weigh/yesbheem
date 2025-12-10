@@ -127,7 +127,7 @@ class ViewController {
         this.showLoading(true);
         try {
             // Updated path
-            const response = await fetch('../assets/maps/india_map_high_res.svg');
+            const response = await fetch(`../assets/maps/india_map_high_res.svg?t=${Date.now()}`);
             if (!response.ok) throw new Error('Failed to load India Map SVG');
             const svgText = await response.text();
 
@@ -192,7 +192,7 @@ class ViewController {
 
         // Update Dealer List (remains in sidebar)
         const viewSelector = document.getElementById('view-selector');
-        const activeView = viewSelector ? viewSelector.value : 'dealers';
+        const activeView = viewSelector ? viewSelector.value : 'states';
 
         if (dealerSection) {
             if (activeView === 'states' && this.currentView === 'india' && data.dealers) {

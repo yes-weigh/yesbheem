@@ -396,10 +396,11 @@ path.selected {
 }
 
 .district-row {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr 60px 100px;
     align-items: center;
     font-size: 0.9rem;
+    gap: 8px;
 }
 
 .district-name {
@@ -407,7 +408,6 @@ path.selected {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-right: 8px;
     font-weight: 400;
 }
 
@@ -416,8 +416,9 @@ path.selected {
     font-weight: 500;
     font-size: 0.8rem;
     white-space: nowrap;
-    margin-right: 8px;
     opacity: 0.9;
+    text-align: right;
+    margin-right: 0;
 }
 
 .district-sales {
@@ -425,6 +426,7 @@ path.selected {
     font-weight: 500;
     font-size: 0.85rem;
     white-space: nowrap;
+    text-align: right;
 }
 
 /* Mobile Responsiveness for Map Elements */

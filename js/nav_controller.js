@@ -140,7 +140,7 @@ class NavigationController {
             contentArea.innerHTML = '<div class="page-loader"><div class="spinner"></div></div>';
 
             // Fetch page content
-            const response = await fetch(`pages/${pageId}.html`);
+            const response = await fetch(`pages/${pageId}.html?t=${Date.now()}`);
             if (!response.ok) throw new Error(`Failed to load ${pageId}`);
 
             const html = await response.text();
