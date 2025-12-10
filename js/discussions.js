@@ -10,6 +10,7 @@ import {
     deleteDoc,
     query,
     orderBy,
+    where,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -27,10 +28,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const COLLECTION_NAME = "project_tasks";
+const COLLECTION_TASKS = "project_tasks";
+const COLLECTION_BOARDS = "task_boards";
 
 // State
 let tasks = [];
+let boards = [];
+let currentBoardId = null;
+let tasksUnsubscribe = null;
 
 // DOM Elements
 const columns = {
@@ -47,21 +52,167 @@ const counts = {
 
 // Initialize
 function init() {
-    subscribeToTasks();
-    setupDragAndDrop();
     setupModal();
+    setupBoardUI();
+    subscribeToBoards();
+    setupDragAndDrop();
 }
 
+// === BOARD MANAGEMENT ===
+
+function setupBoardUI() {
+    const createBoardBtn = document.getElementById('createBoardBtn');
+    if (createBoardBtn) {
+        createBoardBtn.addEventListener('click', () => {
+            const name = prompt("Enter board name:");
+            if (name && name.trim()) {
+                createBoard(name.trim());
+            }
+        });
+    }
+}
+
+function subscribeToBoards() {
+    const q = query(collection(db, COLLECTION_BOARDS), orderBy("createdAt", "asc"));
+
+    onSnapshot(q, (snapshot) => {
+        boards = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        renderBoardsSidebar();
+
+        // Initial Selection Logic
+        if (boards.length === 0 && !currentBoardId) {
+            // No boards exist, create default
+            // Check if we are already creating one to avoid loops? 
+            // Better: just wait for user or create one silently?
+            // Let's create one silently.
+            createBoard("Main Board");
+        } else if (boards.length > 0 && (!currentBoardId || !boards.find(b => b.id === currentBoardId))) {
+            // Update selection to first board if current is invalid or null
+            switchBoard(boards[0].id);
+        } else {
+            // Just update title in case name changed
+            updateBoardHeader();
+        }
+    }, (error) => {
+        console.error("Error fetching boards:", error);
+    });
+}
+
+async function createBoard(name) {
+    try {
+        await addDoc(collection(db, COLLECTION_BOARDS), {
+            name: name,
+            createdAt: serverTimestamp()
+        });
+    } catch (e) {
+        console.error("Error creating board:", e);
+        alert("Failed to create board.");
+    }
+}
+
+async function deleteBoard(boardId) {
+    if (!confirm("Are you sure? This will delete the board and hide its tasks.")) return;
+
+    // Switch to another board first if deleting current
+    if (boardId === currentBoardId) {
+        const other = boards.find(b => b.id !== boardId);
+        if (other) switchBoard(other.id);
+        else {
+            currentBoardId = null;
+            renderEmptyBoard();
+            updateBoardHeader();
+        }
+    }
+
+    try {
+        await deleteDoc(doc(db, COLLECTION_BOARDS, boardId));
+    } catch (e) {
+        console.error("Failed to delete board:", e);
+    }
+}
+
+function switchBoard(boardId) {
+    if (currentBoardId === boardId) return;
+
+    currentBoardId = boardId;
+    updateBoardHeader();
+    renderBoardsSidebar(); // Update active state styling
+
+    // Subscribe to tasks for this board
+    subscribeToTasks(boardId);
+}
+
+function updateBoardHeader() {
+    const titleEl = document.getElementById('currentBoardTitle');
+    const board = boards.find(b => b.id === currentBoardId);
+    if (titleEl) {
+        titleEl.textContent = board ? board.name : 'Tasks';
+    }
+}
+
+function renderBoardsSidebar() {
+    const list = document.getElementById('boardsList');
+    if (!list) return;
+
+    list.innerHTML = '';
+    boards.forEach(board => {
+        const li = document.createElement('li');
+        li.className = `board-item ${board.id === currentBoardId ? 'active' : ''}`;
+        li.innerHTML = `
+            <span>
+                <span class="board-item-icon">📋</span>
+                ${escapeHtml(board.name)}
+            </span>
+            ${boards.length > 1 ? '<button class="board-delete-btn" title="Delete Board">×</button>' : ''}
+        `;
+
+        li.addEventListener('click', () => switchBoard(board.id));
+
+        const delBtn = li.querySelector('.board-delete-btn');
+        if (delBtn) {
+            delBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteBoard(board.id);
+            });
+        }
+
+        list.appendChild(li);
+    });
+}
+
+// === TASK MANAGEMENT ===
+
 // Firestore Subscription
-function subscribeToTasks() {
-    const q = query(collection(db, COLLECTION_NAME), orderBy("createdAt", "desc"));
+function subscribeToTasks(boardId) {
+    if (tasksUnsubscribe) {
+        tasksUnsubscribe(); // Unsubscribe from previous query
+        tasksUnsubscribe = null;
+    }
+
+    if (!boardId) {
+        renderEmptyBoard();
+        return;
+    }
+
+    // Filter by boardId
+    // Note: We need a composite index on boardId ASC, createdAt DESC usually.
+    // If usage fails, check console for index creation link.
+    const q = query(
+        collection(db, COLLECTION_TASKS),
+        where("boardId", "==", boardId),
+        orderBy("createdAt", "desc") // Secondary sort, main is client-side 'order'
+    );
 
     // Show loading state
     Object.values(columns).forEach(col => {
         if (col) col.innerHTML = '<div class="loading-spinner">Loading tasks...</div>';
     });
 
-    onSnapshot(q, (snapshot) => {
+    tasksUnsubscribe = onSnapshot(q, (snapshot) => {
         tasks = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -70,10 +221,23 @@ function subscribeToTasks() {
         renderBoard();
     }, (error) => {
         console.error("Error fetching tasks:", error);
+
+        // Handle Missing Index gracefully-ish (or manual fix required)
+        if (error.code === 'failed-precondition') {
+            console.warn("Missing Index? Check console link.");
+        }
+
         Object.values(columns).forEach(col => {
             if (col) col.innerHTML = '<div class="loading-spinner" style="color: var(--danger-color)">Error loading tasks</div>';
         });
     });
+}
+
+function renderEmptyBoard() {
+    Object.values(columns).forEach(col => {
+        if (col) col.innerHTML = '';
+    });
+    Object.keys(counts).forEach(k => { if (counts[k]) counts[k].textContent = 0; });
 }
 
 // Rendering
@@ -146,14 +310,18 @@ function createCardElement(task) {
 
 // Task Operations
 async function addTask(title, description, status = 'todo', color = '') {
+    if (!currentBoardId) {
+        alert("No board selected!");
+        return false;
+    }
+
     try {
-        // Default order: max order + 1000, or Date.now() if lazy
-        // Let's use Date.now() for simplicity as it always increases
-        await addDoc(collection(db, COLLECTION_NAME), {
+        await addDoc(collection(db, COLLECTION_TASKS), {
             title,
             description,
             status,
             color,
+            boardId: currentBoardId,
             order: Date.now(),
             createdAt: serverTimestamp()
         });
@@ -166,7 +334,7 @@ async function addTask(title, description, status = 'todo', color = '') {
 }
 
 async function moveTask(taskId, newStatus, newOrder) {
-    const taskRef = doc(db, COLLECTION_NAME, taskId);
+    const taskRef = doc(db, COLLECTION_TASKS, taskId);
     try {
         await updateDoc(taskRef, {
             status: newStatus,
@@ -179,7 +347,7 @@ async function moveTask(taskId, newStatus, newOrder) {
 
 
 async function updateTask(taskId, title, description, status, color) {
-    const taskRef = doc(db, COLLECTION_NAME, taskId);
+    const taskRef = doc(db, COLLECTION_TASKS, taskId);
     try {
         await updateDoc(taskRef, {
             title,
@@ -198,7 +366,7 @@ async function updateTask(taskId, title, description, status, color) {
 
 async function deleteTask(taskId) {
     try {
-        await deleteDoc(doc(db, COLLECTION_NAME, taskId));
+        await deleteDoc(doc(db, COLLECTION_TASKS, taskId));
     } catch (e) {
         console.error("Error deleting task: ", e);
         alert("Failed to delete task.");
@@ -265,31 +433,22 @@ function setupDragAndDrop() {
 
             // Safe defaults
             const prevOrder = prevCard ? getOrder(prevCard.dataset.id) : 0;
-            // If nextCard exists, use its order. If there is no next card, we are at bottom.
-            // If at bottom, we want a larger number. 
-            // However, our logic: New = (Prev + Next)/2
-            // Case 1: Insert at Top. Prev=null(0). Next=Exists(1000). New = 500.
-            // Case 2: Insert at Bottom. Prev=Exists(1000). Next=null. New = 1000 + 1000 = 2000.
-            // Case 3: Middle. Prev=1000. Next=2000. New=1500.
+            // logic same as before...
 
             let newOrder;
             if (!prevCard && !nextCard) {
-                // Only item in list
                 newOrder = Date.now();
             } else if (!prevCard) {
-                // Top of list
                 const nextOrder = getOrder(nextCard.dataset.id);
-                newOrder = nextOrder - 10000; // Arbitrary gap
+                newOrder = nextOrder - 10000;
             } else if (!nextCard) {
-                // Bottom of list
                 newOrder = prevOrder + 10000;
             } else {
-                // Middle
                 const nextOrder = getOrder(nextCard.dataset.id);
                 newOrder = (prevOrder + nextOrder) / 2;
             }
 
-            // Optimistic update local model to prevent jitter on snapshot
+            // Optimistic update local model
             updateLocalTask(taskId, newStatus, newOrder);
 
             await moveTask(taskId, newStatus, newOrder);
@@ -366,6 +525,11 @@ function setupModal() {
     const modalTitle = document.querySelector('.modal-title');
 
     function openModal() {
+        if (!currentBoardId) {
+            alert('Please select or create a board first.');
+            return;
+        }
+
         isEditing = false;
         currentTaskId = null;
         modalTitle.textContent = 'Add New Task';
@@ -385,9 +549,9 @@ function setupModal() {
         modalOverlay.classList.remove('active');
     }
 
-    openBtn.addEventListener('click', openModal);
-    closeBtn.addEventListener('click', closeModal);
-    cancelBtn.addEventListener('click', closeModal);
+    if (openBtn) openBtn.addEventListener('click', openModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
 
     // Close on click outside
     modalOverlay.addEventListener('click', (e) => {
@@ -433,6 +597,7 @@ function escapeHtml(text) {
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }

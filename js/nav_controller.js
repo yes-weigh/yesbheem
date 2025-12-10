@@ -153,9 +153,15 @@ class NavigationController {
             const scripts = tempDiv.querySelectorAll('script');
             const scriptContents = [];
             scripts.forEach(script => {
+                let src = script.src;
+                if (src) {
+                    // Check if it already has params
+                    src += (src.includes('?') ? '&' : '?') + 't=' + Date.now();
+                }
+
                 const scriptInfo = {
                     type: script.src ? 'src' : 'inline',
-                    content: script.src || script.textContent,
+                    content: src || script.textContent,
                     isModule: script.type === 'module'
                 };
                 scriptContents.push(scriptInfo);

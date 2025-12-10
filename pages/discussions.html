@@ -1,48 +1,62 @@
-<div class="discussions-container">
-    <div class="kanban-header">
-        <h2>Tasks</h2>
-        <button id="openAddTaskBtn" class="add-task-btn">
-            <span>+</span> Add New Task
-        </button>
-    </div>
+<div class="discussions-layout">
+    <!-- Boards Sidebar -->
+    <aside class="boards-sidebar">
+        <div class="boards-header">
+            <h3>Boards</h3>
+            <button id="createBoardBtn" class="icon-btn" title="Create Board">+</button>
+        </div>
+        <ul id="boardsList" class="boards-list">
+            <!-- Board items injected here -->
+        </ul>
+    </aside>
 
-    <div class="kanban-board">
-        <!-- To Do Column -->
-        <div class="kanban-column" data-status="todo">
-            <div class="column-header">
-                <span class="column-title">
-                    <span style="color: #64748b;">⭕</span> To Do
-                </span>
-                <span class="task-count" id="todo-count">0</span>
-            </div>
-            <div class="column-content" id="todo-list">
-                <!-- Tasks will be injected here -->
-            </div>
+    <!-- Main Content -->
+    <div class="board-main-content">
+        <div class="kanban-header">
+            <h2 id="currentBoardTitle">Tasks</h2>
+            <button id="openAddTaskBtn" class="add-task-btn">
+                <span>+</span> Add New Task
+            </button>
         </div>
 
-        <!-- In Progress Column -->
-        <div class="kanban-column" data-status="inprogress">
-            <div class="column-header">
-                <span class="column-title">
-                    <span style="color: #3b82f6;">⏳</span> In Progress
-                </span>
-                <span class="task-count" id="inprogress-count">0</span>
+        <div class="kanban-board">
+            <!-- To Do Column -->
+            <div class="kanban-column" data-status="todo">
+                <div class="column-header">
+                    <span class="column-title">
+                        <span style="color: #64748b;">⭕</span> To Do
+                    </span>
+                    <span class="task-count" id="todo-count">0</span>
+                </div>
+                <div class="column-content" id="todo-list">
+                    <!-- Tasks will be injected here -->
+                </div>
             </div>
-            <div class="column-content" id="inprogress-list">
-                <!-- Tasks will be injected here -->
-            </div>
-        </div>
 
-        <!-- Done Column -->
-        <div class="kanban-column" data-status="done">
-            <div class="column-header">
-                <span class="column-title">
-                    <span style="color: #22c55e;">✅</span> Done
-                </span>
-                <span class="task-count" id="done-count">0</span>
+            <!-- In Progress Column -->
+            <div class="kanban-column" data-status="inprogress">
+                <div class="column-header">
+                    <span class="column-title">
+                        <span style="color: #3b82f6;">⏳</span> In Progress
+                    </span>
+                    <span class="task-count" id="inprogress-count">0</span>
+                </div>
+                <div class="column-content" id="inprogress-list">
+                    <!-- Tasks will be injected here -->
+                </div>
             </div>
-            <div class="column-content" id="done-list">
-                <!-- Tasks will be injected here -->
+
+            <!-- Done Column -->
+            <div class="kanban-column" data-status="done">
+                <div class="column-header">
+                    <span class="column-title">
+                        <span style="color: #22c55e;">✅</span> Done
+                    </span>
+                    <span class="task-count" id="done-count">0</span>
+                </div>
+                <div class="column-content" id="done-list">
+                    <!-- Tasks will be injected here -->
+                </div>
             </div>
         </div>
     </div>
