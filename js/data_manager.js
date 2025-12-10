@@ -565,12 +565,6 @@ class DataManager {
             });
         }
 
-        // Dynamic Target Calculation?
-        // If we assume every row represents a dealer, and every active district has a target...
-        // For now, let's keep a static high target or leave it blank. 
-        // Or calculate specific target based on active dealers?
-
-
         // Sort dealers by sales (highest first)
         aggregated.dealers.sort((a, b) => b.sales - a.sales);
 
@@ -583,6 +577,39 @@ class DataManager {
         }
 
         return aggregated;
+    }
+
+    /**
+     * Aggregate dealer sales by state
+     * @param {Array} dealers - List of dealer objects
+     */
+    aggregateByState(dealers) {
+        if (!dealers || dealers.length === 0) return [];
+
+        const stateMap = {};
+
+        // 1. Initialize with ALL states having 0 sales
+        const allStates = this.getAllStateNames();
+        allStates.forEach(name => {
+            stateMap[name] = { name: name, totalSales: 0 };
+        });
+
+        // 2. Aggregate sales by state
+        dealers.forEach(dealer => {
+            let rawState = dealer.state || 'Unknown';
+            let stateKey = this.normalizeStateName(rawState);
+
+            if (!stateMap[stateKey]) {
+                stateMap[stateKey] = { name: stateKey, totalSales: 0 };
+            }
+            stateMap[stateKey].totalSales += dealer.sales || 0;
+        });
+
+        // Convert to array and sort by totalSales
+        const statesArray = Object.values(stateMap);
+        statesArray.sort((a, b) => b.totalSales - a.totalSales);
+
+        return statesArray;
     }
 }
 

@@ -247,7 +247,7 @@ class MapInteractions {
             // Show states aggregated from all dealers
             if (this.currentData && this.currentData.dealers) {
                 console.log('Aggregating states from dealers...');
-                const statesData = this.aggregateByState(this.currentData.dealers);
+                const statesData = this.dataManager.aggregateByState(this.currentData.dealers);
                 console.log('States data:', statesData);
                 html = UIRenderer.renderDistrictSalesList(statesData);
             }
@@ -255,30 +255,6 @@ class MapInteractions {
 
         console.log('Updating dealerSection with html length:', html.length);
         dealerSection.innerHTML = html;
-    }
-
-    /**
-     * Aggregate dealer sales by state
-     */
-    aggregateByState(dealers) {
-        if (!dealers || dealers.length === 0) return [];
-
-        const stateMap = {};
-
-        // Aggregate sales by state
-        dealers.forEach(dealer => {
-            const state = dealer.state || 'Unknown';
-            if (!stateMap[state]) {
-                stateMap[state] = { name: state, totalSales: 0 };
-            }
-            stateMap[state].totalSales += dealer.sales || 0;
-        });
-
-        // Convert to array and sort by totalSales
-        const statesArray = Object.values(stateMap);
-        statesArray.sort((a, b) => b.totalSales - a.totalSales);
-
-        return statesArray;
     }
 }
 

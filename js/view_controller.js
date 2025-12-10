@@ -77,7 +77,7 @@ class ViewController {
             if (!dealerSection || !this.indiaData) return;
 
             if (view === 'states') {
-                const statesData = this.aggregateByState(this.indiaData.dealers);
+                const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
                 dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(statesData);
             } else {
                 dealerSection.innerHTML = UIRenderer.renderDealerList(this.indiaData.dealers);
@@ -85,42 +85,6 @@ class ViewController {
         } else if (this.mapInteractions) {
             this.mapInteractions.handleViewChange(view);
         }
-    }
-
-    aggregateByState(dealers) {
-        const stateMap = {};
-
-        // 1. Initialize with ALL states having 0 sales
-        if (this.dataManager && this.dataManager.getAllStateNames) {
-            const allStates = this.dataManager.getAllStateNames();
-            allStates.forEach(name => {
-                stateMap[name] = { name: name, totalSales: 0 };
-            });
-        }
-
-        if (!dealers) dealers = [];
-
-        // 2. Aggregate sales by state
-        dealers.forEach(dealer => {
-            let rawState = dealer.state || 'Unknown';
-            let stateKey = 'Unknown';
-            if (this.dataManager && this.dataManager.normalizeStateName) {
-                stateKey = this.dataManager.normalizeStateName(rawState);
-            } else {
-                stateKey = rawState.trim();
-            }
-
-            if (!stateMap[stateKey]) {
-                stateMap[stateKey] = { name: stateKey, totalSales: 0 };
-            }
-            stateMap[stateKey].totalSales += dealer.sales || 0;
-        });
-
-        // Convert to array and sort by totalSales
-        const statesArray = Object.values(stateMap);
-        statesArray.sort((a, b) => b.totalSales - a.totalSales);
-
-        return statesArray;
     }
 
     async loadIndiaMap() {
@@ -196,7 +160,7 @@ class ViewController {
 
         if (dealerSection) {
             if (activeView === 'states' && this.currentView === 'india' && data.dealers) {
-                const statesData = this.aggregateByState(data.dealers);
+                const statesData = this.dataManager.aggregateByState(data.dealers);
                 dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(statesData);
             } else {
                 dealerSection.innerHTML = UIRenderer.renderDealerList(data.dealers);
