@@ -3,8 +3,8 @@
         <div class="dashboard-title"
             style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
             <div>
-                <h2>Sales Dashboard</h2>
-                <span class="subtitle">Overview</span>
+                <h2 id="dashboard-region-title">India</h2>
+                <span class="subtitle">Sales Dashboard</span>
             </div>
             <button id="openDataInputBtn" class="btn-data">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -23,6 +23,7 @@
             <div class="kpi-card card-blue shimmer"></div>
             <div class="kpi-card card-orange shimmer"></div>
             <div class="kpi-card card-cyan shimmer"></div>
+            <div class="kpi-card card-teal shimmer"></div>
             <div class="kpi-card card-purple shimmer"></div>
             <div class="kpi-card card-red shimmer"></div>
         </div>
@@ -39,12 +40,8 @@
             <div class="modal-header">
                 <h3>Input Data</h3>
                 <div style="flex:1"></div>
-                <div class="api-config" style="margin-right: 20px;">
-                    <input type="text" id="sheetApiUrl" class="form-control"
-                        value="https://script.google.com/macros/s/AKfycbwCS5-GtpPLFU1rKEKc9CnS81O1ebkzqKR1PkOYZSBe_Gxbi6KSZ96bRhyB3b0v9Hy2gw/exec"
-                        placeholder="Paste Google Apps Script URL here..."
-                        style="width: 250px; font-size: 0.8rem; padding: 6px;">
-                </div>
+                <input type="hidden" id="sheetApiUrl"
+                    value="https://script.google.com/macros/s/AKfycbwCS5-GtpPLFU1rKEKc9CnS81O1ebkzqKR1PkOYZSBe_Gxbi6KSZ96bRhyB3b0v9Hy2gw/exec">
                 <button class="close-modal-btn" id="closeDataModalIcon">&times;</button>
             </div>
             <div class="modal-body">
@@ -87,78 +84,136 @@
 
 <script>
     console.log('Dashboard script loaded');
+
+    // Helper for robust key matching (Moved to top for scope safety)
+    function normalizeName(name) {
+        if (!name) return '';
+        return name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+    }
+
+    let lastReceivedStats = null;
+
+    // Separate Render Function to avoid race conditions
+    function renderStats(data) {
+        if (!data) return;
+        lastReceivedStats = data; // Keep latest copy
+
+        const container = document.getElementById('dashboard-stats');
+        if (!container) return;
+
+        // Merge Data Logic
+        const entityName = data.name; // e.g. "Kerala", "India"
+        let key = normalizeName(entityName);
+        if (key === 'panindia') key = 'india';
+
+        let tableInfo = window.dashboardDataCache ? window.dashboardDataCache[key] : null;
+
+        // Fallbacks/Overrides
+        // Population
+        let displayPop = tableInfo && tableInfo.pop ? tableInfo.pop : (data.name === 'India' || data.name === 'Pan India' ? '144 Cr' : 'N/A');
+
+        // GDP
+        let displayGDP = tableInfo && tableInfo.gdp ? tableInfo.gdp : 'N/A';
+
+        // Target
+        let displayTargetStr = tableInfo && tableInfo.target ? tableInfo.target : formatCurrency(data.monthlyTarget);
+        let targetVal = parseFloat((displayTargetStr + '').replace(/[^0-9.]/g, ''));
+
+        // Achievement Calculation
+        let displayAchievement = '0%';
+        if (tableInfo && tableInfo.target && targetVal > 0) {
+            // Assuming map sales is raw Rupees, and Table Target is in Crores (as per header)
+            // 1 Crore = 10,000,000
+            let salesCr = data.currentSales / 10000000;
+            let ach = (salesCr / targetVal) * 100;
+            displayAchievement = ach.toFixed(1) + '%';
+        } else {
+            displayAchievement = formatNumber(data.achievement) + '%';
+        }
+
+        // Update dashboard title
+        const titleElement = document.getElementById('dashboard-region-title');
+        if (titleElement) {
+            // Replace 'Pan India' with just 'India'
+            let displayName = data.name || 'India';
+            if (displayName === 'Pan India') {
+                displayName = 'India';
+            }
+            titleElement.textContent = displayName;
+        }
+
+        container.innerHTML = `
+            <!-- Population -->
+            <div class="kpi-card card-blue">
+                <div class="kpi-content">
+                    <span class="kpi-value">${displayPop}</span>
+                    <span class="kpi-label">Population</span>
+                </div>
+                <div class="kpi-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                </div>
+            </div>
+
+            <!-- GDP (New) -->
+            <div class="kpi-card card-teal">
+                <div class="kpi-content">
+                    <span class="kpi-value">${displayGDP}</span>
+                    <span class="kpi-label">GDP</span>
+                </div>
+                <div class="kpi-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+            </div>
+
+            <!-- Dealers -->
+            <div class="kpi-card card-orange">
+                <div class="kpi-content">
+                    <span class="kpi-value">${data.dealerCount}</span>
+                    <span class="kpi-label">Active Dealers</span>
+                </div>
+                <div class="kpi-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3zM9 9h6v6H9z"/></svg>
+                </div>
+            </div>
+
+            <!-- Sales -->
+            <div class="kpi-card card-cyan">
+                <div class="kpi-content">
+                    <span class="kpi-value">₹${formatCurrency(data.currentSales)}</span>
+                    <span class="kpi-label">Total Sales</span>
+                </div>
+                <div class="kpi-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+            </div>
+
+            <!-- Achievement -->
+            <div class="kpi-card card-purple">
+                <div class="kpi-content">
+                    <span class="kpi-value">${displayAchievement}</span>
+                    <span class="kpi-label">Achievement</span>
+                </div>
+                <div class="kpi-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                </div>
+            </div>
+
+            <!-- Target -->
+            <div class="kpi-card card-red">
+                <div class="kpi-content">
+                    <span class="kpi-value">${displayTargetStr}</span>
+                    <span class="kpi-label">Target</span>
+                </div>
+                <div class="kpi-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                </div>
+            </div>
+        `;
+    }
+
     window.addEventListener('message', function (event) {
         if (event.data.type === 'STATS_UPDATE') {
-            const data = event.data.data;
-            const container = document.getElementById('dashboard-stats');
-
-            if (container) {
-                // Population data stored in code
-                const populationData = {
-                    'Kerala': '3.5 Cr',
-                    'India': '144 Cr',
-                    'INDIA': '144 Cr',
-                    'Pan India': '144 Cr'
-                };
-                const population = populationData[data.name] || '3.5 Cr';
-
-                container.innerHTML = `
-                    <!-- Population -->
-                    <div class="kpi-card card-blue">
-                        <div class="kpi-content">
-                            <span class="kpi-value">${population}</span>
-                            <span class="kpi-label">Population</span>
-                        </div>
-                        <div class="kpi-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                        </div>
-                    </div>
-
-                    <!-- Dealers -->
-                    <div class="kpi-card card-orange">
-                        <div class="kpi-content">
-                            <span class="kpi-value">${data.dealerCount}</span>
-                            <span class="kpi-label">Active Dealers</span>
-                        </div>
-                        <div class="kpi-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3zM9 9h6v6H9z"/></svg>
-                        </div>
-                    </div>
-
-                    <!-- Sales -->
-                    <div class="kpi-card card-cyan">
-                        <div class="kpi-content">
-                            <span class="kpi-value">₹${formatCurrency(data.currentSales)}</span>
-                            <span class="kpi-label">Total Sales</span>
-                        </div>
-                        <div class="kpi-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                        </div>
-                    </div>
-
-                    <!-- Achievement -->
-                    <div class="kpi-card card-purple">
-                        <div class="kpi-content">
-                            <span class="kpi-value">${formatNumber(data.achievement)}%</span>
-                            <span class="kpi-label">Achievement</span>
-                        </div>
-                        <div class="kpi-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        </div>
-                    </div>
-
-                    <!-- Target -->
-                    <div class="kpi-card card-red">
-                        <div class="kpi-content">
-                            <span class="kpi-value">₹${formatCurrency(data.monthlyTarget)}</span>
-                            <span class="kpi-label">Target</span>
-                        </div>
-                        <div class="kpi-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
-                        </div>
-                    </div>
-                `;
-            }
+            renderStats(event.data.data);
         }
     });
 
@@ -410,7 +465,19 @@
 
     function updateTable(data) {
         tableBody.innerHTML = ''; // Clear current
+        window.dashboardDataCache = {}; // Reset cache
+
         data.forEach(row => {
+            // Cache data for dashboard ID match
+            if (row.name) {
+                const key = normalizeName(row.name);
+                window.dashboardDataCache[key] = {
+                    pop: row.population,
+                    gdp: row.gdp,
+                    target: row.target
+                };
+            }
+
             // Re-create row structure.
             // Note: Since we are loading arbitrary data, we might assume standard structure.
             // We use the helper but passing raw values.
@@ -434,6 +501,12 @@
             `;
             tableBody.appendChild(tr);
         });
+
+        // Race condition fix: Re-render dashboard if map already sent stats
+        if (lastReceivedStats) {
+            console.log('Cache populated, re-rendering stats...');
+            renderStats(lastReceivedStats);
+        }
     }
 
     if (btnInit) btnInit.addEventListener('click', () => syncSheet('initialize'));
@@ -444,19 +517,36 @@
     if (closeIcon) closeIcon.addEventListener('click', closeModal);
     if (closeBtn) closeBtn.addEventListener('click', closeModal);
     if (addRowBtn) addRowBtn.addEventListener('click', () => addRow('state', 'New State')); // Placeholder logic just in case
+
+    // Auto-fetch on load (works with SPA navigation)
+    function initDashboardData() {
+        if (getApiUrl(true)) {
+            console.log('Auto-fetching dashboard data...');
+            downloadSheet();
+        }
+    }
+
+    // Check if already loaded (for SPA) or wait for DOMContentLoaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initDashboardData, 500);
+        });
+    } else {
+        // Document already loaded (SPA navigation case)
+        setTimeout(initDashboardData, 500);
+    }
 </script>
 
 <style>
     /* New Dashboard Header */
     .dashboard-header {
         background: var(--bg-secondary);
-        padding: 1rem 1.5rem;
+        padding: 0.5rem 0.4rem;
         display: flex;
         flex-direction: column;
-        gap: 1rem;
+        gap: 0.5rem;
         border-bottom: 1px solid var(--border-light);
-        min-height: 120px;
-        /* Double height approx */
+        min-height: 85px;
     }
 
     .dashboard-title h2 {
@@ -475,74 +565,111 @@
 
     .kpi-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 1rem;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 0.35rem;
         width: 100%;
+        max-width: 100%;
+        margin: 0;
     }
 
     .kpi-card {
-        padding: 1rem;
-        border-radius: 6px;
-        /* Slightly rounded, VS Code style */
+        padding: 0.4rem 0.5rem;
+        border-radius: 4px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         color: white;
-        /* Always white text on colored cards */
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        transition: transform 0.2s;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        transition: all 0.2s ease;
         position: relative;
         overflow: hidden;
+        min-height: 50px;
+        max-height: 50px;
+    }
+
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, transparent 50%);
+        pointer-events: none;
     }
 
     .kpi-card:hover {
-        transform: translateY(-2px);
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
     }
 
-    /* Card Colors */
+    /* Card Colors with enhanced gradients */
     .card-blue {
-        background: linear-gradient(135deg, #4299e1, #3182ce);
+        background: linear-gradient(135deg, #4299e1 0%, #3182ce 50%, #2c5aa0 100%);
     }
 
     .card-orange {
-        background: linear-gradient(135deg, #ed8936, #dd6b20);
+        background: linear-gradient(135deg, #ed8936 0%, #dd6b20 50%, #c05621 100%);
     }
 
     .card-cyan {
-        background: linear-gradient(135deg, #0bc5ea, #0987a0);
+        background: linear-gradient(135deg, #0bc5ea 0%, #0987a0 50%, #067a8e 100%);
+    }
+
+    .card-teal {
+        background: linear-gradient(135deg, #38b2ac 0%, #319795 50%, #2c7a7b 100%);
     }
 
     .card-purple {
-        background: linear-gradient(135deg, #9f7aea, #805ad5);
+        background: linear-gradient(135deg, #9f7aea 0%, #805ad5 50%, #6b46c1 100%);
     }
 
     .card-red {
-        background: linear-gradient(135deg, #f56565, #e53e3e);
+        background: linear-gradient(135deg, #f56565 0%, #e53e3e 50%, #c53030 100%);
     }
 
     .kpi-content {
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
+        gap: 0.2rem;
+        z-index: 1;
+        flex: 1;
+        min-width: 0;
     }
 
     .kpi-value {
-        font-size: 1.4rem;
+        font-size: 0.8rem;
         font-weight: 700;
-        line-height: 1.2;
+        line-height: 1.1;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .kpi-label {
-        font-size: 0.75rem;
+        font-size: 0.5rem;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        opacity: 0.9;
-        font-weight: 500;
+        letter-spacing: 0.1px;
+        opacity: 0.85;
+        font-weight: 600;
+        white-space: nowrap;
     }
 
     .kpi-icon {
-        opacity: 0.25;
-        transform: scale(1.5);
+        opacity: 0.12;
+        transform: scale(1.1);
+        z-index: 0;
+        flex-shrink: 0;
+    }
+
+    .kpi-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .kpi-card:hover .kpi-icon {
+        opacity: 0.2;
     }
 
     /* Dashboard Iframe */
@@ -588,15 +715,40 @@
         }
     }
 
-    @media (max-width: 1000px) {
+    @media (max-width: 1400px) {
         .kpi-grid {
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.875rem;
+        }
+
+        .kpi-card {
+            min-height: 80px;
+            max-height: 80px;
+        }
+
+        .kpi-value {
+            font-size: 1.3rem;
         }
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 768px) {
         .kpi-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .kpi-card {
+            padding: 1rem;
+            min-height: 75px;
+            max-height: 75px;
+        }
+
+        .kpi-value {
+            font-size: 1.15rem;
+        }
+
+        .kpi-label {
+            font-size: 0.7rem;
         }
     }
 
