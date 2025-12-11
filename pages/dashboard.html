@@ -1,8 +1,20 @@
 <div class="page-container" id="dashboard-page">
     <div class="dashboard-header">
-        <div class="dashboard-title">
-            <h2>Sales Dashboard</h2>
-            <span class="subtitle">Overview</span>
+        <div class="dashboard-title"
+            style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div>
+                <h2>Sales Dashboard</h2>
+                <span class="subtitle">Overview</span>
+            </div>
+            <button id="openDataInputBtn" class="btn-data">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    style="margin-right: 6px;">
+                    <path d="M12 2c5.52 0 10 2 10 4.5S17.52 11 12 11 2 9 2 6.5 6.48 2 12 2z"></path>
+                    <path d="M2 12.5C2 15 6.48 17 12 17s10-2 10-4.5"></path>
+                    <path d="M2 6.5v11c0 2.5 4.48 4.5 10 4.5s10-2 10-4.5v-11"></path>
+                </svg>
+                Data
+            </button>
         </div>
 
         <!-- Injected Stats Grid -->
@@ -19,6 +31,57 @@
     <!-- Map Content -->
     <div class="dashboard-iframe-wrapper">
         <iframe src="pages/map.html" frameborder="0" class="dashboard-iframe" title="Sales Intelligence Map"></iframe>
+    </div>
+
+    <!-- Data Input Modal -->
+    <div class="modal-overlay" id="dataInputModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Input Data</h3>
+                <div style="flex:1"></div>
+                <div class="api-config" style="margin-right: 20px;">
+                    <input type="text" id="sheetApiUrl" class="form-control"
+                        value="https://script.google.com/macros/s/AKfycbwCS5-GtpPLFU1rKEKc9CnS81O1ebkzqKR1PkOYZSBe_Gxbi6KSZ96bRhyB3b0v9Hy2gw/exec"
+                        placeholder="Paste Google Apps Script URL here..."
+                        style="width: 250px; font-size: 0.8rem; padding: 6px;">
+                </div>
+                <button class="close-modal-btn" id="closeDataModalIcon">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="data-table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 20%">Scope</th>
+                                <th style="width: 25%">Name</th>
+                                <th style="width: 15%">Population</th>
+                                <th style="width: 15%">GDP (Cr)</th>
+                                <th style="width: 15%">Target (Cr)</th>
+                                <th style="width: 50px"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody">
+                            <!-- Rows injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <button id="addRowBtn" class="btn-add-row" style="display: none;">+ Add Row</button>
+            </div>
+            <div class="modal-footer" style="justify-content: space-between;">
+                <div class="sync-actions">
+                    <button class="btn-secondary" id="btnInitSheet" title="Fill Sheet with current zero-rows">Initialize
+                        Sheet</button>
+                    <button class="btn-primary" id="btnUploadSheet"
+                        title="Upload current table to Sheet">Upload</button>
+                    <button class="btn-secondary" id="btnDownloadSheet" title="Fetch data from Sheet">Download</button>
+                    <span id="syncStatus"
+                        style="font-size: 0.8rem; color: var(--text-muted); margin-left: 10px;"></span>
+                </div>
+                <div>
+                    <button class="btn-cancel" id="closeDataModalBtn">Close</button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -114,6 +177,273 @@
         else if (num >= 1000) return (num / 1000).toFixed(1) + ' k';
         return num.toFixed(0);
     }
+
+    // Data Constants
+    const STATES_LIST = [
+        "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
+        "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh",
+        "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+        "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
+    ];
+
+    const KERALA_DISTRICTS_LIST = [
+        "Alappuzha", "Ernakulam", "Idukki", "Kannur", "Kasaragod", "Kollam", "Kottayam",
+        "Kozhikode", "Malappuram", "Palakkad", "Pathanamthitta", "Thiruvananthapuram", "Thrissur", "Wayanad"
+    ];
+
+    // Data Modal Logic
+    const modal = document.getElementById('dataInputModal');
+    const openBtn = document.getElementById('openDataInputBtn');
+    const closeIcon = document.getElementById('closeDataModalIcon');
+    const closeBtn = document.getElementById('closeDataModalBtn');
+    const tableBody = document.getElementById('dataTableBody');
+
+    function openModal() {
+        if (modal) {
+            modal.classList.add('active');
+            if (getApiUrl(true)) {
+                // Auto-sync on open if connected
+                downloadSheet();
+            } else if (tableBody && tableBody.children.length === 0) {
+                populateTable();
+            }
+        }
+    }
+
+    function closeModal() {
+        if (modal) modal.classList.remove('active');
+    }
+
+    function populateTable() {
+        // 1. India Row
+        addRow('india', 'India');
+
+        // 2. States
+        STATES_LIST.forEach(state => {
+            addRow('state', state);
+        });
+
+        // 3. Kerala Districts
+        KERALA_DISTRICTS_LIST.forEach(dist => {
+            addRow('district', dist);
+        });
+    }
+
+    function addRow(scope, name) {
+        const tr = document.createElement('tr');
+
+        let scopeLabel = scope === 'india' ? 'India' : (scope === 'state' ? 'State' : 'Kerala District');
+
+        tr.innerHTML = `
+            <td>
+                <input type="text" value="${scopeLabel}" disabled style="opacity: 0.7; font-weight: 500;">
+                <input type="hidden" class="row-scope" value="${scope}">
+            </td>
+            <td>
+                <input type="text" class="row-name" value="${name}" disabled style="opacity: 0.9; font-weight: 600;">
+            </td>
+            <td><input type="text" class="row-pop" placeholder="0"></td>
+            <td><input type="text" class="row-gdp" placeholder="0"></td>
+            <td><input type="text" class="row-target" placeholder="0"></td>
+            <td class="action-cell">
+                <!-- No delete for preset rows -->
+            </td>
+        `;
+        tableBody.appendChild(tr);
+    }
+
+    // Expose to window for inline onclicks
+    window.deleteRow = function (btn) {
+        // ... previous logic if needed, but we hid the delete button for preset rows
+        // Keeping implementation in case we re-enable dynamic rows later
+        const row = btn.closest('tr');
+        if (tableBody.children.length > 1) {
+            row.remove();
+        }
+    }
+
+    // --- Realtime / Auto-Sync Logic ---
+
+    // Debounce Utility
+    function debounce(func, wait) {
+        let timeout;
+        return function (...args) {
+            const context = this;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(context, args), wait);
+        };
+    }
+
+    // Auto-Upload Handler (Debounced)
+    const autoUpload = debounce(() => {
+        if (getApiUrl(true)) { // Pass true to suppress alert if just typing
+            syncSheet('upload');
+        }
+    }, 2000); // 2 seconds delay
+
+    // Attach Input Listeners for Auto-Upload
+    if (tableBody) {
+        tableBody.addEventListener('input', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+                setSyncStatus('Saving...', 'normal');
+                autoUpload();
+            }
+        });
+    }
+
+    window.handleScopeChange = function (select) {
+        const row = select.closest('tr');
+        const nameSelect = row.querySelector('.row-name');
+        const val = select.value;
+
+        nameSelect.disabled = false;
+
+        if (val === 'india') {
+            nameSelect.value = 'India';
+            nameSelect.disabled = true;
+        }
+        // Note: For preset table, we don't actually need to change options dynamically 
+        // because we hardcoded the rows with correct names.
+        // This function is kept for potential dynamic rows or correcting manual changes.
+    }
+
+    // --- Google Sheets Sync Logic ---
+    const btnInit = document.getElementById('btnInitSheet');
+    const btnUpload = document.getElementById('btnUploadSheet');
+    const btnDownload = document.getElementById('btnDownloadSheet');
+    const syncStatus = document.getElementById('syncStatus');
+    const apiUrlInput = document.getElementById('sheetApiUrl');
+
+    function getApiUrl(suppressAlert = false) {
+        const url = apiUrlInput.value.trim();
+        if (!url) {
+            if (!suppressAlert) alert('Please enter your Google Apps Script Web App URL first.');
+            return null;
+        }
+        return url;
+    }
+
+    function setSyncStatus(msg, type = 'info') {
+        syncStatus.textContent = msg;
+        syncStatus.style.color = type === 'error' ? '#ef4444' : (type === 'success' ? '#22c55e' : 'var(--text-muted)');
+    }
+
+    function getTableData() {
+        const rows = [];
+        document.querySelectorAll('#dataTableBody tr').forEach(tr => {
+            rows.push({
+                scope: tr.querySelector('.row-scope').value,
+                name: tr.querySelector('.row-name').value,
+                population: tr.querySelector('.row-pop').value,
+                gdp: tr.querySelector('.row-gdp').value,
+                target: tr.querySelector('.row-target').value
+            });
+        });
+        return rows;
+    }
+
+    async function syncSheet(action) {
+        const url = getApiUrl();
+        if (!url) return;
+
+        setSyncStatus(action === 'initialize' ? 'Initializing...' : 'Uploading...');
+
+        try {
+            const payload = {
+                action: action,
+                data: getTableData()
+            };
+
+            // Using no-cors might block reading response in some cases, but GAS supports CORS if implemented right.
+            // However, typical simple POST to GAS often requires standard fetch.
+            // If CORS issues arise, we might need a workaround or ensure GAS script returns correct headers (it usually does for Web Apps).
+            const response = await fetch(url, {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8', // Plain text to avoid OPTIONS preflight issues with GAS
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (result.status === 'success') {
+                setSyncStatus(result.message || 'Success!', 'success');
+            } else {
+                setSyncStatus('Error: ' + (result.error || 'Unknown'), 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            setSyncStatus('Network/CORS Error. Check Console.', 'error');
+        }
+    }
+
+    async function downloadSheet() {
+        const url = getApiUrl();
+        if (!url) return;
+
+        setSyncStatus('Downloading...');
+        try {
+            // Changed to POST to avoid doGet conflicts in Apps Script
+            const response = await fetch(url, {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8',
+                },
+                body: JSON.stringify({ action: 'download' })
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                updateTable(result.data);
+                setSyncStatus('Data loaded!', 'success');
+            } else {
+                setSyncStatus('Error: ' + (result.error || 'Unknown'), 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            setSyncStatus('Download failed.', 'error');
+        }
+    }
+
+    function updateTable(data) {
+        tableBody.innerHTML = ''; // Clear current
+        data.forEach(row => {
+            // Re-create row structure.
+            // Note: Since we are loading arbitrary data, we might assume standard structure.
+            // We use the helper but passing raw values.
+            const tr = document.createElement('tr');
+
+            // Map scope label for display
+            let scopeLabel = row.scope === 'india' ? 'India' : (row.scope === 'state' ? 'State' : (row.scope === 'district' ? 'Kerala District' : row.scope));
+
+            tr.innerHTML = `
+                <td>
+                    <input type="text" value="${scopeLabel}" disabled style="opacity: 0.7; font-weight: 500;">
+                    <input type="hidden" class="row-scope" value="${row.scope}">
+                </td>
+                <td>
+                    <input type="text" class="row-name" value="${row.name}" disabled style="opacity: 0.9; font-weight: 600;">
+                </td>
+                <td><input type="text" class="row-pop" value="${row.population}" placeholder="0"></td>
+                <td><input type="text" class="row-gdp" value="${row.gdp}" placeholder="0"></td>
+                <td><input type="text" class="row-target" value="${row.target}" placeholder="0"></td>
+                <td class="action-cell"></td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    }
+
+    if (btnInit) btnInit.addEventListener('click', () => syncSheet('initialize'));
+    if (btnUpload) btnUpload.addEventListener('click', () => syncSheet('upload'));
+    if (btnDownload) btnDownload.addEventListener('click', downloadSheet);
+
+    if (openBtn) openBtn.addEventListener('click', openModal);
+    if (closeIcon) closeIcon.addEventListener('click', closeModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (addRowBtn) addRowBtn.addEventListener('click', () => addRow('state', 'New State')); // Placeholder logic just in case
 </script>
 
 <style>
@@ -268,5 +598,203 @@
         .kpi-grid {
             grid-template-columns: 1fr;
         }
+    }
+
+    /* Data Button */
+    .btn-data {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .btn-data:hover {
+        background: var(--bg-tertiary, #e2e8f0);
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(2px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s;
+    }
+
+    .modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Modal Styles */
+    .modal {
+        background: var(--bg-secondary);
+        width: 900px;
+        /* Wider for table */
+        max-width: 95vw;
+        border-radius: 8px;
+        padding: 24px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        display: flex;
+        flex-direction: column;
+        max-height: 90vh;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    .close-modal-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--text-muted);
+        cursor: pointer;
+    }
+
+    .modal-body {
+        flex: 1;
+        overflow-y: auto;
+        margin-bottom: 20px;
+    }
+
+    /* Data Table Styles */
+    .data-table-wrapper {
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+
+    .data-table th {
+        background: var(--bg-tertiary);
+        text-align: left;
+        padding: 10px 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--border-color);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        box-shadow: 0 1px 0 var(--border-color);
+    }
+
+    .data-table td {
+        border-bottom: 1px solid var(--border-color);
+        padding: 0;
+        background: var(--bg-panel);
+    }
+
+    .data-table td input,
+    .data-table td select {
+        width: 100%;
+        padding: 10px 12px;
+        border: none;
+        background: transparent;
+        color: var(--text-main);
+        font-family: inherit;
+        outline: none;
+    }
+
+    .data-table td input:focus,
+    .data-table td select:focus {
+        background: var(--bg-tertiary);
+        box-shadow: inset 0 0 0 2px var(--primary-color);
+    }
+
+    .action-cell {
+        text-align: center;
+        width: 40px;
+    }
+
+    .btn-delete-row {
+        background: none;
+        border: none;
+        color: #ef4444;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 4px;
+        opacity: 0.7;
+    }
+
+    .btn-delete-row:hover {
+        opacity: 1;
+        background: rgba(239, 68, 68, 0.1);
+    }
+
+    .btn-add-row {
+        background: transparent;
+        border: 1px dashed var(--border-color);
+        color: var(--primary-color);
+        width: 100%;
+        padding: 8px;
+        margin-top: 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .btn-add-row:hover {
+        background: rgba(59, 130, 246, 0.05);
+        border-color: var(--primary-color);
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    .btn-cancel {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--text-main);
+    }
+
+    .btn-save {
+        background: #3b82f6;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        color: white;
     }
 </style>
