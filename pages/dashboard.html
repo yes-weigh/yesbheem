@@ -216,11 +216,14 @@
     }
 
     // Data Constants
+
     const STATES_LIST = [
-        "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
-        "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh",
-        "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
-        "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
+        "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar",
+        "Chandigarh", "Chhattisgarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Goa", "Gujarat",
+        "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka", "Kerala",
+        "Ladakh", "Lakshadweep", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
+        "Nagaland", "Odisha", "Puducherry", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+        "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
     ];
 
     const KERALA_DISTRICTS_LIST = [
@@ -386,9 +389,30 @@
         setSyncStatus(action === 'initialize' ? 'Initializing...' : 'Uploading...');
 
         try {
+            let dataToSend;
+
+            if (action === 'initialize') {
+                dataToSend = [];
+                // 1. India
+                dataToSend.push({ scope: 'india', name: 'India', population: '', gdp: '', target: '' });
+
+                // 2. States
+                STATES_LIST.forEach(state => {
+                    dataToSend.push({ scope: 'state', name: state, population: '', gdp: '', target: '' });
+                });
+
+                // 3. Kerala Districts
+                KERALA_DISTRICTS_LIST.forEach(dist => {
+                    dataToSend.push({ scope: 'district', name: dist, population: '', gdp: '', target: '' });
+                });
+            } else {
+                // For upload, read from table
+                dataToSend = getTableData();
+            }
+
             const payload = {
                 action: action,
-                data: getTableData()
+                data: dataToSend
             };
 
             // Using no-cors might block reading response in some cases, but GAS supports CORS if implemented right.
