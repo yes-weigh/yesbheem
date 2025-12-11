@@ -121,15 +121,20 @@ class UIRenderer {
             if (!val) return 0;
             if (typeof val === 'number') return val;
             let str = val.replace(/,/g, '');
-            let mult = 1;
-            if (str.toLowerCase().includes('cr')) mult = 10000000; // stored as unit? or just scale?
-            // Actually, if data is "3000" and header says (Cr), treat as 3000.
-            // If data says "30 Cr", parse it.
+            // Simple Parsing assuming value is the main number content
             let num = parseFloat(str.replace(/[^0-9.]/g, ''));
-            return isNaN(num) ? 0 : num; // We only need relative scale for bars
+            return isNaN(num) ? 0 : num;
         };
 
-        const maxVal = states.reduce((max, s) => Math.max(max, parseVal(s[metricKey])), 0);
+        // Calculate Totals and Max
+        let totalVal = 0;
+        let maxVal = 0;
+
+        states.forEach(s => {
+            const v = parseVal(s[metricKey]);
+            totalVal += v;
+            if (v > maxVal) maxVal = v;
+        });
 
         let html = `<h3 style="margin:0.25rem 0; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">${title}</h3>`;
         html += '<div class="district-sales-list">';
@@ -137,6 +142,12 @@ class UIRenderer {
         states.forEach((state, i) => {
             const val = state[metricKey] || 'N/A';
             const numVal = parseVal(val);
+
+            // Percentage of Total
+            const percentTotal = totalVal > 0 ? (numVal / totalVal) * 100 : 0;
+            const percentText = percentTotal.toFixed(1) + '%';
+
+            // Bar relative to Max
             const barWidth = maxVal > 0 ? (numVal / maxVal) * 100 : 0;
 
             html += `
@@ -145,10 +156,11 @@ class UIRenderer {
                     <div class="district-info">
                         <div class="district-row">
                             <span class="district-name" title="${state.name}">${state.name}</span>
+                            <span class="district-percentage" style="color: #3b82f6;">${percentText}</span>
                             <span class="district-sales" style="color: var(--text-main);">${val}</span>
                         </div>
                         <div class="contribution-bar-bg">
-                            <div class="contribution-bar-fill" style="width:${barWidth}%; background-color: var(--primary-color);"></div>
+                            <div class="contribution-bar-fill" style="width:${barWidth}%"></div>
                         </div>
                     </div>
                 </div>
