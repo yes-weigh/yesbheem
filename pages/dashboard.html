@@ -167,6 +167,14 @@
                 </div>
             </div>
 
+            <!-- Target -->
+            <div class="kpi-card card-red">
+                <div class="kpi-content">
+                    <span class="kpi-value">${displayTargetStr}</span>
+                    <span class="kpi-label">Target</span>
+                </div>
+            </div>
+
             <!-- Sales -->
             <div class="kpi-card card-cyan">
                 <div class="kpi-content">
@@ -180,14 +188,6 @@
                 <div class="kpi-content">
                     <span class="kpi-value">${displayAchievement}</span>
                     <span class="kpi-label">Achievement</span>
-                </div>
-            </div>
-
-            <!-- Target -->
-            <div class="kpi-card card-red">
-                <div class="kpi-content">
-                    <span class="kpi-value">${displayTargetStr}</span>
-                    <span class="kpi-label">Target</span>
                 </div>
             </div>
         `;
@@ -555,8 +555,8 @@
     }
 
     .kpi-card {
-        padding: 0.4rem 0.5rem;
-        border-radius: 4px;
+        padding: 0.5rem 0.5rem;
+        border-radius: 6px;
         display: flex;
         justify-content: center;
         /* Center content since icon is gone */
@@ -566,8 +566,8 @@
         transition: all 0.2s ease;
         position: relative;
         overflow: hidden;
-        min-height: 50px;
-        max-height: 50px;
+        min-height: 80px;
+        max-height: 80px;
         text-align: center;
         /* Center text */
     }
@@ -623,9 +623,9 @@
     }
 
     .kpi-value {
-        font-size: 0.8rem;
+        font-size: 1.25rem;
         font-weight: 700;
-        line-height: 1.1;
+        line-height: 1.2;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
         white-space: nowrap;
         overflow: hidden;
@@ -633,12 +633,13 @@
     }
 
     .kpi-label {
-        font-size: 0.5rem;
+        font-size: 0.7rem;
         text-transform: uppercase;
-        letter-spacing: 0.1px;
-        opacity: 0.85;
+        letter-spacing: 0.4px;
+        opacity: 0.9;
         font-weight: 600;
         white-space: nowrap;
+        margin-top: 0.2rem;
     }
 
     /* Dashboard Iframe */
