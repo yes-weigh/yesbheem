@@ -13,7 +13,11 @@
     <!-- Main Content -->
     <div class="board-main-content">
         <div class="kanban-header">
-            <h2 id="currentBoardTitle">Tasks</h2>
+            <div class="board-title-wrapper" style="display: flex; align-items: center; gap: 10px;">
+                <h2 id="currentBoardTitle">Tasks</h2>
+                <button id="editBoardBtn" class="icon-btn" style="color: white; opacity: 0.8;"
+                    title="Rename Board">✎</button>
+            </div>
             <button id="openAddTaskBtn" class="add-task-btn">
                 <span>+</span> Add New Task
             </button>
@@ -67,6 +71,32 @@
     <div class="modal">
         <div class="modal-header">
             <h3 class="modal-title">Add New Task</h3>
+
+            <select id="taskStatus" class="form-control header-status-select">
+                <option value="todo">To Do</option>
+                <option value="inprogress">In Progress</option>
+                <option value="done">Done</option>
+            </select>
+
+            <div class="color-picker header-color-picker">
+                <input type="radio" name="taskColor" id="color-none" value="" checked>
+                <label for="color-none" class="color-option color-none" title="None"></label>
+
+                <input type="radio" name="taskColor" id="color-red" value="#ef4444">
+                <label for="color-red" class="color-option" style="--opt-color: #ef4444" title="Red"></label>
+
+                <input type="radio" name="taskColor" id="color-yellow" value="#eab308">
+                <label for="color-yellow" class="color-option" style="--opt-color: #eab308" title="Yellow"></label>
+
+                <input type="radio" name="taskColor" id="color-green" value="#22c55e">
+                <label for="color-green" class="color-option" style="--opt-color: #22c55e" title="Green"></label>
+
+                <input type="radio" name="taskColor" id="color-blue" value="#3b82f6">
+                <label for="color-blue" class="color-option" style="--opt-color: #3b82f6" title="Blue"></label>
+
+                <input type="radio" name="taskColor" id="color-purple" value="#a855f7">
+                <label for="color-purple" class="color-option" style="--opt-color: #a855f7" title="Purple"></label>
+            </div>
             <button class="close-modal" id="closeModalBtn">&times;</button>
         </div>
         <div class="modal-body">
@@ -79,36 +109,6 @@
                 <label for="taskDescription">Description</label>
                 <textarea id="taskDescription" class="form-control" rows="3" placeholder="Enter task details..."
                     autocomplete="off"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Color Label</label>
-                <div class="color-picker">
-                    <input type="radio" name="taskColor" id="color-none" value="" checked>
-                    <label for="color-none" class="color-option color-none" title="None"></label>
-
-                    <input type="radio" name="taskColor" id="color-red" value="#ef4444">
-                    <label for="color-red" class="color-option" style="--opt-color: #ef4444" title="Red"></label>
-
-                    <input type="radio" name="taskColor" id="color-yellow" value="#eab308">
-                    <label for="color-yellow" class="color-option" style="--opt-color: #eab308" title="Yellow"></label>
-
-                    <input type="radio" name="taskColor" id="color-green" value="#22c55e">
-                    <label for="color-green" class="color-option" style="--opt-color: #22c55e" title="Green"></label>
-
-                    <input type="radio" name="taskColor" id="color-blue" value="#3b82f6">
-                    <label for="color-blue" class="color-option" style="--opt-color: #3b82f6" title="Blue"></label>
-
-                    <input type="radio" name="taskColor" id="color-purple" value="#a855f7">
-                    <label for="color-purple" class="color-option" style="--opt-color: #a855f7" title="Purple"></label>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="taskStatus">Status</label>
-                <select id="taskStatus" class="form-control">
-                    <option value="todo">To Do</option>
-                    <option value="inprogress">In Progress</option>
-                    <option value="done">Done</option>
-                </select>
             </div>
         </div>
         <div class="modal-footer">

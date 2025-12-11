@@ -63,6 +63,20 @@ export class TaskService {
         }
     }
 
+    async updateBoard(boardId, name) {
+        try {
+            const boardRef = doc(db, COLLECTION_BOARDS, boardId);
+            await updateDoc(boardRef, {
+                name: name,
+                updatedAt: serverTimestamp()
+            });
+            return true;
+        } catch (e) {
+            console.error("Error updating board:", e);
+            return false;
+        }
+    }
+
     subscribeToTasks(boardId, onUpdate, onError) {
         if (this.tasksUnsubscribe) {
             this.tasksUnsubscribe();

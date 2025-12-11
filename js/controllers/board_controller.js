@@ -48,6 +48,22 @@ class BoardController {
                 }
             });
         }
+
+        const editBoardBtn = document.getElementById('editBoardBtn');
+        if (editBoardBtn) {
+            editBoardBtn.addEventListener('click', () => {
+                const currentBoardId = this.taskService.currentBoardId;
+                if (!currentBoardId) return;
+
+                const currentBoard = this.taskService.boards.find(b => b.id === currentBoardId);
+                const currentName = currentBoard ? currentBoard.name : '';
+
+                const newName = prompt("Rename board:", currentName);
+                if (newName && newName.trim() && newName !== currentName) {
+                    this.taskService.updateBoard(currentBoardId, newName.trim());
+                }
+            });
+        }
     }
 
     renderBoardsSidebar(boards) {
@@ -196,11 +212,20 @@ class BoardController {
         `;
 
         if (hasDescription) {
+            // Icon only needed if we don't show text, but keeping it is fine. 
+            // Actually, if we show text, maybe icon is redundant? 
+            // Let's keep icon in footer for consistency, but maybe user wants to see text.
             badgesHtml += `
                 <div class="card-badge" title="This card has a description">
                     <span class="card-badge-icon">≡</span>
                 </div>
             `;
+        }
+
+        // Description Preview Section
+        let descriptionHtml = '';
+        if (hasDescription) {
+            descriptionHtml = `<div class="card-description-preview">${this.escapeHtml(task.description)}</div>`;
         }
 
         // Mock Checklist Badge
@@ -225,6 +250,7 @@ class BoardController {
             ${labelHtml}
             <div class="card-content">
                 <div class="card-title">${this.escapeHtml(task.title)}</div>
+                ${descriptionHtml}
             </div>
             <div class="card-footer-row">
                 ${badgesHtml}
