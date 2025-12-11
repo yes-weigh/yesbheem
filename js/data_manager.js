@@ -4,7 +4,8 @@
  */
 class DataManager {
     constructor() {
-        this.sheetUrl = 'https://docs.google.com/spreadsheets/d/1K6Aq1BVmqt7y8PfOecO8FteKO1ONtXEeTc6DIZUUnwA/gviz/tq?tqx=out:csv';
+        // Explicitly fetch 'Sheet1' for sales data
+        this.sheetUrl = 'https://docs.google.com/spreadsheets/d/1K6Aq1BVmqt7y8PfOecO8FteKO1ONtXEeTc6DIZUUnwA/gviz/tq?tqx=out:csv&sheet=Sheet1';
         // URL for the 'zip_codes' sheet CSV export
         this.zipSheetUrl = 'https://docs.google.com/spreadsheets/d/1K6Aq1BVmqt7y8PfOecO8FteKO1ONtXEeTc6DIZUUnwA/gviz/tq?tqx=out:csv&sheet=zip_codes';
 

@@ -66,11 +66,6 @@
             </div>
             <div class="modal-footer" style="justify-content: space-between;">
                 <div class="sync-actions">
-                    <button class="btn-secondary" id="btnInitSheet" title="Fill Sheet with current zero-rows">Initialize
-                        Sheet</button>
-                    <button class="btn-primary" id="btnUploadSheet"
-                        title="Upload current table to Sheet">Upload</button>
-                    <button class="btn-secondary" id="btnDownloadSheet" title="Fetch data from Sheet">Download</button>
                     <span id="syncStatus"
                         style="font-size: 0.8rem; color: var(--text-muted); margin-left: 10px;"></span>
                 </div>
@@ -348,9 +343,6 @@
     }
 
     // --- Google Sheets Sync Logic ---
-    const btnInit = document.getElementById('btnInitSheet');
-    const btnUpload = document.getElementById('btnUploadSheet');
-    const btnDownload = document.getElementById('btnDownloadSheet');
     const syncStatus = document.getElementById('syncStatus');
     const apiUrlInput = document.getElementById('sheetApiUrl');
 
@@ -515,9 +507,7 @@
         }
     }
 
-    if (btnInit) btnInit.addEventListener('click', () => syncSheet('initialize'));
-    if (btnUpload) btnUpload.addEventListener('click', () => syncSheet('upload'));
-    if (btnDownload) btnDownload.addEventListener('click', downloadSheet);
+
 
     if (openBtn) openBtn.addEventListener('click', openModal);
     if (closeIcon) closeIcon.addEventListener('click', closeModal);
