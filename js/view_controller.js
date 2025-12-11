@@ -65,7 +65,7 @@ class ViewController {
         }
     }
 
-    handleViewChange(view) {
+    async handleViewChange(view) {
         // Update active state in dropdown if triggered programmatically
         const viewSelector = document.getElementById('view-selector');
         if (viewSelector && viewSelector.value !== view) {
@@ -74,14 +74,110 @@ class ViewController {
 
         if (this.currentView === 'india') {
             const dealerSection = document.getElementById('dealer-section');
-            if (!dealerSection || !this.indiaData) return;
+            if (!dealerSection) return;
 
             if (view === 'states') {
-                const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
-                dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(statesData);
-            } else {
-                dealerSection.innerHTML = UIRenderer.renderDealerList(this.indiaData.dealers);
+                if (this.indiaData && this.indiaData.dealers) {
+                    const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
+                    dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(statesData);
+                }
+            } else if (view === 'dealers') {
+                if (this.indiaData && this.indiaData.dealers) {
+                    dealerSection.innerHTML = UIRenderer.renderDealerList(this.indiaData.dealers);
+                }
+            } else if (view === 'gdp' || view === 'population') {
+                // Loading state
+                dealerSection.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-muted);">Loading Data...</div>';
+
+                try {
+                    const data = await this.dataManager.getStatesWithKPIs();
+
+                    // Sort Data
+                    const parseVal = (v) => {
+                        if (!v) return -1;
+                        let str = v.toString().replace(/,/g, '');
+                        return parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
+                    };
+
+                    data.sort((a, b) => parseVal(b[view]) - parseVal(a[view]));
+
+                    const title = view === 'gdp' ? 'States by GDP' : 'States by Population';
+                    dealerSection.innerHTML = UIRenderer.renderStateMetricList(data, view, title);
+
+                } catch (e) {
+                    console.error('Error rendering KPI view:', e);
+                    dealerSection.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-error);">Failed to load data</div>';
+                }
             }
+        } else if (this.currentView === 'state') {
+            // New handling for State (Kerala) Drill Down
+            const dealerSection = document.getElementById('dealer-section');
+            if (!dealerSection) return;
+
+            // Assuming current displayed data is in mapInteractions or we fetch it
+            // Currently logic depends on mapInteractions holding state data
+            if (!this.mapInteractions || !this.mapInteractions.currentData) {
+                // Try to reload or just return?
+                // If view changed, mapInteractions might be loaded.
+            }
+
+            if (view === 'dealers') {
+                // Explicitly handle dealers view for state
+                if (this.mapInteractions && this.mapInteractions.currentData) {
+                    dealerSection.innerHTML = UIRenderer.renderDealerList(this.mapInteractions.currentData.dealers);
+                }
+            } else if (view === 'districts') {
+                // Show default district sales list
+                if (this.mapInteractions && this.mapInteractions.currentData) {
+                    let districtArray = [];
+                    // Check if we have districtInsights in interactions (full dataset)
+                    if (this.mapInteractions.districtInsights && Object.keys(this.mapInteractions.districtInsights).length > 0) {
+                        districtArray = Object.values(this.mapInteractions.districtInsights).filter(d => typeof d === 'object' && d.name);
+                    }
+                    // Fallback to currentData dealers logic if missing? No, district view needs district stats.
+
+                    if (districtArray.length > 0) {
+                        // Sort by sales descending (default)
+                        districtArray.sort((a, b) => (b.currentSales || 0) - (a.currentSales || 0));
+
+                        // Map to expected format for renderer {name, totalSales} if needed, 
+                        // but renderDistrictSalesList expects {name, totalSales}
+                        // Our districtStats object has 'currentSales', so we map it.
+                        const fmtData = districtArray.map(d => ({
+                            name: d.name,
+                            totalSales: d.currentSales
+                        }));
+                        dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(fmtData);
+                    }
+                }
+            } else if (view === 'gdp' || view === 'population') {
+                if (this.mapInteractions) {
+                    // Use district insights if available (more reliable for whole state view)
+                    let districtArray = [];
+                    if (this.mapInteractions.districtInsights && Object.keys(this.mapInteractions.districtInsights).length > 0) {
+                        districtArray = Object.values(this.mapInteractions.districtInsights).filter(d => typeof d === 'object' && d.name);
+                    } else if (this.mapInteractions.currentData) {
+                        // Fallback? Unlikely to work for single state object unless it has district list
+                    }
+
+                    if (districtArray.length > 0) {
+                        // Sort Data
+                        const parseVal = (v) => {
+                            if (!v) return -1;
+                            let str = v.toString().replace(/,/g, '');
+                            return parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
+                        };
+
+                        districtArray.sort((a, b) => parseVal(b[view]) - parseVal(a[view]));
+
+                        const title = view === 'gdp' ? 'Districts by GDP' : 'Districts by Population';
+                        dealerSection.innerHTML = UIRenderer.renderStateMetricList(districtArray, view, title);
+                    } else {
+                        dealerSection.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-muted);">Data loading...</div>';
+                    }
+                }
+            }
+
         } else if (this.mapInteractions) {
             this.mapInteractions.handleViewChange(view);
         }
@@ -223,6 +319,19 @@ class ViewController {
                         districtsOption.hidden = true;
                         districtsOption.disabled = true;
                     }
+
+                    // Show GDP and Population again
+                    const gdpOption = viewSelector.querySelector('option[value="gdp"]');
+                    const popOption = viewSelector.querySelector('option[value="population"]');
+                    if (gdpOption) {
+                        gdpOption.hidden = false;
+                        gdpOption.disabled = false;
+                    }
+                    if (popOption) {
+                        popOption.hidden = false;
+                        popOption.disabled = false;
+                    }
+
                     viewSelector.value = 'states'; // Auto-select States
                 }
 
@@ -262,6 +371,18 @@ class ViewController {
             if (districtsOption) {
                 districtsOption.hidden = true;
                 districtsOption.disabled = true;
+            }
+
+            // Also hide GDP and Population when viewing a specific state
+            const gdpOption = viewSelector.querySelector('option[value="gdp"]');
+            const popOption = viewSelector.querySelector('option[value="population"]');
+            if (gdpOption) {
+                gdpOption.hidden = true;
+                gdpOption.disabled = true;
+            }
+            if (popOption) {
+                popOption.hidden = true;
+                popOption.disabled = true;
             }
         }
 
@@ -311,6 +432,23 @@ class ViewController {
                 if (districtsOption) {
                     districtsOption.hidden = false;
                     districtsOption.disabled = false;
+                }
+
+                // Hide GDP/Pop for drill down too - REVERTED for Kerala
+                // Now we want them visible for Kerala
+                const gdpOption = viewSelector.querySelector('option[value="gdp"]');
+                const popOption = viewSelector.querySelector('option[value="population"]');
+
+                // Only show if it IS Kerala, otherwise hide (default behavior for other states drilled down?)
+                // Actually the current drill down logic is primarily for Kerala.
+                // If we expand later, we might want to check data availability.
+                if (gdpOption) {
+                    gdpOption.hidden = false;
+                    gdpOption.disabled = false;
+                }
+                if (popOption) {
+                    popOption.hidden = false;
+                    popOption.disabled = false;
                 }
             }
 
@@ -373,6 +511,19 @@ class ViewController {
                 districtsOption.hidden = true;
                 districtsOption.disabled = true;
             }
+
+            // Show GDP and Population again
+            const gdpOption = viewSelector.querySelector('option[value="gdp"]');
+            const popOption = viewSelector.querySelector('option[value="population"]');
+            if (gdpOption) {
+                gdpOption.hidden = false;
+                gdpOption.disabled = false;
+            }
+            if (popOption) {
+                popOption.hidden = false;
+                popOption.disabled = false;
+            }
+
             viewSelector.value = 'states'; // Auto-select States
         }
 

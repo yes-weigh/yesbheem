@@ -61,6 +61,19 @@ class MapInteractions {
                             districtsOption.hidden = false;
                             districtsOption.disabled = false;
                         }
+
+                        // Show GDP and Population again
+                        const gdpOption = viewSelector.querySelector('option[value="gdp"]');
+                        const popOption = viewSelector.querySelector('option[value="population"]');
+                        if (gdpOption) {
+                            gdpOption.hidden = false;
+                            gdpOption.disabled = false;
+                        }
+                        if (popOption) {
+                            popOption.hidden = false;
+                            popOption.disabled = false;
+                        }
+
                         viewSelector.value = 'districts';
                     }
                     // Re-render sidebar
@@ -103,6 +116,18 @@ class MapInteractions {
             if (districtsOption) {
                 districtsOption.hidden = true;
                 districtsOption.disabled = true;
+            }
+
+            // Also hide GDP and Population when viewing a specific district
+            const gdpOption = viewSelector.querySelector('option[value="gdp"]');
+            const popOption = viewSelector.querySelector('option[value="population"]');
+            if (gdpOption) {
+                gdpOption.hidden = true;
+                gdpOption.disabled = true;
+            }
+            if (popOption) {
+                popOption.hidden = true;
+                popOption.disabled = true;
             }
         }
         // Re-render sidebar to match new view

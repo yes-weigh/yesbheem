@@ -108,6 +108,58 @@ class UIRenderer {
     }
 
     /**
+     * Render a generic list of states sorted by a metric (GDP/Population)
+     * @param {Array} states - Array of objects {name, gdp, population}
+     * @param {string} metricKey - Key to display ('gdp' or 'population')
+     * @param {string} title - Header title
+     */
+    static renderStateMetricList(states, metricKey, title) {
+        if (!states || states.length === 0) return '';
+
+        // Helper to parse value (handles "3.5 Cr", "1000", etc)
+        const parseVal = (val) => {
+            if (!val) return 0;
+            if (typeof val === 'number') return val;
+            let str = val.replace(/,/g, '');
+            let mult = 1;
+            if (str.toLowerCase().includes('cr')) mult = 10000000; // stored as unit? or just scale?
+            // Actually, if data is "3000" and header says (Cr), treat as 3000.
+            // If data says "30 Cr", parse it.
+            let num = parseFloat(str.replace(/[^0-9.]/g, ''));
+            return isNaN(num) ? 0 : num; // We only need relative scale for bars
+        };
+
+        const maxVal = states.reduce((max, s) => Math.max(max, parseVal(s[metricKey])), 0);
+
+        let html = `<h3 style="margin:0.25rem 0; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">${title}</h3>`;
+        html += '<div class="district-sales-list">';
+
+        states.forEach((state, i) => {
+            const val = state[metricKey] || 'N/A';
+            const numVal = parseVal(val);
+            const barWidth = maxVal > 0 ? (numVal / maxVal) * 100 : 0;
+
+            html += `
+                <div class="district-item-compact">
+                    <div class="district-rank">${i + 1}</div>
+                    <div class="district-info">
+                        <div class="district-row">
+                            <span class="district-name" title="${state.name}">${state.name}</span>
+                            <span class="district-sales" style="color: var(--text-main);">${val}</span>
+                        </div>
+                        <div class="contribution-bar-bg">
+                            <div class="contribution-bar-fill" style="width:${barWidth}%; background-color: var(--primary-color);"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        return html;
+    }
+
+    /**
      * Render view toggle for switching between Dealers and Districts
      * @param {string} activeView - 'dealers' or 'districts'
      * @returns {string} HTML string

@@ -23,7 +23,12 @@ class DataManager {
         this.rawDataCache = null; // Cache the raw sheet data
         this.rawDataTimestamp = null;
 
+        // KPI Data (GDP, Pop, Target)
+        this.kpiAppsScriptUrl = 'https://script.google.com/macros/s/AKfycbwCS5-GtpPLFU1rKEKc9CnS81O1ebkzqKR1PkOYZSBe_Gxbi6KSZ96bRhyB3b0v9Hy2gw/exec';
+        this.kpiDataCache = null;
+
         // Initialize by loading zip sheet
+
         this.sheetZips = new Set(); // Track what is IN the sheet
         this.loadZipSheet();
     }
@@ -119,6 +124,100 @@ class DataManager {
             // Return cached data if available, even if stale
             return this.rawDataCache || [];
         }
+    }
+
+    /**
+     * Fetch KPI Data (GDP, Population, Target) from Apps Script
+     */
+    async fetchKPIData() {
+        if (this.kpiDataCache) {
+            return this.kpiDataCache;
+        }
+
+        try {
+            console.log('Fetching KPI data from Apps Script...');
+            const response = await fetch(this.kpiAppsScriptUrl, {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8',
+                },
+                body: JSON.stringify({ action: 'download' })
+            });
+
+            const result = await response.json();
+            if (result.status === 'success') {
+                // Index by normalized name for easy lookup
+                this.kpiDataCache = {};
+                result.data.forEach(item => {
+                    const key = this.normalizeKey(item.name);
+                    this.kpiDataCache[key] = item;
+                });
+                console.log('KPI Data loaded:', Object.keys(this.kpiDataCache).length, 'entries');
+                return this.kpiDataCache;
+            }
+        } catch (e) {
+            console.warn('Failed to fetch KPI data:', e);
+        }
+        return {};
+    }
+
+    normalizeKey(name) {
+        if (!name) return '';
+        return name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+    }
+
+    /**
+     * Get aggregated state data enriched with KPIs (GDP, Pop)
+     */
+    async getStatesWithKPIs() {
+        // Ensure both data sources are ready
+        const [dealers, kpiData] = await Promise.all([
+            this.fetchSheetData(),
+            this.fetchKPIData() // Now this works
+        ]);
+
+        // 1. Aggregate Sales by State
+        const stateMap = {};
+        const allStates = this.getAllStateNames();
+
+        allStates.forEach(name => {
+            stateMap[name] = {
+                name: name,
+                sales: 0,
+                dealerCount: 0,
+                population: 'N/A',
+                gdp: 'N/A'
+            };
+        });
+
+        // Fill Sales
+        if (dealers && Array.isArray(dealers)) {
+            dealers.forEach(row => {
+                const rawState = row['billing_state'] || row['shipping_state'] || 'Unknown';
+                const stateName = this.normalizeStateName(rawState);
+                const sales = parseFloat(row['sales'] || 0);
+
+                if (stateMap[stateName]) {
+                    stateMap[stateName].sales += isNaN(sales) ? 0 : sales;
+                    stateMap[stateName].dealerCount += 1;
+                }
+            });
+        }
+
+        // Fill KPIs
+        Object.values(stateMap).forEach(state => {
+            const key = this.normalizeKey(state.name);
+            const kpi = kpiData ? kpiData[key] : null;
+            if (kpi) {
+                state.population = kpi.population || 'N/A';
+                state.gdp = kpi.gdp || 'N/A';
+            }
+        });
+
+        const results = Object.values(stateMap);
+        // Default Sort by Sales
+        return results.sort((a, b) => b.sales - a.sales);
     }
 
     /**
@@ -266,17 +365,25 @@ class DataManager {
             ];
         }
 
+        // Pre-fetch KPI data
+        const kpiDataMap = await this.fetchKPIData();
+
         // Initialize stats
         for (const district of targets) {
             // Capitalize first letter for display name if no specific mapping exists
             const displayName = district.charAt(0).toUpperCase() + district.slice(1).replace(/-/g, ' ');
 
+            // Enrich with KPI data
+            const key = this.normalizeKey(district); // e.g., 'kasaragod'
+            const kpi = kpiDataMap ? kpiDataMap[key] : null;
+
             districtStats[district] = {
                 name: displayName, // Fallback, normally needs a map but this is okay for now
-                population: 'N/A',
+                population: kpi ? kpi.population : 'N/A',
+                gdp: kpi ? kpi.gdp : 'N/A',
                 dealerCount: 0,
                 currentSales: 0,
-                monthlyTarget: 500000,
+                monthlyTarget: kpi && kpi.target ? kpi.target : 500000,
                 dealers: []
             };
         }
