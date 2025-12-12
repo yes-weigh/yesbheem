@@ -6,15 +6,31 @@
                 <h2 id="dashboard-region-title">India</h2>
                 <span class="subtitle">Sales Dashboard</span>
             </div>
-            <button id="openDataInputBtn" class="btn-data">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    style="margin-right: 6px;">
-                    <path d="M12 2c5.52 0 10 2 10 4.5S17.52 11 12 11 2 9 2 6.5 6.48 2 12 2z"></path>
-                    <path d="M2 12.5C2 15 6.48 17 12 17s10-2 10-4.5"></path>
-                    <path d="M2 6.5v11c0 2.5 4.48 4.5 10 4.5s10-2 10-4.5v-11"></path>
-                </svg>
-                Data
-            </button>
+            <div class="header-controls" style="display: flex; gap: 10px; align-items: center;">
+                <div class="data-source-container">
+                    <select id="reportSelector" class="report-select">
+                        <option value="" disabled selected>Loading Reports...</option>
+                    </select>
+                </div>
+                <button id="uploadReportBtn" class="btn-data btn-upload">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right: 6px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    Upload
+                </button>
+                <button id="openDataInputBtn" class="btn-data">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right: 6px;">
+                        <path d="M12 2c5.52 0 10 2 10 4.5S17.52 11 12 11 2 9 2 6.5 6.48 2 12 2z"></path>
+                        <path d="M2 12.5C2 15 6.48 17 12 17s10-2 10-4.5"></path>
+                        <path d="M2 6.5v11c0 2.5 4.48 4.5 10 4.5s10-2 10-4.5v-11"></path>
+                    </svg>
+                    Data
+                </button>
+            </div>
         </div>
 
         <!-- Injected Stats Grid -->
@@ -75,10 +91,202 @@
             </div>
         </div>
     </div>
+
+    <!-- CSV Upload Modal -->
+    <div class="modal-overlay" id="uploadModal">
+        <div class="modal" style="width: 500px; min-height: auto;">
+            <div class="modal-header">
+                <h3>Upload Report</h3>
+                <button class="close-modal-btn" id="closeUploadModalIcon">&times;</button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 15px;">
+                <div class="form-group">
+                    <label for="reportName"
+                        style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px; display: block;">Report
+                        Name</label>
+                    <input type="text" id="reportName" placeholder="e.g. Sales 2023"
+                        style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-panel); color: var(--text-main);">
+                </div>
+                <div class="form-group">
+                    <label for="csvFile"
+                        style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px; display: block;">CSV
+                        File</label>
+                    <input type="file" id="csvFile" accept=".csv"
+                        style="width: 100%; padding: 10px; border: 1px dashed var(--border-color); border-radius: 4px; color: var(--text-muted);">
+                </div>
+                <div id="uploadStatus" style="font-size: 0.9rem; color: var(--text-muted); min-height: 20px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" id="closeUploadModalBtn">Cancel</button>
+                <button class="btn-data" id="submitUploadBtn"
+                    style="background: var(--primary-color); color: white; border: none;">Upload & Save</button>
+            </div>
+        </div>
+    </div>
 </div>
 
-<script>
+</div>
+</div>
+
+<script type="module" src="js/data_manager.js"></script>
+<script type="module">
     console.log('Dashboard script loaded');
+
+    // --- CSV Upload & Selection Logic ---
+    // Import DataManager if not globally available, but we attached it to window in the class file.
+    // Since it's a module running in order, window.DataManager should be set.
+
+    import { storage } from './js/services/firebase_config.js'; // Optional verification import
+
+    const initDashboard = async () => {
+        // Ensure DataManager is ready
+        if (typeof DataManager === 'undefined') {
+            console.warn('DataManager not loaded yet, retrying...');
+            setTimeout(initDashboard, 100);
+            return;
+        }
+
+        const dm = new DataManager();
+        const reportSelector = document.getElementById('reportSelector');
+        const uploadBtn = document.getElementById('uploadReportBtn');
+        const modal = document.getElementById('uploadModal');
+        const closeIcon = document.getElementById('closeUploadModalIcon');
+        const closeBtn = document.getElementById('closeUploadModalBtn');
+        const submitBtn = document.getElementById('submitUploadBtn');
+        const statusDiv = document.getElementById('uploadStatus');
+        const nameInput = document.getElementById('reportName');
+        const fileInput = document.getElementById('csvFile');
+
+        if (!uploadBtn) {
+            console.error('Upload button not found');
+            return;
+        }
+
+        console.log('Initializing Dashboard Logic');
+
+        // Load Reports
+        async function loadReports() {
+            try {
+                // Keep the first 2 options (Current & separator)
+                const reports = await dm.listReports();
+
+                // Clear existing dynamic options (keep first 2)
+                while (reportSelector.options.length > 2) {
+                    reportSelector.remove(2);
+                }
+
+                reports.forEach(report => {
+                    const opt = document.createElement('option');
+                    opt.value = report.url;
+                    // Format date
+                    const date = new Date(report.timeCreated).toLocaleDateString();
+                    opt.textContent = `${report.name} (${date})`;
+                    reportSelector.appendChild(opt);
+                });
+            } catch (e) {
+                console.error('Failed to list reports:', e);
+            }
+        }
+
+        await loadReports();
+
+        // Modal Logic
+        uploadBtn.addEventListener('click', (e) => {
+            e.preventDefault(); // Prevent any default button behavior
+            console.log('Upload button clicked');
+            modal.classList.add('active');
+        });
+
+        const closeUploadModal = () => {
+            modal.classList.remove('active');
+            statusDiv.textContent = '';
+            nameInput.value = '';
+            fileInput.value = '';
+        };
+
+        closeIcon.addEventListener('click', closeUploadModal);
+        closeBtn.addEventListener('click', closeUploadModal);
+
+        submitBtn.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            const name = nameInput.value.trim();
+
+            if (!file || !name) {
+                statusDiv.textContent = 'Please provide both a name and a file.';
+                statusDiv.style.color = 'var(--text-error)';
+                return;
+            }
+
+            try {
+                statusDiv.textContent = 'Uploading...';
+                statusDiv.style.color = 'var(--text-main)';
+                submitBtn.disabled = true;
+
+                await dm.uploadCSV(file, name);
+
+                statusDiv.textContent = 'Upload Successful!';
+                statusDiv.style.color = 'var(--text-success)';
+
+                await loadReports();
+                setTimeout(() => {
+                    closeUploadModal();
+                    submitBtn.disabled = false;
+                }, 1000);
+
+            } catch (e) {
+                statusDiv.textContent = 'Error: ' + e.message;
+                statusDiv.style.color = 'var(--text-error)';
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Selection Logic
+        reportSelector.addEventListener('change', async (e) => {
+            const val = e.target.value;
+            console.log('Report selected:', val);
+
+            const iframe = document.querySelector('.dashboard-iframe');
+
+            /* Logic for Iframe Interaction */
+            if (iframe && iframe.contentWindow && iframe.contentWindow.viewController) {
+                const mapVC = iframe.contentWindow.viewController;
+                const mapDM = mapVC.dataManager;
+
+                // Show loading indicator in parent if reasonable?
+                // document.body.style.cursor = 'wait';
+
+                try {
+                    if (val === 'current') {
+                        // Reset to default sheet
+                        await mapDM.loadData('Kerala', [], 'RESET');
+                    } else {
+                        // Load specific CSV URL
+                        await mapDM.loadData('Kerala', [], val);
+                    }
+
+                    // Refresh View
+                    await mapVC.loadIndiaOverview();
+
+                    // Also trigger update for current view to refresh dealer list etc
+                    if (mapVC.currentView === 'india') {
+                        mapVC.handleViewChange(document.getElementById('view-selector')?.value || 'states');
+                    } else {
+                        mapVC.showIndiaView();
+                    }
+                } catch (err) {
+                    console.error('Error switching report:', err);
+                    alert('Failed to load report. Please check console for details.\n' + err.message);
+                } finally {
+                    // document.body.style.cursor = 'default';
+                }
+            } else {
+                console.error('Map Controller not ready yet.');
+            }
+        });
+    };
+
+    // Run initialization
+    initDashboard();
 
     // Helper for robust key matching (Moved to top for scope safety)
     function normalizeName(name) {
@@ -796,6 +1004,23 @@
         display: flex;
         flex-direction: column;
         max-height: 90vh;
+    }
+
+    /* Report Select Styles */
+    .report-select {
+        padding: 8px 12px;
+        border-radius: 6px;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        font-size: 0.9rem;
+        cursor: pointer;
+        min-width: 200px;
+    }
+
+    .report-select:focus {
+        outline: none;
+        border-color: var(--primary-color);
     }
 
     .modal-header {

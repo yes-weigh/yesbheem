@@ -2,15 +2,19 @@
  * DataManager
  * Handles fetching real-time data from Google Sheets and resolving zip codes to districts.
  */
+import { storage, db } from './services/firebase_config.js';
+import { ref, uploadBytes, getDownloadURL, listAll, getMetadata } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+import { doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
 class DataManager {
     constructor() {
         // Explicitly fetch 'Sheet1' for sales data
-        this.sheetUrl = 'https://docs.google.com/spreadsheets/d/1K6Aq1BVmqt7y8PfOecO8FteKO1ONtXEeTc6DIZUUnwA/gviz/tq?tqx=out:csv&sheet=Sheet1';
+        this.sheetUrl = null; // Removed dependency on default sheet
+        this.currentDataSourceType = null; // 'sheet' or 'csv', defaults to null until selection
+        this.currentCSVUrl = null;
         // URL for the 'zip_codes' sheet CSV export
-        this.zipSheetUrl = 'https://docs.google.com/spreadsheets/d/1K6Aq1BVmqt7y8PfOecO8FteKO1ONtXEeTc6DIZUUnwA/gviz/tq?tqx=out:csv&sheet=zip_codes';
-
-        // PASTE YOUR WEB APP URL HERE
-        this.zipWriteUrl = 'https://script.google.com/macros/s/AKfycbzUJRe5EGqoFV1AIT7XyjQafGkOOXaIYAeQIbRY0JT31g-_f4jYrltxiIbE_FSDF2Sw_A/exec';
+        // this.zipSheetUrl = 'DEPRECATED';
+        // this.zipWriteUrl = 'DEPRECATED';
 
         this.zipApiUrl = 'https://api.postalpincode.in/pincode/';
 
@@ -30,40 +34,37 @@ class DataManager {
         // Initialize by loading zip sheet
 
         this.sheetZips = new Set(); // Track what is IN the sheet
-        this.loadZipSheet();
+        this.sheetZips = new Set(); // Track what is IN the remote DB
+        this.loadZipCacheFromFirebase();
     }
 
     /**
-     * Pre-load zip codes from the Google Sheet
+     * Load zip codes from Firestore (settings/zip_codes)
      */
-    async loadZipSheet() {
+    async loadZipCacheFromFirebase() {
         try {
-            console.log('Fetching zip_codes sheet...');
-            const response = await fetch(this.zipSheetUrl);
-            const csvText = await response.text();
-            // console.log('Raw CSV:', csvText.substring(0, 200)); // Debug raw
+            console.log('Fetching zip_codes from Firestore...');
+            const docRef = doc(db, "settings", "zip_codes");
+            const docSnap = await getDoc(docRef);
 
-            const data = this.parseCSV(csvText);
-            if (data.length > 0) {
-                // console.log('First row of zip data:', data[0]);
-            }
-
-            let count = 0;
-            data.forEach(row => {
-                if (row.zip && row.district) {
-                    // Clean zip
-                    let zip = row.zip.toString().replace(/\s/g, '');
-                    // Update cache if new or overwrite? Let's treat sheet as source of truth
-                    this.zipCache[zip] = row.district;
-                    this.sheetZips.add(zip); // Mark as present in sheet
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                let count = 0;
+                // Data is stored as { zip: district_name } map
+                for (const [zip, district] of Object.entries(data)) {
+                    this.zipCache[zip] = district;
+                    this.sheetZips.add(zip);
                     count++;
                 }
-            });
-            console.log(`Loaded ${count} zip codes from sheet into cache.`);
-            // Save to storage to persist across reloads even if offline
-            this.saveCacheToStorage();
+                console.log(`Loaded ${count} zip codes from Firestore into cache.`);
+                this.saveCacheToStorage();
+            } else {
+                console.log("No zip_codes document found in Firestore. Creating empty...");
+                // Create if not exists so writes don't fail later
+                await setDoc(docRef, {});
+            }
         } catch (e) {
-            console.warn('Failed to load zip_codes sheet:', e);
+            console.warn('Failed to load zip_codes from Firestore:', e);
         }
     }
 
@@ -96,38 +97,36 @@ class DataManager {
     }
 
     /**
-     * Fetches data from the Google Sheet (with caching)
+     * Fetches data from the Google Sheet (with caching) or CSV URL
      */
     async fetchSheetData() {
-        // Use cached data if it's less than 5 minutes old
-        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
-        const now = Date.now();
-
-        if (this.rawDataCache && this.rawDataTimestamp && (now - this.rawDataTimestamp) < CACHE_DURATION) {
-            console.log('Using cached sheet data');
-            return this.rawDataCache;
+        // If we are using a specific CSV URL, fetch that instead
+        if (this.currentDataSourceType === 'csv' && this.currentCSVUrl) {
+            console.log('Fetching from Custom CSV URL:', this.currentCSVUrl);
+            try {
+                const response = await fetch(this.currentCSVUrl);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const csvText = await response.text();
+                const parsed = this.parseCSV(csvText);
+                console.log(`Parsed CSV: ${parsed.length} rows.`);
+                return parsed;
+            } catch (e) {
+                console.error('Failed to fetch custom CSV (likely CORS or Network):', e);
+                // Return empty but maybe throw to let caller know?
+                throw e;
+            }
         }
 
-        try {
-            const response = await fetch(`${this.sheetUrl}&t=${Date.now()}`);
-            const csvText = await response.text();
-            const data = this.parseCSV(csvText);
-
-            // Cache the data
-            this.rawDataCache = data;
-            this.rawDataTimestamp = now;
-            console.log('Fetched and cached fresh sheet data');
-
-            return data;
-        } catch (error) {
-            console.error('Error fetching sheet data:', error);
-            // Return cached data if available, even if stale
-            return this.rawDataCache || [];
-        }
+        console.warn('No Data Source Selected.');
+        return [];
     }
 
     /**
      * Fetch KPI Data (GDP, Population, Target) from Apps Script
+     */
+    /**
+     * Fetch KPI Data (GDP, Population, Target) from Firestore
+     * Migrates from Apps Script if not present in Firestore
      */
     async fetchKPIData() {
         if (this.kpiDataCache) {
@@ -135,26 +134,43 @@ class DataManager {
         }
 
         try {
-            console.log('Fetching KPI data from Apps Script...');
-            const response = await fetch(this.kpiAppsScriptUrl, {
-                method: 'POST',
-                mode: 'cors',
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8',
-                },
-                body: JSON.stringify({ action: 'download' })
-            });
+            console.log('Fetching KPI data...');
+            const docRef = doc(db, "settings", "kpi_data");
+            const docSnap = await getDoc(docRef);
 
-            const result = await response.json();
-            if (result.status === 'success') {
-                // Index by normalized name for easy lookup
-                this.kpiDataCache = {};
-                result.data.forEach(item => {
-                    const key = this.normalizeKey(item.name);
-                    this.kpiDataCache[key] = item;
-                });
-                console.log('KPI Data loaded:', Object.keys(this.kpiDataCache).length, 'entries');
+            if (docSnap.exists()) {
+                console.log('KPI Data loaded from Firestore.');
+                this.kpiDataCache = docSnap.data();
                 return this.kpiDataCache;
+            } else {
+                console.log('KPI Data not found in Firestore. Fetching from legacy Apps Script for migration...');
+                // Fallback / Migration logic
+                const response = await fetch(this.kpiAppsScriptUrl, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8',
+                    },
+                    body: JSON.stringify({ action: 'download' })
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    // Index by normalized name for easy lookup
+                    const dataToSave = {};
+                    result.data.forEach(item => {
+                        const key = this.normalizeKey(item.name);
+                        dataToSave[key] = item;
+                    });
+
+                    // Save to Firestore
+                    console.log('Migrating KPI Data to Firestore...');
+                    await setDoc(docRef, dataToSave);
+                    console.log('KPI Data migration complete.');
+
+                    this.kpiDataCache = dataToSave;
+                    return this.kpiDataCache;
+                }
             }
         } catch (e) {
             console.warn('Failed to fetch KPI data:', e);
@@ -225,7 +241,10 @@ class DataManager {
      */
     parseCSV(csvText) {
         const lines = csvText.split('\n');
-        const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+        if (lines.length < 1) return [];
+
+        // Normalize headers: trim, remove quotes, lowercase
+        const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
         const data = [];
 
         for (let i = 1; i < lines.length; i++) {
@@ -266,8 +285,8 @@ class DataManager {
                 // Update local cache
                 this.zipCache[zipCode] = district;
 
-                // Write back to Google Sheet if configured
-                this.writeZipToSheet(zipCode, district);
+                // Write back to Firestore
+                this.writeZipToFirebase(zipCode, district);
 
                 return district;
             }
@@ -278,27 +297,24 @@ class DataManager {
     }
 
     /**
-     * Writes a resolved zip code back to the Google Sheet via Web App
+     * Writes a resolved zip code to Firestore
      */
-    async writeZipToSheet(zip, district) {
-        if (!this.zipWriteUrl) {
-            console.warn('[Debug] Write URL not configured');
-            return;
-        }
-
+    async writeZipToFirebase(zip, district) {
         try {
-            console.log(`[Debug] Sending POST to Apps Script: ${zip}, ${district}`);
-            await fetch(this.zipWriteUrl, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8',
-                },
-                body: JSON.stringify({ zip: zip, district: district })
+            console.log(`[Debug] Writing zip to Firestore: ${zip}, ${district}`);
+            const docRef = doc(db, "settings", "zip_codes");
+
+            // Use updateDoc to add/merge a specific field
+            await updateDoc(docRef, {
+                [zip]: district
             });
-            console.log(`[Debug] Sent request to sheet for ${zip}`);
+            console.log(`[Debug] Saved zip ${zip} to Firestore.`);
         } catch (e) {
-            console.warn('[Debug] Failed to write zip to sheet:', e);
+            console.warn('[Debug] Failed to write zip to Firestore:', e);
+            // If document doesn't exist (edge case if creation failed), try setDoc with merge
+            if (e.code === 'not-found') {
+                await setDoc(doc(db, "settings", "zip_codes"), { [zip]: district }, { merge: true });
+            }
         }
     }
 
@@ -337,9 +353,21 @@ class DataManager {
      * Main function to load and process data
      * @param {string} stateName - Name of the state to filter by (default 'Kerala')
      * @param {Array} districtIds - List of valid district IDs/keys for this state
+     * @param {string} csvUrl - Optional URL to override data source
      */
-    async loadData(stateName = 'Kerala', districtIds = []) {
-        console.log(`Starting data load for ${stateName}...`);
+    async loadData(stateName = 'Kerala', districtIds = [], csvUrl = null) {
+        if (csvUrl) {
+            this.currentDataSourceType = 'csv';
+            this.currentCSVUrl = csvUrl;
+        } else if (csvUrl === 'RESET') {
+            this.currentDataSourceType = 'sheet';
+            this.currentCSVUrl = null;
+            // Clear cache to ensure we fetch fresh sheet data if needed, or rely on existing valid cache logic
+            this.rawDataCache = null;
+            this.rawDataTimestamp = 0;
+        }
+
+        console.log(`Starting data load for ${stateName}... Mode: ${this.currentDataSourceType}`);
         const rawData = await this.fetchSheetData();
         console.log(`Fetched ${rawData.length} rows from sheet.`);
 
@@ -432,11 +460,10 @@ class DataManager {
             for (const zip of zipsToBackfill) {
                 const district = this.zipCache[zip];
                 if (district) {
-                    this.writeZipToSheet(zip, district);
+                    this.writeZipToFirebase(zip, district);
                     // Add to sheetZips so we don't try again this session
                     if (this.sheetZips) this.sheetZips.add(zip);
                     backfillCount++;
-                    // Tiny delay to avoid overwhelming browser/network if massive?
                 }
             }
         }
@@ -718,6 +745,70 @@ class DataManager {
         statesArray.sort((a, b) => b.totalSales - a.totalSales);
 
         return statesArray;
+    }
+
+    // --- Firebase Storage Methods ---
+
+    /**
+     * Upload a CSV file to Firebase Storage
+     * @param {File} file - The file object from input
+     * @param {string} customName - User defined name for the report
+     */
+    async uploadCSV(file, customName) {
+        try {
+            const timestamp = Date.now();
+            const safeName = customName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const fileName = `reports/${safeName}_${timestamp}.csv`;
+            const storageRef = ref(storage, fileName);
+
+            // Add metadata
+            const metadata = {
+                customMetadata: {
+                    'reportName': customName,
+                    'uploadedAt': new Date().toISOString()
+                }
+            };
+
+            const snapshot = await uploadBytes(storageRef, file, metadata);
+            console.log('Uploaded a blob or file!', snapshot);
+
+            const url = await getDownloadURL(snapshot.ref);
+            return { success: true, url: url, name: customName, timestamp: timestamp };
+        } catch (e) {
+            console.error('Upload failed:', e);
+            throw e;
+        }
+    }
+
+    /**
+     * List available reports from Firebase Storage
+     */
+    async listReports() {
+        const listRef = ref(storage, 'reports/');
+
+        try {
+            const res = await listAll(listRef);
+            const reports = [];
+
+            for (const itemRef of res.items) {
+                // Get metadata to find the real report name
+                const meta = await getMetadata(itemRef);
+                const url = await getDownloadURL(itemRef);
+
+                reports.push({
+                    name: meta.customMetadata && meta.customMetadata.reportName ? meta.customMetadata.reportName : itemRef.name,
+                    fullPath: itemRef.fullPath,
+                    url: url,
+                    timeCreated: meta.timeCreated
+                });
+            }
+
+            // Sort by newest first
+            return reports.sort((a, b) => new Date(b.timeCreated) - new Date(a.timeCreated));
+        } catch (e) {
+            console.error('List failed:', e);
+            return [];
+        }
     }
 }
 
