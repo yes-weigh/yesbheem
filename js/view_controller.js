@@ -81,6 +81,13 @@ class ViewController {
                     const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
                     dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(statesData);
                 }
+            } else if (view === 'dealer_count') {
+                if (this.indiaData && this.indiaData.dealers) {
+                    const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
+                    // Sort by Dealer Count
+                    statesData.sort((a, b) => b.dealerCount - a.dealerCount);
+                    dealerSection.innerHTML = UIRenderer.renderDealerCountList(statesData);
+                }
             } else if (view === 'dealers') {
                 if (this.indiaData && this.indiaData.dealers) {
                     dealerSection.innerHTML = UIRenderer.renderDealerList(this.indiaData.dealers);

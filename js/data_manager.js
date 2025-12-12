@@ -234,6 +234,38 @@ class DataManager {
     }
 
     /**
+     * Parse target value string (e.g. "75 L", "5 Cr", "10 K") into number
+     * @param {string|number} val - The target value
+     * @returns {number} The numeric value
+     */
+    parseTargetValue(val) {
+        if (typeof val === 'number') return val;
+        if (!val) return 0;
+
+        const str = val.toString().trim().toUpperCase();
+
+        let multiplier = 1;
+        let numPart = str;
+
+        if (str.includes('CR')) {
+            multiplier = 10000000;
+            numPart = str.replace('CR', '');
+        } else if (str.includes('L')) {
+            multiplier = 100000;
+            numPart = str.replace('L', '');
+        } else if (str.includes('K')) {
+            multiplier = 1000;
+            numPart = str.replace('K', '');
+        }
+
+        const num = parseFloat(numPart.replace(/[^0-9.]/g, ''));
+        const result = isNaN(num) ? 0 : num * multiplier;
+        // console.log(`[ParseTarget] In: "${val}" -> Str: "${str}" -> Num: ${num} * ${multiplier} = ${result}`);
+        if (str.includes('L') && multiplier !== 100000) console.warn('Parse Logic Warning: L detected but wrong multiplier?');
+        return result;
+    }
+
+    /**
      * Parses CSV text into an array of objects
      */
     parseCSV(csvText) {
@@ -582,10 +614,11 @@ class DataManager {
      */
     async getStateData(stateId) {
         // Check if we have cached data for this state
-        if (this.stateDataCache[stateId]) {
+        // FORCE REFRESH: Cache disabled to ensure new normalize logic is used
+        /* if (this.stateDataCache[stateId]) {
             console.log(`Using cached data for ${stateId}`);
             return this.stateDataCache[stateId];
-        }
+        } */
 
         console.log(`Getting state data for ${stateId}...`);
 
@@ -606,23 +639,33 @@ class DataManager {
         const stateName = stateNames[stateId] || stateId;
         const rawData = await this.fetchSheetData();
 
-        // Filter for this state
+        // Robust Filtering using Normalize
+        const targetState = this.normalizeStateName(stateName);
+
         const stateData = rawData.filter(row => {
-            const bState = (row['billing_state'] || '').toLowerCase();
-            const sState = (row['shipping_state'] || '').toLowerCase();
-            const searchName = stateName.toLowerCase();
-            return bState.includes(searchName) || sState.includes(searchName);
+            const raw = row['billing_state'] || row['shipping_state'] || '';
+            const normalizedRow = this.normalizeStateName(raw);
+            const match = normalizedRow === targetState;
+            // if (!match && raw.toLowerCase().includes('karnataka')) console.log(`[Filter Fail] Raw: "${raw}" -> Norm: "${normalizedRow}" vs Target: "${targetState}"`);
+            return match;
         });
 
-        console.log(`Found ${stateData.length} entries for ${stateName}`);
+
+
+        // Fetch KPI Data for Target lookup
+        const kpiData = await this.fetchKPIData();
+        const normalizeKey = this.normalizeKey(stateName);
+        const kpi = kpiData ? kpiData[normalizeKey] : null;
+
+
 
         // Aggregate data
         const aggregated = {
             name: stateName,
-            population: 'N/A',
+            population: kpi ? kpi.population : 'N/A',
             dealerCount: 0,
             currentSales: 0,
-            monthlyTarget: 500000, // Fixed 5 lakh target
+            monthlyTarget: kpi && kpi.target ? this.parseTargetValue(kpi.target) : 500000,
             dealers: []
         };
 
@@ -693,7 +736,26 @@ class DataManager {
         // Sort dealers by sales (highest first)
         aggregated.dealers.sort((a, b) => b.sales - a.sales);
 
-        aggregated.monthlyTarget = 100000000; // 10 Cr placeholder or sum? 
+        // Calculate Total Target from KPI Data
+        let totalTarget = 0;
+        try {
+            const kpiData = await this.fetchKPIData();
+            if (kpiData) {
+                // Sum targets of all states available in KPI data
+                Object.values(kpiData).forEach(kpi => {
+                    if (kpi.target) {
+                        totalTarget += this.parseTargetValue(kpi.target);
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('Failed to calc total target:', e);
+        }
+
+        // Fallback if no target data found (e.g. 10 Cr default)
+        if (totalTarget === 0) totalTarget = 100000000;
+
+        aggregated.monthlyTarget = totalTarget;
 
         if (aggregated.monthlyTarget > 0) {
             aggregated.achievement = ((aggregated.currentSales / aggregated.monthlyTarget) * 100).toFixed(1) + "%";
