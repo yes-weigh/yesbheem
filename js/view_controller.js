@@ -80,6 +80,7 @@ class ViewController {
                 if (this.indiaData && this.indiaData.dealers) {
                     const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
                     dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(statesData);
+                    this.colorizeMapStates(statesData, 'states');
                 }
             } else if (view === 'dealer_count') {
                 if (this.indiaData && this.indiaData.dealers) {
@@ -87,10 +88,12 @@ class ViewController {
                     // Sort by Dealer Count
                     statesData.sort((a, b) => b.dealerCount - a.dealerCount);
                     dealerSection.innerHTML = UIRenderer.renderDealerCountList(statesData);
+                    this.colorizeMapStates(statesData, 'dealer_count');
                 }
             } else if (view === 'dealers') {
                 if (this.indiaData && this.indiaData.dealers) {
                     dealerSection.innerHTML = UIRenderer.renderDealerList(this.indiaData.dealers);
+                    this.resetMapColors();
                 }
             } else if (view === 'gdp' || view === 'population') {
                 // Loading state
@@ -110,6 +113,7 @@ class ViewController {
 
                     const title = view === 'gdp' ? 'States by GDP' : 'States by Population';
                     dealerSection.innerHTML = UIRenderer.renderStateMetricList(data, view, title);
+                    this.colorizeMapStates(data, view);
 
                 } catch (e) {
                     console.error('Error rendering KPI view:', e);
@@ -663,6 +667,105 @@ class ViewController {
     showLoading(show) {
         // Loading overlay removed - no-op
         return;
+    }
+
+    colorizeMapStates(sortedData, metric) {
+        if (!this.containers.indiaMap) return;
+
+        // 1. Create Data Map (Name -> Data Item & Rank)
+        const dataMap = new Map();
+        sortedData.forEach((item, index) => {
+            if (item.name) {
+                dataMap.set(item.name.toLowerCase().trim(), { ...item, rank: index });
+            }
+        });
+
+        const total = sortedData.length;
+        const paths = this.containers.indiaMap.querySelectorAll('path');
+
+        // 2. Define Base Colors
+        const colors = {
+            'states': '#3b82f6',       // Blue (Sales)
+            'dealer_count': '#f97316', // Orange
+            'gdp': '#10b981',          // Green
+            'population': '#8b5cf6'    // Purple
+        };
+        const baseColor = colors[metric] || '#3b82f6';
+
+        // Helper to check for "Zero" value
+        const isZero = (item, m) => {
+            if (!item) return true;
+            let val = 0;
+            if (m === 'states') val = item.sales || item.totalSales || 0;
+            else if (m === 'dealer_count') val = item.dealerCount || 0;
+            else if (m === 'gdp') val = this.parseMetricVal(item.gdp);
+            else if (m === 'population') val = this.parseMetricVal(item.population);
+            return val <= 0;
+        };
+
+        // 3. Apply Colors
+        paths.forEach(path => {
+            let name = path.getAttribute('title');
+            if (!name) {
+                // Try ID fallback
+                let id = path.id;
+                if (id && id.startsWith('IN-')) id = id.replace('IN-', '');
+                name = id;
+            }
+
+            if (name) {
+                const key = name.toLowerCase().trim();
+                const item = dataMap.get(key);
+
+                if (item) {
+                    // Check if value is effectively zero
+                    if (isZero(item, metric)) {
+                        // VERY DARK for zero values - blend with dark background
+                        path.style.fill = '#0f172a'; // Deep slate (almost black)
+                        path.style.fillOpacity = '0.3';
+                        path.style.stroke = 'rgba(255,255,255,0.05)';
+                    } else {
+                        const rank = item.rank;
+                        // Higher Contrast Curve
+                        // Normalized Rank (0 to 1, where 1 is top)
+                        const norm = 1 - (rank / total);
+
+                        // Power curve for better contrast separation (Values drop off faster)
+                        const intensity = Math.pow(norm, 1.5);
+
+                        // Opacity Range: 0.2 to 1.0 (Previously 0.2 to 0.9)
+                        const opacity = 0.2 + (0.8 * intensity);
+
+                        path.style.fill = baseColor;
+                        path.style.fillOpacity = opacity;
+                        path.style.stroke = 'rgba(255,255,255,0.15)';
+                    }
+                } else {
+                    // No data found in list -> Very Dark
+                    path.style.fill = '#0f172a';
+                    path.style.fillOpacity = '0.3';
+                    path.style.stroke = '';
+                }
+            }
+        });
+    }
+
+    // Helper for parsing string values
+    parseMetricVal(v) {
+        if (!v) return 0;
+        if (typeof v === 'number') return v;
+        let str = v.toString().replace(/,/g, '');
+        return parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
+    }
+
+    resetMapColors() {
+        if (!this.containers.indiaMap) return;
+        const paths = this.containers.indiaMap.querySelectorAll('path');
+        paths.forEach(path => {
+            path.style.fill = '';
+            path.style.fillOpacity = '';
+            path.style.stroke = '';
+        });
     }
 }
 
