@@ -12,6 +12,14 @@
                         <option value="" disabled selected>Loading Reports...</option>
                     </select>
                 </div>
+                <button id="manageReportBtn" class="btn-data btn-manage"
+                    style="margin-left: 5px; background: var(--surface-2); border: 1px solid var(--border-light); color: var(--text-main);">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right: 6px;">
+                        <path d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    Manage
+                </button>
                 <button id="uploadReportBtn" class="btn-data btn-upload">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 6px;">
@@ -123,6 +131,27 @@
             </div>
         </div>
     </div>
+
+    <!-- Manage Reports Modal -->
+    <div class="modal-overlay" id="manageModal">
+        <div class="modal" style="width: 500px; min-height: auto;">
+            <div class="modal-header">
+                <h3>Manage Reports</h3>
+                <button class="close-modal-btn" id="closeManageModalIcon">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="reportsList" class="reports-list"
+                    style="display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto;">
+                    <!-- Dynamic Items -->
+                </div>
+                <div id="manageStatus" class="status-msg" style="margin-top: 10px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-data" id="closeManageModalBtn"
+                    style="background: var(--primary-color); color:white;">Done</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 </div>
@@ -167,32 +196,175 @@
         // Load Reports
         async function loadReports() {
             try {
-                // Keep the first 2 options (Current & separator)
                 const reports = await dm.listReports();
 
-                // Clear existing dynamic options (keep first 2)
-                while (reportSelector.options.length > 2) {
-                    reportSelector.remove(2);
+                // Clear existing options
+                reportSelector.innerHTML = '';
+
+                if (reports.length === 0) {
+                    reportSelector.innerHTML = '<option value="" disabled selected>No Reports Available</option>';
+                    return;
                 }
 
+                // Add reports
                 reports.forEach(report => {
                     const opt = document.createElement('option');
                     opt.value = report.url;
-                    // Format date
-                    const date = new Date(report.timeCreated).toLocaleDateString();
-                    opt.textContent = `${report.name} (${date})`;
+                    // Date removed from display as per request
+                    opt.textContent = report.name;
                     reportSelector.appendChild(opt);
                 });
+
+                // Auto Select Top if available
+                if (reports.length > 0) {
+                    const firstReportUrl = reports[0].url;
+                    reportSelector.value = firstReportUrl;
+
+                    // Improve Auto-Load: Wait for Map, then Trigger
+                    waitForMapAndLoad(firstReportUrl);
+                }
             } catch (e) {
                 console.error('Failed to list reports:', e);
             }
         }
 
-        await loadReports();
+        function waitForMapAndLoad(url) {
+            // Check if map is ready
+            const iframe = document.querySelector('.dashboard-iframe');
+            if (iframe && iframe.contentWindow && iframe.contentWindow.viewController) {
+                console.log('Map Ready, triggering initial load...');
+                // Trigger Change manually or call load logic directly?
+                // Better to dispatch the event so the listener handles it
+                reportSelector.dispatchEvent(new Event('change'));
+            } else {
+                console.log('Waiting for Map...');
+                setTimeout(() => waitForMapAndLoad(url), 500);
+            }
+        }
 
-        // Modal Logic
+        // --- MANAGE MODAL LOGIC ---
+        const manageBtn = document.getElementById('manageReportBtn');
+        const manageModal = document.getElementById('manageModal');
+        const closeManageIcon = document.getElementById('closeManageModalIcon');
+        const closeManageBtn = document.getElementById('closeManageModalBtn');
+        const reportsListContainer = document.getElementById('reportsList');
+
+        let currentReports = [];
+
+        async function renderManageList() {
+            try {
+                currentReports = await dm.listReports();
+                reportsListContainer.innerHTML = '';
+
+                if (currentReports.length === 0) {
+                    reportsListContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-main);">No reports uploaded.</div>';
+                    return;
+                }
+
+                currentReports.forEach((report, index) => {
+                    const row = document.createElement('div');
+                    row.className = 'report-row';
+
+                    const date = new Date(report.timeCreated).toLocaleDateString();
+
+                    // Simple inline SVG icons for up/down/delete to avoid external dependency issues
+                    row.innerHTML = `
+                        <div class="info" style="display: flex; flex-direction: column;">
+                            <span class="name">${report.name}</span>
+                            <span class="date">${date}</span>
+                        </div>
+                        <div class="actions" style="display: flex; gap: 5px;">
+                             <button class="btn-icon btn-rename" data-idx="${index}" style="padding: 5px; background: none; border: none; color: var(--text-main); cursor: pointer; font-size: 1.2em;" title="Rename">
+                                ✎
+                            </button>
+                            <button class="btn-icon btn-up" data-idx="${index}" ${index === 0 ? 'disabled' : ''} style="padding: 5px; background: none; border: none; color: var(--text-main); cursor: pointer; opacity: ${index === 0 ? 0.3 : 1}; font-size: 1.2em;">
+                                ▲
+                            </button>
+                            <button class="btn-icon btn-down" data-idx="${index}" ${index === currentReports.length - 1 ? 'disabled' : ''} style="padding: 5px; background: none; border: none; color: var(--text-main); cursor: pointer; opacity: ${index === currentReports.length - 1 ? 0.3 : 1}; font-size: 1.2em;">
+                                ▼
+                            </button>
+                            <button class="btn-icon btn-del" data-idx="${index}" style="padding: 5px; background: none; border: none; color: #ff4d4d; cursor: pointer; margin-left: 10px; font-weight: bold;">
+                                ✖
+                            </button>
+                        </div>
+                    `;
+                    reportsListContainer.appendChild(row);
+                });
+
+                // Attach Listeners
+                document.querySelectorAll('.btn-rename').forEach(btn => btn.addEventListener('click', handleRename));
+                document.querySelectorAll('.btn-up').forEach(btn => btn.addEventListener('click', (e) => moveReport(e, -1)));
+                document.querySelectorAll('.btn-down').forEach(btn => btn.addEventListener('click', (e) => moveReport(e, 1)));
+                document.querySelectorAll('.btn-del').forEach(btn => btn.addEventListener('click', deleteReport));
+
+            } catch (e) {
+                console.error('List failed', e);
+            }
+        }
+
+        async function handleRename(e) {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const index = parseInt(btn.dataset.idx);
+            const report = currentReports[index];
+
+            const newName = prompt("Enter new name:", report.name);
+            if (newName && newName.trim() !== "" && newName !== report.name) {
+                await dm.renameReport(report, newName.trim());
+                await renderManageList();
+                await loadReports();
+            }
+        }
+
+        async function moveReport(e, direction) {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const index = parseInt(btn.dataset.idx);
+
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= currentReports.length) return;
+
+            // Swap
+            const temp = currentReports[index];
+            currentReports[index] = currentReports[newIndex];
+            currentReports[newIndex] = temp;
+
+            await dm.saveReportsList(currentReports);
+            await renderManageList();
+            await loadReports();
+        }
+
+        async function deleteReport(e) {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const index = parseInt(btn.dataset.idx);
+            const report = currentReports[index];
+
+            if (!confirm(`Delete "${report.name}"?`)) return;
+
+            await dm.deleteReport(report);
+            await renderManageList();
+            await loadReports();
+        }
+
+        if (manageBtn) {
+            manageBtn.addEventListener('click', () => {
+                console.log('Manage Button Clicked');
+                manageModal.classList.add('active');
+                renderManageList();
+            });
+        } else {
+            console.error('Manage Button NOT Found');
+        }
+
+        const closeManageModal = () => manageModal.classList.remove('active');
+        if (closeManageIcon) closeManageIcon.addEventListener('click', closeManageModal);
+        if (closeManageBtn) closeManageBtn.addEventListener('click', closeManageModal);
+
+
+        // --- UPLOAD MODAL LOGIC ---
         uploadBtn.addEventListener('click', (e) => {
-            e.preventDefault(); // Prevent any default button behavior
+            e.preventDefault();
             console.log('Upload button clicked');
             modal.classList.add('active');
         });
@@ -204,70 +376,61 @@
             fileInput.value = '';
         };
 
-        closeIcon.addEventListener('click', closeUploadModal);
-        closeBtn.addEventListener('click', closeUploadModal);
+        if (closeIcon) closeIcon.addEventListener('click', closeUploadModal);
+        if (closeBtn) closeBtn.addEventListener('click', closeUploadModal);
 
-        submitBtn.addEventListener('click', async () => {
-            const file = fileInput.files[0];
-            const name = nameInput.value.trim();
+        if (submitBtn) {
+            submitBtn.addEventListener('click', async () => {
+                const file = fileInput.files[0];
+                const name = nameInput.value.trim();
 
-            if (!file || !name) {
-                statusDiv.textContent = 'Please provide both a name and a file.';
-                statusDiv.style.color = 'var(--text-error)';
-                return;
-            }
+                if (!file || !name) {
+                    statusDiv.textContent = 'Please provide both a name and a file.';
+                    statusDiv.style.color = 'var(--text-error)';
+                    return;
+                }
 
-            try {
-                statusDiv.textContent = 'Uploading...';
-                statusDiv.style.color = 'var(--text-main)';
-                submitBtn.disabled = true;
+                try {
+                    statusDiv.textContent = 'Uploading...';
+                    statusDiv.style.color = 'var(--text-main)';
+                    submitBtn.disabled = true;
 
-                await dm.uploadCSV(file, name);
+                    await dm.uploadCSV(file, name);
 
-                statusDiv.textContent = 'Upload Successful!';
-                statusDiv.style.color = 'var(--text-success)';
+                    statusDiv.textContent = 'Upload Successful!';
+                    statusDiv.style.color = 'var(--text-success)';
 
-                await loadReports();
-                setTimeout(() => {
-                    closeUploadModal();
+                    await loadReports();
+                    setTimeout(() => {
+                        closeUploadModal();
+                        submitBtn.disabled = false;
+                    }, 1000);
+
+                } catch (e) {
+                    statusDiv.textContent = 'Error: ' + e.message;
+                    statusDiv.style.color = 'var(--text-error)';
                     submitBtn.disabled = false;
-                }, 1000);
+                }
+            });
+        }
 
-            } catch (e) {
-                statusDiv.textContent = 'Error: ' + e.message;
-                statusDiv.style.color = 'var(--text-error)';
-                submitBtn.disabled = false;
-            }
-        });
-
-        // Selection Logic
+        // --- SELECTION LOGIC ---
         reportSelector.addEventListener('change', async (e) => {
             const val = e.target.value;
             console.log('Report selected:', val);
 
             const iframe = document.querySelector('.dashboard-iframe');
 
-            /* Logic for Iframe Interaction */
             if (iframe && iframe.contentWindow && iframe.contentWindow.viewController) {
                 const mapVC = iframe.contentWindow.viewController;
                 const mapDM = mapVC.dataManager;
 
-                // Show loading indicator in parent if reasonable?
-                // document.body.style.cursor = 'wait';
-
                 try {
-                    if (val === 'current') {
-                        // Reset to default sheet
-                        await mapDM.loadData('Kerala', [], 'RESET');
-                    } else {
-                        // Load specific CSV URL
+                    if (val) {
                         await mapDM.loadData('Kerala', [], val);
                     }
-
-                    // Refresh View
                     await mapVC.loadIndiaOverview();
 
-                    // Also trigger update for current view to refresh dealer list etc
                     if (mapVC.currentView === 'india') {
                         mapVC.handleViewChange(document.getElementById('view-selector')?.value || 'states');
                     } else {
@@ -275,14 +438,15 @@
                     }
                 } catch (err) {
                     console.error('Error switching report:', err);
-                    alert('Failed to load report. Please check console for details.\n' + err.message);
-                } finally {
-                    // document.body.style.cursor = 'default';
+                    alert('Failed to load report: ' + err.message);
                 }
             } else {
                 console.error('Map Controller not ready yet.');
             }
         });
+
+        // Trigger Initial Load LAST, after all listeners are set
+        await loadReports();
     };
 
     // Run initialization
@@ -792,6 +956,56 @@
         max-height: 80px;
         text-align: center;
         /* Center text */
+    }
+
+    /* Manage Modal Styling */
+    #reportsList {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 400px;
+        overflow-y: auto;
+        padding-right: 5px;
+        /* Space for scrollbar */
+    }
+
+    .report-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-radius: 6px;
+        transition: background 0.2s;
+    }
+
+    .report-row:hover {
+        background: var(--surface-2);
+    }
+
+    .report-row .name {
+        font-weight: 500;
+        color: var(--text-main);
+    }
+
+    .report-row .date {
+        font-size: 0.8em;
+        color: var(--text-muted);
+    }
+
+    /* Scrollbar for list */
+    #reportsList::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #reportsList::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    #reportsList::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 3px;
     }
 
     .kpi-card::before {
