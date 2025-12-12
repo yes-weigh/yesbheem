@@ -429,16 +429,61 @@
                 const mapDM = mapVC.dataManager;
 
                 try {
+                    // Capture current state BEFORE loading new data
+                    const savedView = mapVC.currentView; // 'india' or 'state'
+
+                    // Capture active state (e.g. 'KL')
+                    let savedStateId = null;
+                    if (mapVC.mapInteractions) {
+                        savedStateId = mapVC.mapInteractions.currentStateId;
+                    }
+
+                    // Capture selected district (e.g. 'Thiruvananthapuram')
+                    let savedDistrictId = null;
+                    if (mapVC.mapInteractions && mapVC.mapInteractions.selectedDistrictId) {
+                        savedDistrictId = mapVC.mapInteractions.selectedDistrictId;
+                    }
+
+                    // Load Data
                     if (val) {
                         await mapDM.loadData('Kerala', [], val);
                     }
+
+                    // Update India Overview Data (always needed)
                     await mapVC.loadIndiaOverview();
 
-                    if (mapVC.currentView === 'india') {
-                        mapVC.handleViewChange(document.getElementById('view-selector')?.value || 'states');
+                    // Restore View
+                    if (savedView === 'state' && savedStateId) {
+                        // Restore State View (e.g. Kerala)
+                        await mapVC.showStateView(savedStateId, 'Kerala'); // Name 'Kerala' is a safe default, or fetch from element title
+
+                        // Restore District Selection if it existed
+                        if (savedDistrictId) {
+                            setTimeout(() => {
+                                if (mapVC.mapInteractions) {
+                                    // access contentDocument via iframe
+                                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                                    const districtEl = iframeDoc.getElementById(savedDistrictId);
+
+                                    if (districtEl) {
+                                        console.log('Restoring selection for:', savedDistrictId);
+                                        // Trigger click to re-select and update sidebar
+                                        districtEl.click();
+                                    } else {
+                                        console.warn('Could not find district element to restore:', savedDistrictId);
+                                    }
+                                }
+                            }, 800); // Increased delay
+                        }
                     } else {
-                        mapVC.showIndiaView();
+                        // Default fallback: Resume India View logic
+                        if (mapVC.currentView === 'india') {
+                            mapVC.handleViewChange(document.getElementById('view-selector')?.value || 'states');
+                        } else {
+                            mapVC.showIndiaView();
+                        }
                     }
+
                 } catch (err) {
                     console.error('Error switching report:', err);
                     alert('Failed to load report: ' + err.message);
