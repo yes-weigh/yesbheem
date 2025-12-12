@@ -152,9 +152,32 @@ class ViewController {
                         // Our districtStats object has 'currentSales', so we map it.
                         const fmtData = districtArray.map(d => ({
                             name: d.name,
-                            totalSales: d.currentSales
+                            totalSales: d.currentSales,
+                            dealerCount: d.dealerCount || 0
                         }));
                         dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(fmtData);
+                    }
+                }
+            } else if (view === 'dealer_count') {
+                // Handle Dealer Count View for Districts
+                if (this.mapInteractions) {
+                    let districtArray = [];
+                    if (this.mapInteractions.districtInsights && Object.keys(this.mapInteractions.districtInsights).length > 0) {
+                        districtArray = Object.values(this.mapInteractions.districtInsights).filter(d => typeof d === 'object' && d.name);
+                    }
+
+                    if (districtArray.length > 0) {
+                        // Sort by Dealer Count
+                        districtArray.sort((a, b) => (b.dealerCount || 0) - (a.dealerCount || 0));
+
+                        // Map to format
+                        const fmtData = districtArray.map(d => ({
+                            name: d.name,
+                            dealerCount: d.dealerCount || 0
+                        }));
+                        dealerSection.innerHTML = UIRenderer.renderDealerCountList(fmtData);
+                    } else {
+                        dealerSection.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-muted);">No Data</div>';
                     }
                 }
             } else if (view === 'gdp' || view === 'population') {

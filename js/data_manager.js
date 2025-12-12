@@ -545,7 +545,8 @@ class DataManager {
 
         const districtArray = Object.keys(districtStats).map(key => ({
             name: districtStats[key].name,
-            totalSales: districtStats[key].currentSales || 0
+            totalSales: districtStats[key].currentSales || 0,
+            dealerCount: districtStats[key].dealerCount || 0
         }));
 
         // Sort by total sales descending (highest first)

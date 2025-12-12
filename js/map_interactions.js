@@ -62,9 +62,12 @@ class MapInteractions {
                             districtsOption.disabled = false;
                         }
 
+
                         // Show GDP and Population again
                         const gdpOption = viewSelector.querySelector('option[value="gdp"]');
                         const popOption = viewSelector.querySelector('option[value="population"]');
+                        const dealerCountOption = viewSelector.querySelector('option[value="dealer_count"]');
+
                         if (gdpOption) {
                             gdpOption.hidden = false;
                             gdpOption.disabled = false;
@@ -72,6 +75,10 @@ class MapInteractions {
                         if (popOption) {
                             popOption.hidden = false;
                             popOption.disabled = false;
+                        }
+                        if (dealerCountOption) {
+                            dealerCountOption.hidden = false;
+                            dealerCountOption.disabled = false;
                         }
 
                         viewSelector.value = 'districts';
@@ -118,9 +125,11 @@ class MapInteractions {
                 districtsOption.disabled = true;
             }
 
-            // Also hide GDP and Population when viewing a specific district
+            // Also hide GDP, Population and Dealer Count when viewing a specific district
             const gdpOption = viewSelector.querySelector('option[value="gdp"]');
             const popOption = viewSelector.querySelector('option[value="population"]');
+            const dealerCountOption = viewSelector.querySelector('option[value="dealer_count"]');
+
             if (gdpOption) {
                 gdpOption.hidden = true;
                 gdpOption.disabled = true;
@@ -128,6 +137,10 @@ class MapInteractions {
             if (popOption) {
                 popOption.hidden = true;
                 popOption.disabled = true;
+            }
+            if (dealerCountOption) {
+                dealerCountOption.hidden = true;
+                dealerCountOption.disabled = true;
             }
         }
         // Re-render sidebar to match new view
