@@ -369,7 +369,12 @@ class ViewController {
                     viewSelector.value = 'states'; // Auto-select States
                 }
 
-                this.loadIndiaOverview();
+                this.loadIndiaOverview().then(() => {
+                    // Force update coloring for 'states' view
+                    this.handleViewChange('states');
+                    // Ensure active state cleared
+                    this.currentView = 'india';
+                });
             }
         });
     }
@@ -723,7 +728,7 @@ class ViewController {
                         // VERY DARK for zero values - blend with dark background
                         path.style.fill = '#0f172a'; // Deep slate (almost black)
                         path.style.fillOpacity = '0.3';
-                        path.style.stroke = 'rgba(255,255,255,0.05)';
+                        path.style.stroke = 'rgba(255,255,255,0.2)'; // More visible
                     } else {
                         const rank = item.rank;
                         // Higher Contrast Curve
@@ -738,7 +743,7 @@ class ViewController {
 
                         path.style.fill = baseColor;
                         path.style.fillOpacity = opacity;
-                        path.style.stroke = 'rgba(255,255,255,0.15)';
+                        path.style.stroke = 'rgba(255,255,255,0.6)'; // Much more visible
                     }
                 } else {
                     // No data found in list -> Very Dark
