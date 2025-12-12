@@ -414,6 +414,13 @@ class ViewController {
                 popOption.hidden = true;
                 popOption.disabled = true;
             }
+
+            // Also hide Dealer Count when viewing a specific state
+            const dealerCountOption = viewSelector.querySelector('option[value="dealer_count"]');
+            if (dealerCountOption) {
+                dealerCountOption.hidden = true;
+                dealerCountOption.disabled = true;
+            }
         }
 
         // Highlight Only - stay on India Map
@@ -542,9 +549,11 @@ class ViewController {
                 districtsOption.disabled = true;
             }
 
-            // Show GDP and Population again
+            // Show ALL top level options again: GDP, Population, Dealer Count
             const gdpOption = viewSelector.querySelector('option[value="gdp"]');
             const popOption = viewSelector.querySelector('option[value="population"]');
+            const dealerCountOption = viewSelector.querySelector('option[value="dealer_count"]');
+
             if (gdpOption) {
                 gdpOption.hidden = false;
                 gdpOption.disabled = false;
@@ -552,6 +561,10 @@ class ViewController {
             if (popOption) {
                 popOption.hidden = false;
                 popOption.disabled = false;
+            }
+            if (dealerCountOption) {
+                dealerCountOption.hidden = false;
+                dealerCountOption.disabled = false;
             }
 
             viewSelector.value = 'states'; // Auto-select States
