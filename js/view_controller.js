@@ -436,7 +436,7 @@ class ViewController {
         }
     }
 
-    async showStateView(stateId, stateName) {
+    async showStateView(stateId, stateName, renderSidebar = true) {
         console.log(`State interaction: ${stateName} (${stateId})`);
 
         // Normalize ID for check
@@ -636,10 +636,12 @@ class ViewController {
                     const data = await this.dataManager.getStateData(lookupId);
                     this.updateSidebarWithData(data);
 
-                    // Ensure MapInteractions has the data
                     if (this.mapInteractions) {
-                        this.mapInteractions.currentData = data;
                         this.mapInteractions.stateOverviewData = data;
+                        // Only update sidebar if requested (avoids flicker when restoring district view)
+                        if (renderSidebar) {
+                            this.updateSidebarWithData(data);
+                        }
                     }
                 } catch (e) {
                     console.error("Failed to load state overview data:", e);

@@ -429,33 +429,50 @@
                 const mapDM = mapVC.dataManager;
 
                 try {
-                    // Capture current state BEFORE loading new data
-                    const savedView = mapVC.currentView; // 'india' or 'state'
-
-                    // Capture active state (e.g. 'KL')
+                    // Capture current state properties
+                    let savedView = mapVC.currentView;
                     let savedStateId = null;
+                    let savedDistrictId = null;
+
+                    // HARDENED CHECK: Trust DOM over variable
+                    if (mapVC.containers && mapVC.containers.state && mapVC.containers.state.classList.contains('active')) {
+                        savedView = 'state';
+                    }
+
                     if (mapVC.mapInteractions) {
                         savedStateId = mapVC.mapInteractions.currentStateId;
-                    }
-
-                    // Capture selected district (e.g. 'Thiruvananthapuram')
-                    let savedDistrictId = null;
-                    if (mapVC.mapInteractions && mapVC.mapInteractions.selectedDistrictId) {
                         savedDistrictId = mapVC.mapInteractions.selectedDistrictId;
                     }
+
+                    // Fallback: If in state view but ID missing, assume Kerala (current scope)
+                    if (savedView === 'state' && !savedStateId) {
+                        savedStateId = 'KL';
+                    }
+
+                    console.log('[DEBUG] Captured State:', { savedView, savedStateId, savedDistrictId });
 
                     // Load Data
                     if (val) {
                         await mapDM.loadData('Kerala', [], val);
                     }
 
-                    // Update India Overview Data (always needed)
-                    await mapVC.loadIndiaOverview();
+                    // Update India Overview Data (Only if needed or not restoring state)
+                    // If we are restoring state, we can skip rendering India Overview to avoid flicker
+                    if (!(savedView === 'state' && savedStateId)) {
+                        await mapVC.loadIndiaOverview();
+                    }
 
                     // Restore View
+                    console.log('[DEBUG] Restoring View...', { savedView, savedStateId });
                     if (savedView === 'state' && savedStateId) {
+                        console.log('[DEBUG] Restoring State View for:', savedStateId);
+
+                        // Decide if we should render state sidebar immediately
+                        // If we are about to restore a district, SKIP state rendering to prevent flicker
+                        const shouldRenderStateSidebar = !savedDistrictId;
+
                         // Restore State View (e.g. Kerala)
-                        await mapVC.showStateView(savedStateId, 'Kerala'); // Name 'Kerala' is a safe default, or fetch from element title
+                        await mapVC.showStateView(savedStateId, 'Kerala', shouldRenderStateSidebar);
 
                         // Restore District Selection if it existed
                         if (savedDistrictId) {
@@ -467,8 +484,13 @@
 
                                     if (districtEl) {
                                         console.log('Restoring selection for:', savedDistrictId);
-                                        // Trigger click to re-select and update sidebar
-                                        districtEl.click();
+                                        // SVG elements might not have .click(), so dispatch event
+                                        const clickEvent = new MouseEvent('click', {
+                                            view: iframe.contentWindow,
+                                            bubbles: true,
+                                            cancelable: true
+                                        });
+                                        districtEl.dispatchEvent(clickEvent);
                                     } else {
                                         console.warn('Could not find district element to restore:', savedDistrictId);
                                     }
