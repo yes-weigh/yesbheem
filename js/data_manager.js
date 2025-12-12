@@ -716,18 +716,21 @@ class DataManager {
         // 1. Initialize with ALL states having 0 sales
         const allStates = this.getAllStateNames();
         allStates.forEach(name => {
-            stateMap[name] = { name: name, totalSales: 0 };
+            stateMap[name] = { name: name, totalSales: 0, dealerCount: 0 };
         });
 
         // 2. Aggregate sales by state
+        console.log(`Aggregating dealers: ${dealers.length} entries`);
         dealers.forEach(dealer => {
             let rawState = dealer.state || 'Unknown';
             let stateKey = this.normalizeStateName(rawState);
 
             if (!stateMap[stateKey]) {
-                stateMap[stateKey] = { name: stateKey, totalSales: 0 };
+                // console.warn(`Unmapped state: ${rawState} -> ${stateKey}`); // Optional noisier log
+                stateMap[stateKey] = { name: stateKey, totalSales: 0, dealerCount: 0 };
             }
             stateMap[stateKey].totalSales += dealer.sales || 0;
+            stateMap[stateKey].dealerCount += 1;
         });
 
         // Convert to array and sort by totalSales
@@ -844,6 +847,31 @@ class DataManager {
         } catch (e) {
             console.error('Rename failed:', e);
             throw e;
+        }
+    }
+
+    /**
+     * Get the latest upload timestamp directly from Storage
+     */
+    async getLastStorageUpdate() {
+        const listRef = ref(storage, 'reports/');
+        try {
+            const res = await listAll(listRef);
+
+            if (res.items.length === 0) return null;
+
+            // Fetch metadata for all items to find the latest
+            // Use Promise.all for parallel fetching
+            const metaPromises = res.items.map(item => getMetadata(item));
+            const metas = await Promise.all(metaPromises);
+
+            // Sort descending by timeCreated
+            metas.sort((a, b) => new Date(b.timeCreated) - new Date(a.timeCreated));
+
+            return metas.length > 0 ? metas[0].timeCreated : null;
+        } catch (e) {
+            console.error('Failed to get last storage update:', e);
+            return null;
         }
     }
 

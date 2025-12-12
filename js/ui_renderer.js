@@ -90,10 +90,15 @@ class UIRenderer {
                 <div class="district-item-compact">
                     <div class="district-rank">${i + 1}</div>
                     <div class="district-info">
-                        <div class="district-row">
-                            <span class="district-name" title="${district.name}">${district.name}</span>
-                            <span class="district-percentage">${percentageText}%</span>
-                            <span class="district-sales">₹${this.formatNumber(district.totalSales)}</span>
+                        <div class="district-row" style="display: flex; justify-content: space-between; align-items: center; white-space: nowrap;">
+                            <div style="display: flex; align-items: center; min-width: 0; flex: 1;">
+                                <span class="district-name" style="overflow: hidden; text-overflow: ellipsis;" title="${district.name}">${district.name}</span>
+                                <span class="district-count" style="font-size: 0.75em; color: var(--text-muted); margin-left: 5px; flex-shrink: 0;" title="Dealer Count">(${district.dealerCount || 0})</span>
+                            </div>
+                            <div style="display: flex; align-items: center; flex-shrink: 0; gap: 10px;">
+                                <span class="district-percentage" style="min-width: 45px; text-align: right;">${percentageText}%</span>
+                                <span class="district-sales" style="min-width: 70px; text-align: right;">₹${this.formatNumber(district.totalSales)}</span>
+                            </div>
                         </div>
                         <div class="contribution-bar-bg">
                             <div class="contribution-bar-fill" style="width:${barWidth}%"></div>
