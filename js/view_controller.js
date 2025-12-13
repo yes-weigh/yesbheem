@@ -301,8 +301,85 @@ class ViewController {
     initializeIndiaInteractions() {
         if (!this.containers.indiaMap) return;
 
+        // Create or get the valid label element
+        let hoverLabel = document.getElementById('map-hover-label');
+        if (!hoverLabel && this.containers.indiaMap) {
+            hoverLabel = document.createElement('div');
+            hoverLabel.id = 'map-hover-label';
+            hoverLabel.style.position = 'absolute';
+            hoverLabel.style.top = '20px';
+            hoverLabel.style.left = '20px';
+            hoverLabel.style.background = 'rgba(15, 23, 42, 0.9)'; // Dark background
+            hoverLabel.style.color = '#e2e8f0';
+            hoverLabel.style.padding = '8px 12px';
+            hoverLabel.style.borderRadius = '6px';
+            hoverLabel.style.fontSize = '1rem';
+            hoverLabel.style.fontWeight = '500';
+            hoverLabel.style.pointerEvents = 'none'; // Click-through
+            hoverLabel.style.zIndex = '1000';
+            hoverLabel.style.display = 'none'; // Hidden by default
+            hoverLabel.style.border = '1px solid rgba(255,255,255,0.1)';
+            hoverLabel.style.backdropFilter = 'blur(4px)';
+
+            // Append to the VIEW container, NOT the map container
+            // This prevents it from moving when the map is panned/zoomed
+            if (this.containers.india) {
+                this.containers.india.style.position = 'relative';
+                this.containers.india.appendChild(hoverLabel);
+            }
+        }
+
         const states = this.containers.indiaMap.querySelectorAll('path');
         states.forEach(state => {
+            // Hover Listeners
+            state.addEventListener('mouseenter', () => {
+                const stateName = state.getAttribute('title') || state.id.replace('IN-', '');
+                if (stateName && hoverLabel) {
+                    let text = `<strong>${stateName}</strong>`;
+
+                    // Add Data Detail if available
+                    if (this.currentMapData && this.currentMetric) {
+                        const key = stateName.toLowerCase().trim();
+                        const item = this.currentMapData.find(d => d.name.toLowerCase().trim() === key);
+
+                        if (item) {
+                            let valLabel = '';
+                            let val = '';
+
+                            if (this.currentMetric === 'states') { // Sales
+                                valLabel = 'Sales';
+                                // Format Sales: Cr or L
+                                const s = item.currentSales || item.sales || item.totalSales || 0;
+                                if (s >= 10000000) val = `₹${(s / 10000000).toFixed(2)} Cr`;
+                                else val = `₹${(s / 100000).toFixed(2)} L`;
+                            } else if (this.currentMetric === 'dealer_count') {
+                                valLabel = 'Dealers';
+                                val = item.dealerCount || 0;
+                            } else if (this.currentMetric === 'gdp') {
+                                valLabel = 'GDP';
+                                val = item.gdp || 'N/A';
+                            } else if (this.currentMetric === 'population') {
+                                valLabel = 'Population';
+                                val = item.population || 'N/A';
+                            }
+
+                            if (valLabel) {
+                                text += `<div style="font-size:0.85rem; opacity:0.8; margin-top:2px;">${valLabel}: ${val}</div>`;
+                            }
+                        }
+                    }
+
+                    hoverLabel.innerHTML = text;
+                    hoverLabel.style.display = 'block';
+                }
+            });
+
+            state.addEventListener('mouseleave', () => {
+                if (hoverLabel) {
+                    hoverLabel.style.display = 'none';
+                }
+            });
+
             state.addEventListener('click', (e) => {
                 e.stopPropagation(); // Prevent background click interference
                 let stateId = state.id.trim(); // Trim whitespace
@@ -364,6 +441,13 @@ class ViewController {
                     if (popOption) {
                         popOption.hidden = false;
                         popOption.disabled = false;
+                    }
+
+                    // Restore Dealer Count option
+                    const dealerCountOption = viewSelector.querySelector('option[value="dealer_count"]');
+                    if (dealerCountOption) {
+                        dealerCountOption.hidden = false;
+                        dealerCountOption.disabled = false;
                     }
 
                     viewSelector.value = 'states'; // Auto-select States
@@ -677,6 +761,10 @@ class ViewController {
     colorizeMapStates(sortedData, metric) {
         if (!this.containers.indiaMap) return;
 
+        // Cache for hover lookup
+        this.currentMapData = sortedData;
+        this.currentMetric = metric;
+
         // 1. Create Data Map (Name -> Data Item & Rank)
         const dataMap = new Map();
         sortedData.forEach((item, index) => {
@@ -701,7 +789,7 @@ class ViewController {
         const isZero = (item, m) => {
             if (!item) return true;
             let val = 0;
-            if (m === 'states') val = item.sales || item.totalSales || 0;
+            if (m === 'states') val = item.sales || item.totalSales || item.currentSales || 0;
             else if (m === 'dealer_count') val = item.dealerCount || 0;
             else if (m === 'gdp') val = this.parseMetricVal(item.gdp);
             else if (m === 'population') val = this.parseMetricVal(item.population);
@@ -764,6 +852,7 @@ class ViewController {
     }
 
     resetMapColors() {
+        this.currentMetric = null;
         if (!this.containers.indiaMap) return;
         const paths = this.containers.indiaMap.querySelectorAll('path');
         paths.forEach(path => {
