@@ -147,7 +147,7 @@ class MapInteractions {
             const districtName = d.getAttribute('title') || d.id; // Map SVG IDs are usually names in Kerala map
             // Need to find matching data. Map IDs might be "Thiruvananthapuram", keys might be distinct.
             // Try explicit match or fuzzy
-            const item = dataArr.find(x => x.name.toLowerCase() === districtName.toLowerCase().replace(/-/g, ' '));
+            const item = dataArr.find(x => x.name.trim().toLowerCase() === districtName.trim().toLowerCase().replace(/-/g, ' '));
 
             // if(districtName === 'palakkad') console.log(`[Colorize] Palakkad Item Found:`, item);
 
@@ -249,7 +249,7 @@ class MapInteractions {
                 // Add Data logic
                 if (this.currentViewMetric && this.districtInsights) {
                     const dataArr = Object.values(this.districtInsights);
-                    const item = dataArr.find(x => x.name.toLowerCase() === districtName.toLowerCase().replace(/-/g, ' '));
+                    const item = dataArr.find(x => x.name.trim().toLowerCase() === districtName.trim().toLowerCase().replace(/-/g, ' '));
 
                     console.log(`[Hover] ${districtName}:`, item);
 
@@ -326,10 +326,8 @@ class MapInteractions {
                             if (opt) { opt.hidden = false; opt.disabled = false; }
                         });
 
-                        // Default to districts if we were deep in dealers, OR keep current if it's a metric
-                        if (viewSelector.value === 'dealers') {
-                            viewSelector.value = 'districts';
-                        }
+                        // Always reset to 'districts' view on background click in State View
+                        viewSelector.value = 'districts';
 
                         this.handleViewChange(viewSelector.value);
                     }

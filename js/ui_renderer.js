@@ -73,18 +73,27 @@ class UIRenderer {
     static renderDistrictSalesList(districts) {
         if (!districts || districts.length === 0) return '';
 
+        // Helper to get sales value
+        const getSales = (d) => d.currentSales || d.totalSales || 0;
+
         // Calculate total sales and max for percentage bars (like dealer list)
-        const totalSales = districts.reduce((sum, d) => sum + d.totalSales, 0);
-        const maxSales = districts[0]?.totalSales || 0;
+        const totalSales = districts.reduce((sum, d) => sum + getSales(d), 0);
+        // Assuming sorted desc, but safer to calc max
+        let maxSales = 0;
+        districts.forEach(d => {
+            const s = getSales(d);
+            if (s > maxSales) maxSales = s;
+        });
 
         let html = '<h3 style="margin:0.25rem 0; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">Sales</h3>';
         html += '<div class="district-sales-list">';
 
         districts.forEach((district, i) => {
-            const percentage = totalSales > 0 ? ((district.totalSales / totalSales) * 100) : 0;
+            const val = getSales(district);
+            const percentage = totalSales > 0 ? ((val / totalSales) * 100) : 0;
             const percentageText = percentage.toFixed(1);
             // Bar width based on max sales (same as dealer list)
-            const barWidth = maxSales > 0 ? (district.totalSales / maxSales) * 100 : 0;
+            const barWidth = maxSales > 0 ? (val / maxSales) * 100 : 0;
 
             html += `
                 <div class="district-item-compact" onclick="window.viewController && window.viewController.handleListClick('${district.name}')" style="cursor: pointer;">
@@ -97,7 +106,7 @@ class UIRenderer {
                             </div>
                             <div style="display: flex; align-items: center; flex-shrink: 0; gap: 10px;">
                                 <span class="district-percentage" style="min-width: 45px; text-align: right;">${percentageText}%</span>
-                                <span class="district-sales" style="min-width: 70px; text-align: right;">₹${this.formatNumber(district.totalSales)}</span>
+                                <span class="district-sales" style="min-width: 70px; text-align: right;">₹${this.formatNumber(val)}</span>
                             </div>
                         </div>
                         <div class="contribution-bar-bg">
@@ -243,6 +252,7 @@ class UIRenderer {
 
     // Utilities
     static formatNumber(num) {
+        if (num === undefined || num === null || isNaN(num)) return '0.00';
         if (num >= 10000000) return (num / 10000000).toFixed(2) + ' Cr';
         if (num >= 100000) return (num / 100000).toFixed(2) + ' L';
         if (num >= 1000) return (num / 1000).toFixed(2) + ' K';

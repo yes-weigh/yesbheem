@@ -502,7 +502,7 @@ class ViewController {
                 }
             }
 
-            await this.loadStateContent(stateId);
+            await this.loadStateContent(stateId, renderSidebar);
 
         } else {
             // For other states (or if logic changes), just show details
@@ -589,7 +589,7 @@ class ViewController {
         this.loadIndiaOverview();
     }
 
-    async loadStateContent(stateId) {
+    async loadStateContent(stateId, renderSidebar = true) {
         this.showLoading(true);
         try {
             let svgText;
