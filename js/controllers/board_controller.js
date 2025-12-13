@@ -60,22 +60,7 @@ class BoardController {
         }
 
         // Dropdown Toggle Logic
-        const pickerTrigger = document.getElementById('boardPickerBtn');
-        const pickerWrapper = document.querySelector('.board-picker-wrapper');
-
-        if (pickerTrigger && pickerWrapper) {
-            pickerTrigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                pickerWrapper.classList.toggle('active');
-            });
-
-            // Close when clicking outside
-            document.addEventListener('click', (e) => {
-                if (!pickerWrapper.contains(e.target)) {
-                    pickerWrapper.classList.remove('active');
-                }
-            });
-        }
+        // Handled by CSS :hover now as per user request
 
         // Settings Modal Bindings
         this.setupSettingsModal();
