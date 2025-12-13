@@ -178,17 +178,18 @@ class UIRenderer {
 
     /**
      * Render the Dealer Count List HTML (sorted by count)
-     * @param {Array} states - Array of state objects {name, dealerCount}
+     * @param {Array} states - Array of state/district objects {name, dealerCount}
+     * @param {string} title - Optional title override
      * @returns {string} HTML string
      */
-    static renderDealerCountList(states) {
+    static renderDealerCountList(states, title = 'States by Dealer Count') {
         if (!states || states.length === 0) return '';
 
         // Calculate max for percentage bars
         const maxCount = states[0]?.dealerCount || 0;
         const totalDealers = states.reduce((sum, s) => sum + (s.dealerCount || 0), 0);
 
-        let html = '<h3 style="margin:0.25rem 0; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">States by Dealer Count</h3>';
+        let html = `<h3 style="margin:0.25rem 0; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">${title}</h3>`;
         html += '<div class="district-sales-list">';
 
         states.forEach((state, i) => {

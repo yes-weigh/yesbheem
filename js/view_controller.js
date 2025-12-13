@@ -121,97 +121,10 @@ class ViewController {
                 }
             }
         } else if (this.currentView === 'state') {
-            // New handling for State (Kerala) Drill Down
-            const dealerSection = document.getElementById('dealer-section');
-            if (!dealerSection) return;
-
-            // Assuming current displayed data is in mapInteractions or we fetch it
-            // Currently logic depends on mapInteractions holding state data
-            if (!this.mapInteractions || !this.mapInteractions.currentData) {
-                // Try to reload or just return?
-                // If view changed, mapInteractions might be loaded.
+            // Updated handling: Delegate to MapInteractions
+            if (this.mapInteractions) {
+                this.mapInteractions.handleViewChange(view);
             }
-
-            if (view === 'dealers') {
-                // Explicitly handle dealers view for state
-                if (this.mapInteractions && this.mapInteractions.currentData) {
-                    dealerSection.innerHTML = UIRenderer.renderDealerList(this.mapInteractions.currentData.dealers);
-                }
-            } else if (view === 'districts') {
-                // Show default district sales list
-                if (this.mapInteractions && this.mapInteractions.currentData) {
-                    let districtArray = [];
-                    // Check if we have districtInsights in interactions (full dataset)
-                    if (this.mapInteractions.districtInsights && Object.keys(this.mapInteractions.districtInsights).length > 0) {
-                        districtArray = Object.values(this.mapInteractions.districtInsights).filter(d => typeof d === 'object' && d.name);
-                    }
-                    // Fallback to currentData dealers logic if missing? No, district view needs district stats.
-
-                    if (districtArray.length > 0) {
-                        // Sort by sales descending (default)
-                        districtArray.sort((a, b) => (b.currentSales || 0) - (a.currentSales || 0));
-
-                        // Map to expected format for renderer {name, totalSales} if needed, 
-                        // but renderDistrictSalesList expects {name, totalSales}
-                        // Our districtStats object has 'currentSales', so we map it.
-                        const fmtData = districtArray.map(d => ({
-                            name: d.name,
-                            totalSales: d.currentSales,
-                            dealerCount: d.dealerCount || 0
-                        }));
-                        dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(fmtData);
-                    }
-                }
-            } else if (view === 'dealer_count') {
-                // Handle Dealer Count View for Districts
-                if (this.mapInteractions) {
-                    let districtArray = [];
-                    if (this.mapInteractions.districtInsights && Object.keys(this.mapInteractions.districtInsights).length > 0) {
-                        districtArray = Object.values(this.mapInteractions.districtInsights).filter(d => typeof d === 'object' && d.name);
-                    }
-
-                    if (districtArray.length > 0) {
-                        // Sort by Dealer Count
-                        districtArray.sort((a, b) => (b.dealerCount || 0) - (a.dealerCount || 0));
-
-                        // Map to format
-                        const fmtData = districtArray.map(d => ({
-                            name: d.name,
-                            dealerCount: d.dealerCount || 0
-                        }));
-                        dealerSection.innerHTML = UIRenderer.renderDealerCountList(fmtData);
-                    } else {
-                        dealerSection.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-muted);">No Data</div>';
-                    }
-                }
-            } else if (view === 'gdp' || view === 'population') {
-                if (this.mapInteractions) {
-                    // Use district insights if available (more reliable for whole state view)
-                    let districtArray = [];
-                    if (this.mapInteractions.districtInsights && Object.keys(this.mapInteractions.districtInsights).length > 0) {
-                        districtArray = Object.values(this.mapInteractions.districtInsights).filter(d => typeof d === 'object' && d.name);
-                    } else if (this.mapInteractions.currentData) {
-                        // Fallback? Unlikely to work for single state object unless it has district list
-                    }
-
-                    if (districtArray.length > 0) {
-                        // Sort Data
-                        const parseVal = (v) => {
-                            if (!v) return -1;
-                            let str = v.toString().replace(/,/g, '');
-                            return parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
-                        };
-
-                        districtArray.sort((a, b) => parseVal(b[view]) - parseVal(a[view]));
-
-                        const title = view === 'gdp' ? 'Districts by GDP' : 'Districts by Population';
-                        dealerSection.innerHTML = UIRenderer.renderStateMetricList(districtArray, view, title);
-                    } else {
-                        dealerSection.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-muted);">Data loading...</div>';
-                    }
-                }
-            }
-
         } else if (this.mapInteractions) {
             this.mapInteractions.handleViewChange(view);
         }
@@ -580,6 +493,13 @@ class ViewController {
                     popOption.hidden = false;
                     popOption.disabled = false;
                 }
+
+                // Unhide Dealer Count for state view as well
+                const dealerCountOption = viewSelector.querySelector('option[value="dealer_count"]');
+                if (dealerCountOption) {
+                    dealerCountOption.hidden = false;
+                    dealerCountOption.disabled = false;
+                }
             }
 
             await this.loadStateContent(stateId);
@@ -731,6 +651,8 @@ class ViewController {
 
                     if (this.mapInteractions) {
                         this.mapInteractions.stateOverviewData = data;
+                        this.mapInteractions.currentData = data; // Initialize currentData for view handlers
+
                         // Only update sidebar if requested (avoids flicker when restoring district view)
                         if (renderSidebar) {
                             this.updateSidebarWithData(data);
@@ -742,6 +664,12 @@ class ViewController {
 
                 // Also load detailed district data in background for interactions
                 await this.mapInteractions.loadDistrictData(stateName);
+
+                // Force View Refresh to match dropdown (ensure Districts list overrides default)
+                const viewSelector = document.getElementById('view-selector');
+                if (viewSelector) {
+                    this.handleViewChange(viewSelector.value);
+                }
             }
 
             this.panZoom = new PanZoomController('#map-viewport', '#state-map-container');

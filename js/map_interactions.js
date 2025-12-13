@@ -15,76 +15,325 @@ class MapInteractions {
      * Initialize Kerala district interactions
      * @param {string} stateId - Current state ID (e.g., 'KL')
      */
+    handleViewChange(viewType) {
+        // console.log('handleViewChange called with:', viewType);
+        const dealerSection = document.getElementById('dealer-section');
+        if (!dealerSection) return;
+
+        let html = '';
+        let metric = 'sales'; // Default to sales (districts view)
+
+        if (viewType === 'dealers') {
+            // Show dealers list
+            if (this.currentData && this.currentData.dealers) {
+                html = UIRenderer.renderDealerList(this.currentData.dealers);
+            }
+            // User requested coloring for Dealers view (same as dealer_count)
+            metric = 'dealer_count';
+            // Coloring applied at end of function or explicitly here? 
+            // The coloring logic is inside the `else` block (Line 84).
+            // So for this block, I must call it explicitly or refactor.
+            // I'll call it explicitly.
+            if (this.districtInsights) {
+                this.colorizeDistricts(metric);
+            }
+
+        } else if (viewType === 'states') {
+            // Fallback if somehow triggered
+            if (this.currentData && this.currentData.dealers) {
+                const statesData = this.dataManager.aggregateByState(this.currentData.dealers);
+                html = UIRenderer.renderDistrictSalesList(statesData);
+            }
+            metric = null;
+
+        } else {
+            // District Views: districts (sales), gdp, population, dealer_count
+            if (this.districtInsights && Object.keys(this.districtInsights).length > 0) {
+                // Determine Metric
+                if (viewType === 'gdp') metric = 'gdp';
+                else if (viewType === 'population') metric = 'population';
+                else if (viewType === 'dealer_count') metric = 'dealer_count';
+                else metric = 'sales';
+
+                // Sort for Sidebar
+                const districtsArray = Object.values(this.districtInsights).filter(d => d.name);
+
+                // Helper to parse if needed (reusing logic)
+                const parseVal = (v) => {
+                    if (typeof v === 'number') return v;
+                    if (!v) return 0;
+                    return parseFloat(v.toString().replace(/,/g, '').replace(/[^0-9.]/g, '')) || 0;
+                };
+
+                let sortFn;
+                if (metric === 'sales') sortFn = (a, b) => (b.currentSales || 0) - (a.currentSales || 0);
+                else if (metric === 'dealer_count') sortFn = (a, b) => (b.dealerCount || 0) - (a.dealerCount || 0);
+                else if (metric === 'gdp') sortFn = (a, b) => parseVal(b.gdp) - parseVal(a.gdp);
+                else if (metric === 'population') sortFn = (a, b) => parseVal(b.population) - parseVal(a.population);
+
+                districtsArray.sort(sortFn);
+
+                // Render List
+                if (metric === 'sales' || metric === 'districts') {
+                    html = UIRenderer.renderDistrictSalesList(districtsArray);
+                } else if (metric === 'dealer_count') {
+                    // Map to expected format for renderDealerCountList if needed or reuse same
+                    html = UIRenderer.renderDealerCountList(districtsArray, 'Districts by Dealer Count');
+                } else {
+                    // GDP / Pop
+                    const title = metric === 'gdp' ? 'Districts by GDP' : 'Districts by Population';
+                    html = UIRenderer.renderStateMetricList(districtsArray, metric, title);
+                }
+
+                // Apply Coloring
+                this.colorizeDistricts(metric);
+            }
+        }
+
+        console.log(`[handleViewChange] Setting currentViewMetric to: ${metric}`);
+        if (html) dealerSection.innerHTML = html;
+        this.currentViewMetric = metric; // Cache for hover
+
+        // Debug
+        // const testEl = document.getElementById('IN-KL-14'); // Kasaragod
+        // if(testEl) console.log('Test Element listeners active?');
+    }
+
+    /**
+     * Colorize districts based on metric
+     */
+    colorizeDistricts(metric) {
+        console.log(`[Colorize] Metric: ${metric}, Data Available:`, !!this.districtInsights);
+        if (!metric || !this.districtInsights) return;
+
+        const districts = document.querySelectorAll('.district');
+        const dataArr = Object.values(this.districtInsights);
+        // console.log('[Colorize] Data Sample:', dataArr[0]); 
+
+        // Colors
+        const colors = {
+            'sales': '#3b82f6',       // Blue
+            'dealer_count': '#f97316', // Orange
+            'gdp': '#10b981',          // Green
+            'population': '#8b5cf6'    // Purple
+        };
+        const baseColor = colors[metric] || '#3b82f6';
+
+        // Get Max for normalization
+        const parseVal = (d) => {
+            let val = 0;
+            if (metric === 'sales') val = d.currentSales || d.totalSales || 0;
+            else if (metric === 'dealer_count') val = d.dealerCount || 0;
+            else if (metric === 'gdp') {
+                let s = d.gdp;
+                val = s ? parseFloat(s.toString().replace(/,/g, '').replace(/[^0-9.]/g, '')) : 0;
+            }
+            else if (metric === 'population') {
+                let s = d.population;
+                val = s ? parseFloat(s.toString().replace(/,/g, '').replace(/[^0-9.]/g, '')) : 0;
+            }
+            return val || 0;
+        };
+
+        let maxVal = 0;
+        dataArr.forEach(d => {
+            const v = parseVal(d);
+            if (v > maxVal) maxVal = v;
+        });
+        console.log(`[Colorize] Max Value for ${metric}: ${maxVal}`);
+
+        // Apply
+        districts.forEach(d => {
+            const districtName = d.getAttribute('title') || d.id; // Map SVG IDs are usually names in Kerala map
+            // Need to find matching data. Map IDs might be "Thiruvananthapuram", keys might be distinct.
+            // Try explicit match or fuzzy
+            const item = dataArr.find(x => x.name.toLowerCase() === districtName.toLowerCase().replace(/-/g, ' '));
+
+            // if(districtName === 'palakkad') console.log(`[Colorize] Palakkad Item Found:`, item);
+
+            d.classList.remove('highlighted'); // Reset selection style if re-coloring
+
+            // Apply to ALL paths in the group
+            const paths = d.querySelectorAll('path');
+
+            if (item) {
+                const val = parseVal(item);
+                if (val <= 0) {
+                    paths.forEach(p => {
+                        p.style.transition = 'fill 0.3s ease';
+                        p.style.fill = '#e2e8f0'; // No data / zero
+                        p.style.opacity = '0.5';
+                    });
+                } else {
+                    const opacity = 0.3 + ((val / maxVal) * 0.7); // Min 0.3 opacity
+                    const opVal = opacity.toFixed(2);
+
+                    paths.forEach(p => {
+                        p.style.transition = 'fill 0.3s ease';
+                        p.style.fill = baseColor;
+                        p.style.opacity = opVal;
+                    });
+                }
+            } else {
+                paths.forEach(p => {
+                    p.style.transition = 'fill 0.3s ease';
+                    p.style.fill = '#e2e8f0';
+                    p.style.opacity = '0.3';
+                });
+            }
+        });
+    }
+
+    // Update initializeDistricts to add Hover
     initializeDistricts(stateId) {
         this.currentStateId = stateId;
         const districts = document.querySelectorAll('.district');
         const mapContainer = document.getElementById('state-map-container');
+        const stateView = document.getElementById('state-view');
 
-        // Cache initial state data for quick revert
+        // Create dedicated label for State View since India view label gets hidden
+        let hoverLabel = document.getElementById('state-hover-label');
+        if (!hoverLabel && stateView) {
+            hoverLabel = document.createElement('div');
+            hoverLabel.id = 'state-hover-label';
+            hoverLabel.style.position = 'absolute';
+            hoverLabel.style.top = '20px';
+            hoverLabel.style.left = '20px';
+            hoverLabel.style.background = 'rgba(15, 23, 42, 0.9)';
+            hoverLabel.style.color = '#e2e8f0';
+            hoverLabel.style.padding = '8px 12px';
+            hoverLabel.style.borderRadius = '6px';
+            hoverLabel.style.fontSize = '1rem';
+            hoverLabel.style.fontWeight = '500';
+            hoverLabel.style.pointerEvents = 'none';
+            hoverLabel.style.zIndex = '1000';
+            hoverLabel.style.display = 'none';
+            hoverLabel.style.border = '1px solid rgba(255,255,255,0.1)';
+            hoverLabel.style.backdropFilter = 'blur(4px)';
+
+            // Ensure state-view is relative so absolute positioning works
+            if (getComputedStyle(stateView).position === 'static') {
+                stateView.style.position = 'relative';
+            }
+            stateView.appendChild(hoverLabel);
+        }
+
         this.cacheStateData();
 
-        // Add click event listeners to each district
         districts.forEach(district => {
+            // Click
             district.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent bubbling to background
-                // Remove highlighted class from all
+                e.stopPropagation();
                 districts.forEach(d => d.classList.remove('highlighted'));
                 district.classList.add('highlighted');
+                // Ensure opacity is full on selection for visibility?
+                district.style.opacity = '1';
 
                 this.selectedDistrictId = district.id;
                 this.handleDistrictClick(district.id);
             });
 
-            // Hover effects removed for strict click-only interaction
+            // Hover
+            // Set default metric if missing
+            if (!this.currentViewMetric) {
+                console.log('[initializeDistricts] Defaulting metric to sales');
+                this.currentViewMetric = 'sales';
+            } else {
+                console.log(`[initializeDistricts] Metric already set to: ${this.currentViewMetric}`);
+            }
+
+            district.addEventListener('mouseenter', () => {
+                const districtName = district.getAttribute('title') || district.id;
+                let text = `<strong>${districtName}</strong>`;
+
+                // Add Data logic
+                if (this.currentViewMetric && this.districtInsights) {
+                    const dataArr = Object.values(this.districtInsights);
+                    const item = dataArr.find(x => x.name.toLowerCase() === districtName.toLowerCase().replace(/-/g, ' '));
+
+                    console.log(`[Hover] ${districtName}:`, item);
+
+                    if (item) {
+                        let valLabel = '';
+                        let val = '';
+                        let m = this.currentViewMetric;
+
+                        if (m === 'sales') {
+                            valLabel = 'Sales';
+                            // Format
+                            const s = item.currentSales || 0;
+                            if (s >= 10000000) val = `₹${(s / 10000000).toFixed(2)} Cr`;
+                            else val = `₹${(s / 100000).toFixed(2)} L`;
+                        } else if (m === 'dealer_count') {
+                            valLabel = 'Dealers';
+                            val = item.dealerCount || 0;
+                        } else if (m === 'gdp') {
+                            valLabel = 'GDP';
+                            val = item.gdp || 'N/A';
+                        } else if (m === 'population') {
+                            valLabel = 'Population';
+                            val = item.population || 'N/A';
+                        }
+
+                        if (valLabel) {
+                            text += `<div style="font-size:0.85rem; opacity:0.8; margin-top:2px;">${valLabel}: ${val}</div>`;
+                        }
+                    }
+                }
+
+                // For State View (Kerala), use the dedicated label
+                let label = document.getElementById('state-hover-label');
+                if (!label) label = document.getElementById('map-hover-label'); // Fallback
+
+                if (label) {
+                    label.innerHTML = text;
+                    label.style.display = 'block';
+                    // Positioning handled by CSS/Mouse move? No, usually fixed or follows mouse.
+                    // If fixed top-left, we are good.
+                }
+            });
+
+            district.addEventListener('mouseleave', () => {
+                if (hoverLabel) hoverLabel.style.display = 'none';
+            });
         });
 
-        // Background Click Listener for State Map
+        // Background Click
         if (mapContainer) {
             mapContainer.addEventListener('click', async (e) => {
-                // Only reset to state overview if clicking directly on SVG background (not a district path)
                 if (e.target.tagName === 'svg' || e.target === mapContainer) {
-                    // Deselect all districts
                     districts.forEach(d => d.classList.remove('highlighted'));
                     this.selectedDistrictId = null;
 
-                    // Show State Overview
                     if (this.stateOverviewData) {
                         this.updateSidebar(this.stateOverviewData);
                     }
 
-                    // Restore Districts View
-                    this.currentView = 'districts';
+                    // Reset View to Districts (default for map view)
+                    // If we want to KEEP the current view (e.g. GDP) but just deselect district, 
+                    // we should re-trigger handleViewChange with current dropdown value.
                     const viewSelector = document.getElementById('view-selector');
                     if (viewSelector) {
+                        // Unhide options (copy logic from fix)
                         const districtsOption = viewSelector.querySelector('option[value="districts"]');
                         if (districtsOption) {
                             districtsOption.hidden = false;
                             districtsOption.disabled = false;
                         }
+                        const choices = ['gdp', 'population', 'dealer_count'];
+                        choices.forEach(v => {
+                            const opt = viewSelector.querySelector(`option[value="${v}"]`);
+                            if (opt) { opt.hidden = false; opt.disabled = false; }
+                        });
 
-
-                        // Show GDP and Population again
-                        const gdpOption = viewSelector.querySelector('option[value="gdp"]');
-                        const popOption = viewSelector.querySelector('option[value="population"]');
-                        const dealerCountOption = viewSelector.querySelector('option[value="dealer_count"]');
-
-                        if (gdpOption) {
-                            gdpOption.hidden = false;
-                            gdpOption.disabled = false;
-                        }
-                        if (popOption) {
-                            popOption.hidden = false;
-                            popOption.disabled = false;
-                        }
-                        if (dealerCountOption) {
-                            dealerCountOption.hidden = false;
-                            dealerCountOption.disabled = false;
+                        // Default to districts if we were deep in dealers, OR keep current if it's a metric
+                        if (viewSelector.value === 'dealers') {
+                            viewSelector.value = 'districts';
                         }
 
-                        viewSelector.value = 'districts';
+                        this.handleViewChange(viewSelector.value);
                     }
-                    // Re-render sidebar
-                    this.renderSidebarContent();
+                    this.renderSidebarContent(); // This might be redundant if handleViewChange calls it
                 }
             });
         }
@@ -278,45 +527,7 @@ class MapInteractions {
         if (infoPanel) infoPanel.classList.add('active');
     }
 
-    /**
-     * Handle view change from floating buttons
-     */
-    handleViewChange(viewType) {
-        console.log('handleViewChange called with:', viewType);
-        const dealerSection = document.getElementById('dealer-section');
-        if (!dealerSection) {
-            console.log('dealer-section not found');
-            return;
-        }
 
-        console.log('currentData:', this.currentData);
-
-        let html = '';
-
-        if (viewType === 'dealers') {
-            // Show dealers list
-            if (this.currentData && this.currentData.dealers) {
-                console.log('Rendering dealers list, count:', this.currentData.dealers.length);
-                html = UIRenderer.renderDealerList(this.currentData.dealers);
-            }
-        } else if (viewType === 'states') {
-            if (this.currentData && this.currentData.dealers) {
-                console.log('Aggregating states from dealers...');
-                const statesData = this.dataManager.aggregateByState(this.currentData.dealers);
-                console.log('States data:', statesData);
-                html = UIRenderer.renderDistrictSalesList(statesData);
-            }
-        } else if (viewType === 'districts') {
-            // Show districts list (Kerala view)
-            if (this.districtInsights && Object.keys(this.districtInsights).length > 0) {
-                const sortedDistricts = this.dataManager.getDistrictsSortedBySales(this.districtInsights);
-                html = UIRenderer.renderDistrictSalesList(sortedDistricts);
-            }
-        }
-
-        console.log('Updating dealerSection with html length:', html.length);
-        dealerSection.innerHTML = html;
-    }
 }
 
 // Expose to window
