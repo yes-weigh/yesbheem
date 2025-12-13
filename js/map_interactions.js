@@ -328,10 +328,11 @@ class MapInteractions {
 
                         // Always reset to 'districts' view on background click in State View
                         viewSelector.value = 'districts';
+                        this.currentView = 'districts'; // Reset internal view state
 
                         this.handleViewChange(viewSelector.value);
                     }
-                    this.renderSidebarContent(); // This might be redundant if handleViewChange calls it
+                    // this.renderSidebarContent(); // Redundant and causes overwrite issues
                 }
             });
         }

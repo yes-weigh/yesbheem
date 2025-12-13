@@ -93,7 +93,9 @@ class ViewController {
             } else if (view === 'dealers') {
                 if (this.indiaData && this.indiaData.dealers) {
                     dealerSection.innerHTML = UIRenderer.renderDealerList(this.indiaData.dealers);
-                    this.resetMapColors();
+                    // Color map by dealer count to match Kerala behavior
+                    const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
+                    this.colorizeMapStates(statesData, 'dealer_count');
                 }
             } else if (view === 'gdp' || view === 'population') {
                 // Loading state
