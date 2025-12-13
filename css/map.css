@@ -42,7 +42,12 @@
 
 .map-viewport svg path.highlighted {
     fill: var(--primary);
-    stroke: white;
+    stroke: #ff0000 !important;
+    stroke-width: 3px !important;
+    opacity: 1 !important;
+    /* Ensure visibility over dimmed non-selected */
+    z-index: 100;
+    /* Attempt to bring to front visually if supported or just for ref */
 }
 
 /* Selected district styling (for Kerala districts) */
@@ -51,8 +56,8 @@
 /* Ensure paths inside highlighted group get the style */
 path.selected {
     fill: var(--primary) !important;
-    stroke: white !important;
-    stroke-width: 2px !important;
+    stroke: #ff0000 !important;
+    stroke-width: 3px !important;
 }
 
 /* View Layers */

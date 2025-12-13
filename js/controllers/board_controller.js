@@ -59,6 +59,18 @@ class BoardController {
 
         // Settings Modal Bindings
         this.setupSettingsModal();
+
+        // Sidebar Toggle
+        const toggleBtn = document.getElementById('toggleSidebarBtn');
+        const sidebar = document.querySelector('.boards-sidebar');
+        if (toggleBtn && sidebar) {
+            toggleBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+                const isCollapsed = sidebar.classList.contains('collapsed');
+                toggleBtn.querySelector('.sidebar-toggle-text').textContent = isCollapsed ? '' : 'Collapse';
+                // Rotate icon is handled by CSS
+            });
+        }
     }
 
     setupSettingsModal() {

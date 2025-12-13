@@ -44,6 +44,12 @@
     /* Prevent shrinking */
     box-sizing: border-box;
     overflow-y: hidden;
+    transition: width 0.3s ease, padding 0.3s ease;
+}
+
+.boards-sidebar.collapsed {
+    width: 60px;
+    padding: 16px 8px;
 }
 
 .boards-header {
@@ -51,6 +57,18 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 24px;
+    min-height: 32px;
+    /* Ensure height stability */
+}
+
+/* Hide header text when collapsed */
+.boards-sidebar.collapsed .boards-header h3 {
+    display: none;
+}
+
+/* Center add button when collapsed */
+.boards-sidebar.collapsed .boards-header {
+    justify-content: center;
 }
 
 .boards-header h3 {
@@ -61,6 +79,8 @@
     /* Muted header */
     font-weight: 700;
     letter-spacing: 0.05em;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .icon-btn {
@@ -83,6 +103,60 @@
     color: var(--text-primary);
 }
 
+/* Collapse Toggle Button */
+.sidebar-toggle-btn {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    /* Aligned with padding */
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    width: calc(100% - 32px);
+    /* Full width minus padding */
+    transition: background 0.2s;
+    font-size: 0.9rem;
+    overflow: hidden;
+}
+
+.boards-sidebar.collapsed .sidebar-toggle-btn {
+    width: 100%;
+    left: 0;
+    justify-content: center;
+    padding: 8px 0;
+}
+
+.sidebar-toggle-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-primary);
+}
+
+.sidebar-toggle-icon {
+    font-size: 1.2rem;
+    transition: transform 0.3s;
+}
+
+.boards-sidebar.collapsed .sidebar-toggle-icon {
+    transform: rotate(180deg);
+}
+
+.sidebar-toggle-text {
+    white-space: nowrap;
+}
+
+.boards-sidebar.collapsed .sidebar-toggle-text,
+.boards-sidebar.collapsed .board-item-content span:not(.board-item-icon) {
+    display: none;
+    /* Hide text */
+}
+
+/* Board Items in collapsed state */
 .boards-list {
     list-style: none;
     padding: 0;
@@ -107,9 +181,13 @@
     font-weight: 500;
 }
 
+.boards-sidebar.collapsed .board-item {
+    justify-content: center;
+    padding: 8px 4px;
+}
+
 .board-item:hover {
     background: rgba(255, 255, 255, 0.08);
-    /* Dark/Light neutral hover */
 }
 
 [data-theme="light"] .board-item:hover {
@@ -131,8 +209,14 @@
     white-space: nowrap;
 }
 
+.boards-sidebar.collapsed .board-item span.board-item-content {
+    justify-content: center;
+}
+
 .board-item-icon {
     font-size: 1.1rem;
+    flex-shrink: 0;
+    /* Prevent icon shrinking */
 }
 
 .board-delete-btn {
@@ -147,6 +231,11 @@
     margin-left: 8px;
     padding: 2px 6px;
     border-radius: 4px;
+}
+
+/* Hide delete button when collapsed to save space */
+.boards-sidebar.collapsed .board-delete-btn {
+    display: none !important;
 }
 
 .board-item:hover .board-delete-btn {

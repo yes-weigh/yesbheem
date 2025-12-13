@@ -792,9 +792,49 @@ class ViewController {
         });
     }
 
-    handleListClick(stateName) {
-        if (!stateName) return;
-        console.log('List clicked for:', stateName);
+    handleListClick(itemName) {
+        if (!itemName) return;
+        console.log('List clicked for:', itemName);
+
+        // CHECK IF IN STATE VIEW (e.g. Kerala)
+        if (this.currentView === 'state' && this.mapInteractions) {
+            // It's likely a district click
+            console.log('Attempting to find district:', itemName);
+
+            // Find the district element in the SVG
+            // Map IDs are usually lowercase-hyphenated or just Name. Try to match.
+            const districts = document.querySelectorAll('.district');
+            let matchedDistrict = null;
+
+            const searchName = itemName.trim().toLowerCase();
+
+            for (const d of districts) {
+                const dName = (d.getAttribute('title') || d.id).trim().toLowerCase();
+                const dId = d.id.trim().toLowerCase();
+
+                // Matches: 'kollam' == 'kollam' OR 'in-kl-1' == '...?' (No, usually IDs are names in this map)
+                // The map IDs we've seen are like 'thrissur', 'ernakulam', etc.
+                if (dName === searchName || dId === searchName || dName.includes(searchName)) {
+                    matchedDistrict = d;
+                    break;
+                }
+            }
+
+            if (matchedDistrict) {
+                console.log('Found district element:', matchedDistrict.id);
+                // Trigger the Map Interaction Logic
+                matchedDistrict.dispatchEvent(new Event('click'));
+                // Or explicitly call: this.mapInteractions.handleDistrictClick(matchedDistrict.id);
+                // But dispatching click handles highlighting classes too.
+            } else {
+                console.warn('Could not find District SVG element for:', itemName);
+            }
+            return; // Stop here for district actions
+        }
+
+        // --- EXISTING INDIA STATE LOGIC ---
+
+        const stateName = itemName; // Context switch
 
         // Map State Name to ID
         // Simplified lookup (could be robustified)
