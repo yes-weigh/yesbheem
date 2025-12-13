@@ -459,9 +459,11 @@ class BoardController {
         // Date Handling
         const dateObj = task.createdAt && task.createdAt.toDate ? task.createdAt.toDate() : new Date();
         const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
+        // Checklist Badge (Real Data)
         const hasDescription = !!task.description;
-        const checklistCount = Math.floor(Math.random() * 5); // Mock for visual density
+        const checklist = task.checklist || [];
+        const totalItems = checklist.length;
+        const completedItems = checklist.filter(i => i.done).length;
 
         let badgesHtml = '<div class="card-badges">';
 
@@ -487,13 +489,19 @@ class BoardController {
             descriptionHtml = `<div class="card-description-preview">${this.escapeHtml(task.description)}</div>`;
         }
 
-        // Mock Checklist Badge
-        badgesHtml += `
-            <div class="card-badge" title="Checklist items">
-                <span class="card-badge-icon">☑</span>
-                <span>${Math.floor(Math.random() * 3)}/${checklistCount + 3}</span>
-            </div>
-        `;
+        // Real Checklist Badge
+        if (totalItems > 0) {
+            const isDone = totalItems === completedItems;
+            const badgeColor = isDone ? '#22c55e' : ''; // Optional green if done
+            const badgeStyle = isDone ? `style="color: ${badgeColor};"` : '';
+
+            badgesHtml += `
+                <div class="card-badge" title="Checklist items" ${badgeStyle}>
+                    <span class="card-badge-icon">☑</span>
+                    <span>${completedItems}/${totalItems}</span>
+                </div>
+            `;
+        }
 
         badgesHtml += '</div>';
 
@@ -658,7 +666,66 @@ class BoardController {
             if (e.target === modalOverlay) closeModal();
         });
 
+        // Checklists
+        const addChecklistBtn = document.getElementById('addChecklistBtn');
+        const newChecklistInput = document.getElementById('newChecklistItem');
+
+        if (addChecklistBtn) {
+            addChecklistBtn.addEventListener('click', () => this.addChecklistItem());
+        }
+        if (newChecklistInput) {
+            newChecklistInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); // Prevent modal submit if inside form
+                    this.addChecklistItem();
+                }
+            });
+        }
+
         saveBtn.addEventListener('click', () => this.handleSaveTask(closeModal));
+    }
+
+    addChecklistItem() {
+        const input = document.getElementById('newChecklistItem');
+        const text = input.value.trim();
+        if (!text) return;
+
+        this.currentChecklist = this.currentChecklist || [];
+        this.currentChecklist.push({ text: text, done: false });
+
+        this.renderChecklistItems();
+        input.value = '';
+        input.focus();
+    }
+
+    renderChecklistItems() {
+        const container = document.getElementById('checklistItems');
+        container.innerHTML = '';
+
+        (this.currentChecklist || []).forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'checklist-item';
+            div.innerHTML = `
+                <input type="checkbox" ${item.done ? 'checked' : ''}>
+                <span class="${item.done ? 'completed' : ''}">${this.escapeHtml(item.text)}</span>
+                <button class="delete-item-btn" title="Remove">×</button>
+            `;
+
+            // Toggle
+            const checkbox = div.querySelector('input[type="checkbox"]');
+            checkbox.addEventListener('change', () => {
+                item.done = checkbox.checked;
+                div.querySelector('span').classList.toggle('completed', item.done);
+            });
+
+            // Delete
+            div.querySelector('.delete-item-btn').addEventListener('click', () => {
+                this.currentChecklist.splice(index, 1);
+                this.renderChecklistItems();
+            });
+
+            container.appendChild(div);
+        });
     }
 
     // ... Existing openEditModal/resetModal/handleSaveTask/escapeHtml ...
@@ -679,18 +746,26 @@ class BoardController {
         if (colorInput) colorInput.checked = true;
         else document.getElementById('color-none').checked = true;
 
+        // Load Checklist
+        this.currentChecklist = task.checklist ? JSON.parse(JSON.stringify(task.checklist)) : [];
+        this.renderChecklistItems();
+
         modalOverlay.classList.add('active');
     }
 
     resetModal(title, btnText) {
         this.isEditing = false;
         this.currentTaskId = null;
+        this.currentChecklist = []; // Reset checklist
+        this.renderChecklistItems(); // Clear UI
+
         document.querySelector('.modal-title').textContent = title;
         document.getElementById('saveTaskBtn').textContent = btnText;
 
         document.getElementById('taskTitle').value = '';
         document.getElementById('taskDescription').value = '';
-        // 'taskStatus' is now dynamic, default to first option if possible
+
+        // 'taskStatus' default
         const select = document.getElementById('taskStatus');
         if (select && select.options.length > 0) select.selectedIndex = 0;
 
@@ -714,11 +789,20 @@ class BoardController {
         const originalText = saveBtn.textContent;
         saveBtn.textContent = 'Saving...';
 
+        // Prepare Data
+        const taskData = {
+            title,
+            description,
+            status,
+            color,
+            checklist: this.currentChecklist || []
+        };
+
         let success;
         if (this.isEditing && this.currentTaskId) {
-            success = await this.taskService.updateTask(this.currentTaskId, { title, description, status, color });
+            success = await this.taskService.updateTask(this.currentTaskId, taskData);
         } else {
-            success = await this.taskService.addTask({ title, description, status, color });
+            success = await this.taskService.addTask(taskData);
         }
 
         saveBtn.disabled = false;
