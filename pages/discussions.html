@@ -170,32 +170,35 @@
     }
 </style>
 <div class="discussions-layout">
-    <!-- Boards Sidebar -->
-    <aside class="boards-sidebar">
-        <div class="boards-header">
-            <h3>Boards</h3>
-            <button id="createBoardBtn" class="icon-btn" title="Create Board">+</button>
-        </div>
-        <ul id="boardsList" class="boards-list">
-            <!-- Board items injected here -->
-        </ul>
-        <button id="toggleSidebarBtn" class="sidebar-toggle-btn" title="Toggle Sidebar">
-            <span class="sidebar-toggle-icon">«</span>
-            <span class="sidebar-toggle-text">Collapse</span>
-        </button>
-    </aside>
-
-    <!-- Main Content -->
+    <!-- Main Content (Full Width) -->
     <div class="board-main-content">
         <div class="kanban-header">
-            <div class="board-title-wrapper" style="display: flex; align-items: center; gap: 10px;">
-                <h2 id="currentBoardTitle">Tasks</h2>
-                <button id="editBoardBtn" class="icon-btn" style="color: white; opacity: 0.8;"
-                    title="Rename Board">✎</button>
+            <!-- Board Switcher Dropdown Trigger -->
+            <div class="board-picker-wrapper">
+                <div class="board-picker-trigger" id="boardPickerBtn" title="Switch Board">
+                    <h2 id="currentBoardTitle">Tasks</h2>
+                    <span class="picker-chevron">▼</span>
+                </div>
+
+                <!-- Dropdown Menu -->
+                <div class="board-picker-dropdown" id="boardPickerDropdown">
+                    <div class="dropdown-header">Switch Board</div>
+                    <ul class="dropdown-board-list" id="dropdownBoardList">
+                        <!-- Items injected by JS -->
+                    </ul>
+                    <div class="dropdown-footer">
+                        <button id="createBoardBtn" class="dropdown-action-btn">+ Create New Board</button>
+                    </div>
+                </div>
             </div>
-            <button id="openAddTaskBtn" class="add-task-btn">
-                <span>+</span> Add New Task
-            </button>
+
+            <div class="header-actions">
+                <button id="editBoardBtn" class="icon-btn"
+                    style="color: white; opacity: 0.8; width: 32px; height: 32px;" title="Board Settings">⚙️</button>
+                <button id="openAddTaskBtn" class="add-task-btn">
+                    <span>+</span> Add New Task
+                </button>
+            </div>
         </div>
 
         <div class="kanban-board" id="kanbanBoard">

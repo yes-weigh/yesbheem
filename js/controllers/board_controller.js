@@ -45,6 +45,8 @@ class BoardController {
                 const name = prompt("Enter board name:");
                 if (name && name.trim()) {
                     this.taskService.createBoard(name.trim());
+                    // Dropdown stays open or closes? Ideally close.
+                    document.querySelector('.board-picker-wrapper')?.classList.remove('active');
                 }
             });
         }
@@ -57,20 +59,26 @@ class BoardController {
             editBoardBtn.addEventListener('click', () => this.openSettingsModal());
         }
 
-        // Settings Modal Bindings
-        this.setupSettingsModal();
+        // Dropdown Toggle Logic
+        const pickerTrigger = document.getElementById('boardPickerBtn');
+        const pickerWrapper = document.querySelector('.board-picker-wrapper');
 
-        // Sidebar Toggle
-        const toggleBtn = document.getElementById('toggleSidebarBtn');
-        const sidebar = document.querySelector('.boards-sidebar');
-        if (toggleBtn && sidebar) {
-            toggleBtn.addEventListener('click', () => {
-                sidebar.classList.toggle('collapsed');
-                const isCollapsed = sidebar.classList.contains('collapsed');
-                toggleBtn.querySelector('.sidebar-toggle-text').textContent = isCollapsed ? '' : 'Collapse';
-                // Rotate icon is handled by CSS
+        if (pickerTrigger && pickerWrapper) {
+            pickerTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                pickerWrapper.classList.toggle('active');
+            });
+
+            // Close when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!pickerWrapper.contains(e.target)) {
+                    pickerWrapper.classList.remove('active');
+                }
             });
         }
+
+        // Settings Modal Bindings
+        this.setupSettingsModal();
     }
 
     setupSettingsModal() {
@@ -285,15 +293,22 @@ class BoardController {
     }
 
     renderBoardsSidebar(boards) {
-        const list = document.getElementById('boardsList');
+        // Renamed to handle dropdown now, keeping method signature for compatibility with init call
+        this.renderBoardsDropdown(boards);
+    }
+
+    renderBoardsDropdown(boards) {
+        const list = document.getElementById('dropdownBoardList');
         if (!list) return;
 
         // Auto-select first board if none selected
         if (boards.length > 0 && (!this.taskService.currentBoardId || !boards.find(b => b.id === this.taskService.currentBoardId))) {
             this.switchBoard(boards[0].id, boards);
+            return;
         } else if (boards.length === 0) {
             // Create default if empty
             this.taskService.createBoard("Main Board");
+            return;
         } else {
             this.updateBoardHeader(boards);
         }
@@ -301,23 +316,29 @@ class BoardController {
         list.innerHTML = '';
         boards.forEach(board => {
             const li = document.createElement('li');
-            li.className = `board-item ${board.id === this.taskService.currentBoardId ? 'active' : ''}`;
+            li.className = `dropdown-item ${board.id === this.taskService.currentBoardId ? 'active' : ''}`;
+
+            // Delete Button (Small x)
+            const deleteBtnHtml = boards.length > 1 ? '<span class="delete-board-icon" title="Delete Board" style="font-size:0.8rem; opacity:0.6; cursor:pointer;">✕</span>' : '';
+
             li.innerHTML = `
-                <span class="board-item-content">
-                    <span class="board-item-icon">📋</span>
-                    ${this.escapeHtml(board.name)}
-                </span>
-                ${boards.length > 1 ? '<button class="board-delete-btn" title="Delete Board">×</button>' : ''}
+                <span class="board-name-text">${this.escapeHtml(board.name)}</span>
+                ${deleteBtnHtml}
             `;
 
-            li.addEventListener('click', () => this.switchBoard(board.id, boards));
+            li.addEventListener('click', () => {
+                this.switchBoard(board.id, boards);
+                document.querySelector('.board-picker-wrapper')?.classList.remove('active');
+            });
 
-            const delBtn = li.querySelector('.board-delete-btn');
-            if (delBtn) {
-                delBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.deleteBoard(board.id);
-                });
+            if (deleteBtnHtml) {
+                const delBtn = li.querySelector('.delete-board-icon');
+                if (delBtn) {
+                    delBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.deleteBoard(board.id);
+                    });
+                }
             }
 
             list.appendChild(li);
@@ -336,8 +357,8 @@ class BoardController {
 
         this.updateBoardHeader(boards);
 
-        // Re-render sidebar to update active class
-        this.renderBoardsSidebar(boards || this.taskService.boards);
+        // Re-render dropdown to update active class
+        this.renderBoardsDropdown(boards || this.taskService.boards);
     }
 
     updateBoardHeader(boards) {
@@ -355,7 +376,7 @@ class BoardController {
         const success = await this.taskService.deleteBoard(boardId);
 
         if (success && currentId === boardId) {
-            // UI updates via subscription
+            // UI updates via subscription auto-reload
         }
     }
 

@@ -32,219 +32,147 @@
     background-color: transparent;
 }
 
-/* Sidebar */
-.boards-sidebar {
-    width: 260px;
-    background: var(--bg-secondary);
-    border-right: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    padding: 16px;
-    flex-shrink: 0;
-    /* Prevent shrinking */
-    box-sizing: border-box;
-    overflow-y: hidden;
-    transition: width 0.3s ease, padding 0.3s ease;
-}
-
-.boards-sidebar.collapsed {
-    width: 60px;
-    padding: 16px 8px;
-}
-
-.boards-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-    min-height: 32px;
-    /* Ensure height stability */
-}
-
-/* Hide header text when collapsed */
-.boards-sidebar.collapsed .boards-header h3 {
-    display: none;
-}
-
-/* Center add button when collapsed */
-.boards-sidebar.collapsed .boards-header {
-    justify-content: center;
-}
-
-.boards-header h3 {
-    margin: 0;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    color: var(--text-tertiary);
-    /* Muted header */
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-    overflow: hidden;
-}
-
-.icon-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    width: 24px;
-    height: 24px;
-    border-radius: 4px;
+/* Board Picker (Header Dropdown) */
+.board-picker-wrapper {
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background 0.2s;
-    padding: 0;
 }
 
-.icon-btn:hover {
-    background: rgba(0, 0, 0, 0.1);
-    color: var(--text-primary);
-}
-
-/* Collapse Toggle Button */
-.sidebar-toggle-btn {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    /* Aligned with padding */
-    background: transparent;
-    border: none;
-    color: var(--text-tertiary);
-    cursor: pointer;
+.board-picker-trigger {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px;
+    cursor: pointer;
+    padding: 6px 12px;
     border-radius: 4px;
-    width: calc(100% - 32px);
-    /* Full width minus padding */
     transition: background 0.2s;
-    font-size: 0.9rem;
-    overflow: hidden;
+    user-select: none;
 }
 
-.boards-sidebar.collapsed .sidebar-toggle-btn {
-    width: 100%;
-    left: 0;
-    justify-content: center;
-    padding: 8px 0;
+.board-picker-trigger:hover {
+    background: rgba(255, 255, 255, 0.15);
 }
 
-.sidebar-toggle-btn:hover {
-    background: rgba(0, 0, 0, 0.05);
-    color: var(--text-primary);
+.board-picker-trigger h2 {
+    color: white;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-.sidebar-toggle-icon {
-    font-size: 1.2rem;
-    transition: transform 0.3s;
+.picker-chevron {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.8rem;
+    transition: transform 0.2s;
 }
 
-.boards-sidebar.collapsed .sidebar-toggle-icon {
+.board-picker-wrapper.active .picker-chevron {
     transform: rotate(180deg);
 }
 
-.sidebar-toggle-text {
-    white-space: nowrap;
-}
-
-.boards-sidebar.collapsed .sidebar-toggle-text,
-.boards-sidebar.collapsed .board-item-content span:not(.board-item-icon) {
+/* Dropdown Menu */
+.board-picker-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 8px;
+    width: 280px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    /* Slightly rounder */
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+    /* Deeper shadow */
+    z-index: 1000;
     display: none;
-    /* Hide text */
-}
-
-/* Board Items in collapsed state */
-.boards-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
     flex-direction: column;
-    gap: 4px;
+    overflow: hidden;
+    /* For rounded corners */
+
+    /* Animation */
+    transform-origin: top left;
+    animation: dropdownEnter 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
-.board-item {
+@keyframes dropdownEnter {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.board-picker-wrapper.active .board-picker-dropdown {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    color: var(--text-primary);
-    text-decoration: none;
-    transition: background 0.2s;
-    font-weight: 500;
 }
 
-.boards-sidebar.collapsed .board-item {
-    justify-content: center;
-    padding: 8px 4px;
+.dropdown-header {
+    padding: 12px 16px 8px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border-light);
 }
 
-.board-item:hover {
-    background: rgba(255, 255, 255, 0.08);
+.dropdown-board-list {
+    list-style: none;
+    padding: 4px 0;
+    margin: 0;
+    max-height: 300px;
+    overflow-y: auto;
 }
 
-[data-theme="light"] .board-item:hover {
-    background: rgba(9, 30, 66, 0.08);
-}
-
-.board-item.active {
-    background: rgba(var(--primary-rgb), 0.1);
-    color: var(--primary-color);
-}
-
-.board-item span.board-item-content {
+.dropdown-item {
+    padding: 8px 16px;
     display: flex;
     align-items: center;
     gap: 10px;
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.boards-sidebar.collapsed .board-item span.board-item-content {
-    justify-content: center;
-}
-
-.board-item-icon {
-    font-size: 1.1rem;
-    flex-shrink: 0;
-    /* Prevent icon shrinking */
-}
-
-.board-delete-btn {
-    background: none;
-    border: none;
-    color: var(--text-tertiary);
     cursor: pointer;
-    font-size: 1.1rem;
-    line-height: 1;
-    opacity: 0;
-    transition: opacity 0.2s;
-    margin-left: 8px;
-    padding: 2px 6px;
-    border-radius: 4px;
+    color: var(--text-main);
+    font-weight: 500;
+    transition: background 0.1s;
+    justify-content: space-between;
 }
 
-/* Hide delete button when collapsed to save space */
-.boards-sidebar.collapsed .board-delete-btn {
-    display: none !important;
+.dropdown-item:hover {
+    background: var(--bg-sidebar-hover);
 }
 
-.board-item:hover .board-delete-btn {
-    opacity: 1;
+.dropdown-item.active {
+    color: var(--primary);
+    background: rgba(var(--primary-rgb), 0.1);
 }
 
-.board-delete-btn:hover {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+.dropdown-action-btn {
+    width: 100%;
+    padding: 10px;
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-top: 1px solid var(--border-light);
+    color: var(--primary);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.1s;
+}
+
+.dropdown-action-btn:hover {
+    background: var(--bg-sidebar-hover);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 
@@ -272,6 +200,10 @@
     background: rgba(0, 0, 0, 0.2);
     backdrop-filter: blur(4px);
     flex-shrink: 0;
+    position: relative;
+    /* Create stacking context */
+    z-index: 50;
+    /* Ensure it's above the board content */
 }
 
 .kanban-header h2 {
