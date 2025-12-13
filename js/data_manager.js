@@ -398,6 +398,8 @@ class DataManager {
         const stateData = rawData.filter(row => {
             const bState = (row['billing_state'] || '').toLowerCase();
             const sState = (row['shipping_state'] || '').toLowerCase();
+            // Default to Kerala if both are empty
+            if (!bState && !sState && stateName.toLowerCase() === 'kerala') return true;
             return bState.includes(stateLower) || sState.includes(stateLower);
         });
 
@@ -557,7 +559,7 @@ class DataManager {
      * Normalize state name to handle variations (e.g. Tamilnadu -> Tamil Nadu)
      */
     normalizeStateName(rawStateName) {
-        if (!rawStateName) return 'Unknown';
+        if (!rawStateName) return 'Kerala'; // Default to Kerala if missing
         let name = rawStateName.trim().replace(/\s+/g, ' ');
 
         // Common variations map
@@ -730,7 +732,7 @@ class DataManager {
             aggregated.dealers.push({
                 name: row['customer_name'] || 'Unknown Dealer',
                 sales: sales,
-                state: row['billing_state'] || row['shipping_state'] || 'Unknown'
+                state: row['billing_state'] || row['shipping_state'] || 'Kerala'
             });
         }
 
