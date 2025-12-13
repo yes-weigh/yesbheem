@@ -116,8 +116,11 @@ class BoardController {
                 reader.onload = (e) => {
                     preview.style.backgroundImage = `url('${e.target.result}')`;
                     preview.style.display = 'block';
+                    this.selectedGalleryUrl = null; // Clear gallery selection
+                    this.highlightGalleryItem(null);
                 };
                 reader.readAsDataURL(file);
+                this.tempBgRemoved = false;
             }
         });
 
@@ -126,6 +129,72 @@ class BoardController {
             preview.style.backgroundImage = '';
             preview.style.display = 'none';
             this.tempBgRemoved = true;
+            this.selectedGalleryUrl = null;
+            this.highlightGalleryItem(null);
+        });
+
+        // Bulk Upload
+        const bulkInput = document.getElementById('bulkUploadInput');
+        bulkInput.addEventListener('change', async (e) => {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                // Show loading state
+                const gallery = document.getElementById('bgImageGallery');
+                gallery.innerHTML = '<div style="grid-column: 1/-1; color: var(--text-muted);">Uploading...</div>';
+
+                await this.taskService.uploadBoardImages(files);
+                await this.loadGallery(); // Refresh
+                bulkInput.value = ''; // Reset
+            }
+        });
+
+        // Gallery Management (Delete Mode)
+        this.isGalleryManageMode = false;
+        this.gallerySelection = new Set();
+
+        const manageBtn = document.getElementById('manageGalleryBtn');
+        const actionsDiv = document.getElementById('galleryActions');
+        const cancelManageBtn = document.getElementById('cancelManageBtn');
+        const deleteImagesBtn = document.getElementById('deleteImagesBtn');
+
+        manageBtn.addEventListener('click', () => {
+            this.isGalleryManageMode = true;
+            this.gallerySelection.clear();
+            actionsDiv.style.display = 'flex';
+            manageBtn.style.display = 'none';
+            this.updateGallerySelectionUI();
+        });
+
+        cancelManageBtn.addEventListener('click', () => {
+            this.isGalleryManageMode = false;
+            this.gallerySelection.clear();
+            actionsDiv.style.display = 'none';
+            manageBtn.style.display = 'inline-block';
+            this.updateGallerySelectionUI(); // Clear visuals
+        });
+
+        deleteImagesBtn.addEventListener('click', async () => {
+            if (this.gallerySelection.size === 0) return;
+
+            if (!confirm(`Delete ${this.gallerySelection.size} images? Any boards using them will revert to default background.`)) return;
+
+            deleteImagesBtn.textContent = 'Deleting...';
+            deleteImagesBtn.disabled = true;
+
+            const urls = Array.from(this.gallerySelection);
+            for (const url of urls) {
+                await this.taskService.deleteBoardImage(url);
+            }
+
+            this.gallerySelection.clear();
+            await this.loadGallery(); // Refresh list
+
+            // Exit manage mode
+            this.isGalleryManageMode = false;
+            actionsDiv.style.display = 'none';
+            manageBtn.style.display = 'inline-block';
+            deleteImagesBtn.textContent = 'Delete';
+            deleteImagesBtn.disabled = false;
         });
 
         // Font Size Slider
@@ -163,7 +232,7 @@ class BoardController {
         });
     }
 
-    openSettingsModal() {
+    async openSettingsModal() {
         if (!this.taskService.currentBoardId) return;
         const board = this.taskService.boards.find(b => b.id === this.taskService.currentBoardId);
         if (!board) return;
@@ -179,15 +248,110 @@ class BoardController {
         if (board.bgImage) {
             preview.style.backgroundImage = `url('${board.bgImage}')`;
             preview.style.display = 'block';
+            this.selectedGalleryUrl = board.bgImage; // Mark current as selected if in gallery
         } else {
             preview.style.display = 'none';
+            this.selectedGalleryUrl = null;
         }
         this.tempBgRemoved = false;
+
+        // Load Gallery
+        this.loadGallery();
 
         // Columns
         this.renderSettingsColumns(board.columns || []);
 
         modal.classList.add('active');
+    }
+
+    async loadGallery() {
+        const gallery = document.getElementById('bgImageGallery');
+        if (!gallery) return;
+
+        gallery.innerHTML = '<div style="grid-column: 1/-1; color: var(--text-muted); font-size: 0.8rem;">Loading...</div>';
+
+        const urls = await this.taskService.getAvailableBackgrounds();
+
+        gallery.innerHTML = '';
+        if (urls.length === 0) {
+            gallery.innerHTML = '<div style="grid-column: 1/-1; color: var(--text-muted); font-size: 0.8rem;">No uploads yet.</div>';
+            return;
+        }
+
+        urls.forEach(url => {
+            const div = document.createElement('div');
+            div.className = 'bg-gallery-item';
+            div.style.backgroundImage = `url('${url}')`;
+            div.dataset.url = url;
+
+            // Check selection states
+            if (this.isGalleryManageMode) {
+                if (this.gallerySelection.has(url)) div.classList.add('deletion-selected');
+            } else {
+                if (url === this.selectedGalleryUrl) div.classList.add('selected');
+            }
+
+            div.addEventListener('click', () => {
+                if (this.isGalleryManageMode) {
+                    // Manage Mode: Toggle selection for deletion
+                    if (this.gallerySelection.has(url)) {
+                        this.gallerySelection.delete(url);
+                        div.classList.remove('deletion-selected');
+                    } else {
+                        this.gallerySelection.add(url);
+                        div.classList.add('deletion-selected');
+                    }
+                    this.updateGallerySelectionUI();
+                } else {
+                    // Normal Mode: Select as background
+                    const preview = document.getElementById('bgImagePreview');
+                    preview.style.backgroundImage = `url('${url}')`;
+                    preview.style.display = 'block';
+
+                    this.selectedGalleryUrl = url;
+                    this.tempBgRemoved = false;
+
+                    document.getElementById('bgImageInput').value = '';
+                    this.highlightGalleryItem(div);
+                }
+            });
+
+            gallery.appendChild(div);
+        });
+    }
+
+    updateGallerySelectionUI() {
+        const countSpan = document.getElementById('selectedCountText');
+        if (countSpan) countSpan.textContent = `${this.gallerySelection.size} selected`;
+
+        // Refresh visual states if switching modes (simple way is re-rendering or toggling classes)
+        // Re-rendering is safer to ensure correct classes
+        const gallery = document.getElementById('bgImageGallery');
+        if (gallery) {
+            gallery.querySelectorAll('.bg-gallery-item').forEach(div => {
+                const url = div.dataset.url;
+                if (this.isGalleryManageMode) {
+                    div.classList.remove('selected'); // Remove normal selection
+                    if (this.gallerySelection.has(url)) {
+                        div.classList.add('deletion-selected');
+                    } else {
+                        div.classList.remove('deletion-selected');
+                    }
+                } else {
+                    div.classList.remove('deletion-selected');
+                    if (url === this.selectedGalleryUrl) {
+                        div.classList.add('selected');
+                    } else {
+                        div.classList.remove('selected');
+                    }
+                }
+            });
+        }
+    }
+
+    highlightGalleryItem(selectedDiv) {
+        document.querySelectorAll('.bg-gallery-item').forEach(el => el.classList.remove('selected'));
+        if (selectedDiv) selectedDiv.classList.add('selected');
     }
 
     renderSettingsColumns(columns) {
@@ -281,7 +445,11 @@ class BoardController {
         if (newName) updates.name = newName;
         updates.fontSize = fontSize;
 
-        if (this.tempBgRemoved) updates.bgImage = null;
+        if (this.tempBgRemoved) {
+            updates.bgImage = null;
+        } else if (this.selectedGalleryUrl) {
+            updates.bgImage = this.selectedGalleryUrl;
+        }
 
         const file = bgInput.files[0];
         if (file) {

@@ -652,6 +652,55 @@
     background: rgba(0, 0, 0, 0.05);
 }
 
-.btn-primary:hover {
-    filter: brightness(1.1);
+
+/* Background Gallery */
+.bg-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 2px;
+    /* For focus outline visibility */
+}
+
+.bg-gallery-item {
+    aspect-ratio: 16/9;
+    border-radius: 4px;
+    background-size: cover;
+    background-position: center;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.bg-gallery-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.bg-gallery-item.selected {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--bg-panel), 0 0 0 4px var(--primary-color);
+}
+
+.bg-gallery-item.deletion-selected {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 2px var(--bg-panel), 0 0 0 4px #ef4444;
+    position: relative;
+    opacity: 0.8;
+}
+
+.bg-gallery-item.deletion-selected::after {
+    content: "✕";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
 }

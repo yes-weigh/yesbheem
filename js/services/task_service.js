@@ -1,5 +1,13 @@
 
-import { db } from "./firebase_config.js";
+
+import { db, storage } from "./firebase_config.js";
+import {
+    ref,
+    uploadBytes,
+    getDownloadURL,
+    listAll,
+    deleteObject
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 import {
     collection,
     addDoc,
@@ -10,13 +18,10 @@ import {
     query,
     orderBy,
     where,
-    serverTimestamp
+    serverTimestamp,
+    getDocs,
+    writeBatch
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import {
-    ref,
-    uploadBytes,
-    getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 const COLLECTION_TASKS = "project_tasks";
 const COLLECTION_BOARDS = "task_boards";
@@ -199,6 +204,49 @@ export class TaskService {
             console.error("Error uploading image:", e);
             return null;
         }
+    }
+
+    async getAvailableBackgrounds() {
+        try {
+            const listRef = ref(storage, 'board_backgrounds');
+            const res = await listAll(listRef);
+            // Fetch URLs
+            const urls = await Promise.all(res.items.map(itemRef => getDownloadURL(itemRef)));
+            return urls;
+        } catch (e) {
+            console.error("Error fetching backgrounds:", e);
+            return [];
+        }
+    }
+
+    async deleteBoardImage(url) {
+        try {
+            // 1. Delete from Storage
+            const imgRef = ref(storage, url);
+            await deleteObject(imgRef);
+
+            // 2. Revert boards using this image to default
+            const q = query(collection(db, COLLECTION_BOARDS), where("bgImage", "==", url));
+            const snapshot = await getDocs(q);
+
+            if (!snapshot.empty) {
+                const batch = writeBatch(db);
+                snapshot.docs.forEach(doc => {
+                    batch.update(doc.ref, { bgImage: null });
+                });
+                await batch.commit();
+            }
+
+            return true;
+        } catch (e) {
+            console.error("Error deleting image:", e);
+            return false;
+        }
+    }
+
+    async uploadBoardImages(files) {
+        const promises = Array.from(files).map(file => this.uploadBoardImage(file));
+        return await Promise.all(promises);
     }
 
     async addColumn(boardId, columnTitle) {

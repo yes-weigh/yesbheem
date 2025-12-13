@@ -325,6 +325,36 @@
                     </div>
                     <button id="removeBgBtn" class="btn-secondary" style="margin-top: 10px; font-size: 0.8rem;">Remove
                         Background</button>
+
+                    <div style="margin-top: 20px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <label style="margin:0;">My Gallery</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="file" id="bulkUploadInput" multiple accept="image/*"
+                                    style="display: none;">
+                                <button class="btn-secondary" style="font-size: 0.75rem; padding: 4px 8px;"
+                                    onclick="document.getElementById('bulkUploadInput').click()">+ Upload</button>
+                                <button id="manageGalleryBtn" class="btn-secondary"
+                                    style="font-size: 0.75rem; padding: 4px 8px;">Manage</button>
+                            </div>
+                        </div>
+
+                        <div id="galleryActions"
+                            style="display: none; justify-content: space-between; align-items: center; background: rgba(239, 68, 68, 0.1); padding: 8px; border-radius: 4px; margin-bottom: 10px;">
+                            <span style="font-size: 0.8rem; color: #ef4444;" id="selectedCountText">0 selected</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button id="deleteImagesBtn" class="btn-danger-sm"
+                                    style="font-size: 0.75rem;">Delete</button>
+                                <button id="cancelManageBtn" class="btn-secondary"
+                                    style="font-size: 0.75rem; background:white; border:none;">Done</button>
+                            </div>
+                        </div>
+
+                        <div id="bgImageGallery" class="bg-gallery-grid">
+                            <!-- Dynamic images -->
+                        </div>
+                    </div>
                 </div>
             </div>
 
