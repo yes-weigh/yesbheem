@@ -322,7 +322,7 @@
 }
 
 .card-description-preview {
-    font-size: 0.75rem;
+    font-size: 0.85em;
     color: var(--text-tertiary);
     margin-bottom: 6px;
     display: -webkit-box;
@@ -336,7 +336,8 @@
 .card-labels {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 0.25em;
+    /* Scale gap too */
     margin-bottom: 4px;
 }
 
@@ -355,7 +356,8 @@
 
 .card-title {
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: 1em;
+    /* Inherit from card (which uses var) */
     font-weight: 500;
     line-height: 1.4;
     word-wrap: break-word;
@@ -389,7 +391,8 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 0.75rem;
+    font-size: 0.85em;
+    /* Scale relative to card */
     padding: 2px 4px;
     border-radius: 4px;
 }
@@ -433,7 +436,8 @@
     transition: opacity 0.2s;
     border: none;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 0.85em;
+    /* Scale */
 }
 
 .kanban-card:hover .delete-task-btn {
