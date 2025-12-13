@@ -12,6 +12,11 @@ import {
     where,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+    ref,
+    uploadBytes,
+    getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 const COLLECTION_TASKS = "project_tasks";
 const COLLECTION_BOARDS = "task_boards";
@@ -44,7 +49,15 @@ export class TaskService {
         try {
             await addDoc(collection(db, COLLECTION_BOARDS), {
                 name: name,
-                createdAt: serverTimestamp()
+                createdAt: serverTimestamp(),
+                // Default Columns
+                columns: [
+                    { id: 'todo', title: 'To Do', color: '#64748b' },
+                    { id: 'inprogress', title: 'In Progress', color: '#3b82f6' },
+                    { id: 'done', title: 'Done', color: '#22c55e' }
+                ],
+                bgImage: null,
+                fontSize: 'medium' // small, medium, large
             });
             return true;
         } catch (e) {
@@ -63,11 +76,14 @@ export class TaskService {
         }
     }
 
-    async updateBoard(boardId, name) {
+    async updateBoard(boardId, updates) {
         try {
             const boardRef = doc(db, COLLECTION_BOARDS, boardId);
+            // If updates is just string, treat as name for backward compatibility
+            const data = typeof updates === 'string' ? { name: updates } : updates;
+
             await updateDoc(boardRef, {
-                name: name,
+                ...data,
                 updatedAt: serverTimestamp()
             });
             return true;
@@ -170,5 +186,71 @@ export class TaskService {
 
     getTask(id) {
         return this.tasks.find(t => t.id === id);
+    }
+
+    async uploadBoardImage(file) {
+        if (!file) return null;
+        try {
+            const fileRef = ref(storage, `board_backgrounds/${Date.now()}_${file.name}`);
+            const snapshot = await uploadBytes(fileRef, file);
+            const url = await getDownloadURL(snapshot.ref);
+            return url;
+        } catch (e) {
+            console.error("Error uploading image:", e);
+            return null;
+        }
+    }
+
+    async addColumn(boardId, columnTitle) {
+        const board = this.boards.find(b => b.id === boardId);
+        if (!board) return false;
+
+        const newCol = {
+            id: 'col_' + Date.now(),
+            title: columnTitle,
+            color: '#64748b' // Default color
+        };
+
+        // Fix for legacy boards: if columns is undefined, use defaults
+        let columns = board.columns;
+        if (!columns || columns.length === 0) {
+            columns = [
+                { id: 'todo', title: 'To Do', color: '#64748b' },
+                { id: 'inprogress', title: 'In Progress', color: '#3b82f6' },
+                { id: 'done', title: 'Done', color: '#22c55e' }
+            ];
+        }
+
+        // Create a copy to avoid mutating cache directly before server confirm (though we re-fetch)
+        const updatedColumns = [...columns, newCol];
+
+        return await this.updateBoard(boardId, { columns: updatedColumns });
+    }
+
+    async deleteColumn(boardId, columnId) {
+        const board = this.boards.find(b => b.id === boardId);
+        if (!board) return false;
+
+        // Check if tasks exist in this column
+        if (this.currentBoardId === boardId) {
+            const hasTasks = this.tasks.some(t => t.status === columnId);
+            if (hasTasks) return false;
+        }
+
+        let columns = board.columns;
+        if (!columns || columns.length === 0) {
+            // If legacy board, we can't delete "virtual" columns if they are not saved yet.
+            // But if user tries to delete one of the defaults on a legacy board, 
+            // we should materialize the other defaults.
+            columns = [
+                { id: 'todo', title: 'To Do', color: '#64748b' },
+                { id: 'inprogress', title: 'In Progress', color: '#3b82f6' },
+                { id: 'done', title: 'Done', color: '#22c55e' }
+            ];
+        }
+
+        const newCols = columns.filter(c => c.id !== columnId);
+
+        return await this.updateBoard(boardId, { columns: newCols });
     }
 }

@@ -861,6 +861,77 @@ class ViewController {
             path.style.stroke = '';
         });
     }
+
+    handleListClick(stateName) {
+        if (!stateName) return;
+        console.log('List clicked for:', stateName);
+
+        // Map State Name to ID
+        // Simplified lookup (could be robustified)
+        const nameToId = {
+            'Kerala': 'KL',
+            'Tamil Nadu': 'TN',
+            'Karnataka': 'KA',
+            'Maharashtra': 'MH',
+            'Andhra Pradesh': 'AP',
+            'Telangana': 'TG',
+            'Goa': 'GA',
+            'Gujarat': 'GJ',
+            'Rajasthan': 'RJ',
+            'Punjab': 'PB',
+            'Haryana': 'HR',
+            'Himachal Pradesh': 'HP',
+            'Jammu and Kashmir': 'JK',
+            'Uttar Pradesh': 'UP',
+            'Uttarakhand': 'UT',
+            'Madhya Pradesh': 'MP',
+            'Chhattisgarh': 'CT',
+            'Odisha': 'OR',
+            'West Bengal': 'WB',
+            'Bihar': 'BR',
+            'Jharkhand': 'JH',
+            'Assam': 'AS',
+            'Sikkim': 'SK',
+            'Arunachal Pradesh': 'AR',
+            'Nagaland': 'NL',
+            'Manipur': 'MN',
+            'Mizoram': 'MZ',
+            'Tripura': 'TR',
+            'Meghalaya': 'ML',
+            'Delhi': 'DL',
+            'Puducherry': 'PY',
+            'Chandigarh': 'CH',
+            'Ladakh': 'LA',
+            'Dadra and Nagar Haveli': 'DN',
+            'Daman and Diu': 'DD',
+            'Andaman and Nicobar Islands': 'AN',
+            'Lakshadweep': 'LD'
+        };
+
+        let id = nameToId[stateName];
+
+        // Extended fuzzy match if direct lookup fails
+        if (!id) {
+            const key = stateName.toLowerCase();
+            for (const [n, i] of Object.entries(nameToId)) {
+                if (n.toLowerCase() === key) {
+                    id = i;
+                    break;
+                }
+            }
+        }
+
+        if (id) {
+            // SPECIAL HANDLING FOR KERALA
+            if (id === 'KL') {
+                this.showStateDetails(id);
+            } else {
+                this.showStateView(id, stateName);
+            }
+        } else {
+            console.warn('Could not map View list click to State ID for:', stateName);
+        }
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

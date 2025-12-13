@@ -1,3 +1,124 @@
+<style>
+    /* Settings Modal Styles */
+    .settings-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 12px;
+    }
+
+    .tab-btn {
+        background: transparent;
+        border: none;
+        padding: 8px 16px;
+        cursor: pointer;
+        color: var(--text-muted);
+        font-weight: 500;
+        border-radius: 20px;
+        /* Pill shape */
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+    }
+
+    .tab-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text-main);
+    }
+
+    .tab-btn.active {
+        background: var(--primary-color);
+        color: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: var(--text-main);
+        font-size: 0.9rem;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        outline: none;
+    }
+
+    /* Columns List */
+    .columns-list {
+        list-style: none;
+        padding: 0;
+        max-height: 350px;
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+    }
+
+    .column-list-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: var(--bg-main);
+        border-bottom: 1px solid var(--border-color);
+        transition: background 0.1s;
+    }
+
+    .column-list-item:last-child {
+        border-bottom: none;
+    }
+
+    .column-list-item:hover {
+        background: var(--bg-secondary);
+    }
+
+    .column-list-item h4 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: var(--text-main);
+    }
+
+    /* Buttons */
+    .btn-icon-sm {
+        border: 1px solid transparent;
+        background: transparent;
+        cursor: pointer;
+        font-size: 0.75rem;
+        padding: 4px;
+        color: var(--text-muted);
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .btn-icon-sm:hover:not(:disabled) {
+        background: var(--bg-hover);
+        color: var(--primary-color);
+        border-color: var(--border-color);
+    }
+
+    .btn-icon-sm:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+
+    /* Range Slider */
+    input[type=range] {
+        height: 6px;
+        background: var(--bg-secondary);
+        border-radius: 3px;
+        cursor: pointer;
+    }
+</style>
 <div class="discussions-layout">
     <!-- Boards Sidebar -->
     <aside class="boards-sidebar">
@@ -23,44 +144,11 @@
             </button>
         </div>
 
-        <div class="kanban-board">
-            <!-- To Do Column -->
-            <div class="kanban-column" data-status="todo">
-                <div class="column-header">
-                    <span class="column-title">
-                        <span style="color: #64748b;">⭕</span> To Do
-                    </span>
-                    <span class="task-count" id="todo-count">0</span>
-                </div>
-                <div class="column-content" id="todo-list">
-                    <!-- Tasks will be injected here -->
-                </div>
-            </div>
-
-            <!-- In Progress Column -->
-            <div class="kanban-column" data-status="inprogress">
-                <div class="column-header">
-                    <span class="column-title">
-                        <span style="color: #3b82f6;">⏳</span> In Progress
-                    </span>
-                    <span class="task-count" id="inprogress-count">0</span>
-                </div>
-                <div class="column-content" id="inprogress-list">
-                    <!-- Tasks will be injected here -->
-                </div>
-            </div>
-
-            <!-- Done Column -->
-            <div class="kanban-column" data-status="done">
-                <div class="column-header">
-                    <span class="column-title">
-                        <span style="color: #22c55e;">✅</span> Done
-                    </span>
-                    <span class="task-count" id="done-count">0</span>
-                </div>
-                <div class="column-content" id="done-list">
-                    <!-- Tasks will be injected here -->
-                </div>
+        <div class="kanban-board" id="kanbanBoard">
+            <!-- Dynamic Columns will be injected here -->
+            <div
+                style="flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
+                Loading tasks...
             </div>
         </div>
     </div>
@@ -114,6 +202,76 @@
         <div class="modal-footer">
             <button class="btn-secondary" id="cancelBtn">Cancel</button>
             <button class="btn-primary" id="saveTaskBtn">Add Task</button>
+        </div>
+    </div>
+</div>
+
+</div>
+</div>
+
+<!-- Board Settings Modal -->
+<div class="modal-overlay" id="boardSettingsModal">
+    <div class="modal" style="width: 600px; max-width: 95vw;">
+        <div class="modal-header">
+            <h3 class="modal-title">Board Settings</h3>
+            <button class="close-modal" id="closeSettingsBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="settings-tabs">
+                <button class="tab-btn active" data-tab="general">General</button>
+                <button class="tab-btn" data-tab="appearance">Appearance</button>
+                <button class="tab-btn" data-tab="columns">Columns</button>
+            </div>
+
+            <div class="tab-content active" id="tab-general">
+                <div class="form-group">
+                    <label>Board Name</label>
+                    <input type="text" id="settingsBoardName" class="form-control">
+                </div>
+                <div class="form-group" style="margin-top: 20px;">
+                    <button class="btn-danger" id="deleteBoardBtn">Delete Board</button>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">
+                        Warning: This action cannot be undone. All tasks in this board will be lost.
+                    </p>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-appearance" style="display: none;">
+                <div class="form-group">
+                    <label>Task Font Size</label>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">Small (8px)</span>
+                        <input type="range" id="fontSizeSlider" min="8" max="32" step="1" value="14" style="flex: 1;">
+                        <span style="font-size: 1rem; color: var(--text-muted);">Large (32px)</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Background Image</label>
+                    <input type="file" id="bgImageInput" accept="image/*" class="form-control">
+                    <div id="bgImagePreview"
+                        style="margin-top: 10px; height: 100px; border-radius: 8px; background-size: cover; background-position: center; border: 1px solid var(--border-color); display: none;">
+                    </div>
+                    <button id="removeBgBtn" class="btn-secondary" style="margin-top: 10px; font-size: 0.8rem;">Remove
+                        Background</button>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-columns" style="display: none;">
+                <div class="form-group">
+                    <label>Manage Columns</label>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <input type="text" id="newColumnName" class="form-control" placeholder="New Column Name">
+                        <button class="btn-primary" id="addColumnBtn">Add</button>
+                    </div>
+                    <ul id="settingsColumnsList" class="columns-list">
+                        <!-- Dynamic Columns List -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" id="cancelSettingsBtn">Close</button>
+            <button class="btn-primary" id="saveSettingsBtn">Save Changes</button>
         </div>
     </div>
 </div>

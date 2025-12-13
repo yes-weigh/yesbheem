@@ -51,19 +51,225 @@ class BoardController {
 
         const editBoardBtn = document.getElementById('editBoardBtn');
         if (editBoardBtn) {
-            editBoardBtn.addEventListener('click', () => {
-                const currentBoardId = this.taskService.currentBoardId;
-                if (!currentBoardId) return;
+            // Change icon to settings gear
+            editBoardBtn.textContent = '⚙️';
+            editBoardBtn.title = "Board Settings";
+            editBoardBtn.addEventListener('click', () => this.openSettingsModal());
+        }
 
-                const currentBoard = this.taskService.boards.find(b => b.id === currentBoardId);
-                const currentName = currentBoard ? currentBoard.name : '';
+        // Settings Modal Bindings
+        this.setupSettingsModal();
+    }
 
-                const newName = prompt("Rename board:", currentName);
-                if (newName && newName.trim() && newName !== currentName) {
-                    this.taskService.updateBoard(currentBoardId, newName.trim());
+    setupSettingsModal() {
+        const modal = document.getElementById('boardSettingsModal');
+        const closeBtn = document.getElementById('closeSettingsBtn');
+        const cancelBtn = document.getElementById('cancelSettingsBtn');
+        const saveBtn = document.getElementById('saveSettingsBtn');
+
+        const closeModal = () => modal.classList.remove('active');
+
+        if (closeBtn) closeBtn.addEventListener('click', closeModal);
+        if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+        // Tabs
+        const tabs = modal.querySelectorAll('.tab-btn');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                modal.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+
+                tab.classList.add('active');
+                document.getElementById(`tab-${tab.dataset.tab}`).style.display = 'block';
+            });
+        });
+
+        // Background Image Preview
+        const bgInput = document.getElementById('bgImageInput');
+        const removeBgBtn = document.getElementById('removeBgBtn');
+        const preview = document.getElementById('bgImagePreview');
+
+        bgInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    preview.style.backgroundImage = `url('${e.target.result}')`;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        removeBgBtn.addEventListener('click', () => {
+            bgInput.value = '';
+            preview.style.backgroundImage = '';
+            preview.style.display = 'none';
+            this.tempBgRemoved = true;
+        });
+
+        // Font Size Slider
+        const slider = document.getElementById('fontSizeSlider');
+        slider.addEventListener('input', (e) => {
+            document.documentElement.style.setProperty('--task-font-size', e.target.value + 'px');
+        });
+
+        // Add Column
+        document.getElementById('addColumnBtn').addEventListener('click', () => {
+            const input = document.getElementById('newColumnName');
+            const name = input.value.trim();
+            if (name) {
+                this.addSettingsColumn(name);
+                input.value = '';
+            }
+        });
+
+        // Delete Board
+        document.getElementById('deleteBoardBtn').addEventListener('click', () => {
+            if (this.taskService.currentBoardId) {
+                this.deleteBoard(this.taskService.currentBoardId);
+                closeModal();
+            }
+        });
+
+        // Save Changes
+        saveBtn.addEventListener('click', async () => {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+            await this.saveSettings();
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Changes';
+            closeModal();
+        });
+    }
+
+    openSettingsModal() {
+        if (!this.taskService.currentBoardId) return;
+        const board = this.taskService.boards.find(b => b.id === this.taskService.currentBoardId);
+        if (!board) return;
+
+        const modal = document.getElementById('boardSettingsModal');
+
+        // Populate Data
+        document.getElementById('settingsBoardName').value = board.name;
+        document.getElementById('fontSizeSlider').value = parseInt(board.fontSize) || 14;
+
+        // Background
+        const preview = document.getElementById('bgImagePreview');
+        if (board.bgImage) {
+            preview.style.backgroundImage = `url('${board.bgImage}')`;
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
+        this.tempBgRemoved = false;
+
+        // Columns
+        this.renderSettingsColumns(board.columns || []);
+
+        modal.classList.add('active');
+    }
+
+    renderSettingsColumns(columns) {
+        const list = document.getElementById('settingsColumnsList');
+        list.innerHTML = '';
+        columns.forEach((col, index) => {
+            const li = document.createElement('li');
+            li.className = 'column-list-item';
+
+            const isFirst = index === 0;
+            const isLast = index === columns.length - 1;
+
+            li.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <button class="btn-icon-sm" ${isFirst ? 'disabled' : ''} data-action="up" title="Move Left/Up">▲</button>
+                        <button class="btn-icon-sm" ${isLast ? 'disabled' : ''} data-action="down" title="Move Right/Down">▼</button>
+                    </div>
+                    <h4>${this.escapeHtml(col.title)}</h4>
+                </div>
+                <button class="btn-danger-sm" title="Delete Column">🗑️</button>
+            `;
+
+            // Move Handlers
+            li.querySelectorAll('button[data-action]').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const direction = btn.dataset.action;
+                    const newIndex = direction === 'up' ? index - 1 : index + 1;
+                    await this.moveColumn(index, newIndex);
+                });
+            });
+
+            // Delete Handlers
+            li.querySelector('.btn-danger-sm').addEventListener('click', async () => {
+                if (confirm(`Delete column "${col.title}"?`)) {
+                    const success = await this.taskService.deleteColumn(this.taskService.currentBoardId, col.id);
+                    if (!success) {
+                        alert('Cannot delete: Column is not empty or error occurred.');
+                    } else {
+                        li.remove();
+                    }
                 }
             });
+            list.appendChild(li);
+        });
+    }
+
+    async moveColumn(oldIndex, newIndex) {
+        const board = this.taskService.boards.find(b => b.id === this.taskService.currentBoardId);
+        if (!board || !board.columns) return;
+
+        const columns = [...board.columns];
+        // Swap
+        const [movedCol] = columns.splice(oldIndex, 1);
+        columns.splice(newIndex, 0, movedCol);
+
+        // Optimistic update
+        this.renderSettingsColumns(columns);
+
+        await this.taskService.updateBoard(board.id, { columns });
+    }
+
+    async addSettingsColumn(name) {
+        await this.taskService.addColumn(this.taskService.currentBoardId, name);
+        // List update handled by subscription re-render? No, subscription updates main board.
+        // We should manually add to list or re-open modal. 
+        // For now, let's just append to list to show feedback
+        const list = document.getElementById('settingsColumnsList');
+        const li = document.createElement('li');
+        li.className = 'column-list-item';
+        li.innerHTML = `<h4>${this.escapeHtml(name)} (Saving...)</h4>`;
+        list.appendChild(li);
+
+        // Real update comes from subscription, which might close modal if we aren't careful? 
+        // Subscription calls renderBoard. It doesn't close modal.
+        // But we need to refresh the "Settings" list.
+        setTimeout(() => {
+            const board = this.taskService.boards.find(b => b.id === this.taskService.currentBoardId);
+            if (board) this.renderSettingsColumns(board.columns || []);
+        }, 500);
+    }
+
+    async saveSettings() {
+        const boardId = this.taskService.currentBoardId;
+        const newName = document.getElementById('settingsBoardName').value.trim();
+        const fontSize = document.getElementById('fontSizeSlider').value;
+        const bgInput = document.getElementById('bgImageInput');
+
+        let updates = {};
+
+        if (newName) updates.name = newName;
+        updates.fontSize = fontSize;
+
+        if (this.tempBgRemoved) updates.bgImage = null;
+
+        const file = bgInput.files[0];
+        if (file) {
+            const url = await this.taskService.uploadBoardImage(file);
+            if (url) updates.bgImage = url;
         }
+
+        await this.taskService.updateBoard(boardId, updates);
     }
 
     renderBoardsSidebar(boards) {
@@ -137,40 +343,95 @@ class BoardController {
         const success = await this.taskService.deleteBoard(boardId);
 
         if (success && currentId === boardId) {
-            // UI will update via subscription, but we might want to manually clear or switch
-            // Subscription to boards will trigger re-render, picking new default
+            // UI updates via subscription
         }
     }
 
     renderBoard(tasks) {
-        // Clear columns
-        Object.values(this.columns).forEach(col => {
-            if (col) col.innerHTML = '';
+        const board = this.taskService.boards.find(b => b.id === this.taskService.currentBoardId);
+        const columns = board?.columns || [
+            { id: 'todo', title: 'To Do', color: '#64748b' },
+            { id: 'inprogress', title: 'In Progress', color: '#3b82f6' },
+            { id: 'done', title: 'Done', color: '#22c55e' }
+        ];
+
+        // Apply Styles
+        const boardContainer = document.querySelector('.board-main-content');
+        if (boardContainer && board?.bgImage) {
+            boardContainer.style.backgroundImage = `url('${board.bgImage}')`;
+            boardContainer.style.backgroundSize = 'cover';
+            boardContainer.style.backgroundPosition = 'center';
+            boardContainer.classList.add('has-bg');
+        } else if (boardContainer) {
+            boardContainer.style.backgroundImage = '';
+            boardContainer.classList.remove('has-bg');
+        }
+
+        if (board?.fontSize) {
+            document.documentElement.style.setProperty('--task-font-size', board.fontSize + 'px');
+        }
+
+        // Render Structure
+        const kanbanBoard = document.getElementById('kanbanBoard');
+        kanbanBoard.innerHTML = '';
+
+        // Populate Lookup Maps
+        this.columns = {};
+        this.counts = {};
+
+        columns.forEach(col => {
+            const colDiv = document.createElement('div');
+            colDiv.className = 'kanban-column';
+            colDiv.dataset.status = col.id;
+            colDiv.innerHTML = `
+                <div class="column-header">
+                    <span class="column-title">
+                        <span style="color: ${col.color || '#64748b'};">●</span> ${this.escapeHtml(col.title)}
+                    </span>
+                    <span class="task-count" id="count-${col.id}">0</span>
+                </div>
+                <div class="column-content" id="list-${col.id}"></div>
+            `;
+            kanbanBoard.appendChild(colDiv);
+
+            this.columns[col.id] = colDiv.querySelector('.column-content');
+            this.counts[col.id] = colDiv.querySelector('.task-count');
         });
 
-        // Reset counts
-        const columnCounts = { todo: 0, inprogress: 0, done: 0 };
+        // Initialize Drag Drops for new columns
+        this.setupDragAndDrop();
+
+        // Populate Tasks
+        const columnCounts = {};
+        columns.forEach(c => columnCounts[c.id] = 0);
 
         tasks.forEach(task => {
+            // Default to first column if status invalid
+            let status = task.status;
+            if (!this.columns[status]) status = columns[0].id;
+
             const card = this.createCardElement(task);
-            const status = task.status || 'todo';
-            if (this.columns[status]) {
-                this.columns[status].appendChild(card);
-                columnCounts[status]++;
-            }
+            this.columns[status].appendChild(card);
+            columnCounts[status] = (columnCounts[status] || 0) + 1;
         });
 
-        // Update counters
+        // Update Counts
         Object.keys(columnCounts).forEach(status => {
             if (this.counts[status]) this.counts[status].textContent = columnCounts[status];
         });
+
+        // Update Status Dropdown in Add Task Modal
+        const statusSelect = document.getElementById('taskStatus');
+        if (statusSelect) {
+            statusSelect.innerHTML = columns.map(c =>
+                `<option value="${c.id}">${this.escapeHtml(c.title)}</option>`
+            ).join('');
+        }
     }
 
     handleTaskError(error) {
         console.error("Task error:", error);
-        Object.values(this.columns).forEach(col => {
-            if (col) col.innerHTML = '<div class="loading-spinner" style="color: var(--danger-color)">Error loading tasks</div>';
-        });
+        // Show error in board
     }
 
     createCardElement(task) {
@@ -179,6 +440,9 @@ class BoardController {
         div.draggable = true;
         div.dataset.id = task.id;
         div.dataset.status = task.status;
+
+        // Font Size Support
+        div.style.fontSize = 'var(--task-font-size, 14px)';
 
         // Label Section (using task.color)
         let labelHtml = '';
@@ -196,8 +460,6 @@ class BoardController {
         const dateObj = task.createdAt && task.createdAt.toDate ? task.createdAt.toDate() : new Date();
         const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-        // Mock Badges (Checklist logic placeholder)
-        // In a real app, this would come from task.checklist.length
         const hasDescription = !!task.description;
         const checklistCount = Math.floor(Math.random() * 5); // Mock for visual density
 
@@ -212,9 +474,6 @@ class BoardController {
         `;
 
         if (hasDescription) {
-            // Icon only needed if we don't show text, but keeping it is fine. 
-            // Actually, if we show text, maybe icon is redundant? 
-            // Let's keep icon in footer for consistency, but maybe user wants to see text.
             badgesHtml += `
                 <div class="card-badge" title="This card has a description">
                     <span class="card-badge-icon">≡</span>
@@ -280,7 +539,7 @@ class BoardController {
         return div;
     }
 
-    // Drag and Drop
+    // ... Drag & Drop Methods (unchanged) ...
     handleDragStart(e, item) {
         this.draggedItem = item;
         item.classList.add('dragging');
@@ -295,6 +554,7 @@ class BoardController {
     }
 
     setupDragAndDrop() {
+        // Need to query dynamically now as columns are recreated
         const columnElements = document.querySelectorAll('.kanban-column');
 
         columnElements.forEach(col => {
@@ -401,6 +661,9 @@ class BoardController {
         saveBtn.addEventListener('click', () => this.handleSaveTask(closeModal));
     }
 
+    // ... Existing openEditModal/resetModal/handleSaveTask/escapeHtml ...
+    // NOTE: Need to preserve them or re-implement if replacing whole block
+
     openEditModal(task) {
         const modalOverlay = document.getElementById('addTaskModal');
         this.resetModal('Edit Task', 'Update Task');
@@ -427,7 +690,10 @@ class BoardController {
 
         document.getElementById('taskTitle').value = '';
         document.getElementById('taskDescription').value = '';
-        document.getElementById('taskStatus').value = 'todo';
+        // 'taskStatus' is now dynamic, default to first option if possible
+        const select = document.getElementById('taskStatus');
+        if (select && select.options.length > 0) select.selectedIndex = 0;
+
         document.getElementById('color-none').checked = true;
     }
 

@@ -46,7 +46,7 @@ class UIRenderer {
         dealers.forEach((d, i) => {
             const percent = maxSales > 0 ? (d.sales / maxSales) * 100 : 0;
             html += `
-                <div class="dealer-item-compact">
+                <div class="dealer-item-compact" onclick="window.viewController && window.viewController.handleListClick('${d.name}')" style="cursor: pointer;">
                     <div class="dealer-rank">${i + 1}</div>
                     <div class="dealer-info">
                         <div class="dealer-row">
@@ -87,7 +87,7 @@ class UIRenderer {
             const barWidth = maxSales > 0 ? (district.totalSales / maxSales) * 100 : 0;
 
             html += `
-                <div class="district-item-compact">
+                <div class="district-item-compact" onclick="window.viewController && window.viewController.handleListClick('${district.name}')" style="cursor: pointer;">
                     <div class="district-rank">${i + 1}</div>
                     <div class="district-info">
                         <div class="district-row" style="display: flex; justify-content: space-between; align-items: center; white-space: nowrap;">
@@ -156,7 +156,7 @@ class UIRenderer {
             const barWidth = maxVal > 0 ? (numVal / maxVal) * 100 : 0;
 
             html += `
-                <div class="district-item-compact">
+                <div class="district-item-compact" onclick="window.viewController && window.viewController.handleListClick('${state.name}')" style="cursor: pointer;">
                     <div class="district-rank">${i + 1}</div>
                     <div class="district-info">
                         <div class="district-row">
@@ -198,7 +198,7 @@ class UIRenderer {
             const percentTotal = totalDealers > 0 ? (count / totalDealers) * 100 : 0;
 
             html += `
-                <div class="district-item-compact">
+                <div class="district-item-compact" onclick="window.viewController && window.viewController.handleListClick('${state.name}')" style="cursor: pointer;">
                     <div class="district-rank">${i + 1}</div>
                     <div class="district-info">
                         <div class="district-row" style="display: flex; justify-content: space-between; align-items: center; white-space: nowrap;">
