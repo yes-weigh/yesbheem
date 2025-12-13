@@ -213,7 +213,11 @@ class DataManager {
 
                 if (stateMap[stateName]) {
                     stateMap[stateName].sales += isNaN(sales) ? 0 : sales;
-                    stateMap[stateName].dealerCount += 1;
+
+                    const customerName = row['customer_name'] || '';
+                    if (!customerName.toLowerCase().startsWith('yescloud')) {
+                        stateMap[stateName].dealerCount += 1;
+                    }
                 }
             });
         }
@@ -503,13 +507,22 @@ class DataManager {
             const districtKey = this.normalizeDistrictName(districtName, targets);
 
             if (districtKey && districtStats[districtKey]) {
-                districtStats[districtKey].dealerCount += 1;
+                const customerName = row['customer_name'] || 'Unknown Dealer';
+                const isYesCloud = customerName.toLowerCase().startsWith('yescloud');
+
+                // ONLY increment count if NOT yescloud
+                if (!isYesCloud) {
+                    districtStats[districtKey].dealerCount += 1;
+                }
+
                 let sales = parseFloat(row['sales'] || 0);
                 if (isNaN(sales)) sales = 0;
                 districtStats[districtKey].currentSales += sales;
+
                 districtStats[districtKey].dealers.push({
-                    name: row['customer_name'] || 'Unknown Dealer',
-                    sales: sales
+                    name: customerName,
+                    sales: sales,
+                    isYesCloud: isYesCloud // Flag for UI filtering
                 });
             }
         }
@@ -674,7 +687,12 @@ class DataManager {
 
         // Process each row
         for (const row of stateData) {
-            aggregated.dealerCount += 1;
+            const customerName = row['customer_name'] || 'Unknown Dealer';
+            const isYesCloud = customerName.toLowerCase().startsWith('yescloud');
+
+            if (!isYesCloud) {
+                aggregated.dealerCount += 1;
+            }
 
             let sales = parseFloat(row['sales'] || 0);
             if (isNaN(sales)) sales = 0;
@@ -682,9 +700,10 @@ class DataManager {
             aggregated.currentSales += sales;
 
             aggregated.dealers.push({
-                name: row['customer_name'] || 'Unknown Dealer',
+                name: customerName,
                 sales: sales,
-                state: row['billing_state'] || row['shipping_state'] || 'Unknown'
+                state: row['billing_state'] || row['shipping_state'] || 'Unknown',
+                isYesCloud: isYesCloud
             });
         }
 
@@ -724,15 +743,22 @@ class DataManager {
 
         // Process each row
         for (const row of rawData) {
-            aggregated.dealerCount += 1;
+            const customerName = row['customer_name'] || 'Unknown Dealer';
+            const isYesCloud = customerName.toLowerCase().startsWith('yescloud');
+
+            if (!isYesCloud) {
+                aggregated.dealerCount += 1;
+            }
+
             let sales = parseFloat(row['sales'] || 0);
             if (isNaN(sales)) sales = 0;
             aggregated.currentSales += sales;
 
             aggregated.dealers.push({
-                name: row['customer_name'] || 'Unknown Dealer',
+                name: customerName,
                 sales: sales,
-                state: row['billing_state'] || row['shipping_state'] || 'Kerala'
+                state: row['billing_state'] || row['shipping_state'] || 'Kerala',
+                isYesCloud: isYesCloud
             });
         }
 
@@ -795,7 +821,11 @@ class DataManager {
                 stateMap[stateKey] = { name: stateKey, totalSales: 0, dealerCount: 0 };
             }
             stateMap[stateKey].totalSales += dealer.sales || 0;
-            stateMap[stateKey].dealerCount += 1;
+
+            // Only increment count if not yescloud
+            if (!dealer.isYesCloud && !dealer.name.toLowerCase().startsWith('yescloud')) {
+                stateMap[stateKey].dealerCount += 1;
+            }
         });
 
         // Convert to array and sort by totalSales

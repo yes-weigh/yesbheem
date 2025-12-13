@@ -73,27 +73,58 @@
 }
 
 /* Dropdown Menu */
+/* Dropdown Menu */
 .board-picker-dropdown {
     position: absolute;
     top: 100%;
     left: 0;
-    margin-top: 8px;
+    margin-top: 0;
     width: 280px;
     background: var(--bg-panel);
     border: 1px solid var(--border-light);
     border-radius: 8px;
-    /* Slightly rounder */
     box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
-    /* Deeper shadow */
     z-index: 1000;
     display: none;
     flex-direction: column;
     overflow: hidden;
-    /* For rounded corners */
 
     /* Animation */
     transform-origin: top left;
     animation: dropdownEnter 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Add bridge to ensure hover isn't lost */
+.board-picker-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    height: 12px;
+    /* Bridge the gap */
+}
+
+/* Compensate for bridge with margin on dropdown content if needed, 
+   but since dropdown is child, we just push it down with margin-top 
+   that sits INSIDE the bridge area? No, dropdown is absolute.
+   We set top: calc(100% + 8px); and bridge covers the 8px.
+*/
+.board-picker-dropdown {
+    top: calc(100% + 8px);
+    margin-top: 0;
+}
+
+/* Show on Hover (or active) */
+.board-picker-wrapper:hover .board-picker-dropdown,
+.board-picker-wrapper.active .board-picker-dropdown {
+    display: flex;
+}
+
+/* Rotate Chevron on Hover */
+.board-picker-wrapper:hover .picker-chevron,
+.board-picker-wrapper.active .picker-chevron {
+    transform: rotate(180deg);
 }
 
 @keyframes dropdownEnter {
@@ -109,7 +140,7 @@
 }
 
 .board-picker-wrapper.active .board-picker-dropdown {
-    display: flex;
+    /* Kept for compatibility, but hover handles it mostly */
 }
 
 .dropdown-header {
@@ -703,4 +734,31 @@
     font-weight: bold;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     pointer-events: none;
+}
+.icon-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    backdrop-filter: blur(4px);
+    padding: 0;
+}
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.settings-btn svg {
+    transition: transform 0.5s ease;
+}
+.settings-btn:hover svg {
+    transform: rotate(90deg);
 }

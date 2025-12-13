@@ -44,6 +44,9 @@ class UIRenderer {
         html += '<div class="dealer-list">';
 
         dealers.forEach((d, i) => {
+            // Filter out yescloud dealers
+            if (d.isYesCloud) return;
+
             const percent = maxSales > 0 ? (d.sales / maxSales) * 100 : 0;
             html += `
                 <div class="dealer-item-compact" onclick="window.viewController && window.viewController.handleListClick('${d.name}')" style="cursor: pointer;">
