@@ -1,7 +1,8 @@
+
 /**
- * DataManager
- * Handles fetching real-time data from Google Sheets and resolving zip codes to districts.
- */
+* DataManager
+* Handles fetching real-time data from Google Sheets and resolving zip codes to districts.
+*/
 import { storage, db } from './services/firebase_config.js';
 import { ref, uploadBytes, getDownloadURL, listAll, getMetadata, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 import { doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
