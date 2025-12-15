@@ -10,19 +10,6 @@
                 </div>
             </div>
             <div class="header-controls" style="display: flex; gap: 10px; align-items: center;">
-                <div class="data-source-container">
-                    <select id="reportSelector" class="report-select">
-                        <option value="" disabled selected>Loading Reports...</option>
-                    </select>
-                </div>
-                <button id="manageReportBtn" class="btn-data btn-manage"
-                    style="margin-left: 5px; background: var(--surface-2); border: 1px solid var(--border-light); color: var(--text-main);">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
-                        style="margin-right: 6px;">
-                        <path d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                    Manage
-                </button>
                 <button id="uploadReportBtn" class="btn-data btn-upload">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 6px;">
@@ -179,7 +166,7 @@
         }
 
         const dm = new DataManager();
-        const reportSelector = document.getElementById('reportSelector');
+
         const uploadBtn = document.getElementById('uploadReportBtn');
         const modal = document.getElementById('uploadModal');
         const closeIcon = document.getElementById('closeUploadModalIcon');
@@ -196,173 +183,8 @@
 
         console.log('Initializing Dashboard Logic');
 
-        // Load Reports
-        async function loadReports() {
-            try {
-                const reports = await dm.listReports();
 
-                // Clear existing options
-                reportSelector.innerHTML = '';
 
-                if (reports.length === 0) {
-                    reportSelector.innerHTML = '<option value="" disabled selected>No Reports Available</option>';
-                    return;
-                }
-
-                // Add reports
-                reports.forEach(report => {
-                    const opt = document.createElement('option');
-                    opt.value = report.url;
-                    // Date removed from display as per request
-                    opt.textContent = report.name;
-                    reportSelector.appendChild(opt);
-                });
-
-                // Auto Select Top if available
-                if (reports.length > 0) {
-                    const firstReportUrl = reports[0].url;
-                    reportSelector.value = firstReportUrl;
-
-                    // Improve Auto-Load: Wait for Map, then Trigger
-                    waitForMapAndLoad(firstReportUrl);
-                }
-            } catch (e) {
-                console.error('Failed to list reports:', e);
-            }
-        }
-
-        function waitForMapAndLoad(url) {
-            // Check if map is ready
-            const iframe = document.querySelector('.dashboard-iframe');
-            if (iframe && iframe.contentWindow && iframe.contentWindow.viewController) {
-                console.log('Map Ready, triggering initial load...');
-                // Trigger Change manually or call load logic directly?
-                // Better to dispatch the event so the listener handles it
-                reportSelector.dispatchEvent(new Event('change'));
-            } else {
-                console.log('Waiting for Map...');
-                setTimeout(() => waitForMapAndLoad(url), 500);
-            }
-        }
-
-        // --- MANAGE MODAL LOGIC ---
-        const manageBtn = document.getElementById('manageReportBtn');
-        const manageModal = document.getElementById('manageModal');
-        const closeManageIcon = document.getElementById('closeManageModalIcon');
-        const closeManageBtn = document.getElementById('closeManageModalBtn');
-        const reportsListContainer = document.getElementById('reportsList');
-
-        let currentReports = [];
-
-        async function renderManageList() {
-            try {
-                currentReports = await dm.listReports();
-                reportsListContainer.innerHTML = '';
-
-                if (currentReports.length === 0) {
-                    reportsListContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-main);">No reports uploaded.</div>';
-                    return;
-                }
-
-                currentReports.forEach((report, index) => {
-                    const row = document.createElement('div');
-                    row.className = 'report-row';
-
-                    const date = new Date(report.timeCreated).toLocaleDateString();
-
-                    // Simple inline SVG icons for up/down/delete to avoid external dependency issues
-                    row.innerHTML = `
-                        <div class="info" style="display: flex; flex-direction: column;">
-                            <span class="name">${report.name}</span>
-                            <span class="date">${date}</span>
-                        </div>
-                        <div class="actions" style="display: flex; gap: 5px;">
-                             <button class="btn-icon btn-rename" data-idx="${index}" style="padding: 5px; background: none; border: none; color: var(--text-main); cursor: pointer; font-size: 1.2em;" title="Rename">
-                                ✎
-                            </button>
-                            <button class="btn-icon btn-up" data-idx="${index}" ${index === 0 ? 'disabled' : ''} style="padding: 5px; background: none; border: none; color: var(--text-main); cursor: pointer; opacity: ${index === 0 ? 0.3 : 1}; font-size: 1.2em;">
-                                ▲
-                            </button>
-                            <button class="btn-icon btn-down" data-idx="${index}" ${index === currentReports.length - 1 ? 'disabled' : ''} style="padding: 5px; background: none; border: none; color: var(--text-main); cursor: pointer; opacity: ${index === currentReports.length - 1 ? 0.3 : 1}; font-size: 1.2em;">
-                                ▼
-                            </button>
-                            <button class="btn-icon btn-del" data-idx="${index}" style="padding: 5px; background: none; border: none; color: #ff4d4d; cursor: pointer; margin-left: 10px; font-weight: bold;">
-                                ✖
-                            </button>
-                        </div>
-                    `;
-                    reportsListContainer.appendChild(row);
-                });
-
-                // Attach Listeners
-                document.querySelectorAll('.btn-rename').forEach(btn => btn.addEventListener('click', handleRename));
-                document.querySelectorAll('.btn-up').forEach(btn => btn.addEventListener('click', (e) => moveReport(e, -1)));
-                document.querySelectorAll('.btn-down').forEach(btn => btn.addEventListener('click', (e) => moveReport(e, 1)));
-                document.querySelectorAll('.btn-del').forEach(btn => btn.addEventListener('click', deleteReport));
-
-            } catch (e) {
-                console.error('List failed', e);
-            }
-        }
-
-        async function handleRename(e) {
-            const btn = e.target.closest('button');
-            if (!btn) return;
-            const index = parseInt(btn.dataset.idx);
-            const report = currentReports[index];
-
-            const newName = prompt("Enter new name:", report.name);
-            if (newName && newName.trim() !== "" && newName !== report.name) {
-                await dm.renameReport(report, newName.trim());
-                await renderManageList();
-                await loadReports();
-            }
-        }
-
-        async function moveReport(e, direction) {
-            const btn = e.target.closest('button');
-            if (!btn) return;
-            const index = parseInt(btn.dataset.idx);
-
-            const newIndex = index + direction;
-            if (newIndex < 0 || newIndex >= currentReports.length) return;
-
-            // Swap
-            const temp = currentReports[index];
-            currentReports[index] = currentReports[newIndex];
-            currentReports[newIndex] = temp;
-
-            await dm.saveReportsList(currentReports);
-            await renderManageList();
-            await loadReports();
-        }
-
-        async function deleteReport(e) {
-            const btn = e.target.closest('button');
-            if (!btn) return;
-            const index = parseInt(btn.dataset.idx);
-            const report = currentReports[index];
-
-            if (!confirm(`Delete "${report.name}"?`)) return;
-
-            await dm.deleteReport(report);
-            await renderManageList();
-            await loadReports();
-        }
-
-        if (manageBtn) {
-            manageBtn.addEventListener('click', () => {
-                console.log('Manage Button Clicked');
-                manageModal.classList.add('active');
-                renderManageList();
-            });
-        } else {
-            console.error('Manage Button NOT Found');
-        }
-
-        const closeManageModal = () => manageModal.classList.remove('active');
-        if (closeManageIcon) closeManageIcon.addEventListener('click', closeManageModal);
-        if (closeManageBtn) closeManageBtn.addEventListener('click', closeManageModal);
 
 
         // --- UPLOAD MODAL LOGIC ---
@@ -417,106 +239,10 @@
             });
         }
 
-        // --- SELECTION LOGIC ---
-        reportSelector.addEventListener('change', async (e) => {
-            const val = e.target.value;
-            console.log('Report selected:', val);
 
-            const iframe = document.querySelector('.dashboard-iframe');
-
-            if (iframe && iframe.contentWindow && iframe.contentWindow.viewController) {
-                const mapVC = iframe.contentWindow.viewController;
-                const mapDM = mapVC.dataManager;
-
-                try {
-                    // Capture current state properties
-                    let savedView = mapVC.currentView;
-                    let savedStateId = null;
-                    let savedDistrictId = null;
-
-                    // HARDENED CHECK: Trust DOM over variable
-                    if (mapVC.containers && mapVC.containers.state && mapVC.containers.state.classList.contains('active')) {
-                        savedView = 'state';
-                    }
-
-                    if (mapVC.mapInteractions) {
-                        savedStateId = mapVC.mapInteractions.currentStateId;
-                        savedDistrictId = mapVC.mapInteractions.selectedDistrictId;
-                    }
-
-                    // Fallback: If in state view but ID missing, assume Kerala (current scope)
-                    if (savedView === 'state' && !savedStateId) {
-                        savedStateId = 'KL';
-                    }
-
-                    console.log('[DEBUG] Captured State:', { savedView, savedStateId, savedDistrictId });
-
-                    // Load Data
-                    if (val) {
-                        await mapDM.loadData('Kerala', [], val);
-                    }
-
-                    // Update India Overview Data (Only if needed or not restoring state)
-                    // If we are restoring state, we can skip rendering India Overview to avoid flicker
-                    if (!(savedView === 'state' && savedStateId)) {
-                        await mapVC.loadIndiaOverview();
-                    }
-
-                    // Restore View
-                    console.log('[DEBUG] Restoring View...', { savedView, savedStateId });
-                    if (savedView === 'state' && savedStateId) {
-                        console.log('[DEBUG] Restoring State View for:', savedStateId);
-
-                        // Decide if we should render state sidebar immediately
-                        // If we are about to restore a district, SKIP state rendering to prevent flicker
-                        const shouldRenderStateSidebar = !savedDistrictId;
-
-                        // Restore State View (e.g. Kerala)
-                        await mapVC.showStateView(savedStateId, 'Kerala', shouldRenderStateSidebar);
-
-                        // Restore District Selection if it existed
-                        if (savedDistrictId) {
-                            setTimeout(() => {
-                                if (mapVC.mapInteractions) {
-                                    // access contentDocument via iframe
-                                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                                    const districtEl = iframeDoc.getElementById(savedDistrictId);
-
-                                    if (districtEl) {
-                                        console.log('Restoring selection for:', savedDistrictId);
-                                        // SVG elements might not have .click(), so dispatch event
-                                        const clickEvent = new MouseEvent('click', {
-                                            view: iframe.contentWindow,
-                                            bubbles: true,
-                                            cancelable: true
-                                        });
-                                        districtEl.dispatchEvent(clickEvent);
-                                    } else {
-                                        console.warn('Could not find district element to restore:', savedDistrictId);
-                                    }
-                                }
-                            }, 800); // Increased delay
-                        }
-                    } else {
-                        // Default fallback: Resume India View logic
-                        if (mapVC.currentView === 'india') {
-                            mapVC.handleViewChange(document.getElementById('view-selector')?.value || 'states');
-                        } else {
-                            mapVC.showIndiaView();
-                        }
-                    }
-
-                } catch (err) {
-                    console.error('Error switching report:', err);
-                    alert('Failed to load report: ' + err.message);
-                }
-            } else {
-                console.error('Map Controller not ready yet.');
-            }
-        });
 
         // Trigger Initial Load LAST, after all listeners are set
-        await loadReports();
+
 
         // Display Last Updated Date from Storage
         try {

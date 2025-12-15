@@ -285,6 +285,12 @@ class ViewController {
             const data = await this.dataManager.getCountryData();
             this.indiaData = data; // Cache data
             this.updateSidebarWithData(data);
+
+            // CRITICAL FIX: Trigger map coloring immediately after loading data
+            const viewSelector = document.getElementById('view-selector');
+            const initialView = viewSelector ? viewSelector.value : 'states';
+            console.log('Initial India Data Loaded, triggering view:', initialView);
+            this.handleViewChange(initialView);
         }
     }
 
@@ -743,6 +749,14 @@ class ViewController {
 
                 svg.style.width = '100%';
                 svg.style.height = '100%';
+
+                // CRITICAL FIX: Ensure all paths have 'district' class for interactions
+                const paths = svg.querySelectorAll('path');
+                paths.forEach(p => {
+                    p.classList.add('district');
+                    p.style.cursor = 'pointer'; // Visual feedback
+                });
+                console.log(`Applied .district class to ${paths.length} paths.`);
             } else {
                 console.warn('No SVG element found in injected content!');
             }
