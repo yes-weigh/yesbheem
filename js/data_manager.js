@@ -104,6 +104,11 @@ class DataManager {
             return [];
         }
 
+        // Handle Aggregated "All Reports" Mode
+        if (this.currentCSVUrl === 'ALL_REPORTS') {
+            return this.fetchAllReportsAndAggregate();
+        }
+
         console.log('Fetching from Custom CSV URL:', this.currentCSVUrl);
         try {
             const response = await fetch(this.currentCSVUrl);
@@ -115,6 +120,56 @@ class DataManager {
         } catch (e) {
             console.error('Failed to fetch custom CSV (likely CORS or Network):', e);
             throw e;
+        }
+    }
+
+    async fetchAllReportsAndAggregate() {
+        console.log('Starting Aggregation of ALL Reports...');
+        try {
+            const reports = await this.listReports();
+            if (!reports || reports.length === 0) return [];
+
+            const promises = reports.map(async (report) => {
+                try {
+                    const res = await fetch(report.url);
+                    const text = await res.text();
+                    return this.parseCSV(text);
+                } catch (e) {
+                    console.error(`Failed to load report ${report.name}:`, e);
+                    return [];
+                }
+            });
+
+            const allResults = await Promise.all(promises);
+            const mergedMap = new Map();
+
+            allResults.flat().forEach(row => {
+                const name = (row['customer_name'] || '').trim();
+                // If no name, skip or keep? Let's skip empty names
+                if (!name) return;
+
+                const sales = parseFloat(row['sales'] || 0);
+
+                if (mergedMap.has(name)) {
+                    const existing = mergedMap.get(name);
+                    // Update Sales
+                    existing.sales = (parseFloat(existing.sales || 0) + sales).toString();
+                } else {
+                    // Clone row to avoid reference issues
+                    const newRow = { ...row };
+                    // Ensure sales is a number for easier addition if we encounter it again
+                    newRow.sales = sales;
+                    mergedMap.set(name, newRow);
+                }
+            });
+
+            const aggregated = Array.from(mergedMap.values());
+            console.log(`Aggregated Data: ${aggregated.length} unique customers from ${reports.length} reports.`);
+            return aggregated;
+
+        } catch (e) {
+            console.error('Aggregation failed:', e);
+            return [];
         }
     }
 

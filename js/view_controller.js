@@ -26,8 +26,68 @@ class ViewController {
     }
 
     async init() {
+        // Setup UI listeners first (Zoom, etc.)
         this.setupNavigation();
+
+        // Initialize Report Selector & Load Data
+        const reportSelector = document.getElementById('report-selector');
+        if (reportSelector) {
+            await this.loadReports(reportSelector);
+            // If we have a report now, load its data BEFORE showing map
+            if (reportSelector.value) {
+                console.log('Initial Report Selected:', reportSelector.value);
+                try {
+                    await this.dataManager.loadData('Kerala', [], reportSelector.value);
+                } catch (e) {
+                    console.error('Initial data load failed:', e);
+                }
+            }
+        }
+
+        // Now Load Map
         await this.loadIndiaMap();
+    }
+
+    async loadReports(selector) {
+        try {
+            const reports = await this.dataManager.listReports();
+            selector.innerHTML = '';
+
+            // Add "All Reports" Option at the end (but logically we want it available)
+            // Strategy: Add it last, default to first REAL report.
+
+            // 1. Add Real Reports
+            reports.forEach(report => {
+                const opt = document.createElement('option');
+                opt.value = report.url;
+                opt.textContent = report.name;
+                selector.appendChild(opt);
+            });
+
+            // 2. Add "All Reports" at the END
+            const allOpt = document.createElement('option');
+            allOpt.value = 'ALL_REPORTS';
+            allOpt.textContent = 'All Reports (Aggregated)';
+            allOpt.style.fontWeight = 'bold';
+            selector.appendChild(allOpt);
+
+            if (reports.length === 0) {
+                if (selector.options.length === 1) { // Only 'All' exists
+                    selector.innerHTML = '<option value="" disabled selected>No Reports</option>';
+                    return;
+                }
+            }
+
+            // Select First Report by default (reports[0])
+            if (reports.length > 0) {
+                selector.value = reports[0].url;
+            } else {
+                selector.value = 'ALL_REPORTS';
+            }
+        } catch (e) {
+            console.error('Failed to list reports in map:', e);
+            selector.innerHTML = '<option value="" disabled selected>Error</option>';
+        }
     }
 
     setupNavigation() {
@@ -54,6 +114,63 @@ class ViewController {
                 e.preventDefault();
                 const view = e.target.value;
                 this.handleViewChange(view);
+            });
+        }
+
+        // Report Selector Change Listener (Post-Init)
+        const reportSelector = document.getElementById('report-selector');
+        if (reportSelector) {
+            reportSelector.addEventListener('change', async (e) => {
+                const reportUrl = e.target.value;
+                if (reportUrl) {
+                    try {
+                        const previousDistrictId = this.mapInteractions?.selectedDistrictId;
+                        console.log('Changing report. Saved District Selection:', previousDistrictId);
+
+                        // Keep current view state if possible
+                        await this.dataManager.loadData('Kerala', [], reportUrl);
+                        // Refresh View
+                        if (this.currentView === 'india') {
+                            await this.loadIndiaOverview();
+                            this.handleViewChange(viewSelector ? viewSelector.value : 'states');
+                        } else if (this.currentView === 'state' && this.mapInteractions) {
+                            // If in state view, reload state data
+                            const stateId = this.mapInteractions.currentStateId;
+                            if (stateId) {
+                                const lookupId = stateId.length === 2 ? `IN-${stateId}` : stateId;
+                                const data = await this.dataManager.getStateData(lookupId);
+
+                                // Only update global state UI if we are NOT restoring a specific district view
+                                if (!previousDistrictId) {
+                                    this.updateSidebarWithData(data);
+                                }
+
+                                const stateName = this.mapInteractions.currentStateName || 'Kerala';
+                                await this.mapInteractions.loadDistrictData(stateName);
+
+                                if (previousDistrictId && this.mapInteractions.districtInsights[previousDistrictId]) {
+                                    console.log('Restoring district selection:', previousDistrictId);
+                                    // Re-trigger click logic 
+                                    const districtEl = document.getElementById(previousDistrictId);
+                                    if (districtEl) {
+                                        // Temporarily set selectedDistrictId so handleDistrictClick doesn't think it's new? 
+                                        // actually handleDistrictClick sets it.
+                                        this.mapInteractions.handleDistrictClick(previousDistrictId);
+                                        districtEl.classList.add('highlighted');
+                                    } else {
+                                        // Fallback if element not found (e.g. view changed?)
+                                        this.mapInteractions.handleViewChange(this.mapInteractions.currentMetric || 'districts');
+                                    }
+                                } else {
+                                    this.mapInteractions.handleViewChange(this.mapInteractions.currentMetric || 'districts');
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Failed to change report:', err);
+                        alert('Failed to load report data');
+                    }
+                }
             });
         }
 
