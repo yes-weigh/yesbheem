@@ -750,13 +750,12 @@ class ViewController {
                 svg.style.width = '100%';
                 svg.style.height = '100%';
 
-                // CRITICAL FIX: Ensure all paths have 'district' class for interactions
+                // Ensure all paths have pointer cursor for better UX
                 const paths = svg.querySelectorAll('path');
                 paths.forEach(p => {
-                    p.classList.add('district');
-                    p.style.cursor = 'pointer'; // Visual feedback
+                    p.style.cursor = 'pointer';
                 });
-                console.log(`Applied .district class to ${paths.length} paths.`);
+                console.log(`Applied cursor style to ${paths.length} paths.`);
             } else {
                 console.warn('No SVG element found in injected content!');
             }
