@@ -18,11 +18,11 @@
 
 .map-viewport svg path {
     fill: var(--map-fill);
-    stroke: var(--map-stroke);
-    stroke-width: 1px;
+    /* Add stroke to cover sub-pixel rendering gaps */
+    stroke: var(--map-fill);
+    stroke-width: 0.5px;
     transition: all 0.2s ease;
     cursor: pointer;
-    vector-effect: non-scaling-stroke;
 }
 
 .map-viewport svg path:hover {
