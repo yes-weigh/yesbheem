@@ -58,41 +58,33 @@ class DataManager {
     }
 
     /**
-     * Save/Update a dealer override
+     * Save/Update dealer overrides
      * @param {string} dealerName 
-     * @param {string} billingZip 
-     * @param {string} shippingZip 
+     * @param {Object} overrides - Object containing key-value pairs to override
      */
-    async saveDealerOverride(dealerName, billingZip, shippingZip) {
-        if (!dealerName) return;
+    async saveDealerOverride(dealerName, overrides) {
+        if (!dealerName || !overrides) return;
         try {
-            console.log(`Saving override for ${dealerName}: ${billingZip}, ${shippingZip}`);
+            console.log(`Saving overrides for ${dealerName}:`, overrides);
 
             // Update local cache
+            // We merge with existing to avoid wiping other fields if we ever partial update
+            // But for now UI sends all fields. Let's merge purely.
             this.dealerOverrides[dealerName] = {
-                billing_zip: billingZip,
-                shipping_zip: shippingZip
+                ...(this.dealerOverrides[dealerName] || {}),
+                ...overrides
             };
 
             // Update Firestore
             const docRef = doc(db, "settings", "dealer_overrides");
-            await updateDoc(docRef, {
-                [dealerName]: {
-                    billing_zip: billingZip,
-                    shipping_zip: shippingZip
-                }
-            });
+            await setDoc(docRef, {
+                [dealerName]: this.dealerOverrides[dealerName]
+            }, { merge: true });
+
             console.log('Dealer override saved to Firestore.');
         } catch (e) {
             console.error('Failed to save dealer override:', e);
-            if (e.code === 'not-found') {
-                await setDoc(doc(db, "settings", "dealer_overrides"), {
-                    [dealerName]: {
-                        billing_zip: billingZip,
-                        shipping_zip: shippingZip
-                    }
-                }, { merge: true });
-            }
+            // Retry logic or error handling if needed, but setDoc with merge is robust.
         }
     }
 
@@ -567,13 +559,18 @@ class DataManager {
 
         for (const row of stateData) {
             // APPLY OVERRIDES HERE
+            // APPLY OVERRIDES HERE
             const customerName = row['customer_name'];
             if (this.dealerOverrides && this.dealerOverrides[customerName]) {
                 const ov = this.dealerOverrides[customerName];
-                // Override order: Billing Zip Override > Billing Zip CSV > Shipping Zip Override > ...
-                // Logic: If override exists, it dictates.
-                if (ov.billing_zip) row['billing_zipcode'] = ov.billing_zip;
-                if (ov.shipping_zip) row['shipping_zipcode'] = ov.shipping_zip;
+                // Generic Apply: mapped keys in overrides replace row keys
+                for (const [key, val] of Object.entries(ov)) {
+                    // Only override if value is not empty? Or allow clearing?
+                    // Let's allow whatever string is there.
+                    if (val !== undefined) {
+                        row[key] = val;
+                    }
+                }
             }
 
             let zip = row['billing_zipcode'] || row['shipping_zipcode'];
@@ -773,8 +770,7 @@ class DataManager {
         const stateNames = {
             'IN-AN': 'Andaman and Nicobar Islands', 'IN-AP': 'Andhra Pradesh', 'IN-AR': 'Arunachal Pradesh',
             'IN-AS': 'Assam', 'IN-BR': 'Bihar', 'IN-CH': 'Chandigarh', 'IN-CT': 'Chhattisgarh',
-            'IN-DD': 'Daman and Diu', 'IN-DL': 'Delhi', 'IN-DN': 'Dadra and Nagar Haveli',
-            'IN-GA': 'Goa', 'IN-GJ': 'Gujarat', 'IN-HP': 'Himachal Pradesh', 'IN-HR': 'Haryana',
+            'IN-DD': 'Daman and Diu', 'IN-DL': 'Delhi', 'IN-GA': 'Goa', 'IN-GJ': 'Gujarat', 'IN-HP': 'Himachal Pradesh', 'IN-HR': 'Haryana',
             'IN-JH': 'Jharkhand', 'IN-JK': 'Jammu and Kashmir', 'IN-KA': 'Karnataka', 'IN-KL': 'Kerala',
             'IN-LD': 'Lakshadweep', 'IN-MH': 'Maharashtra', 'IN-ML': 'Meghalaya', 'IN-MN': 'Manipur',
             'IN-MP': 'Madhya Pradesh', 'IN-MZ': 'Mizoram', 'IN-NL': 'Nagaland', 'IN-OR': 'Odisha',
@@ -819,11 +815,13 @@ class DataManager {
         // Process each row
         for (const row of stateData) {
             // APPLY OVERRIDES HERE
+            // APPLY OVERRIDES HERE
             const customerName = row['customer_name'];
             if (this.dealerOverrides && this.dealerOverrides[customerName]) {
                 const ov = this.dealerOverrides[customerName];
-                if (ov.billing_zip) row['billing_zipcode'] = ov.billing_zip;
-                if (ov.shipping_zip) row['shipping_zipcode'] = ov.shipping_zip;
+                for (const [key, val] of Object.entries(ov)) {
+                    if (val !== undefined) row[key] = val;
+                }
             }
 
             const isYesCloud = customerName.toLowerCase().startsWith('yescloud');
@@ -888,8 +886,9 @@ class DataManager {
             const customerName = row['customer_name'];
             if (this.dealerOverrides && this.dealerOverrides[customerName]) {
                 const ov = this.dealerOverrides[customerName];
-                if (ov.billing_zip) row['billing_zipcode'] = ov.billing_zip;
-                if (ov.shipping_zip) row['shipping_zipcode'] = ov.shipping_zip;
+                for (const [key, val] of Object.entries(ov)) {
+                    if (val !== undefined) row[key] = val;
+                }
             }
 
             // const customerName = row['customer_name'] || 'Unknown Dealer'; // Redefined above

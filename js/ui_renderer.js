@@ -297,50 +297,110 @@ class UIRenderer {
      * @returns {string} HTML string
      */
     static renderDealerEditForm(dealerName, billingZip = '', shippingZip = '', rawData = {}) {
-        let detailsHtml = '';
-        if (rawData && Object.keys(rawData).length > 0) {
-            detailsHtml = `
-                <div style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">CSV Data Source:</div>
-                    <div style="display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 0.75rem; max-height: 150px; overflow-y: auto; padding-right: 4px;">
-            `;
+        let fieldsHtml = '';
+        // Fields to exclude from being editable or shown in valid inputs list (if any)
+        // We definitely exclude customer_name as it is the key
+        // Fields to exclude from being editable or shown in valid inputs list (if any)
+        // We definitely exclude customer_name as it is the key
+        const excludeKeys = [
+            'customer_name',
+            'customer_id',
+            'count',
+            'sales',
+            'sales_with_tax',
+            'custom_fields_list',
+            'currency_code',
+            'branch_name',
+            'shipping_state',
+            'shipping_zipcode'
+        ];
 
-            // Filter relevant fields for display (exclude internal zips we just edited if redundancy is annoying, but showing everything is safer)
-            for (const [key, val] of Object.entries(rawData)) {
-                if (!val) continue; // Skip empty fields
-                // prettier key
-                const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                detailsHtml += `
-                    <div style="color: var(--text-muted); text-align: right;">${label}:</div>
-                    <div style="color: #e2e8f0; word-break: break-word;">${val}</div>
+        // Sort keys? or Keep original order? Original order is better for context usually.
+        // rawData should have keys in order of CSV
+
+        for (const [key, val] of Object.entries(rawData)) {
+            if (excludeKeys.includes(key)) continue;
+
+            // Format Label: "billing_zipcode" -> "Billing Zipcode"
+            let label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+            // Custom simplified labels
+            if (key === 'billing_zipcode') label = 'Zip Code';
+            else if (key === 'billing_state') label = 'State';
+
+            // Value safety
+            let value = val || '';
+            // Escape quotes for HTML attribute
+            value = value.replace(/"/g, '&quot;');
+
+            let inputHtml = '';
+
+            if (key === 'billing_state') {
+                const states = [
+                    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
+                    "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+                    "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+                    "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+                    "Andaman and Nicobar Islands", "Chandigarh", "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+                ];
+
+                let options = `<option value="">Select State</option>`;
+                states.sort().forEach(s => {
+                    const selected = s.toLowerCase() === value.toLowerCase() ? 'selected' : '';
+                    options += `<option value="${s}" ${selected}>${s}</option>`;
+                });
+
+                inputHtml = `
+                    <select class="edit-field-input" 
+                            data-field="${key}" 
+                            disabled
+                            style="flex: 1; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; padding: 4px 0; border-radius: 4px; border: 1px solid transparent; background: transparent; color: white; font-size: 0.8rem; height: 26px; cursor: default;">
+                        ${options}
+                    </select>
+                `;
+            } else {
+                inputHtml = `
+                    <input type="text" 
+                           class="edit-field-input" 
+                           data-field="${key}" 
+                           value="${value}" 
+                           disabled
+                           style="flex: 1; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; padding: 4px 0; border-radius: 4px; border: 1px solid transparent; background: transparent; color: white; font-size: 0.8rem; height: 26px; cursor: default;">
                 `;
             }
-            detailsHtml += `</div></div>`;
+
+            const pencilIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
+
+            fieldsHtml += `
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                         <label style="flex: 0 0 85px; font-size: 0.7rem; color: var(--text-muted); text-align: right; margin-right: 8px;">${label}</label>
+                         ${inputHtml}
+                         <button onclick="window.viewController.toggleEditField(this)" style="background: none; border: none; padding: 4px; cursor: pointer; opacity: 0.5; color: var(--text-muted); display: flex; align-items: center; margin-left: 4px; transition: all 0.2s;" title="Edit">
+                            ${pencilIcon}
+                         </button>
+                    </div>
+                `;
         }
 
         return `
-            <div class="dealer-edit-form" onclick="event.stopPropagation()" style="background: rgba(15, 23, 42, 0.95); padding: 12px; margin: 4px 0 12px 0; border-radius: 6px; border: 1px solid var(--accent-color); box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Edit Location Info for <span style="color: var(--text-main); font-weight: 600;">${dealerName}</span></div>
+            <div class="dealer-edit-form" onclick="event.stopPropagation()" style="background: rgba(15, 23, 42, 0.98); padding: 8px; margin: 4px 0 8px 0; border-radius: 6px; border: 1px solid var(--accent-color); box-shadow: 0 4px 12px rgba(0,0,0,0.4); width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden;">
+                <div style="font-size: 0.8rem; color: var(--text-main); font-weight: 600; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; display:flex; justify-content:space-between; align-items:center;">
+                    <span>${dealerName}</span>
+                    <button onclick="window.viewController.cancelEdit(this)" style="background: none; border: none; padding: 2px; cursor: pointer; color: var(--text-muted); opacity: 0.7; transition: opacity 0.2s;" title="Close">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-                    <div>
-                         <label style="display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 4px;">Billing Zip</label>
-                         <input type="text" id="edit-billing-zip" value="${billingZip || ''}" placeholder="Billing Zip" style="width: 100%; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; font-size: 0.9rem;">
-                    </div>
-                    <div>
-                         <label style="display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 4px;">Shipping Zip</label>
-                         <input type="text" id="edit-shipping-zip" value="${shippingZip || ''}" placeholder="Shipping Zip" style="width: 100%; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; font-size: 0.9rem;">
-                    </div>
+                <div style="max-height: 250px; overflow-y: auto; padding-right: 2px; margin-bottom: 8px;">
+                    ${fieldsHtml}
                 </div>
 
-                ${detailsHtml}
-
-                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px;">
-                    <button onclick="window.viewController.cancelEdit(this)" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: var(--text-muted); cursor: pointer;">Cancel</button>
-                    <button onclick="window.viewController.saveDealerInfo('${dealerName}')" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 4px; border: none; background: var(--accent-color); color: white; cursor: pointer; font-weight: 500;">Save</button>
+                <div style="display: flex; justify-content: flex-end; gap: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <button onclick="window.viewController.cancelEdit(this)" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.2s;">Cancel</button>
+                    <button onclick="window.viewController.saveDealerInfo('${dealerName}')" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; border: none; background: var(--accent-color); color: white; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.2s;">Save</button>
                 </div>
             </div>
-        `;
+            `;
     }
 }
 

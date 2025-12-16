@@ -30,6 +30,7 @@ class BoardController {
         this.setupBoardUI();
         this.setupModal();
         this.setupDragAndDrop();
+        this.setupHoverPreview(); // Initialize Hover Editor
 
         // Subscribe to boards
         this.taskService.subscribeToBoards(
@@ -725,12 +726,194 @@ class BoardController {
             }
         });
 
-        // Edit functionality
+        // Edit functionality (Click)
         div.addEventListener('click', () => {
+            // Keep click for modal? Or disable if hover exists?
+            // User requested hover editor, let's keep click as fallback or standard open
             this.openEditModal(task);
         });
 
+        // Hover functionality for "Quick Edit Column"
+        div.addEventListener('mouseenter', () => {
+            this.prepareHoverEditor(task, div);
+        });
+
+        div.addEventListener('mouseleave', () => {
+            this.scheduleHideHoverEditor();
+        });
+
         return div;
+    }
+
+    setupHoverPreview() {
+        // Create the single Quick Edit Column instance if not exists
+        if (this.quickEditColumn) return;
+
+        this.quickEditColumn = document.createElement('div');
+        this.quickEditColumn.className = 'quick-edit-column';
+        this.quickEditColumn.innerHTML = `
+            <div class="quick-edit-header">
+                <h4 style="margin:0;">Quick Edit</h4>
+                <button class="btn-icon-sm close-quick-edit" title="Close">✕</button>
+            </div>
+            <div class="quick-edit-body">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" class="form-control qe-title">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea class="form-control qe-desc" rows="12"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select class="form-control qe-status"></select>
+                </div>
+            </div>
+            <div class="quick-edit-footer">
+                <span class="qe-status-text" style="font-size:0.75rem; color:var(--text-muted); margin-right:auto;"></span>
+                <button class="btn-primary qe-save">Save</button>
+            </div>
+        `;
+
+        // Interaction for the column itself to prevent closing when hovered
+        this.quickEditColumn.addEventListener('mouseenter', () => {
+            this.cancelHideHoverEditor();
+        });
+
+        this.quickEditColumn.addEventListener('mouseleave', () => {
+            this.scheduleHideHoverEditor();
+        });
+
+        // Bind internal buttons
+        this.quickEditColumn.querySelector('.close-quick-edit').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.hideHoverEditor(true);
+        });
+
+        this.quickEditColumn.querySelector('.qe-save').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await this.saveQuickEdit();
+        });
+
+        // Auto-save interactions or Enter key? 
+        // User said "ready to be edited". Let's stick to Save button for explicit action + Enter on title
+        const titleInput = this.quickEditColumn.querySelector('.qe-title');
+        titleInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this.saveQuickEdit();
+        });
+    }
+
+    prepareHoverEditor(task, cardElement) {
+        this.cancelHideHoverEditor();
+
+        // Anti-flicker: if already showing for this task, do nothing
+        if (this.currentHoverTaskId === task.id && this.quickEditColumn.classList.contains('active')) return;
+
+        this.currentHoverTaskId = task.id;
+        this.currentHoverTask = task;
+
+        // Position Logic: Insert after the parent column of the card
+        const parentColumn = cardElement.closest('.kanban-column');
+        if (!parentColumn) return;
+
+        // Populate Data
+        const colTitle = this.quickEditColumn.querySelector('.qe-title');
+        const colDesc = this.quickEditColumn.querySelector('.qe-desc');
+        const colStatus = this.quickEditColumn.querySelector('.qe-status');
+
+        colTitle.value = task.title || '';
+        colDesc.value = task.description || '';
+
+        // Refresh status options based on current columns
+        const board = this.taskService.boards.find(b => b.id === this.taskService.currentBoardId);
+        const columns = board?.columns || [];
+        colStatus.innerHTML = columns.map(c => `<option value="${c.id}">${this.escapeHtml(c.title)}</option>`).join('');
+        colStatus.value = task.status;
+
+        this.quickEditColumn.querySelector('.qe-status-text').textContent = 'Unsaved changes';
+        this.quickEditColumn.querySelector('.qe-status-text').style.opacity = '0'; // Hide initially
+
+        // DOM Insertion
+        // We want to insert AFTER the parent column.
+        const headerParent = parentColumn.parentElement; // .kanban-board
+        const nextSibling = parentColumn.nextElementSibling;
+
+        // If the column is already in the DOM, is it in the right place?
+        // We re-insert it to ensure it pushes the correct content
+        if (nextSibling === this.quickEditColumn) {
+            // Already in place
+        } else {
+            if (nextSibling) {
+                headerParent.insertBefore(this.quickEditColumn, nextSibling);
+            } else {
+                headerParent.appendChild(this.quickEditColumn);
+            }
+        }
+
+        // Force Reflow
+        void this.quickEditColumn.offsetWidth;
+
+        // Show
+        this.quickEditColumn.classList.add('active');
+    }
+
+    scheduleHideHoverEditor() {
+        this.cancelHideHoverEditor();
+        this.hoverHideTimeout = setTimeout(() => {
+            this.hideHoverEditor();
+        }, 300); // 300ms delay to move mouse
+    }
+
+    cancelHideHoverEditor() {
+        if (this.hoverHideTimeout) {
+            clearTimeout(this.hoverHideTimeout);
+            this.hoverHideTimeout = null;
+        }
+    }
+
+    hideHoverEditor(force = false) {
+        if (!this.quickEditColumn) return;
+        this.quickEditColumn.classList.remove('active');
+        this.currentHoverTaskId = null;
+        this.currentHoverTask = null;
+
+        // Remove from DOM after transition to avoid layout jump?
+        // Or keep it there hidden (width 0)? keeping it hidden is smoother for "re positioned".
+        // But if we want it to *completely* leave the flow, width:0 handles that.
+    }
+
+    async saveQuickEdit() {
+        if (!this.currentHoverTask) return;
+
+        const title = this.quickEditColumn.querySelector('.qe-title').value.trim();
+        const description = this.quickEditColumn.querySelector('.qe-desc').value.trim();
+        const status = this.quickEditColumn.querySelector('.qe-status').value;
+
+        if (!title) return;
+
+        const btn = this.quickEditColumn.querySelector('.qe-save');
+        const statusText = this.quickEditColumn.querySelector('.qe-status-text');
+
+        btn.textContent = 'Saving...';
+        btn.disabled = true;
+
+        try {
+            await this.taskService.updateTask(this.currentHoverTask.id, {
+                title,
+                description,
+                status
+            });
+            statusText.textContent = 'Saved!';
+            statusText.style.opacity = '1';
+            setTimeout(() => statusText.style.opacity = '0', 2000);
+        } catch (e) {
+            console.error(e);
+            alert('Failed to save');
+        } finally {
+            btn.textContent = 'Save';
+            btn.disabled = false;
+        }
     }
 
     // ... Drag & Drop Methods (unchanged) ...

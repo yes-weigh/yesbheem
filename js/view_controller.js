@@ -1136,12 +1136,62 @@ class ViewController {
         }
     }
 
-    async saveDealerInfo(dealerName) {
-        const billingInput = document.getElementById('edit-billing-zip');
-        const shippingInput = document.getElementById('edit-shipping-zip');
+    toggleEditField(btn) {
+        const container = btn.parentElement;
+        const input = container.querySelector('.edit-field-input');
+        if (!input) return;
 
-        const bZip = billingInput ? billingInput.value.trim() : '';
-        const sZip = shippingInput ? shippingInput.value.trim() : '';
+        const isDisabled = input.hasAttribute('disabled');
+
+        if (isDisabled) {
+            // Enable editing
+            input.removeAttribute('disabled');
+            input.focus();
+            input.style.background = 'rgba(0,0,0,0.3)';
+            input.style.borderColor = 'rgba(255,255,255,0.15)';
+            input.style.paddingLeft = '6px';
+            input.style.cursor = 'text';
+            btn.style.opacity = '1';
+            btn.style.color = 'var(--accent-color)';
+        } else {
+            // Disable editing
+            input.setAttribute('disabled', 'true');
+            input.style.background = 'transparent';
+            input.style.borderColor = 'transparent';
+            input.style.paddingLeft = '0'; // Align text left like a label
+            input.style.cursor = 'default';
+            btn.style.opacity = '0.5';
+            btn.style.color = 'var(--text-muted)';
+        }
+    }
+
+    async saveDealerInfo(dealerName) {
+        // Find the specific form for this dealer
+        // We look for the form header containing the name
+        const forms = document.querySelectorAll('.dealer-edit-form');
+        let targetForm = null;
+        for (const form of forms) {
+            if (form.innerHTML.includes(dealerName)) { // Simple check, or querySelector span
+                targetForm = form;
+                break;
+            }
+        }
+
+        if (!targetForm) {
+            console.error('Could not find edit form for:', dealerName);
+            return;
+        }
+
+        const inputs = targetForm.querySelectorAll('.edit-field-input');
+        const overrides = {};
+
+        inputs.forEach(input => {
+            const key = input.getAttribute('data-field');
+            const value = input.value.trim(); // Allow empty? Yes.
+            if (key) {
+                overrides[key] = value;
+            }
+        });
 
         // Show updating state?
         const dealerSection = document.getElementById('dealer-section');
@@ -1149,7 +1199,7 @@ class ViewController {
             dealerSection.innerHTML = UIRenderer.renderLoading('Saving changes...');
         }
 
-        await this.dataManager.saveDealerOverride(dealerName, bZip, sZip);
+        await this.dataManager.saveDealerOverride(dealerName, overrides);
 
         // Reload Data via Report Selector Logic (Simulate refresh)
         const reportSelector = document.getElementById('report-selector');
