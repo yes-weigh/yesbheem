@@ -10,24 +10,49 @@
                 </div>
             </div>
             <div class="header-controls" style="display: flex; gap: 10px; align-items: center;">
-                <button id="uploadReportBtn" class="btn-data btn-upload">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="margin-right: 6px;">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                    Upload
-                </button>
-                <button id="openDataInputBtn" class="btn-data">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="margin-right: 6px;">
-                        <path d="M12 2c5.52 0 10 2 10 4.5S17.52 11 12 11 2 9 2 6.5 6.48 2 12 2z"></path>
-                        <path d="M2 12.5C2 15 6.48 17 12 17s10-2 10-4.5"></path>
-                        <path d="M2 6.5v11c0 2.5 4.48 4.5 10 4.5s10-2 10-4.5v-11"></path>
-                    </svg>
-                    Data
-                </button>
+                <div class="action-menu-container">
+                    <button id="dataActionsMenuBtn" class="btn-data btn-action-menu">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" style="margin-right: 6px;">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path
+                                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                            </path>
+                        </svg>
+                        Data Options
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" style="margin-left: 4px;">
+                            <path d="M6 9l6 6 6-6"></path>
+                        </svg>
+                    </button>
+                    <div class="action-dropdown" id="dataActionsDropdown">
+                        <button id="uploadReportBtn" class="dropdown-item">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            Upload Reports
+                        </button>
+                        <button id="manageReportsBtn" class="dropdown-item">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M4 6h16M4 12h16M4 18h16"></path>
+                            </svg>
+                            Manage Reports
+                        </button>
+                        <button id="openDataInputBtn" class="dropdown-item">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M12 2c5.52 0 10 2 10 4.5S17.52 11 12 11 2 9 2 6.5 6.48 2 12 2z"></path>
+                                <path d="M2 12.5C2 15 6.48 17 12 17s10-2 10-4.5"></path>
+                                <path d="M2 6.5v11c0 2.5 4.48 4.5 10 4.5s10-2 10-4.5v-11"></path>
+                            </svg>
+                            Key Data Input
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -109,7 +134,7 @@
                     <label for="csvFile"
                         style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px; display: block;">CSV
                         File</label>
-                    <input type="file" id="csvFile" accept=".csv"
+                    <input type="file" id="csvFile" accept=".csv" multiple
                         style="width: 100%; padding: 10px; border: 1px dashed var(--border-color); border-radius: 4px; color: var(--text-muted);">
                 </div>
                 <div id="uploadStatus" style="font-size: 0.9rem; color: var(--text-muted); min-height: 20px;"></div>
@@ -206,33 +231,61 @@
 
         if (submitBtn) {
             submitBtn.addEventListener('click', async () => {
-                const file = fileInput.files[0];
-                const name = nameInput.value.trim();
+                const files = fileInput.files;
+                let customName = nameInput.value.trim();
 
-                if (!file || !name) {
-                    statusDiv.textContent = 'Please provide both a name and a file.';
+                if (files.length === 0) {
+                    statusDiv.textContent = 'Please select at least one file.';
                     statusDiv.style.color = 'var(--text-error)';
                     return;
                 }
 
+                // If single file and name IS provided, use it.
+                // If single file and name NOT provided, use filename.
+                // If multiple files, IGNORE input name, use filenames.
+
                 try {
-                    statusDiv.textContent = 'Uploading...';
-                    statusDiv.style.color = 'var(--text-main)';
                     submitBtn.disabled = true;
+                    let successCount = 0;
+                    let errorCount = 0;
 
-                    await dm.uploadCSV(file, name);
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        let reportName = file.name.replace(/\.[^/.]+$/, ""); // Default: remove extension
 
-                    statusDiv.textContent = 'Upload Successful!';
-                    statusDiv.style.color = 'var(--text-success)';
+                        if (files.length === 1 && customName) {
+                            reportName = customName;
+                        }
 
-                    await loadReports();
-                    setTimeout(() => {
-                        closeUploadModal();
+                        statusDiv.textContent = `Uploading ${i + 1}/${files.length}: ${reportName}...`;
+                        statusDiv.style.color = 'var(--text-main)';
+
+                        try {
+                            await dm.uploadCSV(file, reportName);
+                            successCount++;
+                        } catch (e) {
+                            console.error(`Failed to upload ${file.name}:`, e);
+                            errorCount++;
+                        }
+                    }
+
+                    if (errorCount === 0) {
+                        statusDiv.textContent = `Upload Successful! (${successCount} files)`;
+                        statusDiv.style.color = 'var(--text-success)';
+                        await loadReports();
+                        setTimeout(() => {
+                            closeUploadModal();
+                            submitBtn.disabled = false;
+                        }, 1000);
+                    } else {
+                        statusDiv.textContent = `Completed with errors. Success: ${successCount}, Failed: ${errorCount}`;
+                        statusDiv.style.color = 'var(--text-warning)';
+                        await loadReports(); // Refresh anyway
                         submitBtn.disabled = false;
-                    }, 1000);
+                    }
 
                 } catch (e) {
-                    statusDiv.textContent = 'Error: ' + e.message;
+                    statusDiv.textContent = 'Critical Error: ' + e.message;
                     statusDiv.style.color = 'var(--text-error)';
                     submitBtn.disabled = false;
                 }
@@ -240,6 +293,201 @@
         }
 
 
+
+        // --- MANAGE REPORTS LOGIC ---
+        const manageBtn = document.getElementById('manageReportsBtn');
+        const manageModal = document.getElementById('manageModal');
+        const closeManageIcon = document.getElementById('closeManageModalIcon');
+        const closeManageBtn = document.getElementById('closeManageModalBtn');
+        const reportsListEl = document.getElementById('reportsList');
+        const manageStatus = document.getElementById('manageStatus');
+
+        if (manageBtn) {
+            manageBtn.addEventListener('click', async () => {
+                manageModal.classList.add('active');
+                await renderManageList();
+            });
+        }
+
+        // --- DROPDOWN LOGIC ---
+        const menuBtn = document.getElementById('dataActionsMenuBtn');
+        const dropdown = document.getElementById('dataActionsDropdown');
+
+        if (menuBtn && dropdown) {
+            menuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdown.classList.toggle('active');
+            });
+
+            // Close when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!menuBtn.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('active');
+                }
+            });
+
+            // Close when clicking an item
+            dropdown.querySelectorAll('.dropdown-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    dropdown.classList.remove('active');
+                });
+            });
+        }
+
+        const closeManageModal = () => {
+            if (manageModal) manageModal.classList.remove('active');
+            if (manageStatus) manageStatus.textContent = '';
+        };
+
+        if (closeManageIcon) closeManageIcon.addEventListener('click', closeManageModal);
+        if (closeManageBtn) closeManageBtn.addEventListener('click', closeManageModal);
+
+        // Define loadReports to satisfy existing call in upload logic
+        const loadReports = async () => {
+            // Only auto-refresh if modal is open, or we can just refresh to be safe
+            // But upload modal calls this.
+            if (manageModal && manageModal.classList.contains('active')) {
+                await renderManageList();
+            }
+        };
+
+        async function renderManageList() {
+            if (!reportsListEl) return;
+            reportsListEl.innerHTML = '<div style="padding:20px; text-align:center;">Loading...</div>';
+            try {
+                const reports = await dm.listReports();
+                reportsListEl.innerHTML = '';
+
+                if (!reports || reports.length === 0) {
+                    reportsListEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">No uploaded reports found.</div>';
+                    return;
+                }
+
+                reports.forEach((report, index) => {
+                    const row = document.createElement('div');
+                    row.className = 'report-row';
+                    row.draggable = true;
+                    row.dataset.id = report.id;
+                    row.dataset.index = index;
+
+                    // Drag Events
+                    row.addEventListener('dragstart', (e) => {
+                        row.classList.add('dragging');
+                    });
+
+                    row.addEventListener('dragend', () => {
+                        row.classList.remove('dragging');
+                        // Optional: Auto-save order on drag end?
+                        // Let's rely on drop or just save whenever order changes
+                        saveOrder();
+                    });
+
+                    row.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:10px; flex:1;">
+                            <div class="drag-handle" style="cursor:grab; opacity:0.5; padding: 0 5px;">⋮⋮</div>
+                            <input type="text" class="report-name-input" value="${report.name}" 
+                                style="background:transparent; border:none; color:var(--text-main); font-weight:500; width:100%;">
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span class="date ui-monospace" style="font-family:monospace; opacity:0.7;">${new Date(report.timeCreated).toLocaleDateString()}</span>
+                            <button class="btn-delete-report" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:4px;" title="Delete">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    `;
+
+                    // Rename Logic
+                    const input = row.querySelector('.report-name-input');
+                    input.addEventListener('change', async () => {
+                        const newName = input.value.trim();
+                        if (newName && newName !== report.name) {
+                            if (manageStatus) manageStatus.textContent = 'Renaming...';
+                            await dm.renameReport(report, newName);
+                            if (manageStatus) {
+                                manageStatus.textContent = 'Saved.';
+                                setTimeout(() => manageStatus.textContent = '', 2000);
+                            }
+                        }
+                    });
+
+                    // Delete Logic
+                    const delBtn = row.querySelector('.btn-delete-report');
+                    delBtn.addEventListener('click', async (e) => {
+                        if (confirm(`Delete report "${report.name}"?`)) {
+                            if (manageStatus) manageStatus.textContent = 'Deleting...';
+                            await dm.deleteReport(report);
+                            await renderManageList(); // Refresh
+                            if (manageStatus) manageStatus.textContent = '';
+                        }
+                    });
+
+                    reportsListEl.appendChild(row);
+                });
+
+                // Add DragOver Handler to Container
+                reportsListEl.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const draggingRow = document.querySelector('.dragging');
+                    if (!draggingRow) return;
+
+                    const afterElement = getDragAfterElement(reportsListEl, e.clientY);
+                    if (afterElement == null) {
+                        reportsListEl.appendChild(draggingRow);
+                    } else {
+                        reportsListEl.insertBefore(draggingRow, afterElement);
+                    }
+                });
+
+            } catch (e) {
+                console.error(e);
+                reportsListEl.textContent = 'Error loading reports.';
+            }
+        }
+
+        async function saveOrder() {
+            const newOrderIds = Array.from(reportsListEl.children).map(row => row.dataset.id);
+            // We need full objects. Re-fetch or use what we have? 
+            // Re-fetch is safer for consistency but slower.
+            // Optimize: We can't easily reconstruct full objects from DOM only.
+            // We should have cached them. But for now let's just List -> Sort -> Save.
+
+            try {
+                if (manageStatus) manageStatus.textContent = 'Saving order...';
+                const currentReports = await dm.listReports();
+                // Create map for O(1) lookup
+                const map = new Map(currentReports.map(r => [r.id, r]));
+
+                const newItems = newOrderIds.map(id => map.get(id)).filter(Boolean);
+
+                // If lengths match (sanity check)
+                if (newItems.length === currentReports.length) {
+                    await dm.saveReportsList(newItems);
+                    if (manageStatus) {
+                        manageStatus.textContent = 'Order saved.';
+                        setTimeout(() => manageStatus.textContent = '', 2000);
+                    }
+                }
+            } catch (e) {
+                console.warn('Save order failed', e);
+            }
+        }
+
+        // Helper for Drag and Drop
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.report-row:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
 
         // Trigger Initial Load LAST, after all listeners are set
 
@@ -1211,5 +1459,62 @@
         border-radius: 4px;
         cursor: pointer;
         color: white;
+    }
+
+    /* Action Dropdown Styles */
+    .action-menu-container {
+        position: relative;
+    }
+
+    .action-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 5px;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        min-width: 180px;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-5px);
+        transition: all 0.2s ease;
+        z-index: 100;
+        padding: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .action-dropdown.active {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        width: 100%;
+        background: none;
+        border: none;
+        color: var(--text-main);
+        cursor: pointer;
+        font-size: 0.9rem;
+        text-align: left;
+        border-radius: 4px;
+        transition: background 0.15s;
+    }
+
+    .dropdown-item:hover {
+        background: var(--bg-tertiary);
+        color: var(--primary-color);
+    }
+
+    .dropdown-item svg {
+        opacity: 0.8;
     }
 </style>
