@@ -55,7 +55,7 @@
 }
 
 .board-picker-trigger h2 {
-    color: white;
+    color: #172b4d;
     font-size: 1.25rem;
     font-weight: 700;
     margin: 0;
@@ -63,7 +63,7 @@
 }
 
 .picker-chevron {
-    color: rgba(255, 255, 255, 0.8);
+    color: #44546f;
     font-size: 0.8rem;
     transition: transform 0.2s;
 }
@@ -216,11 +216,18 @@
     /* Crucial for nested flex scrolling */
     position: relative;
     /* Trello Green Fallback and Image */
-    background: #519839;
-    background-image: linear-gradient(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.15)), url('https://images.unsplash.com/photo-1697210133276-880629764506?q=80&w=2670&auto=format&fit=crop');
+    /* Default (Light) Gradient */
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
     background-size: cover;
     background-position: center;
 }
+
+/* Dark Mode Gradient Override */
+[data-theme="dark"] .board-main-content {
+    background: linear-gradient(135deg, #1a2332 0%, #0d1117 100%);
+    background-size: cover;
+}
+
 
 /* Board Header */
 .kanban-header {
@@ -228,8 +235,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 20px;
-    background: rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(4px);
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(8px);
     flex-shrink: 0;
     position: relative;
     /* Create stacking context */
@@ -238,7 +245,7 @@
 }
 
 .kanban-header h2 {
-    color: white;
+    color: #172b4d;
     font-size: 1.25rem;
     font-weight: 700;
     margin: 0;
@@ -246,7 +253,7 @@
 }
 
 .add-task-btn {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--primary-color);
     color: white;
     border: none;
     padding: 8px 16px;
@@ -261,7 +268,8 @@
 }
 
 .add-task-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
+    filter: brightness(110%);
+    background: var(--primary-color);
 }
 
 
@@ -735,6 +743,7 @@
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     pointer-events: none;
 }
+
 .icon-btn {
     background: rgba(255, 255, 255, 0.1);
     border: none;
@@ -750,15 +759,18 @@
     backdrop-filter: blur(4px);
     padding: 0;
 }
+
 .icon-btn:hover {
     background: rgba(255, 255, 255, 0.2);
     color: white;
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
+
 .settings-btn svg {
     transition: transform 0.5s ease;
 }
+
 .settings-btn:hover svg {
     transform: rotate(90deg);
 }

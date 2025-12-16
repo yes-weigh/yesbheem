@@ -268,6 +268,25 @@ class UIRenderer {
         if (p >= 70) return '#f59e0b';
         return '#ef4444';
     }
+
+    /**
+     * Render a loading spinner with optional message
+     * @param {string} message - Text to display below spinner
+     * @returns {string} HTML string
+     */
+    static renderLoading(message = 'Loading...') {
+        return `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; color: var(--text-muted);">
+                <div class="spinner" style="width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent-color); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem;"></div>
+                <div style="font-size: 0.9rem;">${message}</div>
+            </div>
+            <style>
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+            </style>
+        `;
+    }
 }
 
 window.UIRenderer = UIRenderer;

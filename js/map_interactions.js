@@ -20,83 +20,89 @@ class MapInteractions {
         const dealerSection = document.getElementById('dealer-section');
         if (!dealerSection) return;
 
-        let html = '';
-        let metric = 'sales'; // Default to sales (districts view)
+        // Show loading immediately to provide visual feedback
+        dealerSection.innerHTML = UIRenderer.renderLoading('Loading view...');
 
-        if (viewType === 'dealers') {
-            // Show dealers list
-            if (this.currentData && this.currentData.dealers) {
-                html = UIRenderer.renderDealerList(this.currentData.dealers);
-            }
-            // User requested coloring for Dealers view (same as dealer_count)
-            metric = 'dealer_count';
-            // Coloring applied at end of function or explicitly here? 
-            // The coloring logic is inside the `else` block (Line 84).
-            // So for this block, I must call it explicitly or refactor.
-            // I'll call it explicitly.
-            if (this.districtInsights) {
-                this.colorizeDistricts(metric);
-            }
+        // Wrapped in setTimeout to allow the browser to render the loader
+        setTimeout(() => {
+            let html = '';
+            let metric = 'sales'; // Default to sales (districts view)
 
-        } else if (viewType === 'states') {
-            // Fallback if somehow triggered
-            if (this.currentData && this.currentData.dealers) {
-                const statesData = this.dataManager.aggregateByState(this.currentData.dealers);
-                html = UIRenderer.renderDistrictSalesList(statesData);
-            }
-            metric = null;
-
-        } else {
-            // District Views: districts (sales), gdp, population, dealer_count
-            if (this.districtInsights && Object.keys(this.districtInsights).length > 0) {
-                // Determine Metric
-                if (viewType === 'gdp') metric = 'gdp';
-                else if (viewType === 'population') metric = 'population';
-                else if (viewType === 'dealer_count') metric = 'dealer_count';
-                else metric = 'sales';
-
-                // Sort for Sidebar
-                const districtsArray = Object.values(this.districtInsights).filter(d => d.name);
-
-                // Helper to parse if needed (reusing logic)
-                const parseVal = (v) => {
-                    if (typeof v === 'number') return v;
-                    if (!v) return 0;
-                    return parseFloat(v.toString().replace(/,/g, '').replace(/[^0-9.]/g, '')) || 0;
-                };
-
-                let sortFn;
-                if (metric === 'sales') sortFn = (a, b) => (b.currentSales || 0) - (a.currentSales || 0);
-                else if (metric === 'dealer_count') sortFn = (a, b) => (b.dealerCount || 0) - (a.dealerCount || 0);
-                else if (metric === 'gdp') sortFn = (a, b) => parseVal(b.gdp) - parseVal(a.gdp);
-                else if (metric === 'population') sortFn = (a, b) => parseVal(b.population) - parseVal(a.population);
-
-                districtsArray.sort(sortFn);
-
-                // Render List
-                if (metric === 'sales' || metric === 'districts') {
-                    html = UIRenderer.renderDistrictSalesList(districtsArray);
-                } else if (metric === 'dealer_count') {
-                    // Map to expected format for renderDealerCountList if needed or reuse same
-                    html = UIRenderer.renderDealerCountList(districtsArray, 'Districts by Dealer Count');
-                } else {
-                    // GDP / Pop
-                    const title = metric === 'gdp' ? 'Districts by GDP' : 'Districts by Population';
-                    html = UIRenderer.renderStateMetricList(districtsArray, metric, title);
+            if (viewType === 'dealers') {
+                // Show dealers list
+                if (this.currentData && this.currentData.dealers) {
+                    html = UIRenderer.renderDealerList(this.currentData.dealers);
+                }
+                // User requested coloring for Dealers view (same as dealer_count)
+                metric = 'dealer_count';
+                // Coloring applied at end of function or explicitly here? 
+                // The coloring logic is inside the `else` block (Line 84).
+                // So for this block, I must call it explicitly or refactor.
+                // I'll call it explicitly.
+                if (this.districtInsights) {
+                    this.colorizeDistricts(metric);
                 }
 
-                // Apply Coloring
-                this.colorizeDistricts(metric);
+            } else if (viewType === 'states') {
+                // Fallback if somehow triggered
+                if (this.currentData && this.currentData.dealers) {
+                    const statesData = this.dataManager.aggregateByState(this.currentData.dealers);
+                    html = UIRenderer.renderDistrictSalesList(statesData);
+                }
+                metric = null;
+
+            } else {
+                // District Views: districts (sales), gdp, population, dealer_count
+                if (this.districtInsights && Object.keys(this.districtInsights).length > 0) {
+                    // Determine Metric
+                    if (viewType === 'gdp') metric = 'gdp';
+                    else if (viewType === 'population') metric = 'population';
+                    else if (viewType === 'dealer_count') metric = 'dealer_count';
+                    else metric = 'sales';
+
+                    // Sort for Sidebar
+                    const districtsArray = Object.values(this.districtInsights).filter(d => d.name);
+
+                    // Helper to parse if needed (reusing logic)
+                    const parseVal = (v) => {
+                        if (typeof v === 'number') return v;
+                        if (!v) return 0;
+                        return parseFloat(v.toString().replace(/,/g, '').replace(/[^0-9.]/g, '')) || 0;
+                    };
+
+                    let sortFn;
+                    if (metric === 'sales') sortFn = (a, b) => (b.currentSales || 0) - (a.currentSales || 0);
+                    else if (metric === 'dealer_count') sortFn = (a, b) => (b.dealerCount || 0) - (a.dealerCount || 0);
+                    else if (metric === 'gdp') sortFn = (a, b) => parseVal(b.gdp) - parseVal(a.gdp);
+                    else if (metric === 'population') sortFn = (a, b) => parseVal(b.population) - parseVal(a.population);
+
+                    districtsArray.sort(sortFn);
+
+                    // Render List
+                    if (metric === 'sales' || metric === 'districts') {
+                        html = UIRenderer.renderDistrictSalesList(districtsArray);
+                    } else if (metric === 'dealer_count') {
+                        // Map to expected format for renderDealerCountList if needed or reuse same
+                        html = UIRenderer.renderDealerCountList(districtsArray, 'Districts by Dealer Count');
+                    } else {
+                        // GDP / Pop
+                        const title = metric === 'gdp' ? 'Districts by GDP' : 'Districts by Population';
+                        html = UIRenderer.renderStateMetricList(districtsArray, metric, title);
+                    }
+
+                    // Apply Coloring
+                    this.colorizeDistricts(metric);
+                }
             }
-        }
 
-        console.log(`[handleViewChange] Setting currentViewMetric to: ${metric}`);
-        if (html) dealerSection.innerHTML = html;
-        this.currentViewMetric = metric; // Cache for hover
+            console.log(`[handleViewChange] Setting currentViewMetric to: ${metric}`);
+            if (html) dealerSection.innerHTML = html;
+            this.currentViewMetric = metric; // Cache for hover
 
-        // Debug
-        // const testEl = document.getElementById('IN-KL-14'); // Kasaragod
-        // if(testEl) console.log('Test Element listeners active?');
+            // Debug
+            // const testEl = document.getElementById('IN-KL-14'); // Kasaragod
+            // if(testEl) console.log('Test Element listeners active?');
+        }, 50);
     }
 
     /**

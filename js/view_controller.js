@@ -124,6 +124,12 @@ class ViewController {
                 const reportUrl = e.target.value;
                 if (reportUrl) {
                     try {
+                        // SHOW LOADING IMMEDIATELY
+                        const dealerSection = document.getElementById('dealer-section');
+                        if (dealerSection) {
+                            dealerSection.innerHTML = UIRenderer.renderLoading('Updating report data...');
+                        }
+
                         const previousDistrictId = this.mapInteractions?.selectedDistrictId;
                         console.log('Changing report. Saved District Selection:', previousDistrictId);
 
@@ -142,7 +148,9 @@ class ViewController {
 
                                 // Only update global state UI if we are NOT restoring a specific district view
                                 if (!previousDistrictId) {
-                                    this.updateSidebarWithData(data);
+                                    this.updateSidebarWithData(data, { renderList: false });
+                                    // Loader is already showing, and updateSidebarWithData(..., false) won't touch it.
+                                    // The subsequent loadDistrictData calls will eventually trigger sidebar updates.
                                 }
 
                                 const stateName = this.mapInteractions.currentStateName || 'Kerala';
@@ -193,52 +201,57 @@ class ViewController {
             const dealerSection = document.getElementById('dealer-section');
             if (!dealerSection) return;
 
-            if (view === 'states') {
-                if (this.indiaData && this.indiaData.dealers) {
-                    const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
-                    dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(statesData);
-                    this.colorizeMapStates(statesData, 'states');
+            // Show Loading
+            dealerSection.innerHTML = UIRenderer.renderLoading('Loading view...');
+
+            setTimeout(async () => {
+                if (view === 'states') {
+                    if (this.indiaData && this.indiaData.dealers) {
+                        const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
+                        dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(statesData);
+                        this.colorizeMapStates(statesData, 'states');
+                    }
+                } else if (view === 'dealer_count') {
+                    if (this.indiaData && this.indiaData.dealers) {
+                        const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
+                        // Sort by Dealer Count
+                        statesData.sort((a, b) => b.dealerCount - a.dealerCount);
+                        dealerSection.innerHTML = UIRenderer.renderDealerCountList(statesData);
+                        this.colorizeMapStates(statesData, 'dealer_count');
+                    }
+                } else if (view === 'dealers') {
+                    if (this.indiaData && this.indiaData.dealers) {
+                        dealerSection.innerHTML = UIRenderer.renderDealerList(this.indiaData.dealers);
+                        // Color map by dealer count to match Kerala behavior
+                        const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
+                        this.colorizeMapStates(statesData, 'dealer_count');
+                    }
+                } else if (view === 'gdp' || view === 'population') {
+                    // Loading state (Re-use existing loader but ensure text is specific if needed)
+                    // The outer loader covers it, but we have async fetch here.
+
+                    try {
+                        const data = await this.dataManager.getStatesWithKPIs();
+
+                        // Sort Data
+                        const parseVal = (v) => {
+                            if (!v) return -1;
+                            let str = v.toString().replace(/,/g, '');
+                            return parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
+                        };
+
+                        data.sort((a, b) => parseVal(b[view]) - parseVal(a[view]));
+
+                        const title = view === 'gdp' ? 'States by GDP' : 'States by Population';
+                        dealerSection.innerHTML = UIRenderer.renderStateMetricList(data, view, title);
+                        this.colorizeMapStates(data, view);
+
+                    } catch (e) {
+                        console.error('Error rendering KPI view:', e);
+                        dealerSection.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-error);">Failed to load data</div>';
+                    }
                 }
-            } else if (view === 'dealer_count') {
-                if (this.indiaData && this.indiaData.dealers) {
-                    const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
-                    // Sort by Dealer Count
-                    statesData.sort((a, b) => b.dealerCount - a.dealerCount);
-                    dealerSection.innerHTML = UIRenderer.renderDealerCountList(statesData);
-                    this.colorizeMapStates(statesData, 'dealer_count');
-                }
-            } else if (view === 'dealers') {
-                if (this.indiaData && this.indiaData.dealers) {
-                    dealerSection.innerHTML = UIRenderer.renderDealerList(this.indiaData.dealers);
-                    // Color map by dealer count to match Kerala behavior
-                    const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
-                    this.colorizeMapStates(statesData, 'dealer_count');
-                }
-            } else if (view === 'gdp' || view === 'population') {
-                // Loading state
-                dealerSection.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-muted);">Loading Data...</div>';
-
-                try {
-                    const data = await this.dataManager.getStatesWithKPIs();
-
-                    // Sort Data
-                    const parseVal = (v) => {
-                        if (!v) return -1;
-                        let str = v.toString().replace(/,/g, '');
-                        return parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
-                    };
-
-                    data.sort((a, b) => parseVal(b[view]) - parseVal(a[view]));
-
-                    const title = view === 'gdp' ? 'States by GDP' : 'States by Population';
-                    dealerSection.innerHTML = UIRenderer.renderStateMetricList(data, view, title);
-                    this.colorizeMapStates(data, view);
-
-                } catch (e) {
-                    console.error('Error rendering KPI view:', e);
-                    dealerSection.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-error);">Failed to load data</div>';
-                }
-            }
+            }, 50);
         } else if (this.currentView === 'state') {
             // Updated handling: Delegate to MapInteractions
             if (this.mapInteractions) {
@@ -294,7 +307,7 @@ class ViewController {
         }
     }
 
-    updateSidebarWithData(data) {
+    updateSidebarWithData(data, options = { renderList: true }) {
         const title = document.getElementById('district-name');
         const desc = document.getElementById('district-description');
         const dealerSection = document.getElementById('dealer-section');
@@ -323,10 +336,11 @@ class ViewController {
         }, '*');
 
         // Update Dealer List (remains in sidebar)
-        const viewSelector = document.getElementById('view-selector');
-        const activeView = viewSelector ? viewSelector.value : 'states';
+        // Only if renderList is true. Otherwise, caller handles content (e.g. loading state)
+        if (options.renderList && dealerSection) {
+            const viewSelector = document.getElementById('view-selector');
+            const activeView = viewSelector ? viewSelector.value : 'states';
 
-        if (dealerSection) {
             if (activeView === 'states' && this.currentView === 'india' && data.dealers) {
                 const statesData = this.dataManager.aggregateByState(data.dealers);
                 dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(statesData);
@@ -424,24 +438,35 @@ class ViewController {
                 if (stateId.startsWith('IN-')) stateId = stateId.replace('IN-', '');
                 const stateName = state.getAttribute('title') || stateId;
 
-                // SPECIAL HANDLING FOR KERALA: Single click just shows details
-                if (stateId === 'KL' || stateId === 'IN-KL') {
-                    this.showStateDetails(stateId);
+                // SPECIAL HANDLING FOR KERALA/TN: Distinguish between Click (Details) and DblClick (View)
+                // If we don't debounce, Click fires first, loading dealer list, THEN DblClick happens.
+                if (stateId === 'KL' || stateId === 'IN-KL' || stateId === 'TN' || stateId === 'IN-TN') {
+                    if (this.clickTimeout) clearTimeout(this.clickTimeout);
+
+                    this.clickTimeout = setTimeout(() => {
+                        this.showStateDetails(stateId);
+                    }, 250); // 250ms wait for potential double click
                 } else {
-                    // Other states: Single click shows details (same as existing behavior)
+                    // Other states: Single click shows details immediately (no drill down yet)
                     this.showStateView(stateId, stateName);
                 }
             });
 
             state.addEventListener('dblclick', (e) => {
                 e.stopPropagation();
+                // Clear the single click timeout immediately
+                if (this.clickTimeout) {
+                    clearTimeout(this.clickTimeout);
+                    this.clickTimeout = null;
+                }
+
                 let stateId = state.id.trim();
                 // Normalize ID
                 if (stateId.startsWith('IN-')) stateId = stateId.replace('IN-', '');
                 const stateName = state.getAttribute('title') || stateId;
 
-                // SPECIAL HANDLING FOR KERALA: Double click drills down
-                if (stateId === 'KL' || stateId === 'IN-KL') {
+                // SPECIAL HANDLING FOR KERALA/TN: Double click drills down
+                if (stateId === 'KL' || stateId === 'IN-KL' || stateId === 'TN' || stateId === 'IN-TN') {
                     this.showStateView(stateId, stateName);
                 }
             });
@@ -779,7 +804,8 @@ class ViewController {
                 try {
                     const lookupId = stateId.length === 2 ? `IN-${stateId}` : stateId;
                     const data = await this.dataManager.getStateData(lookupId);
-                    this.updateSidebarWithData(data);
+                    // Update header/stats immediately, but DON'T render the default dealer list yet
+                    this.updateSidebarWithData(data, { renderList: false });
 
                     if (this.mapInteractions) {
                         this.mapInteractions.stateOverviewData = data;
@@ -787,7 +813,10 @@ class ViewController {
 
                         // Only update sidebar if requested (avoids flicker when restoring district view)
                         if (renderSidebar) {
-                            this.updateSidebarWithData(data);
+                            const dealerSection = document.getElementById('dealer-section');
+                            if (dealerSection) {
+                                dealerSection.innerHTML = UIRenderer.renderLoading('Loading district data...');
+                            }
                         }
                     }
                 } catch (e) {
