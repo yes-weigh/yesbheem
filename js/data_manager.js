@@ -28,10 +28,72 @@ class DataManager {
         this.kpiDataCache = null;
 
         // Initialize by loading zip sheet
+        this.dealerOverrides = {};
+        this.loadDealerOverridesFromFirebase();
 
 
         this.sheetZips = new Set(); // Track what is IN the remote DB
         this.loadZipCacheFromFirebase();
+    }
+
+    /**
+     * Load dealer overrides from Firestore (settings/dealer_overrides)
+     */
+    async loadDealerOverridesFromFirebase() {
+        try {
+            console.log('Fetching dealer_overrides from Firestore...');
+            const docRef = doc(db, "settings", "dealer_overrides");
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                this.dealerOverrides = docSnap.data();
+                console.log(`Loaded overrides for ${Object.keys(this.dealerOverrides).length} dealers.`);
+            } else {
+                // Create empty if needed
+                await setDoc(docRef, {});
+            }
+        } catch (e) {
+            console.warn('Failed to load dealer_overrides:', e);
+        }
+    }
+
+    /**
+     * Save/Update a dealer override
+     * @param {string} dealerName 
+     * @param {string} billingZip 
+     * @param {string} shippingZip 
+     */
+    async saveDealerOverride(dealerName, billingZip, shippingZip) {
+        if (!dealerName) return;
+        try {
+            console.log(`Saving override for ${dealerName}: ${billingZip}, ${shippingZip}`);
+
+            // Update local cache
+            this.dealerOverrides[dealerName] = {
+                billing_zip: billingZip,
+                shipping_zip: shippingZip
+            };
+
+            // Update Firestore
+            const docRef = doc(db, "settings", "dealer_overrides");
+            await updateDoc(docRef, {
+                [dealerName]: {
+                    billing_zip: billingZip,
+                    shipping_zip: shippingZip
+                }
+            });
+            console.log('Dealer override saved to Firestore.');
+        } catch (e) {
+            console.error('Failed to save dealer override:', e);
+            if (e.code === 'not-found') {
+                await setDoc(doc(db, "settings", "dealer_overrides"), {
+                    [dealerName]: {
+                        billing_zip: billingZip,
+                        shipping_zip: shippingZip
+                    }
+                }, { merge: true });
+            }
+        }
     }
 
     /**
@@ -504,6 +566,16 @@ class DataManager {
         const zipsToBackfill = new Set();
 
         for (const row of stateData) {
+            // APPLY OVERRIDES HERE
+            const customerName = row['customer_name'];
+            if (this.dealerOverrides && this.dealerOverrides[customerName]) {
+                const ov = this.dealerOverrides[customerName];
+                // Override order: Billing Zip Override > Billing Zip CSV > Shipping Zip Override > ...
+                // Logic: If override exists, it dictates.
+                if (ov.billing_zip) row['billing_zipcode'] = ov.billing_zip;
+                if (ov.shipping_zip) row['shipping_zipcode'] = ov.shipping_zip;
+            }
+
             let zip = row['billing_zipcode'] || row['shipping_zipcode'];
             if (!zip) continue;
             zip = zip.replace(/\s/g, '');
@@ -553,6 +625,7 @@ class DataManager {
 
         // Process each row using cached data
         for (const row of stateData) {
+            // (Note: Overrides already applied in previous loop to the 'row' object ref)
             let zip = row['billing_zipcode'] || row['shipping_zipcode'];
             if (!zip) continue;
             zip = zip.replace(/\s/g, '');
@@ -577,7 +650,10 @@ class DataManager {
                 districtStats[districtKey].dealers.push({
                     name: customerName,
                     sales: sales,
-                    isYesCloud: isYesCloud // Flag for UI filtering
+                    isYesCloud: isYesCloud, // Flag for UI filtering
+                    billingZip: row['billing_zipcode'],
+                    shippingZip: row['shipping_zipcode'],
+                    rawData: row // Store full raw data for display
                 });
             }
         }
@@ -742,7 +818,14 @@ class DataManager {
 
         // Process each row
         for (const row of stateData) {
-            const customerName = row['customer_name'] || 'Unknown Dealer';
+            // APPLY OVERRIDES HERE
+            const customerName = row['customer_name'];
+            if (this.dealerOverrides && this.dealerOverrides[customerName]) {
+                const ov = this.dealerOverrides[customerName];
+                if (ov.billing_zip) row['billing_zipcode'] = ov.billing_zip;
+                if (ov.shipping_zip) row['shipping_zipcode'] = ov.shipping_zip;
+            }
+
             const isYesCloud = customerName.toLowerCase().startsWith('yescloud');
 
             if (!isYesCloud) {
@@ -758,7 +841,10 @@ class DataManager {
                 name: customerName,
                 sales: sales,
                 state: row['billing_state'] || row['shipping_state'] || 'Unknown',
-                isYesCloud: isYesCloud
+                billingZip: row['billing_zipcode'],
+                shippingZip: row['shipping_zipcode'],
+                isYesCloud: isYesCloud,
+                rawData: row
             });
         }
 
@@ -798,8 +884,16 @@ class DataManager {
 
         // Process each row
         for (const row of rawData) {
-            const customerName = row['customer_name'] || 'Unknown Dealer';
-            const isYesCloud = customerName.toLowerCase().startsWith('yescloud');
+            // APPLY OVERRIDES HERE
+            const customerName = row['customer_name'];
+            if (this.dealerOverrides && this.dealerOverrides[customerName]) {
+                const ov = this.dealerOverrides[customerName];
+                if (ov.billing_zip) row['billing_zipcode'] = ov.billing_zip;
+                if (ov.shipping_zip) row['shipping_zipcode'] = ov.shipping_zip;
+            }
+
+            // const customerName = row['customer_name'] || 'Unknown Dealer'; // Redefined above
+            const isYesCloud = (customerName || '').toLowerCase().startsWith('yescloud');
 
             if (!isYesCloud) {
                 aggregated.dealerCount += 1;
@@ -813,7 +907,10 @@ class DataManager {
                 name: customerName,
                 sales: sales,
                 state: row['billing_state'] || row['shipping_state'] || 'Kerala',
-                isYesCloud: isYesCloud
+                billingZip: row['billing_zipcode'],
+                shippingZip: row['shipping_zipcode'],
+                isYesCloud: isYesCloud,
+                rawData: row
             });
         }
 

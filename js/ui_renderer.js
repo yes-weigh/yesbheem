@@ -287,6 +287,61 @@ class UIRenderer {
             </style>
         `;
     }
+
+    /**
+     * Render the Dealer Edit Form HTML
+     * @param {string} dealerName 
+     * @param {string} billingZip 
+     * @param {string} shippingZip 
+     * @param {Object} rawData - Full CSV row data
+     * @returns {string} HTML string
+     */
+    static renderDealerEditForm(dealerName, billingZip = '', shippingZip = '', rawData = {}) {
+        let detailsHtml = '';
+        if (rawData && Object.keys(rawData).length > 0) {
+            detailsHtml = `
+                <div style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">CSV Data Source:</div>
+                    <div style="display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 0.75rem; max-height: 150px; overflow-y: auto; padding-right: 4px;">
+            `;
+
+            // Filter relevant fields for display (exclude internal zips we just edited if redundancy is annoying, but showing everything is safer)
+            for (const [key, val] of Object.entries(rawData)) {
+                if (!val) continue; // Skip empty fields
+                // prettier key
+                const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                detailsHtml += `
+                    <div style="color: var(--text-muted); text-align: right;">${label}:</div>
+                    <div style="color: #e2e8f0; word-break: break-word;">${val}</div>
+                `;
+            }
+            detailsHtml += `</div></div>`;
+        }
+
+        return `
+            <div class="dealer-edit-form" onclick="event.stopPropagation()" style="background: rgba(15, 23, 42, 0.95); padding: 12px; margin: 4px 0 12px 0; border-radius: 6px; border: 1px solid var(--accent-color); box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Edit Location Info for <span style="color: var(--text-main); font-weight: 600;">${dealerName}</span></div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                    <div>
+                         <label style="display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 4px;">Billing Zip</label>
+                         <input type="text" id="edit-billing-zip" value="${billingZip || ''}" placeholder="Billing Zip" style="width: 100%; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; font-size: 0.9rem;">
+                    </div>
+                    <div>
+                         <label style="display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 4px;">Shipping Zip</label>
+                         <input type="text" id="edit-shipping-zip" value="${shippingZip || ''}" placeholder="Shipping Zip" style="width: 100%; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; font-size: 0.9rem;">
+                    </div>
+                </div>
+
+                ${detailsHtml}
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px;">
+                    <button onclick="window.viewController.cancelEdit(this)" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: var(--text-muted); cursor: pointer;">Cancel</button>
+                    <button onclick="window.viewController.saveDealerInfo('${dealerName}')" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 4px; border: none; background: var(--accent-color); color: white; cursor: pointer; font-weight: 500;">Save</button>
+                </div>
+            </div>
+        `;
+    }
 }
 
 window.UIRenderer = UIRenderer;

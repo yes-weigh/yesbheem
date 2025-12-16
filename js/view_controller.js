@@ -955,7 +955,71 @@ class ViewController {
         if (!itemName) return;
         console.log('List clicked for:', itemName);
 
-        // CHECK IF IN STATE VIEW (e.g. Kerala)
+        // Check active view type from DOM
+        const viewSelector = document.getElementById('view-selector');
+        const isDealerView = viewSelector && viewSelector.value === 'dealers';
+
+        // 1. DEALER EDIT MODE
+        if (isDealerView) {
+            console.log('Dealer clicked (Edit Mode):', itemName);
+
+            // Find the clicked element
+            // We search for the span with the title
+            const dealerNameFrame = Array.from(document.querySelectorAll('.dealer-name')).find(el => el.getAttribute('title') === itemName);
+
+            if (dealerNameFrame) {
+                const listItem = dealerNameFrame.closest('.dealer-item-compact');
+                if (listItem) {
+                    // Check if already open
+                    const existingForm = listItem.querySelector('.dealer-edit-form');
+                    if (existingForm) {
+                        existingForm.remove(); // Toggle Off
+                        return;
+                    }
+
+                    // Get Data
+                    let dealerData = null;
+                    // Look in State (if active)
+                    if (this.currentView === 'state' && this.mapInteractions && this.mapInteractions.stateOverviewData) {
+                        const dealers = this.mapInteractions.stateOverviewData.dealers || [];
+                        dealerData = dealers.find(d => d.name === itemName);
+                    }
+                    // Look in India (if active)
+                    else if (this.currentView === 'india' && this.indiaData) {
+                        dealerData = this.indiaData.dealers.find(d => d.name === itemName); // dealer entries in country data might be distinct?
+                    }
+                    // For India View, 'data.dealers' is huge list.
+
+                    // Fallback: If we can't find exact object easily, assume no pre-fill or fetch from cache if possible
+                    if (!dealerData) {
+                        // Try raw cache if accessible? Or simply assume we just want to edit overrides?
+                        // We can look at `this.dataManager.dealerOverrides[itemName]`
+                        const ov = this.dataManager.dealerOverrides[itemName];
+                        if (ov) {
+                            dealerData = { billingZip: ov.billing_zip, shippingZip: ov.shipping_zip, rawData: {} };
+                        } else {
+                            dealerData = { rawData: {} }; // User enters new info
+                        }
+                    }
+
+                    const formHtml = UIRenderer.renderDealerEditForm(itemName, dealerData.billingZip, dealerData.shippingZip, dealerData.rawData);
+
+                    // Insert Form AFTER the user info row but inside the item container?
+                    // The item container is a column flex or block...
+                    // Let's insert before the end of the item
+                    const infoDiv = listItem.querySelector('.dealer-info');
+                    if (infoDiv) {
+                        infoDiv.insertAdjacentHTML('afterend', formHtml);
+                    } else {
+                        listItem.insertAdjacentHTML('beforeend', formHtml);
+                    }
+                }
+            }
+            return;
+        }
+
+
+        // 2. CHECK IF IN STATE VIEW (e.g. Kerala) - District Navigation
         if (this.currentView === 'state' && this.mapInteractions) {
             // It's likely a district click
             console.log('Attempting to find district:', itemName);
@@ -991,8 +1055,7 @@ class ViewController {
             return; // Stop here for district actions
         }
 
-        // --- EXISTING INDIA STATE LOGIC ---
-
+        // 3. EXISTING INDIA STATE LOGIC
         const stateName = itemName; // Context switch
 
         // Map State Name to ID
@@ -1059,6 +1122,56 @@ class ViewController {
             }
         } else {
             console.warn('Could not map View list click to State ID for:', stateName);
+        }
+    }
+
+    cancelEdit(btn) {
+        if (btn) {
+            const form = btn.closest('.dealer-edit-form');
+            if (form) form.remove();
+        } else {
+            // Fallback: Remove all forms
+            const forms = document.querySelectorAll('.dealer-edit-form');
+            forms.forEach(f => f.remove());
+        }
+    }
+
+    async saveDealerInfo(dealerName) {
+        const billingInput = document.getElementById('edit-billing-zip');
+        const shippingInput = document.getElementById('edit-shipping-zip');
+
+        const bZip = billingInput ? billingInput.value.trim() : '';
+        const sZip = shippingInput ? shippingInput.value.trim() : '';
+
+        // Show updating state?
+        const dealerSection = document.getElementById('dealer-section');
+        if (dealerSection) {
+            dealerSection.innerHTML = UIRenderer.renderLoading('Saving changes...');
+        }
+
+        await this.dataManager.saveDealerOverride(dealerName, bZip, sZip);
+
+        // Reload Data via Report Selector Logic (Simulate refresh)
+        const reportSelector = document.getElementById('report-selector');
+        if (reportSelector) {
+            const reportUrl = reportSelector.value;
+            // Force reload
+            await this.dataManager.loadData('Kerala', [], reportUrl);
+
+            // Refresh View
+            if (this.currentView === 'india') {
+                await this.loadIndiaOverview();
+                this.handleViewChange('dealers');
+            } else if (this.currentView === 'state' && this.mapInteractions) {
+                const stateId = this.mapInteractions.currentStateId;
+                if (stateId) {
+                    const lookupId = stateId.length === 2 ? `IN-${stateId}` : stateId;
+                    const data = await this.dataManager.getStateData(lookupId);
+                    this.updateSidebarWithData(data, { renderList: false });
+                    await this.mapInteractions.loadDistrictData(this.mapInteractions.currentStateName || 'Kerala');
+                    this.mapInteractions.handleViewChange('dealers');
+                }
+            }
         }
     }
 }
