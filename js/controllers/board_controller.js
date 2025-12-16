@@ -189,15 +189,7 @@ class BoardController {
             document.documentElement.style.setProperty('--task-font-size', e.target.value + 'px');
         });
 
-        // Add Column
-        document.getElementById('addColumnBtn').addEventListener('click', () => {
-            const input = document.getElementById('newColumnName');
-            const name = input.value.trim();
-            if (name) {
-                this.addSettingsColumn(name);
-                input.value = '';
-            }
-        });
+
 
         // Delete Board
         document.getElementById('deleteBoardBtn').addEventListener('click', () => {
@@ -244,8 +236,7 @@ class BoardController {
         // Load Gallery
         this.loadGallery();
 
-        // Columns
-        this.renderSettingsColumns(board.columns || []);
+
 
         modal.classList.add('active');
     }
@@ -340,85 +331,7 @@ class BoardController {
         if (selectedDiv) selectedDiv.classList.add('selected');
     }
 
-    renderSettingsColumns(columns) {
-        const list = document.getElementById('settingsColumnsList');
-        list.innerHTML = '';
-        columns.forEach((col, index) => {
-            const li = document.createElement('li');
-            li.className = 'column-list-item';
 
-            const isFirst = index === 0;
-            const isLast = index === columns.length - 1;
-
-            li.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="display: flex; flex-direction: column; gap: 2px;">
-                        <button class="btn-icon-sm" ${isFirst ? 'disabled' : ''} data-action="up" title="Move Left/Up">▲</button>
-                        <button class="btn-icon-sm" ${isLast ? 'disabled' : ''} data-action="down" title="Move Right/Down">▼</button>
-                    </div>
-                    <h4>${this.escapeHtml(col.title)}</h4>
-                </div>
-                <button class="btn-danger-sm" title="Delete Column">🗑️</button>
-            `;
-
-            // Move Handlers
-            li.querySelectorAll('button[data-action]').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    const direction = btn.dataset.action;
-                    const newIndex = direction === 'up' ? index - 1 : index + 1;
-                    await this.moveColumn(index, newIndex);
-                });
-            });
-
-            // Delete Handlers
-            li.querySelector('.btn-danger-sm').addEventListener('click', async () => {
-                if (confirm(`Delete column "${col.title}"?`)) {
-                    const success = await this.taskService.deleteColumn(this.taskService.currentBoardId, col.id);
-                    if (!success) {
-                        alert('Cannot delete: Column is not empty or error occurred.');
-                    } else {
-                        li.remove();
-                    }
-                }
-            });
-            list.appendChild(li);
-        });
-    }
-
-    async moveColumn(oldIndex, newIndex) {
-        const board = this.taskService.boards.find(b => b.id === this.taskService.currentBoardId);
-        if (!board || !board.columns) return;
-
-        const columns = [...board.columns];
-        // Swap
-        const [movedCol] = columns.splice(oldIndex, 1);
-        columns.splice(newIndex, 0, movedCol);
-
-        // Optimistic update
-        this.renderSettingsColumns(columns);
-
-        await this.taskService.updateBoard(board.id, { columns });
-    }
-
-    async addSettingsColumn(name) {
-        await this.taskService.addColumn(this.taskService.currentBoardId, name);
-        // List update handled by subscription re-render? No, subscription updates main board.
-        // We should manually add to list or re-open modal. 
-        // For now, let's just append to list to show feedback
-        const list = document.getElementById('settingsColumnsList');
-        const li = document.createElement('li');
-        li.className = 'column-list-item';
-        li.innerHTML = `<h4>${this.escapeHtml(name)} (Saving...)</h4>`;
-        list.appendChild(li);
-
-        // Real update comes from subscription, which might close modal if we aren't careful? 
-        // Subscription calls renderBoard. It doesn't close modal.
-        // But we need to refresh the "Settings" list.
-        setTimeout(() => {
-            const board = this.taskService.boards.find(b => b.id === this.taskService.currentBoardId);
-            if (board) this.renderSettingsColumns(board.columns || []);
-        }, 500);
-    }
 
     async saveSettings() {
         const boardId = this.taskService.currentBoardId;
@@ -570,22 +483,67 @@ class BoardController {
             const colDiv = document.createElement('div');
             colDiv.className = 'kanban-column';
             colDiv.dataset.status = col.id;
+            colDiv.draggable = true; // Enable column dragging
+
+            // Delete button (visible on hover via CSS)
+            const deleteBtnHtml = `<button class="delete-column-btn" title="Delete Column">✕</button>`;
+
             colDiv.innerHTML = `
                 <div class="column-header">
                     <span class="column-title">
                         <span style="color: ${col.color || '#64748b'};">●</span> ${this.escapeHtml(col.title)}
                     </span>
-                    <span class="task-count" id="count-${col.id}">0</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="task-count" id="count-${col.id}">0</span>
+                        ${deleteBtnHtml}
+                    </div>
                 </div>
                 <div class="column-content" id="list-${col.id}"></div>
+                <button class="inline-add-task-btn" data-status="${col.id}">+ Add Task</button>
             `;
             kanbanBoard.appendChild(colDiv);
 
             this.columns[col.id] = colDiv.querySelector('.column-content');
             this.counts[col.id] = colDiv.querySelector('.task-count');
+
+            // Inline Add Task Handler
+            colDiv.querySelector('.inline-add-task-btn').addEventListener('click', () => {
+                this.openModal(col.id); // Pass status to pre-select
+            });
+
+            // Column Delete Handler
+            colDiv.querySelector('.delete-column-btn').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                // Check if empty
+                if (colDiv.querySelector('.kanban-card')) {
+                    alert('Column must be empty to delete.');
+                    return;
+                }
+                if (confirm(`Delete column "${col.title}"?`)) {
+                    await this.taskService.deleteColumn(this.taskService.currentBoardId, col.id);
+                }
+            });
+
+            // Column Drag Handlers
+            colDiv.addEventListener('dragstart', (e) => this.handleColumnDragStart(e, colDiv));
+            colDiv.addEventListener('dragover', (e) => this.handleColumnDragOver(e, colDiv));
+            colDiv.addEventListener('dragend', (e) => this.handleColumnDragEnd(e, colDiv));
+            colDiv.addEventListener('drop', (e) => this.handleColumnDrop(e, colDiv));
         });
 
-        // Initialize Drag Drops for new columns
+        // Add Column Button (at the end)
+        const addColBtn = document.createElement('div');
+        addColBtn.className = 'add-column-btn';
+        addColBtn.innerHTML = `<span>+ Add Column</span>`;
+        addColBtn.addEventListener('click', async () => {
+            const name = prompt("Enter column name:");
+            if (name && name.trim()) {
+                await this.taskService.addColumn(this.taskService.currentBoardId, name.trim());
+            }
+        });
+        kanbanBoard.appendChild(addColBtn);
+
+        // Initialize Drag Drops for new columns (Task Dragging)
         this.setupDragAndDrop();
 
         // Populate Tasks
@@ -595,7 +553,7 @@ class BoardController {
         tasks.forEach(task => {
             // Default to first column if status invalid
             let status = task.status;
-            if (!this.columns[status]) status = columns[0].id;
+            if (!this.columns[status]) status = columns[0].id; // Fallback to first
 
             const card = this.createCardElement(task);
             this.columns[status].appendChild(card);
@@ -614,6 +572,72 @@ class BoardController {
                 `<option value="${c.id}">${this.escapeHtml(c.title)}</option>`
             ).join('');
         }
+    }
+
+    // --- Column Drag & Drop Implementation ---
+    handleColumnDragStart(e, columnDiv) {
+        this.draggedColumn = columnDiv;
+        columnDiv.classList.add('dragging-column');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', columnDiv.dataset.status);
+    }
+
+    handleColumnDragOver(e, columnDiv) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        if (this.draggedColumn === columnDiv) return;
+
+        // Visual feedback logic (simple)
+        const container = columnDiv.parentElement;
+        const siblings = [...container.querySelectorAll('.kanban-column:not(.dragging-column)')];
+        const nextSibling = siblings.find(sibling => {
+            const rect = sibling.getBoundingClientRect();
+            return e.clientX <= rect.left + rect.width / 2;
+        });
+
+        // Only move DOM if changed (throttling can be added if needed)
+        // For simplicity, we just rely on visual pointer for drop
+    }
+
+    handleColumnDragEnd(e, columnDiv) {
+        columnDiv.classList.remove('dragging-column');
+        this.draggedColumn = null;
+    }
+
+    async handleColumnDrop(e, targetColumnDiv) {
+        e.preventDefault();
+        if (!this.draggedColumn || this.draggedColumn === targetColumnDiv) return;
+
+        // We need to reorder the internal columns array based on DOM or Drop Position
+        // Let's rely on finding where the drop happened relative to other columns
+        const container = this.draggedColumn.parentElement; // .kanban-board
+
+        // Where to insert?
+        const rect = targetColumnDiv.getBoundingClientRect();
+        const after = e.clientX > rect.left + rect.width / 2;
+
+        if (after) {
+            targetColumnDiv.after(this.draggedColumn);
+        } else {
+            targetColumnDiv.before(this.draggedColumn);
+        }
+
+        // Now persist the new order
+        await this.persistColumnOrder();
+    }
+
+    async persistColumnOrder() {
+        const board = this.taskService.boards.find(b => b.id === this.taskService.currentBoardId);
+        if (!board) return;
+
+        const newOrderIds = [...document.querySelectorAll('.kanban-column')].map(el => el.dataset.status);
+        const currentColumns = board.columns || [];
+
+        // Reconstruct columns array in new order
+        const newColumns = newOrderIds.map(id => currentColumns.find(c => c.id === id)).filter(c => c);
+
+        await this.taskService.updateBoard(board.id, { columns: newColumns });
     }
 
     handleTaskError(error) {
@@ -766,6 +790,10 @@ class BoardController {
                     <textarea class="form-control qe-desc" rows="12"></textarea>
                 </div>
                 <div class="form-group">
+                    <label>Checklist</label>
+                    <div class="qe-checklist" style="display:flex; flex-direction:column; gap:8px;"></div>
+                </div>
+                <div class="form-group">
                     <label>Status</label>
                     <select class="form-control qe-status"></select>
                 </div>
@@ -824,6 +852,41 @@ class BoardController {
 
         colTitle.value = task.title || '';
         colDesc.value = task.description || '';
+
+        // Populate Checklist
+        const checklistContainer = this.quickEditColumn.querySelector('.qe-checklist');
+        checklistContainer.innerHTML = '';
+        if (task.checklist && task.checklist.length > 0) {
+            task.checklist.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex; align-items:center; gap:8px;';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = item.done;
+                checkbox.style.cssText = 'width:16px; height:16px; cursor:pointer;';
+
+                const span = document.createElement('span');
+                span.textContent = item.text;
+                span.style.cssText = 'color:var(--text-primary); font-size:0.9rem; word-break:break-all;';
+                if (item.done) span.style.textDecoration = 'line-through';
+
+                checkbox.addEventListener('change', () => {
+                    // Update state immediately
+                    item.done = checkbox.checked;
+                    span.style.textDecoration = checkbox.checked ? 'line-through' : 'none';
+                    // Trigger save to persist
+                    this.saveQuickEdit();
+                });
+
+                row.appendChild(checkbox);
+                row.appendChild(span);
+                checklistContainer.appendChild(row);
+            });
+            checklistContainer.parentElement.style.display = 'block';
+        } else {
+            checklistContainer.parentElement.style.display = 'none';
+        }
 
         // Refresh status options based on current columns
         const board = this.taskService.boards.find(b => b.id === this.taskService.currentBoardId);
@@ -902,7 +965,8 @@ class BoardController {
             await this.taskService.updateTask(this.currentHoverTask.id, {
                 title,
                 description,
-                status
+                status,
+                checklist: this.currentHoverTask.checklist // Persist updated checklist state
             });
             statusText.textContent = 'Saved!';
             statusText.style.opacity = '1';
@@ -1010,24 +1074,32 @@ class BoardController {
     // Modal
     setupModal() {
         const modalOverlay = document.getElementById('addTaskModal');
-        const openBtn = document.getElementById('openAddTaskBtn');
+        // const openBtn = document.getElementById('openAddTaskBtn'); // Removed
         const closeBtn = document.getElementById('closeModalBtn');
         const cancelBtn = document.getElementById('cancelBtn');
         const saveBtn = document.getElementById('saveTaskBtn');
 
-        const openModal = () => {
+        // Expose openModal to be called from inline buttons
+        this.openModal = (defaultStatusId = null) => {
             if (!this.taskService.currentBoardId) {
                 alert('Please select or create a board first.');
                 return;
             }
             this.resetModal('Add New Task', 'Add Task');
+
+            // Pre-select status
+            const statusSelect = document.getElementById('taskStatus');
+            if (defaultStatusId) {
+                statusSelect.value = defaultStatusId;
+            }
+
             modalOverlay.classList.add('active');
             document.getElementById('taskTitle').focus();
         };
 
         const closeModal = () => modalOverlay.classList.remove('active');
 
-        if (openBtn) openBtn.addEventListener('click', openModal);
+        // if (openBtn) openBtn.addEventListener('click', () => this.openModal()); // Removed
         if (closeBtn) closeBtn.addEventListener('click', closeModal);
         if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
 

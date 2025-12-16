@@ -261,9 +261,7 @@
                         <circle cx="12" cy="12" r="3"></circle>
                     </svg>
                 </button>
-                <button id="openAddTaskBtn" class="add-task-btn">
-                    <span>+</span> Add New Task
-                </button>
+
             </div>
         </div>
 
@@ -358,7 +356,6 @@
             <div class="settings-tabs">
                 <button class="tab-btn active" data-tab="general">General</button>
                 <button class="tab-btn" data-tab="appearance">Appearance</button>
-                <button class="tab-btn" data-tab="columns">Columns</button>
             </div>
 
             <div class="tab-content active" id="tab-general">
@@ -424,24 +421,17 @@
                 </div>
             </div>
 
-            <div class="tab-content" id="tab-columns" style="display: none;">
-                <div class="form-group">
-                    <label>Manage Columns</label>
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                        <input type="text" id="newColumnName" class="form-control" placeholder="New Column Name">
-                        <button class="btn-primary" id="addColumnBtn">Add</button>
-                    </div>
-                    <ul id="settingsColumnsList" class="columns-list">
-                        <!-- Dynamic Columns List -->
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-secondary" id="cancelSettingsBtn">Close</button>
-            <button class="btn-primary" id="saveSettingsBtn">Save Changes</button>
         </div>
     </div>
+
+    <!-- Tab "Columns" removed as per inline management request -->
+</div>
+</div>
+<div class="modal-footer">
+    <button class="btn-secondary" id="cancelSettingsBtn">Close</button>
+    <button class="btn-primary" id="saveSettingsBtn">Save Changes</button>
+</div>
+</div>
 </div>
 
 <script type="module" src="js/controllers/board_controller.js"></script>
