@@ -1142,6 +1142,7 @@ class ViewController {
         if (!input) return;
 
         const isDisabled = input.hasAttribute('disabled');
+        const isZipCode = btn.getAttribute('data-field-type') === 'zipcode';
 
         if (isDisabled) {
             // Enable editing
@@ -1153,6 +1154,11 @@ class ViewController {
             input.style.cursor = 'text';
             btn.style.opacity = '1';
             btn.style.color = 'var(--accent-color)';
+
+            // For zip code fields, add blur event listener to trigger API call
+            if (isZipCode) {
+                input.addEventListener('blur', () => this.handleZipCodeChange(input), { once: true });
+            }
         } else {
             // Disable editing
             input.setAttribute('disabled', 'true');
@@ -1163,6 +1169,89 @@ class ViewController {
             btn.style.opacity = '0.5';
             btn.style.color = 'var(--text-muted)';
         }
+    }
+
+    async handleZipCodeChange(inputField) {
+        const zipCode = inputField.value.trim();
+
+        // Validate zip code format (6 digits for India)
+        if (!zipCode || !/^\d{6}$/.test(zipCode)) {
+            console.log('Invalid zip code format');
+            return;
+        }
+
+        // Find the loading spinner and show it
+        const container = inputField.parentElement;
+        const spinner = container.querySelector('.zip-loading-spinner');
+        if (spinner) {
+            spinner.style.display = 'inline-block';
+        }
+
+        try {
+            console.log(`Fetching district for zip code: ${zipCode}`);
+
+            // Call the existing API method from DataManager
+            const district = await this.dataManager.getDistrictFromZip(zipCode);
+
+            if (district) {
+                console.log(`Found district: ${district}`);
+
+                // Find the district field in the same form and update it
+                const form = inputField.closest('.dealer-edit-form');
+                if (form) {
+                    const districtInput = form.querySelector('[data-field="district"]');
+                    if (districtInput) {
+                        districtInput.value = district;
+                    }
+
+                    // Derive state from district (for Kerala districts, state is Kerala)
+                    // You can enhance this with a more comprehensive mapping
+                    const stateInput = form.querySelector('[data-field="billing_state"]');
+                    if (stateInput) {
+                        const state = this.getStateFromDistrict(district);
+                        stateInput.value = state;
+                    }
+                }
+
+                console.log('Updated district and state fields');
+            } else {
+                console.warn('Could not resolve zip code to district');
+            }
+        } catch (error) {
+            console.error('Error fetching district from zip code:', error);
+        } finally {
+            // Hide the loading spinner
+            if (spinner) {
+                spinner.style.display = 'none';
+            }
+        }
+    }
+
+    getStateFromDistrict(districtName) {
+        if (!districtName) return 'Unknown';
+
+        const lowerDistrict = districtName.toLowerCase();
+
+        // Kerala districts
+        const keralaDistricts = [
+            'kasaragod', 'kannur', 'wayanad', 'kozhikode', 'malappuram',
+            'palakkad', 'thrissur', 'ernakulam', 'idukki', 'kottayam',
+            'alappuzha', 'pathanamthitta', 'kollam', 'thiruvananthapuram'
+        ];
+
+        if (keralaDistricts.some(d => lowerDistrict.includes(d))) {
+            return 'Kerala';
+        }
+
+        // Tamil Nadu districts (common ones)
+        const tnDistricts = ['chennai', 'coimbatore', 'madurai', 'tiruchirappalli', 'salem', 'tirunelveli'];
+        if (tnDistricts.some(d => lowerDistrict.includes(d))) {
+            return 'Tamil Nadu';
+        }
+
+        // Add more states as needed
+        // For now, return the district name as-is if not recognized
+        return districtName;
     }
 
     async saveDealerInfo(dealerName) {

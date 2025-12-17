@@ -562,7 +562,19 @@ class DataManager {
         // AUTOMATICALLY RESOLVE ALL INDIA DEALER DISTRICTS
         await this.resolveMissingDistricts(rawData);
 
-        // Filter for specific state
+        // APPLY DEALER OVERRIDES TO RAW DATA BEFORE FILTERING
+        // This ensures dealers with overridden state/zip show up in correct state views
+        for (const row of rawData) {
+            const customerName = row['customer_name'];
+            if (this.dealerOverrides && this.dealerOverrides[customerName]) {
+                const ov = this.dealerOverrides[customerName];
+                for (const [key, val] of Object.entries(ov)) {
+                    if (val !== undefined) row[key] = val;
+                }
+            }
+        }
+
+        // Filter for specific state (NOW AFTER OVERRIDES)
         const stateLower = stateName.toLowerCase();
         const stateData = rawData.filter(row => {
             const bState = (row['billing_state'] || '').toLowerCase();
@@ -788,7 +800,19 @@ class DataManager {
         // Ensure districts are resolved for this data
         await this.resolveMissingDistricts(rawData);
 
-        // Robust Filtering using Normalize
+        // APPLY DEALER OVERRIDES TO RAW DATA BEFORE FILTERING
+        // This ensures dealers with overridden state/zip show up in correct state views
+        for (const row of rawData) {
+            const customerName = row['customer_name'];
+            if (this.dealerOverrides && this.dealerOverrides[customerName]) {
+                const ov = this.dealerOverrides[customerName];
+                for (const [key, val] of Object.entries(ov)) {
+                    if (val !== undefined) row[key] = val;
+                }
+            }
+        }
+
+        // Robust Filtering using Normalize (NOW AFTER OVERRIDES)
         const targetState = this.normalizeStateName(stateName);
 
         const stateData = rawData.filter(row => {
@@ -820,16 +844,8 @@ class DataManager {
 
         // Process each row
         for (const row of stateData) {
-            // APPLY OVERRIDES HERE
-            // APPLY OVERRIDES HERE
+            // Note: Overrides already applied before filtering
             const customerName = row['customer_name'];
-            if (this.dealerOverrides && this.dealerOverrides[customerName]) {
-                const ov = this.dealerOverrides[customerName];
-                for (const [key, val] of Object.entries(ov)) {
-                    if (val !== undefined) row[key] = val;
-                }
-            }
-
             const isYesCloud = customerName.toLowerCase().startsWith('yescloud');
 
             if (!isYesCloud) {

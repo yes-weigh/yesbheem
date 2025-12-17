@@ -1,21 +1,109 @@
+<!-- Settings Page -->
 <div class="page-container" id="settings-page">
-    <div class="page-content">
-        <div class="page-header-simple">
-            <h1>Settings</h1>
-            <p class="subtitle">Configure application preferences</p>
-        </div>
-
-        <div class="placeholder-card">
-            <div class="icon-placeholder">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path
-                        d="M12 1v6m0 6v6m-6-6h6m6 0h6M4.93 4.93l4.24 4.24m5.66 5.66l4.24 4.24M4.93 19.07l4.24-4.24m5.66-5.66l4.24-4.24">
-                    </path>
-                </svg>
+    <div class="settings-scroll-wrapper">
+        <div class="settings-container">
+            <!-- Header -->
+            <div class="settings-header">
+                <h1>Settings</h1>
+                <p>Manage your application preferences and data lists</p>
             </div>
-            <h2>Settings Coming Soon</h2>
-            <p>Customize your application preferences and account settings.</p>
+
+            <div class="settings-grid">
+                <!-- Key Accounts Manager Card -->
+                <div class="settings-card">
+                    <div class="card-header">
+                        <div class="card-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                        </div>
+                        <div class="card-title">
+                            <h2>Key Accounts Manager</h2>
+                            <p>Manage list of key account managers</p>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <input type="text" id="add-kam-input" class="modern-input" placeholder="Enter name...">
+                        <button id="add-kam-btn" class="add-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="data-list" id="key-accounts-list">
+                        <!-- Dynamic Items -->
+                    </div>
+                </div>
+
+                <!-- Dealer Stages Card -->
+                <div class="settings-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #FF6B6B 0%, #EE5253 100%);">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="8" y1="6" x2="21" y2="6"></line>
+                                <line x1="8" y1="12" x2="21" y2="12"></line>
+                                <line x1="8" y1="18" x2="21" y2="18"></line>
+                                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                            </svg>
+                        </div>
+                        <div class="card-title">
+                            <h2>Dealer Stages</h2>
+                            <p>Manage deal pipeline stages</p>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <input type="text" id="add-stage-input" class="modern-input" placeholder="Enter stage...">
+                        <button id="add-stage-btn" class="add-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="data-list" id="dealer-stages-list">
+                        <!-- Dynamic Items -->
+                    </div>
+                </div>
+
+                <!-- Coming Soon Card -->
+                <div class="settings-card" style="opacity: 0.7;">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--surface-hover); color: var(--text-secondary);">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path
+                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                                </path>
+                            </svg>
+                        </div>
+                        <div class="card-title">
+                            <h2>More Settings</h2>
+                            <p>Coming soon...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<script type="module">
+    import { SettingsController } from './js/controllers/settings_controller.js';
+    // Initialize controller
+    window.settingsController = new SettingsController();
+</script>

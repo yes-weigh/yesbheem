@@ -106,6 +106,31 @@ class MapInteractions {
     }
 
     /**
+     * Helper function to create color shades without transparency
+     * Converts hex to RGB, adjusts lightness, returns opaque hex color
+     * High intensity = full saturated color, Low intensity = darker (blended with black)
+     */
+    getColorShade(hexColor, intensity) {
+        // intensity is 0-1, where 0 is darkest (low sales), 1 is full color (high sales)
+        // Convert hex to RGB
+        const r = parseInt(hexColor.slice(1, 3), 16);
+        const g = parseInt(hexColor.slice(3, 5), 16);
+        const b = parseInt(hexColor.slice(5, 7), 16);
+
+        // Create shade by blending with black for low values
+        // Use a range from 30% to 100% of base color intensity
+        const minIntensity = 0.3;
+        const actualIntensity = minIntensity + (intensity * (1 - minIntensity));
+
+        // Blend with black (0, 0, 0) - darker for low values, full color for high values
+        const newR = Math.round(r * actualIntensity);
+        const newG = Math.round(g * actualIntensity);
+        const newB = Math.round(b * actualIntensity);
+
+        return `#${((1 << 24) + (newR << 16) + (newG << 8) + newB).toString(16).slice(1)}`;
+    }
+
+    /**
      * Colorize districts based on metric
      */
     colorizeDistricts(metric) {
@@ -114,9 +139,8 @@ class MapInteractions {
 
         const districts = document.querySelectorAll('.district');
         const dataArr = Object.values(this.districtInsights);
-        // console.log('[Colorize] Data Sample:', dataArr[0]); 
 
-        // Colors
+        // Base colors for each metric
         const colors = {
             'sales': '#3b82f6',       // Blue
             'dealer_count': '#f97316', // Orange
@@ -148,43 +172,46 @@ class MapInteractions {
         });
         console.log(`[Colorize] Max Value for ${metric}: ${maxVal}`);
 
-        // Apply
+        // Apply colors to districts
         districts.forEach(d => {
-            const districtName = d.getAttribute('title') || d.id; // Map SVG IDs are usually names in Kerala map
-            // Need to find matching data. Map IDs might be "Thiruvananthapuram", keys might be distinct.
-            // Try explicit match or fuzzy
+            const districtName = d.getAttribute('title') || d.id;
             const item = dataArr.find(x => x.name.trim().toLowerCase() === districtName.trim().toLowerCase().replace(/-/g, ' '));
 
-            // if(districtName === 'palakkad') console.log(`[Colorize] Palakkad Item Found:`, item);
+            d.classList.remove('highlighted'); // Reset selection style
 
-            d.classList.remove('highlighted'); // Reset selection style if re-coloring
-
-            // Apply to ALL paths in the group
             const paths = d.querySelectorAll('path');
 
             if (item) {
                 const val = parseVal(item);
                 if (val <= 0) {
+                    // No data - use light gray, fully opaque
                     paths.forEach(p => {
-                        p.style.transition = 'fill 0.3s ease';
-                        p.style.fill = '#e2e8f0'; // No data / zero
-                        p.style.opacity = '0.5';
+                        p.style.transition = 'fill 0.3s ease, stroke 0.3s ease';
+                        p.style.fill = '#e2e8f0';
+                        p.style.stroke = '#ffffff'; // White border
+                        p.style.opacity = '1'; // Fully opaque
                     });
                 } else {
-                    const opacity = 0.3 + ((val / maxVal) * 0.7); // Min 0.3 opacity
-                    const opVal = opacity.toFixed(2);
+                    // Calculate intensity (0-1) based on value
+                    const intensity = val / maxVal;
+
+                    // Get fully opaque color shade
+                    const shadedColor = this.getColorShade(baseColor, intensity);
 
                     paths.forEach(p => {
-                        p.style.transition = 'fill 0.3s ease';
-                        p.style.fill = baseColor;
-                        p.style.opacity = opVal;
+                        p.style.transition = 'fill 0.3s ease, stroke 0.3s ease';
+                        p.style.fill = shadedColor;
+                        p.style.stroke = '#ffffff'; // White border
+                        p.style.opacity = '1'; // Fully opaque - no transparency!
                     });
                 }
             } else {
+                // No matching data - light gray, fully opaque
                 paths.forEach(p => {
-                    p.style.transition = 'fill 0.3s ease';
+                    p.style.transition = 'fill 0.3s ease, stroke 0.3s ease';
                     p.style.fill = '#e2e8f0';
-                    p.style.opacity = '0.3';
+                    p.style.stroke = '#ffffff'; // White border
+                    p.style.opacity = '1'; // Fully opaque
                 });
             }
         });
