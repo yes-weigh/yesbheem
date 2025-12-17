@@ -217,7 +217,7 @@ class MapInteractions {
         });
     }
 
-    // Update initializeDistricts to add Hover
+    // Update initializeDistricts to add Hover and Labels
     initializeDistricts(stateId) {
         this.currentStateId = stateId;
         const districts = document.querySelectorAll('.district');
@@ -227,6 +227,8 @@ class MapInteractions {
         // Create dedicated label for State View since India view label gets hidden
         let hoverLabel = document.getElementById('state-hover-label');
         if (!hoverLabel && stateView) {
+            // ... existing hover label creation logic can remain or be shortened if not changing ...
+            // (Re-declaring it here to keep context, assuming previous block was good)
             hoverLabel = document.createElement('div');
             hoverLabel.id = 'state-hover-label';
             hoverLabel.style.position = 'absolute';
@@ -244,7 +246,7 @@ class MapInteractions {
             hoverLabel.style.border = '1px solid rgba(255,255,255,0.1)';
             hoverLabel.style.backdropFilter = 'blur(4px)';
 
-            // Ensure state-view is relative so absolute positioning works
+            // Ensure state-view is relative
             if (getComputedStyle(stateView).position === 'static') {
                 stateView.style.position = 'relative';
             }
@@ -253,7 +255,58 @@ class MapInteractions {
 
         this.cacheStateData();
 
+        // 1. Clean up existing labels (if re-initializing)
+        const existingLabels = mapContainer ? mapContainer.querySelectorAll('.district-label') : [];
+        existingLabels.forEach(l => l.remove());
+
         districts.forEach(district => {
+            const districtName = district.getAttribute('title') || district.id;
+
+            // 2. ADD TEXT LABEL
+            // Use getBBox to find center
+            try {
+                // Ensure the district is visible/rendered to get BBox
+                const bbox = district.getBBox();
+                if (bbox && bbox.width > 0) {
+                    const cx = bbox.x + bbox.width / 2;
+                    const cy = bbox.y + bbox.height / 2;
+
+                    // Create Text Element
+                    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+
+                    // Format Name (Shorten heavy names if needed, or split lines)
+                    // e.g. Thiruvananthapuram -> TVM? Or keep full? 
+                    // Let's keep formatted name but handle length via font size if needed.
+                    // Simple logic: Capitalize words
+                    let labelText = districtName.replace(/-/g, ' ');
+
+                    // Special shortening for better map fit? 
+                    // "Thiruvananthapuram" is very long. Let's use "Trivandrum" or wrapping?
+                    // User asked for "District Name", implying full name usually.
+                    // We'll trust the space provided but maybe scale font.
+
+                    text.textContent = labelText;
+                    text.setAttribute('x', cx);
+                    text.setAttribute('y', cy);
+                    text.setAttribute('class', 'district-label'); // Mark for cleanup
+                    text.setAttribute('text-anchor', 'middle'); // Center horizontally
+                    text.setAttribute('dominant-baseline', 'middle'); // Center vertically
+                    text.style.pointerEvents = 'none'; // Click-through to path
+                    text.style.fill = 'rgba(255, 255, 255, 0.95)'; // White text, high contrast
+                    text.style.fontSize = '50px'; // Increased to 50px as requested
+                    text.style.fontWeight = '700'; // Bold
+                    text.style.fontFamily = 'Inter, sans-serif';
+                    text.style.textShadow = '0px 1px 2px rgba(0,0,0,0.8)'; // Outline/Shadow for readability
+
+                    // Append to the SVG (Parent of district path)
+                    if (district.parentNode) {
+                        district.parentNode.appendChild(text);
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not add label for district:', districtName, e);
+            }
+
             // Click
             district.addEventListener('click', (e) => {
                 e.stopPropagation();
