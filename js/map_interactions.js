@@ -268,8 +268,8 @@ class MapInteractions {
                 // Ensure the district is visible/rendered to get BBox
                 const bbox = district.getBBox();
                 if (bbox && bbox.width > 0) {
-                    const cx = bbox.x + bbox.width / 2;
-                    const cy = bbox.y + bbox.height / 2;
+                    let cx = bbox.x + bbox.width / 2;
+                    let cy = bbox.y + bbox.height / 2;
 
                     // Create Text Element
                     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -285,6 +285,19 @@ class MapInteractions {
                     // User asked for "District Name", implying full name usually.
                     // We'll trust the space provided but maybe scale font.
 
+                    // Capitalize First Letter of Each Word
+                    labelText = labelText.split(' ').map(word => {
+                        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+                    }).join(' ');
+
+
+
+
+
+                    if (labelText.toLowerCase().trim() === 'alappuzha') {
+                        cy += 30; // Shift Down to wider area
+                    }
+
                     text.textContent = labelText;
                     text.setAttribute('x', cx);
                     text.setAttribute('y', cy);
@@ -293,10 +306,22 @@ class MapInteractions {
                     text.setAttribute('dominant-baseline', 'middle'); // Center vertically
                     text.style.pointerEvents = 'none'; // Click-through to path
                     text.style.fill = 'rgba(255, 255, 255, 0.95)'; // White text, high contrast
-                    text.style.fontSize = '50px'; // Increased to 50px as requested
-                    text.style.fontWeight = '700'; // Bold
+                    text.style.fontSize = '40px'; // User requested 40px
+                    text.style.fontWeight = '400'; // Not bold (Requested)
                     text.style.fontFamily = 'Inter, sans-serif';
-                    text.style.textShadow = '0px 1px 2px rgba(0,0,0,0.8)'; // Outline/Shadow for readability
+                    text.style.textShadow = '0px 1px 3px rgba(0,0,0,0.9)'; // Stronger shadow
+
+                    // Adaptive Rotation: If district is tall, rotate text vertical (-90 deg)
+                    const lowerName = labelText.toLowerCase().trim();
+                    if (lowerName === 'malappuram') {
+                        text.setAttribute('transform', `rotate(-45, ${cx}, ${cy})`);
+                    } else if (lowerName === 'thiruvananthapuram') {
+                        text.setAttribute('transform', `rotate(45, ${cx}, ${cy})`);
+                    } else if (lowerName === 'alappuzha') {
+                        text.setAttribute('transform', `rotate(70, ${cx}, ${cy})`); // Vertical
+                    } else if (bbox.height > bbox.width * 1.2) {
+                        text.setAttribute('transform', `rotate(-90, ${cx}, ${cy})`);
+                    }
 
                     // Append to the SVG (Parent of district path)
                     if (district.parentNode) {
