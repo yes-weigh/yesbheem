@@ -411,10 +411,25 @@ class DataManager {
     async getDistrictFromZip(zipCode) {
         if (!zipCode) return null;
 
-        // Check cache first (now includes sheet data)
+        // Check cache first
         if (this.zipCache[zipCode]) {
             return this.zipCache[zipCode];
         }
+
+        const location = await this.getLocationFromZip(zipCode);
+        return location ? location.district : null;
+    }
+
+    /**
+     * Resolves a Zip code to both District and State using the external API
+     * Returns { district, state } or null
+     */
+    async getLocationFromZip(zipCode) {
+        if (!zipCode) return null;
+
+        // Note: We don't check simple zipCache here because it only stores District.
+        // If we want State, we prefer to hit the API if not cached in a richer cache.
+        // For now, we always hit API for the full location details (Edit Form use case).
 
         try {
             // Add a small delay to be nice to the API if we are making many requests
@@ -423,17 +438,18 @@ class DataManager {
 
             if (data && data[0].Status === "Success" && data[0].PostOffice && data[0].PostOffice.length > 0) {
                 const district = data[0].PostOffice[0].District;
+                const state = data[0].PostOffice[0].State;
 
-                // Update local cache
+                // Update local district cache (legacy support)
                 this.zipCache[zipCode] = district;
 
-                // Write back to Firestore
+                // Write back to Firestore (legacy support)
                 this.writeZipToFirebase(zipCode, district);
 
-                return district;
+                return { district, state };
             }
         } catch (error) {
-            console.warn(`Failed to resolve zip ${zipCode}:`, error);
+            console.warn(`Failed to resolve zip location ${zipCode}:`, error);
         }
         return null;
     }

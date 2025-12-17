@@ -1188,34 +1188,32 @@ class ViewController {
         }
 
         try {
-            console.log(`Fetching district for zip code: ${zipCode}`);
+            console.log(`Fetching district and state for zip code: ${zipCode}`);
 
-            // Call the existing API method from DataManager
-            const district = await this.dataManager.getDistrictFromZip(zipCode);
+            // Call the NEW API method that returns both District and State
+            const location = await this.dataManager.getLocationFromZip(zipCode);
 
-            if (district) {
-                console.log(`Found district: ${district}`);
+            if (location) {
+                console.log(`Found location: ${location.district}, ${location.state}`);
 
                 // Find the district field in the same form and update it
                 const form = inputField.closest('.dealer-edit-form');
                 if (form) {
                     const districtInput = form.querySelector('[data-field="district"]');
                     if (districtInput) {
-                        districtInput.value = district;
+                        districtInput.value = location.district;
                     }
 
-                    // Derive state from district (for Kerala districts, state is Kerala)
-                    // You can enhance this with a more comprehensive mapping
+                    // Update state from API response directly
                     const stateInput = form.querySelector('[data-field="billing_state"]');
                     if (stateInput) {
-                        const state = this.getStateFromDistrict(district);
-                        stateInput.value = state;
+                        stateInput.value = location.state;
                     }
                 }
 
-                console.log('Updated district and state fields');
+                console.log('Updated district and state fields from API.');
             } else {
-                console.warn('Could not resolve zip code to district');
+                console.warn('Could not resolve zip code to location');
             }
         } catch (error) {
             console.error('Error fetching district from zip code:', error);
@@ -1227,32 +1225,7 @@ class ViewController {
         }
     }
 
-    getStateFromDistrict(districtName) {
-        if (!districtName) return 'Unknown';
 
-        const lowerDistrict = districtName.toLowerCase();
-
-        // Kerala districts
-        const keralaDistricts = [
-            'kasaragod', 'kannur', 'wayanad', 'kozhikode', 'malappuram',
-            'palakkad', 'thrissur', 'ernakulam', 'idukki', 'kottayam',
-            'alappuzha', 'pathanamthitta', 'kollam', 'thiruvananthapuram'
-        ];
-
-        if (keralaDistricts.some(d => lowerDistrict.includes(d))) {
-            return 'Kerala';
-        }
-
-        // Tamil Nadu districts (common ones)
-        const tnDistricts = ['chennai', 'coimbatore', 'madurai', 'tiruchirappalli', 'salem', 'tirunelveli'];
-        if (tnDistricts.some(d => lowerDistrict.includes(d))) {
-            return 'Tamil Nadu';
-        }
-
-        // Add more states as needed
-        // For now, return the district name as-is if not recognized
-        return districtName;
-    }
 
     async saveDealerInfo(dealerName) {
         // Find the specific form for this dealer
