@@ -492,6 +492,59 @@ class DataManager {
     }
 
     /**
+     * Resolves districts for ALL dealers in the raw data.
+     * Checks against cache, fetches missing ones, updates Firebase.
+     */
+    async resolveMissingDistricts(allData) {
+        if (!allData || allData.length === 0) return;
+
+        console.log(`[District Check] Scanning ${allData.length} dealers for missing district usage...`);
+        const missingZips = new Set();
+        let checkedCount = 0;
+
+        allData.forEach(row => {
+            let zip = row['billing_zipcode'] || row['shipping_zipcode'];
+            if (!zip) return;
+            zip = zip.replace(/\s/g, '');
+
+            // Check if we have a mapping
+            if (!this.zipCache[zip]) {
+                missingZips.add(zip);
+            }
+            checkedCount++;
+        });
+
+        if (missingZips.size === 0) {
+            console.log(`[District Check] All ${checkedCount} valid zips are mapped! Good to go.`);
+            return;
+        }
+
+        console.log(`[District Check] Found ${missingZips.size} unique zip codes missing district info.`);
+        console.log(`[District Check] Starting auto-fetch sequence...`);
+
+        let fetched = 0;
+        const total = missingZips.size;
+
+        for (const zip of missingZips) {
+            fetched++;
+            // Fetch logic handles caching and Firebase write
+            const district = await this.getDistrictFromZip(zip);
+
+            if (district) {
+                console.log(`[District Fetch] (${fetched}/${total}) Resolved ${zip} -> ${district}`);
+            } else {
+                console.log(`[District Fetch] (${fetched}/${total}) Failed to resolve ${zip}`);
+            }
+
+            // Small delay to be polite to API
+            await new Promise(r => setTimeout(r, 200));
+        }
+
+        console.log(`[District Check] Update complete. New mappings saved to Firebase.`);
+        this.saveCacheToStorage();
+    }
+
+    /**
      * Main function to load and process data
      * @param {string} stateName - Name of the state to filter by (default 'Kerala')
      * @param {Array} districtIds - List of valid district IDs/keys for this state
@@ -505,6 +558,9 @@ class DataManager {
         console.log(`Starting data load for ${stateName}...`);
         const rawData = await this.fetchSheetData();
         console.log(`Fetched ${rawData.length} rows from sheet.`);
+
+        // AUTOMATICALLY RESOLVE ALL INDIA DEALER DISTRICTS
+        await this.resolveMissingDistricts(rawData);
 
         // Filter for specific state
         const stateLower = stateName.toLowerCase();
@@ -553,72 +609,15 @@ class DataManager {
             };
         }
 
-        // OPTIMIZATION 1: Collect unique zip codes that need resolution or syncing
-        const uniqueZips = new Set();
-        const zipsToBackfill = new Set();
-
-        for (const row of stateData) {
-            // APPLY OVERRIDES HERE
-            // APPLY OVERRIDES HERE
-            const customerName = row['customer_name'];
-            if (this.dealerOverrides && this.dealerOverrides[customerName]) {
-                const ov = this.dealerOverrides[customerName];
-                // Generic Apply: mapped keys in overrides replace row keys
-                for (const [key, val] of Object.entries(ov)) {
-                    // Only override if value is not empty? Or allow clearing?
-                    // Let's allow whatever string is there.
-                    if (val !== undefined) {
-                        row[key] = val;
-                    }
-                }
-            }
-
-            let zip = row['billing_zipcode'] || row['shipping_zipcode'];
-            if (!zip) continue;
-            zip = zip.replace(/\s/g, '');
-
-            // Case 1: Completely unknown (not in cache)
-            if (!this.zipCache[zip]) {
-                uniqueZips.add(zip);
-            }
-            // Case 2: In cache, but NOT in sheet (Needs backfill)
-            // We check if this.sheetZips has it. If not, we queue for write.
-            else if (this.sheetZips && !this.sheetZips.has(zip)) {
-                zipsToBackfill.add(zip);
-            }
-        }
-
-        // OPTIMIZATION 2: Resolve only unique uncached zip codes
-        if (uniqueZips.size > 0) {
-            console.log(`Resolving ${uniqueZips.size} unique uncached zip codes...`);
-            let resolvedCount = 0;
-            for (const zip of uniqueZips) {
-                await this.getDistrictFromZip(zip);
-                resolvedCount++;
-                if (resolvedCount % 10 === 0) console.log(`Resolved ${resolvedCount}/${uniqueZips.size}...`);
-            }
-            this.saveCacheToStorage();
-        } else {
-            console.log('All required zip codes found in cache.');
-        }
-
         // OPTIMIZATION 3: Backfill cached zips to sheet (Background process)
-        if (zipsToBackfill.size > 0) {
-            console.log(`Found ${zipsToBackfill.size} cached zips missing from sheet. Backfilling...`);
-            // We don't await this loop to avoid blocking UI, or we process quickly?
-            // Google Script might throttle. Let's send them ONE BY ONE.
-            // For safety, we can just process them.
-            let backfillCount = 0;
-            for (const zip of zipsToBackfill) {
-                const district = this.zipCache[zip];
-                if (district) {
-                    this.writeZipToFirebase(zip, district);
-                    // Add to sheetZips so we don't try again this session
-                    if (this.sheetZips) this.sheetZips.add(zip);
-                    backfillCount++;
-                }
-            }
-        }
+        // Moved into resolveMissingDistricts for better consolidation, but keeping specific sheet backfill if needed
+        // (Actually, resolveMissingDistricts manages Firebase, which IS the persistence layer here)
+        // So we can remove the old manual logic or leave it as safety.
+        // Let's rely on resolveMissingDistricts for the fetching part.
+
+
+        // OPTIMIZATION 3: Backfill - Removed as resolveMissingDistricts handles global resolution.
+
 
         // Process each row using cached data
         for (const row of stateData) {
@@ -630,6 +629,10 @@ class DataManager {
             const districtName = this.zipCache[zip];
             // Normalize: try to match against our key list
             const districtKey = this.normalizeDistrictName(districtName, targets);
+
+            // INJECT DISTRICT INTO RAW DATA FOR UI
+            // This ensures renderDealerEditForm sees it
+            row['district'] = districtName || 'Unknown';
 
             if (districtKey && districtStats[districtKey]) {
                 const customerName = row['customer_name'] || 'Unknown Dealer';
@@ -782,6 +785,9 @@ class DataManager {
         const stateName = stateNames[stateId] || stateId;
         const rawData = await this.fetchSheetData();
 
+        // Ensure districts are resolved for this data
+        await this.resolveMissingDistricts(rawData);
+
         // Robust Filtering using Normalize
         const targetState = this.normalizeStateName(stateName);
 
@@ -835,6 +841,11 @@ class DataManager {
 
             aggregated.currentSales += sales;
 
+            // INJECT DISTRICT
+            let zip = row['billing_zipcode'] || row['shipping_zipcode'];
+            if (zip) zip = zip.replace(/\s/g, '');
+            row['district'] = this.zipCache[zip] || 'Unknown';
+
             aggregated.dealers.push({
                 name: customerName,
                 sales: sales,
@@ -870,6 +881,9 @@ class DataManager {
         const rawData = await this.fetchSheetData();
         console.log(`Getting Pan India data... (${rawData.length} rows)`);
 
+        // Ensure districts are resolved
+        await this.resolveMissingDistricts(rawData);
+
         const aggregated = {
             name: 'Pan India',
             population: '1.4B+',
@@ -901,6 +915,11 @@ class DataManager {
             let sales = parseFloat(row['sales'] || 0);
             if (isNaN(sales)) sales = 0;
             aggregated.currentSales += sales;
+
+            // INJECT DISTRICT
+            let zip = row['billing_zipcode'] || row['shipping_zipcode'];
+            if (zip) zip = zip.replace(/\s/g, '');
+            row['district'] = this.zipCache[zip] || 'Unknown';
 
             aggregated.dealers.push({
                 name: customerName,

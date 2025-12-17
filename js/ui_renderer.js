@@ -312,72 +312,102 @@ class UIRenderer {
             'currency_code',
             'branch_name',
             'shipping_state',
-            'shipping_zipcode'
+            'shipping_zipcode',
+            'billing_zipcode', // Exclude from generic loop, handled manually
+            'district' // Exclude from generic loop, handled manually
         ];
 
         // Sort keys? or Keep original order? Original order is better for context usually.
         // rawData should have keys in order of CSV
 
+
+        // Define logical order and potential key variations
+        const fieldMap = [
+            { label: 'First Name', keys: ['first_name', 'first name', 'First Name'] },
+            { label: 'Mobile Phone', keys: ['mobile_phone', 'mobile phone', 'phone', 'Mobile Phone'] },
+            { label: 'Zip Code', keys: ['billing_zipcode'] },
+            { label: 'District', keys: ['district'] },
+            { label: 'State', keys: ['billing_state'] }
+        ];
+
+        const priorityFields = []; // Will be populated with actual keys found
+
+        fieldMap.forEach(f => {
+            // Find first key that exists in data
+            let pKey = f.keys.find(k => rawData.hasOwnProperty(k));
+
+            // Special handling: District is always shown (injected), ensure we catch it
+            if (!pKey && f.keys.includes('district')) pKey = 'district';
+
+            if (pKey) {
+                priorityFields.push(pKey); // Mark as processed for generic loop exclusion
+
+                const val = rawData[pKey] || '';
+                const label = f.label;
+
+                let inputHtml = `
+                        <input type="text" 
+                               class="edit-field-input" 
+                               data-field="${pKey}" 
+                               value="${val}" 
+                               disabled
+                               style="flex: 1; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; padding: 4px 0; border-radius: 4px; border: 1px solid transparent; background: transparent; color: white; font-size: 0.8rem; height: 26px; cursor: default;">
+                    `;
+
+                const pencilIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
+
+                // Edit Logic: State and District are Read-Only per request
+                const isEditable = label !== 'State' && label !== 'District';
+                const editButton = isEditable ? `
+                         <button onclick="window.viewController.toggleEditField(this)" style="background: none; border: none; padding: 4px; cursor: pointer; opacity: 0.5; color: var(--text-muted); display: flex; align-items: center; margin-left: 4px; transition: all 0.2s;" title="Edit">
+                            ${pencilIcon}
+                         </button>` : '';
+
+                fieldsHtml += `
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                             <label style="flex: 0 0 85px; font-size: 0.7rem; color: var(--text-muted); text-align: right; margin-right: 8px;">${label}</label>
+                             ${inputHtml}
+                             ${editButton}
+                        </div>
+                    `;
+            }
+        });
+
         for (const [key, val] of Object.entries(rawData)) {
-            if (excludeKeys.includes(key)) continue;
+            if (excludeKeys.includes(key) || priorityFields.includes(key)) continue;
 
             // Format Label: "billing_zipcode" -> "Billing Zipcode"
             let label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
             // Custom simplified labels
-            if (key === 'billing_zipcode') label = 'Zip Code';
-            else if (key === 'billing_state') label = 'State';
+            if (key === 'billing_state') label = 'State';
 
             // Value safety
             let value = val || '';
             // Escape quotes for HTML attribute
             value = value.replace(/"/g, '&quot;');
 
-            let inputHtml = '';
-
-            if (key === 'billing_state') {
-                const states = [
-                    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
-                    "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
-                    "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
-                    "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
-                    "Andaman and Nicobar Islands", "Chandigarh", "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
-                ];
-
-                let options = `<option value="">Select State</option>`;
-                states.sort().forEach(s => {
-                    const selected = s.toLowerCase() === value.toLowerCase() ? 'selected' : '';
-                    options += `<option value="${s}" ${selected}>${s}</option>`;
-                });
-
-                inputHtml = `
-                    <select class="edit-field-input" 
-                            data-field="${key}" 
-                            disabled
-                            style="flex: 1; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; padding: 4px 0; border-radius: 4px; border: 1px solid transparent; background: transparent; color: white; font-size: 0.8rem; height: 26px; cursor: default;">
-                        ${options}
-                    </select>
-                `;
-            } else {
-                inputHtml = `
-                    <input type="text" 
-                           class="edit-field-input" 
-                           data-field="${key}" 
-                           value="${value}" 
-                           disabled
-                           style="flex: 1; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; padding: 4px 0; border-radius: 4px; border: 1px solid transparent; background: transparent; color: white; font-size: 0.8rem; height: 26px; cursor: default;">
-                `;
-            }
+            let inputHtml = `
+                <input type="text" 
+                       class="edit-field-input" 
+                       data-field="${key}" 
+                       value="${value}" 
+                       disabled
+                       style="flex: 1; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; padding: 4px 0; border-radius: 4px; border: 1px solid transparent; background: transparent; color: white; font-size: 0.8rem; height: 26px; cursor: default;">
+            `;
 
             const pencilIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
+
+            const editButton = key !== 'billing_state' ? `
+                         <button onclick="window.viewController.toggleEditField(this)" style="background: none; border: none; padding: 4px; cursor: pointer; opacity: 0.5; color: var(--text-muted); display: flex; align-items: center; margin-left: 4px; transition: all 0.2s;" title="Edit">
+                            ${pencilIcon}
+                         </button>` : '';
 
             fieldsHtml += `
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
                          <label style="flex: 0 0 85px; font-size: 0.7rem; color: var(--text-muted); text-align: right; margin-right: 8px;">${label}</label>
                          ${inputHtml}
-                         <button onclick="window.viewController.toggleEditField(this)" style="background: none; border: none; padding: 4px; cursor: pointer; opacity: 0.5; color: var(--text-muted); display: flex; align-items: center; margin-left: 4px; transition: all 0.2s;" title="Edit">
-                            ${pencilIcon}
-                         </button>
+                         ${editButton}
                     </div>
                 `;
         }
