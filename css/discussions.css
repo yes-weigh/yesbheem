@@ -871,3 +871,248 @@
 .settings-btn:hover svg {
     transform: rotate(90deg);
 }
+
+/* --- Modern Quick Edit UI (Glassmorphism) --- */
+.quick-edit-column {
+    --qe-bg: rgba(255, 255, 255, 0.65);
+    --qe-border: rgba(255, 255, 255, 0.3);
+
+    flex: 0 0 0;
+    /* Collapsed by default */
+    width: 0;
+    margin-right: 0;
+    border-radius: 16px;
+    background: var(--qe-bg);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid var(--qe-border);
+    box-shadow:
+        0 8px 32px 0 rgba(31, 38, 135, 0.15),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    opacity: 0;
+    transform: translateX(-10px) scale(0.98);
+    pointer-events: none;
+    max-height: calc(100vh - 140px);
+    overflow: visible;
+    /* changed from hidden to visible */
+    position: relative;
+}
+
+.quick-edit-column.active {
+    flex: 0 0 320px;
+    width: 320px;
+    margin-right: 12px;
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    pointer-events: auto;
+}
+
+/* Dark Mode Glass */
+[data-theme="dark"] .quick-edit-column {
+    --qe-bg: rgba(30, 35, 45, 0.75);
+    --qe-border: rgba(255, 255, 255, 0.08);
+
+    background: var(--qe-bg);
+    border: 1px solid var(--qe-border);
+    box-shadow:
+        0 8px 32px 0 rgba(0, 0, 0, 0.4),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Visual Connector */
+/* Visual Connector */
+.qe-connector {
+    position: absolute;
+    left: -24px;
+    /* Wider reach */
+    top: var(--card-y, 50px);
+    width: 25px;
+    /* Spans gap (12px) + overlap */
+    height: 48px;
+    /* Taller for smoother curve */
+    background: var(--qe-bg);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    /* Smooth "flow" shape pointing left */
+    clip-path: path('M25 0 Q0 0 0 24 Q0 48 25 48 L25 0');
+    transform: translateY(-50%);
+    transition: top 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    z-index: 100;
+    /* Ensure on top of everything */
+    pointer-events: none;
+    /* Add a subtle shadow via filter since box-shadow is clipped */
+    filter: drop-shadow(-2px 0 4px rgba(0, 0, 0, 0.1));
+}
+
+/* Border hack for connector? Hard with glass. 
+   We will rely on shadow/highlight of main box and just let this be a "bridge".
+*/
+
+
+/* Header */
+.quick-edit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .quick-edit-header {
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+.qe-header-title {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    font-weight: 700;
+}
+
+/* Body */
+.quick-edit-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Custom Inputs - Minimalist */
+.qe-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.qe-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    margin-left: 2px;
+}
+
+.qe-input,
+.qe-textarea,
+.qe-select {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    transition: all 0.2s;
+}
+
+.qe-textarea {
+    resize: none;
+    min-height: 100px;
+    line-height: 1.5;
+}
+
+.qe-input:focus,
+.qe-textarea:focus,
+.qe-select:focus {
+    outline: none;
+    background: var(--bg-primary);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+}
+
+[data-theme="dark"] .qe-input,
+[data-theme="dark"] .qe-textarea,
+[data-theme="dark"] .qe-select {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .qe-input:focus,
+[data-theme="dark"] .qe-textarea:focus,
+[data-theme="dark"] .qe-select:focus {
+    background: #1e1e1e;
+}
+
+/* Checklist Panel */
+.qe-checklist-panel {
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+[data-theme="dark"] .qe-checklist-panel {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Footer */
+.quick-edit-footer {
+    padding: 12px 20px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .quick-edit-footer {
+    border-top-color: rgba(255, 255, 255, 0.05);
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.qe-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.qe-btn-primary {
+    background: var(--primary-color);
+    color: white;
+    box-shadow: 0 4px 6px rgba(var(--primary-rgb), 0.2);
+}
+
+.qe-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 12px rgba(var(--primary-rgb), 0.3);
+}
+
+.qe-btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+}
+
+.qe-btn-ghost:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .qe-btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.qe-close-icon {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    transition: all 0.2s;
+}
+
+.qe-close-icon:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-primary);
+}

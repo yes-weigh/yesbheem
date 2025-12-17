@@ -776,31 +776,37 @@ class BoardController {
         this.quickEditColumn = document.createElement('div');
         this.quickEditColumn.className = 'quick-edit-column';
         this.quickEditColumn.innerHTML = `
+            <div class="qe-connector"></div>
             <div class="quick-edit-header">
-                <h4 style="margin:0;">Quick Edit</h4>
-                <button class="btn-icon-sm close-quick-edit" title="Close">✕</button>
+                <span class="qe-header-title">Quick Edit</span>
+                <button class="qe-close-icon close-quick-edit" title="Close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
             </div>
             <div class="quick-edit-body">
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" class="form-control qe-title">
+                <div class="qe-input-group">
+                    <label class="qe-label">Title</label>
+                    <input type="text" class="qe-input qe-title" placeholder="Task title">
                 </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea class="form-control qe-desc" rows="12"></textarea>
+                <div class="qe-input-group">
+                    <label class="qe-label">Description</label>
+                    <textarea class="qe-textarea qe-desc" placeholder="Add a description..."></textarea>
                 </div>
-                <div class="form-group">
-                    <label>Checklist</label>
+                <div class="qe-checklist-panel" style="display:none;">
+                    <label class="qe-label" style="margin-bottom:8px; display:block;">Checklist</label>
                     <div class="qe-checklist" style="display:flex; flex-direction:column; gap:8px;"></div>
                 </div>
-                <div class="form-group">
-                    <label>Status</label>
-                    <select class="form-control qe-status"></select>
+                <div class="qe-input-group">
+                    <label class="qe-label">Status</label>
+                    <div class="select-wrapper" style="position:relative;">
+                        <select class="qe-select qe-status"></select>
+                    </div>
                 </div>
             </div>
             <div class="quick-edit-footer">
-                <span class="qe-status-text" style="font-size:0.75rem; color:var(--text-muted); margin-right:auto;"></span>
-                <button class="btn-primary qe-save">Save</button>
+                <span class="qe-status-text" style="font-size:0.75rem; color:var(--text-tertiary); margin-right:auto; opacity:0; transition:opacity 0.2s;">Saved!</span>
+                <button class="qe-btn qe-btn-ghost close-quick-edit">Cancel</button>
+                <button class="qe-btn qe-btn-primary qe-save">Save</button>
             </div>
         `;
 
@@ -813,10 +819,12 @@ class BoardController {
             this.scheduleHideHoverEditor();
         });
 
-        // Bind internal buttons
-        this.quickEditColumn.querySelector('.close-quick-edit').addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.hideHoverEditor(true);
+        // Bind internal buttons - handle multiple close buttons
+        this.quickEditColumn.querySelectorAll('.close-quick-edit').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.hideHoverEditor(true);
+            });
         });
 
         this.quickEditColumn.querySelector('.qe-save').addEventListener('click', async (e) => {
@@ -825,7 +833,6 @@ class BoardController {
         });
 
         // Auto-save interactions or Enter key? 
-        // User said "ready to be edited". Let's stick to Save button for explicit action + Enter on title
         const titleInput = this.quickEditColumn.querySelector('.qe-title');
         titleInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') this.saveQuickEdit();
@@ -853,9 +860,12 @@ class BoardController {
         colTitle.value = task.title || '';
         colDesc.value = task.description || '';
 
+
         // Populate Checklist
         const checklistContainer = this.quickEditColumn.querySelector('.qe-checklist');
+        const checklistPanel = this.quickEditColumn.querySelector('.qe-checklist-panel');
         checklistContainer.innerHTML = '';
+
         if (task.checklist && task.checklist.length > 0) {
             task.checklist.forEach((item, index) => {
                 const row = document.createElement('div');
@@ -864,17 +874,21 @@ class BoardController {
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.checked = item.done;
-                checkbox.style.cssText = 'width:16px; height:16px; cursor:pointer;';
+                checkbox.style.cssText = 'width:16px; height:16px; cursor:pointer; accent-color:var(--primary-color);';
 
                 const span = document.createElement('span');
                 span.textContent = item.text;
-                span.style.cssText = 'color:var(--text-primary); font-size:0.9rem; word-break:break-all;';
-                if (item.done) span.style.textDecoration = 'line-through';
+                span.style.cssText = 'color:var(--text-primary); font-size:0.85rem; word-break:break-all; flex:1;';
+                if (item.done) {
+                    span.style.textDecoration = 'line-through';
+                    span.style.opacity = '0.6';
+                }
 
                 checkbox.addEventListener('change', () => {
                     // Update state immediately
                     item.done = checkbox.checked;
                     span.style.textDecoration = checkbox.checked ? 'line-through' : 'none';
+                    span.style.opacity = checkbox.checked ? '0.6' : '1';
                     // Trigger save to persist
                     this.saveQuickEdit();
                 });
@@ -883,9 +897,9 @@ class BoardController {
                 row.appendChild(span);
                 checklistContainer.appendChild(row);
             });
-            checklistContainer.parentElement.style.display = 'block';
+            checklistPanel.style.display = 'block';
         } else {
-            checklistContainer.parentElement.style.display = 'none';
+            checklistPanel.style.display = 'none';
         }
 
         // Refresh status options based on current columns
@@ -916,6 +930,19 @@ class BoardController {
 
         // Force Reflow
         void this.quickEditColumn.offsetWidth;
+
+        // --- Position Connector (Now safe because element is in DOM) ---
+        const cardRect = cardElement.getBoundingClientRect();
+        // Use parentColumn as reference (stable top alignment)
+        const referenceRect = parentColumn.getBoundingClientRect();
+        const cardCenterY = cardRect.top + (cardRect.height / 2);
+
+        // Offset relative to the Top of the Column Row
+        // Using referenceRect.top is correct because both ParentColumn and QuickEditColumn (when open) 
+        // start at the same vertical position in the flex container.
+        const relativeY = cardCenterY - referenceRect.top;
+
+        this.quickEditColumn.style.setProperty('--card-y', `${relativeY}px`);
 
         // Show
         this.quickEditColumn.classList.add('active');
