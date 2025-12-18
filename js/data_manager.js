@@ -26,6 +26,9 @@ class DataManager {
         this.kpiAppsScriptUrl = 'https://script.google.com/macros/s/AKfycbwCS5-GtpPLFU1rKEKc9CnS81O1ebkzqKR1PkOYZSBe_Gxbi6KSZ96bRhyB3b0v9Hy2gw/exec';
         this.kpiDataCache = null;
 
+        // Blacklist of known invalid zip codes to skip API calls
+        this.invalidZips = new Set(['686028', '382487', '403407', '5000074', '505206', '68002', '570024']);
+
         // Initialize by loading zip sheet
         this.dealerOverrides = {};
         this.loadDealerOverridesFromFirebase();
@@ -548,6 +551,11 @@ class DataManager {
             let zip = row['billing_zipcode'] || row['shipping_zipcode'];
             if (!zip) return;
             zip = zip.replace(/\s/g, '');
+
+            // Skip known invalid zip codes
+            if (this.invalidZips.has(zip)) {
+                return;
+            }
 
             // Check if we have a mapping
             if (!this.zipCache[zip]) {
@@ -1189,26 +1197,24 @@ class DataManager {
     }
 
     /**
-     * Get the latest upload timestamp directly from Storage
+     * Get the latest upload timestamp from Firestore reports_data collection
      */
     async getLastStorageUpdate() {
-        const listRef = ref(storage, 'reports/');
         try {
-            const res = await listAll(listRef);
+            const { collection, getDocs, query, orderBy, limit } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
 
-            if (res.items.length === 0) return null;
+            const reportsRef = collection(db, 'reports_data');
+            const q = query(reportsRef, orderBy('uploadedAt', 'desc'), limit(1));
+            const snapshot = await getDocs(q);
 
-            // Fetch metadata for all items to find the latest
-            // Use Promise.all for parallel fetching
-            const metaPromises = res.items.map(item => getMetadata(item));
-            const metas = await Promise.all(metaPromises);
+            if (snapshot.empty) {
+                return null;
+            }
 
-            // Sort descending by timeCreated
-            metas.sort((a, b) => new Date(b.timeCreated) - new Date(a.timeCreated));
-
-            return metas.length > 0 ? metas[0].timeCreated : null;
+            const latestReport = snapshot.docs[0].data();
+            return latestReport.uploadedAt;
         } catch (e) {
-            console.error('Failed to get last storage update:', e);
+            console.error('Could not fetch last update time:', e);
             return null;
         }
     }

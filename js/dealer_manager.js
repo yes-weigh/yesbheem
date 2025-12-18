@@ -103,7 +103,7 @@ if (!window.DealerManager) {
                 // 1. Real Reports
                 reports.forEach(report => {
                     const opt = document.createElement('option');
-                    opt.value = report.url;
+                    opt.value = report.id; // Use report ID instead of URL
                     opt.textContent = report.name;
                     selector.appendChild(opt);
                 });
