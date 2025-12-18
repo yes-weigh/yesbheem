@@ -296,12 +296,10 @@ class UIRenderer {
      * @param {Object} rawData - Full CSV row data
      * @returns {string} HTML string
      */
-    static renderDealerEditForm(dealerName, billingZip = '', shippingZip = '', rawData = {}) {
+    static renderDealerEditForm(dealerName, billingZip = '', shippingZip = '', rawData = {}, generalSettings = {}) {
         let fieldsHtml = '';
-        // Fields to exclude from being editable or shown in valid inputs list (if any)
-        // We definitely exclude customer_name as it is the key
-        // Fields to exclude from being editable or shown in valid inputs list (if any)
-        // We definitely exclude customer_name as it is the key
+
+        // Fields to exclude from generic loop
         const excludeKeys = [
             'customer_name',
             'customer_id',
@@ -313,82 +311,128 @@ class UIRenderer {
             'branch_name',
             'shipping_state',
             'shipping_zipcode',
-            'billing_zipcode', // Exclude from generic loop, handled manually
-            'district' // Exclude from generic loop, handled manually
+            'billing_zipcode',
+            'district',
+            'billing_state',
+            'key_account_manager',
+            'dealer_stage'
         ];
 
-        // Sort keys? or Keep original order? Original order is better for context usually.
-        // rawData should have keys in order of CSV
-
-
-        // Define logical order and potential key variations
-        const fieldMap = [
+        // 1. Top Fields
+        const topFieldMap = [
             { label: 'First Name', keys: ['first_name', 'first name', 'First Name'] },
             { label: 'Mobile Phone', keys: ['mobile_phone', 'mobile phone', 'phone', 'Mobile Phone'] },
-            { label: 'Zip Code', keys: ['billing_zipcode'] },
+            { label: 'Zip Code', keys: ['billing_zipcode'] }
+        ];
+
+        // 2. Bottom Fields
+        const bottomFieldMap = [
             { label: 'District', keys: ['district'] },
             { label: 'State', keys: ['billing_state'] }
         ];
 
-        const priorityFields = []; // Will be populated with actual keys found
+        const priorityFields = [];
 
-        fieldMap.forEach(f => {
-            // Find first key that exists in data
-            let pKey = f.keys.find(k => rawData.hasOwnProperty(k));
+        const renderFieldBlock = (map) => {
+            let html = '';
+            map.forEach(f => {
+                let pKey = f.keys.find(k => rawData.hasOwnProperty(k));
+                // District always shown if requested
+                if (!pKey && f.keys.includes('district')) pKey = 'district';
+                // State always shown if requested
+                if (!pKey && f.keys.includes('billing_state')) pKey = 'billing_state';
 
-            // Special handling: District is always shown (injected), ensure we catch it
-            if (!pKey && f.keys.includes('district')) pKey = 'district';
 
-            if (pKey) {
-                priorityFields.push(pKey); // Mark as processed for generic loop exclusion
+                if (pKey) {
+                    priorityFields.push(pKey);
+                    const val = rawData[pKey] || '';
+                    const label = f.label;
 
-                const val = rawData[pKey] || '';
-                const label = f.label;
+                    let inputHtml = `
+                            <input type="text" 
+                                   class="edit-field-input" 
+                                   data-field="${pKey}" 
+                                   value="${val}" 
+                                   disabled
+                                   style="flex: 1; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; padding: 4px 0; border-radius: 4px; border: 1px solid transparent; background: transparent; color: white; font-size: 0.8rem; height: 26px; cursor: default;">
+                        `;
 
-                let inputHtml = `
-                        <input type="text" 
-                               class="edit-field-input" 
-                               data-field="${pKey}" 
-                               value="${val}" 
-                               disabled
-                               style="flex: 1; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; padding: 4px 0; border-radius: 4px; border: 1px solid transparent; background: transparent; color: white; font-size: 0.8rem; height: 26px; cursor: default;">
-                    `;
+                    const pencilIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
+                    const loadingIcon = `<svg class="zip-loading-spinner" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none; animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg>`;
 
-                const pencilIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
-                const loadingIcon = `<svg class="zip-loading-spinner" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none; animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg>`;
+                    const isEditable = label !== 'State' && label !== 'District';
+                    const isZipCode = label === 'Zip Code';
 
-                // Edit Logic: State and District are Read-Only per request
-                const isEditable = label !== 'State' && label !== 'District';
-                const isZipCode = label === 'Zip Code';
+                    const editButton = isEditable ? `
+                             <button onclick="window.viewController.toggleEditField(this)" style="background: none; border: none; padding: 4px; cursor: pointer; opacity: 0.5; color: var(--text-muted); display: flex; align-items: center; margin-left: 4px; transition: all 0.2s;" title="Edit" data-field-type="${isZipCode ? 'zipcode' : 'text'}">
+                                ${pencilIcon}
+                             </button>
+                             ${isZipCode ? loadingIcon : ''}` : '';
 
-                const editButton = isEditable ? `
-                         <button onclick="window.viewController.toggleEditField(this)" style="background: none; border: none; padding: 4px; cursor: pointer; opacity: 0.5; color: var(--text-muted); display: flex; align-items: center; margin-left: 4px; transition: all 0.2s;" title="Edit" data-field-type="${isZipCode ? 'zipcode' : 'text'}">
-                            ${pencilIcon}
-                         </button>
-                         ${isZipCode ? loadingIcon : ''}` : '';
+                    html += `
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                                 <label style="flex: 0 0 85px; font-size: 0.7rem; color: var(--text-muted); text-align: right; margin-right: 8px;">${label}</label>
+                                 ${inputHtml}
+                                 ${editButton}
+                            </div>
+                        `;
+                }
+            });
+            return html;
+        };
 
-                fieldsHtml += `
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                             <label style="flex: 0 0 85px; font-size: 0.7rem; color: var(--text-muted); text-align: right; margin-right: 8px;">${label}</label>
-                             ${inputHtml}
-                             ${editButton}
-                        </div>
-                    `;
-            }
+        // Render Top Fields
+        fieldsHtml += renderFieldBlock(topFieldMap);
+
+        // 3. Dropdown Fields (Key Account Manager, Dealer Stage)
+        const dropdowns = [
+            { label: 'KAM', key: 'key_account_manager', options: generalSettings.key_accounts || [] },
+            { label: 'Stage', key: 'dealer_stage', options: generalSettings.dealer_stages || [] }
+        ];
+
+        dropdowns.forEach(dd => {
+            priorityFields.push(dd.key); // Add dropdown keys to priorityFields
+            const val = rawData[dd.key] || '';
+            const label = dd.label;
+
+            let optionsHtml = `<option value="" ${val === '' ? 'selected' : ''}>Select...</option>`;
+            dd.options.forEach(opt => {
+                const isSel = opt === val ? 'selected' : '';
+                optionsHtml += `<option value="${opt}" ${isSel}>${opt}</option>`;
+            });
+
+            let inputHtml = `
+                    <select class="edit-field-input" 
+                            data-field="${dd.key}" 
+                            disabled
+                            style="flex: 1; min-width: 0; padding: 4px 0; border-radius: 4px; border: 1px solid transparent; background: transparent; color: white; font-size: 0.8rem; height: 26px; cursor: default; appearance: none; -webkit-appearance: none;">
+                        ${optionsHtml}
+                    </select>
+                `;
+
+            const pencilIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
+
+            const editButton = `
+                     <button onclick="window.viewController.toggleEditField(this)" style="background: none; border: none; padding: 4px; cursor: pointer; opacity: 0.5; color: var(--text-muted); display: flex; align-items: center; margin-left: 4px; transition: all 0.2s;" title="Edit" data-field-type="select">
+                        ${pencilIcon}
+                     </button>`;
+
+            fieldsHtml += `
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                         <label style="flex: 0 0 85px; font-size: 0.7rem; color: var(--text-muted); text-align: right; margin-right: 8px;">${label}</label>
+                         ${inputHtml}
+                         ${editButton}
+                    </div>
+                `;
         });
 
+        // 4. Generic Fields
         for (const [key, val] of Object.entries(rawData)) {
             if (excludeKeys.includes(key) || priorityFields.includes(key)) continue;
 
-            // Format Label: "billing_zipcode" -> "Billing Zipcode"
             let label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
-            // Custom simplified labels
-            if (key === 'billing_state') label = 'State';
-
-            // Value safety
             let value = val || '';
-            // Escape quotes for HTML attribute
             value = value.replace(/"/g, '&quot;');
 
             let inputHtml = `
@@ -402,10 +446,10 @@ class UIRenderer {
 
             const pencilIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
 
-            const editButton = key !== 'billing_state' ? `
+            const editButton = `
                          <button onclick="window.viewController.toggleEditField(this)" style="background: none; border: none; padding: 4px; cursor: pointer; opacity: 0.5; color: var(--text-muted); display: flex; align-items: center; margin-left: 4px; transition: all 0.2s;" title="Edit">
                             ${pencilIcon}
-                         </button>` : '';
+                         </button>`;
 
             fieldsHtml += `
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
@@ -415,6 +459,9 @@ class UIRenderer {
                     </div>
                 `;
         }
+
+        // 5. Render Bottom Fields
+        fieldsHtml += renderFieldBlock(bottomFieldMap);
 
         return `
             <div class="dealer-edit-form" onclick="event.stopPropagation()" style="background: rgba(15, 23, 42, 0.98); padding: 8px; margin: 4px 0 8px 0; border-radius: 6px; border: 1px solid var(--accent-color); box-shadow: 0 4px 12px rgba(0,0,0,0.4); width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden;">

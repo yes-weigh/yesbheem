@@ -34,6 +34,10 @@ class DataManager {
 
         this.sheetZips = new Set(); // Track what is IN the remote DB
         this.loadZipCacheFromFirebase();
+
+        // General Settings (Key Accounts, Dealer Stages)
+        this.generalSettings = { key_accounts: [], dealer_stages: [] };
+        this.loadGeneralSettings();
     }
 
     /**
@@ -119,6 +123,28 @@ class DataManager {
     }
 
     /**
+     * Load general settings (Key Accounts, Dealer Stages) from Firestore (settings/general)
+     */
+    async loadGeneralSettings() {
+        try {
+            console.log('Fetching general settings from Firestore...');
+            const docRef = doc(db, "settings", "general");
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                this.generalSettings = docSnap.data();
+                console.log('Loaded General Settings:', this.generalSettings);
+            } else {
+                await setDoc(docRef, { key_accounts: [], dealer_stages: [] });
+                this.generalSettings = { key_accounts: [], dealer_stages: [] };
+            }
+        } catch (e) {
+            console.warn('Failed to load general settings:', e);
+            this.generalSettings = { key_accounts: [], dealer_stages: [] };
+        }
+    }
+
+    /**
      * Load zip code cache from localStorage
      */
     loadCacheFromStorage() {
@@ -170,6 +196,10 @@ class DataManager {
             const csvText = await response.text();
             const parsed = this.parseCSV(csvText);
             console.log(`Parsed CSV: ${parsed.length} rows.`);
+
+            // CACHE RAW DATA FOR EXTERNAL USE (e.g. DealerManager)
+            this.rawData = parsed;
+
             return parsed;
         } catch (e) {
             console.error('Failed to fetch custom CSV (likely CORS or Network):', e);

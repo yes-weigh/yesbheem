@@ -1002,7 +1002,7 @@ class ViewController {
                         }
                     }
 
-                    const formHtml = UIRenderer.renderDealerEditForm(itemName, dealerData.billingZip, dealerData.shippingZip, dealerData.rawData);
+                    const formHtml = UIRenderer.renderDealerEditForm(itemName, dealerData.billingZip, dealerData.shippingZip, dealerData.rawData, this.dataManager.generalSettings);
 
                     // Insert Form AFTER the user info row but inside the item container?
                     // The item container is a column flex or block...
@@ -1143,6 +1143,7 @@ class ViewController {
 
         const isDisabled = input.hasAttribute('disabled');
         const isZipCode = btn.getAttribute('data-field-type') === 'zipcode';
+        const isSelect = input.tagName === 'SELECT';
 
         if (isDisabled) {
             // Enable editing
@@ -1151,9 +1152,17 @@ class ViewController {
             input.style.background = 'rgba(0,0,0,0.3)';
             input.style.borderColor = 'rgba(255,255,255,0.15)';
             input.style.paddingLeft = '6px';
-            input.style.cursor = 'text';
+            input.style.cursor = isSelect ? 'pointer' : 'text';
             btn.style.opacity = '1';
             btn.style.color = 'var(--accent-color)';
+
+            if (isSelect) {
+                input.style.appearance = 'auto'; // Show dropdown arrow
+                input.style.webkitAppearance = 'auto';
+                input.style.color = 'white';
+                // Add option styling if needed (browsers handle this differently)
+                input.querySelectorAll('option').forEach(opt => opt.style.color = 'black');
+            }
 
             // For zip code fields, add blur event listener to trigger API call
             if (isZipCode) {
@@ -1168,6 +1177,11 @@ class ViewController {
             input.style.cursor = 'default';
             btn.style.opacity = '0.5';
             btn.style.color = 'var(--text-muted)';
+
+            if (isSelect) {
+                input.style.appearance = 'none'; // Hide dropdown arrow
+                input.style.webkitAppearance = 'none';
+            }
         }
     }
 

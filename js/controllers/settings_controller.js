@@ -25,6 +25,7 @@ export class SettingsController {
         await this.loadData();
         this.setupEventListeners();
         this.renderAll();
+        this.updateBadges();
     }
 
     setupEventListeners() {
@@ -95,6 +96,7 @@ export class SettingsController {
             }
             this.keyAccounts.push(value);
             this.renderKeyAccounts();
+            this.updateBadges();
             await this.persistItem(listName, value, 'add');
         } else if (listName === 'dealerStages') {
             if (this.dealerStages.includes(value)) {
@@ -103,6 +105,7 @@ export class SettingsController {
             }
             this.dealerStages.push(value);
             this.renderDealerStages();
+            this.updateBadges();
             await this.persistItem(listName, value, 'add');
         }
 
@@ -188,6 +191,22 @@ export class SettingsController {
     setLoading(loading) {
         this.isLoading = loading;
         // Optional: show/hide generic loader
+    }
+
+    updateBadges() {
+        // Update Key Accounts badge
+        const kamBadge = document.getElementById('kam-count');
+        if (kamBadge) {
+            const count = this.keyAccounts.length;
+            kamBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+        }
+
+        // Update Dealer Stages badge
+        const stagesBadge = document.getElementById('stages-count');
+        if (stagesBadge) {
+            const count = this.dealerStages.length;
+            stagesBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+        }
     }
 
     escapeHtml(unsafe) {
