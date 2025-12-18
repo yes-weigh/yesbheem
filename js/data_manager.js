@@ -29,6 +29,9 @@ class DataManager {
         // Blacklist of known invalid zip codes to skip API calls
         this.invalidZips = new Set(['686028', '382487', '403407', '5000074', '505206', '68002', '570024']);
 
+        // Cache for report data to avoid duplicate Firestore reads
+        this.reportDataCache = new Map();
+
         // Initialize by loading zip sheet
         this.dealerOverrides = {};
         this.loadDealerOverridesFromFirebase();
@@ -1124,6 +1127,9 @@ class DataManager {
 
             console.log('Report metadata updated in Firestore.');
 
+            // Clear cache to ensure fresh data on next load
+            this.reportDataCache.clear();
+
             return newItem;
         } catch (e) {
             console.error('Upload failed:', e);
@@ -1154,6 +1160,9 @@ class DataManager {
                 await setDoc(docRef, { items: updatedItems });
                 console.log('Deleted from settings/reports:', report.id);
             }
+
+            // Clear cache to ensure fresh data on next load
+            this.reportDataCache.delete(report.id);
 
             return true;
         } catch (e) {
@@ -1263,6 +1272,12 @@ class DataManager {
      * @returns {Array} Parsed CSV data (array of objects)
      */
     async loadReportDataFromFirestore(reportId) {
+        // Check cache first
+        if (this.reportDataCache.has(reportId)) {
+            console.log(`Loaded ${this.reportDataCache.get(reportId).length} rows for report from cache (reportId: ${reportId})`);
+            return this.reportDataCache.get(reportId);
+        }
+
         try {
             const docRef = doc(db, 'reports_data', reportId);
             const docSnap = await getDoc(docRef);
@@ -1270,6 +1285,10 @@ class DataManager {
             if (docSnap.exists()) {
                 const reportData = docSnap.data();
                 console.log(`Loaded ${reportData.rowCount} rows for report "${reportData.name}" from Firestore`);
+
+                // Cache the data
+                this.reportDataCache.set(reportId, reportData.data);
+
                 return reportData.data; // Return the data array
             } else {
                 throw new Error(`Report with ID "${reportId}" not found in Firestore`);

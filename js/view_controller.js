@@ -133,14 +133,15 @@ class ViewController {
                         const previousDistrictId = this.mapInteractions?.selectedDistrictId;
                         console.log('Changing report. Saved District Selection:', previousDistrictId);
 
-                        // Keep current view state if possible
-                        await this.dataManager.loadData('Kerala', [], reportUrl);
-                        // Refresh View
+                        // Load data based on current view to avoid duplicate aggregation
                         if (this.currentView === 'india') {
+                            // For India view, only load India overview (no need for Kerala data)
                             await this.loadIndiaOverview();
                             this.handleViewChange(viewSelector ? viewSelector.value : 'states');
                         } else if (this.currentView === 'state' && this.mapInteractions) {
-                            // If in state view, reload state data
+                            // For state view, load state-specific data
+                            await this.dataManager.loadData('Kerala', [], reportUrl);
+
                             const stateId = this.mapInteractions.currentStateId;
                             if (stateId) {
                                 const lookupId = stateId.length === 2 ? `IN-${stateId}` : stateId;

@@ -45,9 +45,9 @@ if (!window.DealerManager) {
                         // For now, let's try to list reports and load first one like Dashboard does.
                         const reports = await window.dataManager.listReports();
                         if (reports && reports.length > 0) {
-                            const reportUrl = reports[0].url; // Default to first
-                            console.log('DealerManager loading default report:', reportUrl);
-                            await window.dataManager.loadData('Kerala', [], reportUrl);
+                            const reportId = reports[0].id; // Use report ID instead of URL
+                            console.log('DealerManager loading default report:', reportId);
+                            await window.dataManager.loadData('Kerala', [], reportId);
                         } else {
                             console.warn('No reports found to load.');
                         }
@@ -118,7 +118,7 @@ if (!window.DealerManager) {
                 // Select Default (First or All)
                 if (reports.length > 0) {
                     // Try to pick one used previously or defaults to first
-                    selector.value = reports[0].url;
+                    selector.value = reports[0].id; // Use report ID
                 } else {
                     selector.value = 'ALL_REPORTS';
                 }
