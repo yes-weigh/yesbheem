@@ -52,11 +52,8 @@
 <script type="module">
     console.log('Dashboard script loaded');
 
-    // --- CSV Upload & Selection Logic ---
-    // Import DataManager if not globally available, but we attached it to window in the class file.
-    // Since it's a module running in order, window.DataManager should be set.
-
-    import { storage } from './js/services/firebase_config.js'; // Optional verification import
+    // --- Dashboard Initialization ---
+    // DataManager is attached to window in data_manager.js
 
     const initDashboard = async () => {
         // Ensure DataManager is ready

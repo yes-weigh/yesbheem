@@ -59,7 +59,7 @@ class ViewController {
             // 1. Add Real Reports
             reports.forEach(report => {
                 const opt = document.createElement('option');
-                opt.value = report.url;
+                opt.value = report.id; // Changed from report.url to report.id
                 opt.textContent = report.name;
                 selector.appendChild(opt);
             });
@@ -80,7 +80,7 @@ class ViewController {
 
             // Select First Report by default (reports[0])
             if (reports.length > 0) {
-                selector.value = reports[0].url;
+                selector.value = reports[0].id; // Changed from report.url to report.id
             } else {
                 selector.value = 'ALL_REPORTS';
             }

@@ -1,9 +1,8 @@
 /**
  * DataManager
- * Handles fetching real-time data from Google Sheets and resolving zip codes to districts.
+ * Handles fetching real-time data from Firestore and resolving zip codes to districts.
  */
-import { storage, db } from './services/firebase_config.js';
-import { ref, uploadBytes, getDownloadURL, listAll, getMetadata, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+import { db } from './services/firebase_config.js';
 import { doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 class DataManager {
@@ -176,7 +175,7 @@ class DataManager {
      * Fetches data from the Google Sheet (with caching) or CSV URL
      */
     /**
-     * Fetches data from the Custom CSV URL
+     * Fetch sheet data - now from Firestore or aggregated reports
      */
     async fetchSheetData() {
         if (!this.currentCSVUrl) {
@@ -189,20 +188,18 @@ class DataManager {
             return this.fetchAllReportsAndAggregate();
         }
 
-        console.log('Fetching from Custom CSV URL:', this.currentCSVUrl);
+        // currentCSVUrl now contains the report ID instead of URL
+        console.log('Loading report data from Firestore:', this.currentCSVUrl);
         try {
-            const response = await fetch(this.currentCSVUrl);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const csvText = await response.text();
-            const parsed = this.parseCSV(csvText);
-            console.log(`Parsed CSV: ${parsed.length} rows.`);
+            const parsed = await this.loadReportDataFromFirestore(this.currentCSVUrl);
+            console.log(`Loaded ${parsed.length} rows from Firestore.`);
 
             // CACHE RAW DATA FOR EXTERNAL USE (e.g. DealerManager)
             this.rawData = parsed;
 
             return parsed;
         } catch (e) {
-            console.error('Failed to fetch custom CSV (likely CORS or Network):', e);
+            console.error('Failed to load report data from Firestore:', e);
             throw e;
         }
     }
@@ -215,9 +212,8 @@ class DataManager {
 
             const promises = reports.map(async (report) => {
                 try {
-                    const res = await fetch(report.url);
-                    const text = await res.text();
-                    return this.parseCSV(text);
+                    // Load from Firestore instead of fetching CSV
+                    return await this.loadReportDataFromFirestore(report.id);
                 } catch (e) {
                     console.error(`Failed to load report ${report.name}:`, e);
                     return [];
@@ -1070,39 +1066,36 @@ class DataManager {
     // --- Firebase Storage Methods ---
 
     /**
-     * Upload a CSV file to Firebase Storage
-     * @param {File} file - The file object from input
-     * @param {string} customName - User defined name for the report
+     * Upload CSV file - parses and saves directly to Firestore
+     * @param {File} file - CSV file
+     * @param {string} customName - Custom name for the report
      */
     async uploadCSV(file, customName) {
         try {
-            const timestamp = Date.now();
-            const safeName = customName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const fileName = `reports/${safeName}_${timestamp}.csv`;
-            const storageRef = ref(storage, fileName);
+            // 1. Read and parse CSV file
+            const csvText = await file.text();
+            const parsedData = this.parseCSV(csvText);
 
-            // Add metadata
-            const metadata = {
-                customMetadata: {
-                    'reportName': customName,
-                    'uploadedAt': new Date().toISOString()
-                }
-            };
+            if (parsedData.length === 0) {
+                throw new Error('CSV file is empty or could not be parsed');
+            }
 
-            const snapshot = await uploadBytes(storageRef, file, metadata);
-            console.log('Uploaded a blob or file!', snapshot);
+            // 2. Generate ID and timestamp
+            const reportId = Math.random().toString(36).substr(2, 9);
+            const timestamp = new Date().toISOString();
 
-            const url = await getDownloadURL(snapshot.ref);
-
-            // Sync with Firestore
-            const newItem = {
-                id: Math.random().toString(36).substr(2, 9),
+            // 3. Save parsed data to reports_data collection
+            await setDoc(doc(db, 'reports_data', reportId), {
+                id: reportId,
                 name: customName,
-                fullPath: snapshot.ref.fullPath,
-                url: url,
-                timeCreated: new Date().toISOString()
-            };
+                data: parsedData,
+                uploadedAt: timestamp,
+                rowCount: parsedData.length
+            });
 
+            console.log(`Saved ${parsedData.length} rows for report "${customName}" to Firestore`);
+
+            // 4. Update settings/reports metadata
             const docRef = doc(db, "settings", "reports");
             const docSnap = await getDoc(docRef);
             let currentItems = [];
@@ -1110,13 +1103,20 @@ class DataManager {
                 currentItems = docSnap.data().items || [];
             }
 
+            // Create metadata entry (no url or fullPath)
+            const newItem = {
+                id: reportId,
+                name: customName,
+                timeCreated: timestamp
+            };
+
             // Prepend new item
             currentItems.unshift(newItem);
-
             await setDoc(docRef, { items: currentItems });
-            console.log('Report list updated in Firestore.');
 
-            return newItem; // Return full structure
+            console.log('Report metadata updated in Firestore.');
+
+            return newItem;
         } catch (e) {
             console.error('Upload failed:', e);
             throw e;
@@ -1125,26 +1125,29 @@ class DataManager {
 
 
     /**
-     * Delete a report from Storage and Firestore
+     * Delete a report from Firestore (both collections)
      */
     async deleteReport(report) {
-        if (!report || !report.fullPath) return;
+        if (!report || !report.id) return;
 
         try {
-            // 1. Delete from Storage
-            const fileRef = ref(storage, report.fullPath);
-            await deleteObject(fileRef);
-            console.log('Deleted from Storage:', report.fullPath);
+            const { deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
 
-            // 2. Delete from Firestore List
+            // 1. Delete from reports_data collection
+            await deleteDoc(doc(db, 'reports_data', report.id));
+            console.log('Deleted from reports_data:', report.id);
+
+            // 2. Delete from settings/reports metadata
             const docRef = doc(db, "settings", "reports");
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 const updatedItems = data.items.filter(item => item.id !== report.id);
                 await setDoc(docRef, { items: updatedItems });
-                console.log('Deleted from Firestore list:', report.id);
+                console.log('Deleted from settings/reports:', report.id);
             }
+
+            return true;
         } catch (e) {
             console.error('Delete failed:', e);
             throw e;
@@ -1152,12 +1155,18 @@ class DataManager {
     }
 
     /**
-     * Rename a report in Firestore
+     * Rename a report in Firestore (both collections)
      */
     async renameReport(report, newName) {
         if (!report || !newName) return;
 
         try {
+            // 1. Update name in reports_data collection
+            const dataDocRef = doc(db, 'reports_data', report.id);
+            await updateDoc(dataDocRef, { name: newName });
+            console.log('Updated name in reports_data:', report.id, newName);
+
+            // 2. Update name in settings/reports metadata
             const docRef = doc(db, "settings", "reports");
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
@@ -1168,9 +1177,11 @@ class DataManager {
                 if (index !== -1) {
                     items[index].name = newName;
                     await setDoc(docRef, { items: items });
-                    console.log('Report renamed:', report.id, newName);
+                    console.log('Updated name in settings/reports:', report.id, newName);
                 }
             }
+
+            return true;
         } catch (e) {
             console.error('Rename failed:', e);
             throw e;
@@ -1218,10 +1229,8 @@ class DataManager {
 
     /**
      * List available reports from Firestore (settings/reports)
-     * Backfills from Storage if Firestore is empty (Migration)
      */
     async listReports() {
-        // 1. Try Firestore
         const docRef = doc(db, "settings", "reports");
         try {
             const docSnap = await getDoc(docRef);
@@ -1232,43 +1241,39 @@ class DataManager {
                     return data.items;
                 }
             }
-        } catch (e) {
-            console.warn('Failed to load reports from Firestore:', e);
-        }
 
-        // 2. Fallback: Migration from Storage
-        console.log('Migrating reports from Storage to Firestore...');
-        const listRef = ref(storage, 'reports/');
-        try {
-            const res = await listAll(listRef);
-            const reports = [];
-
-            for (const itemRef of res.items) {
-                const meta = await getMetadata(itemRef);
-                const url = await getDownloadURL(itemRef);
-                reports.push({
-                    id: Math.random().toString(36).substr(2, 9), // Simple ID
-                    name: meta.customMetadata && meta.customMetadata.reportName ? meta.customMetadata.reportName : itemRef.name,
-                    fullPath: itemRef.fullPath,
-                    url: url,
-                    timeCreated: meta.timeCreated
-                });
-            }
-
-            // Sort by newest first
-            reports.sort((a, b) => new Date(b.timeCreated) - new Date(a.timeCreated));
-
-            // Save to Firestore
-            await setDoc(docRef, { items: reports });
-            console.log('Migration complete. Saved to Firestore.');
-
-            return reports;
-        } catch (e) {
-            console.error('List failed:', e);
+            // No reports found
+            console.log('No reports found in Firestore.');
             return [];
+        } catch (e) {
+            console.error('Failed to load reports from Firestore:', e);
+            return [];
+        }
+    }
+
+    /**
+     * Load report data from Firestore reports_data collection
+     * @param {string} reportId - Report ID
+     * @returns {Array} Parsed CSV data (array of objects)
+     */
+    async loadReportDataFromFirestore(reportId) {
+        try {
+            const docRef = doc(db, 'reports_data', reportId);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const reportData = docSnap.data();
+                console.log(`Loaded ${reportData.rowCount} rows for report "${reportData.name}" from Firestore`);
+                return reportData.data; // Return the data array
+            } else {
+                throw new Error(`Report with ID "${reportId}" not found in Firestore`);
+            }
+        } catch (error) {
+            console.error('Error loading report data from Firestore:', error);
+            throw error;
         }
     }
 }
 
-// Expose to window
+// Attach to window for global access
 window.DataManager = DataManager;
