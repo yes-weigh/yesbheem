@@ -295,7 +295,12 @@ class MapInteractions {
 
 
                     if (labelText.toLowerCase().trim() === 'alappuzha') {
-                        cy += 30; // Shift Down to wider area
+                        cy += 70; // Shift Down to wider area
+                        cx -= 30;
+                    } else if (labelText.toLowerCase().trim() === 'thrissur') {
+                        cx -= 80; // Shift Left for better centering
+                    } else if (labelText.toLowerCase().trim() === 'palakkad') {
+                        cy -= 50; // Shift Up
                     }
 
                     text.textContent = labelText;
@@ -317,8 +322,9 @@ class MapInteractions {
                         text.setAttribute('transform', `rotate(-45, ${cx}, ${cy})`);
                     } else if (lowerName === 'thiruvananthapuram') {
                         text.setAttribute('transform', `rotate(45, ${cx}, ${cy})`);
+                        text.style.fontSize = '24px'; // Smaller font for long name
                     } else if (lowerName === 'alappuzha') {
-                        text.setAttribute('transform', `rotate(70, ${cx}, ${cy})`); // Vertical
+                        text.setAttribute('transform', `rotate(60, ${cx}, ${cy})`); // Vertical
                     } else if (bbox.height > bbox.width * 1.2) {
                         text.setAttribute('transform', `rotate(-90, ${cx}, ${cy})`);
                     }
