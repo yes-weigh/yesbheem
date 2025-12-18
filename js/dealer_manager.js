@@ -500,7 +500,7 @@ if (!window.DealerManager) {
             try {
                 await window.dataManager.saveDealerOverride(dealerName, overrides);
                 console.log('Save successful');
-                this.refresh();
+                await this.refresh(); // Wait for refresh to complete
                 this.cancelEdit(); // Close panel
             } catch (e) {
                 console.error('Save failed:', e);
@@ -551,9 +551,20 @@ if (!window.DealerManager) {
         }
 
         // Called by global save function if we want to refresh table
-        refresh() {
+        async refresh() {
             console.log('Refreshing dealer table...');
-            this.loadData(); // Reloads from window.dataManager which should have been updated
+
+            // Reload dealer overrides from Firestore to get latest changes
+            await window.dataManager.loadDealerOverridesFromFirebase();
+
+            // Reload the current report to apply new overrides
+            const selector = document.getElementById('dealer-report-selector');
+            if (selector && selector.value) {
+                await window.dataManager.loadData('Kerala', [], selector.value);
+            }
+
+            // Refresh the table with updated data
+            this.loadData(); // Reloads from window.dataManager.rawData which now has updated overrides
             this.applyFilters();
         }
 
