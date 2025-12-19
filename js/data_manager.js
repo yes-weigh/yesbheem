@@ -385,28 +385,42 @@ class DataManager {
      */
     parseTargetValue(val) {
         if (typeof val === 'number') return val;
-        if (!val) return 0;
+        if (!val || val === 'N/A' || val === '-') return 0;
 
         const str = val.toString().trim().toUpperCase();
 
         let multiplier = 1;
         let numPart = str;
 
-        if (str.includes('CR')) {
+        // Multipliers
+        if (str.includes('T')) {
+            // Trillion
+            multiplier = 1000000000000;
+            numPart = str.replace('T', '');
+        } else if (str.includes('B') || str.includes('BN')) {
+            // Billion
+            multiplier = 1000000000;
+            numPart = str.replace('B', '').replace('N', ''); // Handle BN
+        } else if (str.includes('CR')) {
+            // Crore
             multiplier = 10000000;
             numPart = str.replace('CR', '');
-        } else if (str.includes('L')) {
+        } else if (str.includes('L') || str.includes('LAC')) {
+            // Lakh
             multiplier = 100000;
-            numPart = str.replace('L', '');
+            numPart = str.replace('LAC', '').replace('L', ''); // Handle LAC
         } else if (str.includes('K')) {
+            // Thousand
             multiplier = 1000;
             numPart = str.replace('K', '');
         }
 
+        // Remove Currency Symbols & non-numeric chars (except decimal)
         const num = parseFloat(numPart.replace(/[^0-9.]/g, ''));
         const result = isNaN(num) ? 0 : num * multiplier;
+
         // console.log(`[ParseTarget] In: "${val}" -> Str: "${str}" -> Num: ${num} * ${multiplier} = ${result}`);
-        if (str.includes('L') && multiplier !== 100000) console.warn('Parse Logic Warning: L detected but wrong multiplier?');
+
         return result;
     }
 
@@ -769,45 +783,93 @@ class DataManager {
     }
 
     /**
+     * Levenshtein Distance Algorithm
+     */
+    getLevenshteinDistance(a, b) {
+        const matrix = [];
+        let i, j;
+
+        if (a.length === 0) return b.length;
+        if (b.length === 0) return a.length;
+
+        for (i = 0; i <= b.length; i++) {
+            matrix[i] = [i];
+        }
+
+        for (j = 0; j <= a.length; j++) {
+            matrix[0][j] = j;
+        }
+
+        for (i = 1; i <= b.length; i++) {
+            for (j = 1; j <= a.length; j++) {
+                if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1, // substitution
+                        Math.min(
+                            matrix[i][j - 1] + 1, // insertion
+                            matrix[i - 1][j] + 1 // deletion
+                        )
+                    );
+                }
+            }
+        }
+
+        return matrix[b.length][a.length];
+    }
+
+    /**
      * Normalize state name to handle variations (e.g. Tamilnadu -> Tamil Nadu)
      */
     normalizeStateName(rawStateName) {
-        if (!rawStateName) return 'Kerala'; // Default to Kerala if missing
-        let name = rawStateName.trim().replace(/\s+/g, ' ');
+        if (!rawStateName) return 'Unknown'; // Default to Unknown instead of Kerala to avoid pollution
 
-        // Common variations map
-        const variations = {
-            'tamilnadu': 'Tamil Nadu',
-            'tamil nadu': 'Tamil Nadu',
-            'telengana': 'Telangana',
-            'telangana': 'Telangana',
-            'chattisgarh': 'Chhattisgarh',
-            'chhattisgarh': 'Chhattisgarh',
-            'orissa': 'Odisha',
-            'odisha': 'Odisha',
-            'west bengal': 'West Bengal',
-            'bengal': 'West Bengal',
-            'jammu & kashmir': 'Jammu and Kashmir',
-            'jammu and kashmir': 'Jammu and Kashmir',
-            'andaman & nicobar': 'Andaman and Nicobar Islands',
-            'andaman and nicobar': 'Andaman and Nicobar Islands',
-            'andaman and nicobar islands': 'Andaman and Nicobar Islands',
-            'maharasthra': 'Maharashtra',
-            'maharastra': 'Maharashtra'
-        };
+        // Canonical List of Indian States and UTs
+        const CANONICAL_STATES = [
+            "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
+            "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka", "Kerala",
+            "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha",
+            "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh",
+            "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh",
+            "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Lakshadweep", "Puducherry", "Ladakh"
+        ];
 
-        const lower = name.toLowerCase();
-        if (variations[lower]) {
-            return variations[lower];
+        // Helper to clean string: lowercase, replace & with and, remove non-alphanumeric
+        const clean = (str) => str.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+        const target = clean(rawStateName);
+
+        // 1. Exact Match on clean string
+        for (const canonical of CANONICAL_STATES) {
+            if (clean(canonical) === target) return canonical;
         }
 
-        // Check against valid list (case-insensitive)
-        const validStates = this.getAllStateNames();
-        const found = validStates.find(s => s.toLowerCase() === lower);
-        if (found) return found;
+        // 2. Fuzzy Match on clean string
+        let bestMatch = null;
+        let bestDist = Infinity;
 
-        return name; // Return original if no match found
+        for (const canonical of CANONICAL_STATES) {
+            const cleanCanonical = clean(canonical);
+            const dist = this.getLevenshteinDistance(target, cleanCanonical);
+
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestMatch = canonical;
+            }
+        }
+
+        // Threshold logic
+        const threshold = target.length < 5 ? 1 : 3;
+
+        if (bestMatch && bestDist <= threshold) {
+            return bestMatch;
+        }
+
+        // Fallback: Return Title Case of original cleaned text or just original
+        // Let's return original trimmed if no match, to avoid data loss
+        return rawStateName.trim();
     }
+
 
     /**
      * Get list of all known state names
@@ -957,13 +1019,44 @@ class DataManager {
         // Ensure districts are resolved
         await this.resolveMissingDistricts(rawData);
 
+        // Fetch & Aggregate KPI Data
+        const kpiData = await this.fetchKPIData();
+        let totalPop = 0;
+        let totalTarget = 0;
+        let totalGDP = 0;
+
+        if (kpiData) {
+            // Check for explicit "India" entry first
+            const indiaKey = this.normalizeKey('India');
+            const indiaData = kpiData[indiaKey];
+
+            if (indiaData) {
+                console.log('Using explicit India KPI data:', indiaData);
+                totalPop = this.parseTargetValue(indiaData.population);
+                totalTarget = this.parseTargetValue(indiaData.target || indiaData.monthlyTarget);
+                totalGDP = this.parseTargetValue(indiaData.gdp);
+            } else {
+                // Fallback: Sum up all states if "India" entry is missing
+                console.log('Explicit India data not found, aggregating states...');
+                Object.values(kpiData).forEach(item => {
+                    // Avoid double counting if there's a variation of India in there
+                    const name = (item.name || '').toLowerCase();
+                    if (name !== 'india' && name !== 'pan india') {
+                        totalPop += this.parseTargetValue(item.population);
+                        totalTarget += this.parseTargetValue(item.target || item.monthlyTarget);
+                        totalGDP += this.parseTargetValue(item.gdp);
+                    }
+                });
+            }
+        }
+
         const aggregated = {
             name: 'Pan India',
-            population: '1.4B+',
+            population: totalPop || '1.4B+',
+            gdp: totalGDP || 0, // 0 usually triggers formatting logic or N/A in UI if handled
             dealerCount: 0,
             currentSales: 0,
-            monthlyTarget: 500000 * 30, // Rough estimate: 5L * 30 states/UTs (or sum of all targets)
-            // Ideally we sum distinct targets, but the cached data has a fixed target per district/state.
+            monthlyTarget: totalTarget > 0 ? totalTarget : (500000 * 30),
             dealers: []
         };
 
@@ -1008,26 +1101,7 @@ class DataManager {
         // Sort dealers by sales (highest first)
         aggregated.dealers.sort((a, b) => b.sales - a.sales);
 
-        // Calculate Total Target from KPI Data
-        let totalTarget = 0;
-        try {
-            const kpiData = await this.fetchKPIData();
-            if (kpiData) {
-                // Sum targets of all states available in KPI data
-                Object.values(kpiData).forEach(kpi => {
-                    if (kpi.target) {
-                        totalTarget += this.parseTargetValue(kpi.target);
-                    }
-                });
-            }
-        } catch (e) {
-            console.warn('Failed to calc total target:', e);
-        }
 
-        // Fallback if no target data found (e.g. 10 Cr default)
-        if (totalTarget === 0) totalTarget = 100000000;
-
-        aggregated.monthlyTarget = totalTarget;
 
         if (aggregated.monthlyTarget > 0) {
             aggregated.achievement = ((aggregated.currentSales / aggregated.monthlyTarget) * 100).toFixed(1) + "%";

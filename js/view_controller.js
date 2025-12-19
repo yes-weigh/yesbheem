@@ -136,6 +136,8 @@ class ViewController {
                         // Load data based on current view to avoid duplicate aggregation
                         if (this.currentView === 'india') {
                             // For India view, only load India overview (no need for Kerala data)
+                            // CRITICAL: Update data source ID!
+                            this.dataManager.currentCSVUrl = reportUrl;
                             await this.loadIndiaOverview();
                             this.handleViewChange(viewSelector ? viewSelector.value : 'states');
                         } else if (this.currentView === 'state' && this.mapInteractions) {

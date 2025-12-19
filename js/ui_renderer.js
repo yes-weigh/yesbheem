@@ -17,12 +17,8 @@ class UIRenderer {
                 <div class="stat-value" style="color:${this.getColor(data.achievement)}">${data.achievement || '0%'}</div>
             </div>
             <div class="stat-card">
-                <span class="stat-label">Current Sales</span>
-                <div class="stat-value">₹${this.formatNumber(data.currentSales || 0)}</div>
-            </div>
-            <div class="stat-card">
-                <span class="stat-label">Dealer Count</span>
-                <div class="stat-value">${data.dealerCount || 0}</div>
+                <span class="stat-label">GDP</span>
+                <div class="stat-value">${data.gdp && data.gdp !== 'N/A' && data.gdp !== 0 ? (typeof data.gdp === 'number' ? ('₹' + this.formatNumber(data.gdp)) : data.gdp) : 'N/A'}</div>
             </div>
              <div class="stat-card">
                 <span class="stat-label">Monthly Target</span>
@@ -256,9 +252,18 @@ class UIRenderer {
     // Utilities
     static formatNumber(num) {
         if (num === undefined || num === null || isNaN(num)) return '0.00';
+
+        // Trillion
+        if (num >= 1000000000000) return (num / 1000000000000).toFixed(2) + ' T';
+        // Billion
+        if (num >= 1000000000) return (num / 1000000000).toFixed(2) + ' B';
+        // Crore
         if (num >= 10000000) return (num / 10000000).toFixed(2) + ' Cr';
+        // Lakh
         if (num >= 100000) return (num / 100000).toFixed(2) + ' L';
+        // Thousand
         if (num >= 1000) return (num / 1000).toFixed(2) + ' K';
+
         return num.toFixed(2);
     }
 

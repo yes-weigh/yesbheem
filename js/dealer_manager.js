@@ -171,9 +171,14 @@ if (!window.DealerManager) {
                     }
                 }
 
+                // Normalizing State
+                const rawState = d.billing_state || d.shipping_state || '';
+                const state = this.normalizeState(rawState);
+
                 return {
                     ...d, // Includes overrides applied by DataManager and district
-                    searchString: `${d.customer_name} ${d.first_name || ''} ${d.mobile_phone || ''} ${d.billing_zipcode || ''}`.toLowerCase()
+                    state: state, // Normalized state
+                    searchString: `${d.customer_name} ${d.first_name || ''} ${d.mobile_phone || ''} ${d.billing_zipcode || ''} ${state || ''} ${d.district || ''}`.toLowerCase()
                 };
             });
 
@@ -185,6 +190,7 @@ if (!window.DealerManager) {
             // Update dynamic filters after data is loaded
             this.updateDistrictFilter();
             this.updateStateFilter();
+            this.updateStageFilter();
 
             console.log(`DealerManager.loadData: Processed ${this.dealers.length} dealers, ${this.filteredDealers.length} filtered`);
         }
@@ -223,7 +229,35 @@ if (!window.DealerManager) {
                 }
                 if (e.target.id === 'filter-state') {
                     this.stateFilter = e.target.value;
+                    this.updateDistrictFilter(); // Update dependent filter
                     this.applyFilters();
+                }
+            });
+
+            // Filter Clear Buttons Logic
+            const filterIds = ['filter-kam', 'filter-stage', 'filter-state', 'filter-district'];
+
+            filterIds.forEach(filterId => {
+                const select = document.getElementById(filterId);
+                const btn = document.querySelector(`.filter-clear-btn[data-for="${filterId}"]`);
+
+                if (select && btn) {
+                    // Update button visibility on change
+                    select.addEventListener('change', () => {
+                        btn.style.display = select.value !== 'all' ? 'flex' : 'none';
+                    });
+
+                    // Update visibility on load (if value pre-set)
+                    if (select.value !== 'all') {
+                        btn.style.display = 'flex';
+                    }
+
+                    // Clear button click
+                    btn.addEventListener('click', () => {
+                        select.value = 'all';
+                        select.dispatchEvent(new Event('change', { bubbles: true })); // Trigger change handler
+                        btn.style.display = 'none';
+                    });
                 }
             });
 
@@ -402,17 +436,8 @@ if (!window.DealerManager) {
             }
 
             // Populate Stage Filter
-            // Stage
-            if (this.generalSettings.dealer_stages) {
-                const stageSelect = document.getElementById('filter-stage');
-                if (stageSelect) {
-                    let html = '<option value="all">All Stages</option>';
-                    this.generalSettings.dealer_stages.forEach(stage => {
-                        html += `<option value="${stage}">${stage}</option>`;
-                    });
-                    stageSelect.innerHTML = html;
-                }
-            }
+            // Populate Stage Filter (Dynamic from data)
+            this.updateStageFilter();
 
             // Populate District Filter (extract from actual data)
             // District Filter (Dynamic)
@@ -424,24 +449,67 @@ if (!window.DealerManager) {
 
         updateDistrictFilter() {
             const districtSelect = document.getElementById('filter-district');
-            if (districtSelect && this.dealers.length > 0) {
-                const districts = [...new Set(this.dealers.map(d => d.district).filter(Boolean).filter(d => d !== 'Unknown'))].sort();
-                // Preserve selection
-                const val = districtSelect.value;
+            if (!districtSelect) return;
+
+            const wrapper = districtSelect.closest('.filter-wrapper');
+            const clearBtn = wrapper ? wrapper.querySelector('.filter-clear-btn') : null;
+
+            // Dependent on State Filter
+            const selectedState = this.stateFilter; // Assuming this is set BEFORE this method is called
+
+            if (!selectedState || selectedState === 'all') {
+                // Hide District Filter
+                if (wrapper) wrapper.style.display = 'none';
+
+                // Reset Selection
+                districtSelect.value = 'all';
+                this.districtFilter = 'all';
+
+                // Hide clear button if visible
+                if (clearBtn) clearBtn.style.display = 'none';
+
+                return;
+            }
+
+            // Show District Filter
+            if (wrapper) wrapper.style.display = 'flex';
+
+            if (this.dealers.length > 0) {
+                // Filter districts by selected state
+                const relevantDealers = this.dealers.filter(d => {
+                    return d.state === selectedState;
+                });
+
+                const districts = [...new Set(relevantDealers.map(d => d.district).filter(Boolean).filter(d => d !== 'Unknown'))].sort();
+
+                // Preserve selection if valid, otherwise reset
+                const currentVal = districtSelect.value;
+                let newVal = 'all';
+                if (districts.includes(currentVal)) {
+                    newVal = currentVal;
+                } else {
+                    this.districtFilter = 'all'; // Trigger filter update implicitly next time applyFilters runs? 
+                    // No, applyFilters reads this.districtFilter. ensure it matches.
+                }
 
                 let html = '<option value="all">All Districts</option>';
                 districts.forEach(d => {
                     html += `<option value="${d}">${d}</option>`;
                 });
                 districtSelect.innerHTML = html;
-                districtSelect.value = val;
+                districtSelect.value = newVal;
+
+                // Manage clear button state based on new val
+                if (clearBtn) {
+                    clearBtn.style.display = newVal !== 'all' ? 'flex' : 'none';
+                }
             }
         }
 
         updateStateFilter() {
             const stateSelect = document.getElementById('filter-state');
             if (stateSelect && this.dealers.length > 0) {
-                const states = [...new Set(this.dealers.map(d => d.billing_state || d.shipping_state).filter(Boolean))].sort();
+                const states = [...new Set(this.dealers.map(d => d.state).filter(Boolean))].sort();
                 const val = stateSelect.value;
 
                 let html = '<option value="all">All States</option>';
@@ -451,6 +519,70 @@ if (!window.DealerManager) {
                 stateSelect.innerHTML = html;
                 stateSelect.value = val;
             }
+        }
+
+        updateStageFilter() {
+            const stageSelect = document.getElementById('filter-stage');
+            if (stageSelect && this.dealers.length > 0) {
+                const stages = [...new Set(this.dealers.map(d => d.dealer_stage).filter(Boolean))].sort();
+                const val = stageSelect.value;
+
+                let html = '<option value="all">All Stages</option>';
+                stages.forEach(s => {
+                    html += `<option value="${s}">${s}</option>`;
+                });
+                stageSelect.innerHTML = html;
+                stageSelect.value = val;
+            }
+        }
+
+        normalizeState(state) {
+            if (!state) return '';
+            let s = state.trim();
+
+            // Canonical List of Indian States and UTs
+            const CANONICAL_STATES = [
+                "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
+                "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka", "Kerala",
+                "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha",
+                "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh",
+                "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh",
+                "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Lakshadweep", "Puducherry", "Ladakh"
+            ];
+
+            // Normalize helper: lowercase, remove spaces, replace & with 'and'
+            const clean = (str) => str.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+            const target = clean(s);
+
+            let bestMatch = null;
+            let bestDist = Infinity;
+
+            for (const canonical of CANONICAL_STATES) {
+                const cleanCanonical = clean(canonical);
+
+                // 1. Exact Match on Cleaned String (Handles "Tamil Nadu" vs "Tamilnadu", "Jammu &Kashmir" vs "Jammu and Kashmir")
+                if (target === cleanCanonical) {
+                    return canonical;
+                }
+
+                // 2. Fuzzy Matching on Cleaned String
+                const dist = this.getLevenshteinDistance(target, cleanCanonical);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    bestMatch = canonical;
+                }
+            }
+
+            // Threshold: allow small edits
+            // Since we stripped spaces, "Telengana" (9) -> "Telangana" (9) is 1 edit
+            const threshold = target.length < 5 ? 1 : 3;
+
+            if (bestMatch && bestDist <= threshold) {
+                return bestMatch;
+            }
+
+            // Fallback: Title Case the original
+            return s.toLowerCase().replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
         }
 
         applyFilters() {
@@ -468,8 +600,7 @@ if (!window.DealerManager) {
                 if (this.districtFilter !== 'all' && d.district !== this.districtFilter) return false;
 
                 // State
-                const dealerState = d.billing_state || d.shipping_state || '';
-                if (this.stateFilter !== 'all' && dealerState !== this.stateFilter) return false;
+                if (this.stateFilter !== 'all' && d.state !== this.stateFilter) return false;
 
                 return true;
             });
@@ -489,6 +620,52 @@ if (!window.DealerManager) {
             const total = this.dealers.length;
             const el = document.getElementById('dealer-count-display');
             if (el) el.textContent = `Showing ${count} of ${total}`;
+        }
+
+        getStageColorClass(stage) {
+            // ... (existing logic)
+            if (!stage) return 'new';
+            const s = stage.toLowerCase();
+            if (s === 'active') return 'active';
+            if (s === 'new') return 'new';
+            if (s.includes('black')) return 'blacklisted';
+            if (s.includes('archived')) return 'archived';
+            return 'new'; // Default
+        }
+
+        // Levenshtein Distance Algorithm
+        getLevenshteinDistance(a, b) {
+            const matrix = [];
+            let i, j;
+
+            if (a.length === 0) return b.length;
+            if (b.length === 0) return a.length;
+
+            for (i = 0; i <= b.length; i++) {
+                matrix[i] = [i];
+            }
+
+            for (j = 0; j <= a.length; j++) {
+                matrix[0][j] = j;
+            }
+
+            for (i = 1; i <= b.length; i++) {
+                for (j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1, // substitution
+                            Math.min(
+                                matrix[i][j - 1] + 1, // insertion
+                                matrix[i - 1][j] + 1 // deletion
+                            )
+                        );
+                    }
+                }
+            }
+
+            return matrix[b.length][a.length];
         }
 
         renderTable() {
@@ -527,11 +704,12 @@ if (!window.DealerManager) {
                 const kamHtml = kam ? `<span class="kam-badge">${kam}</span>` : `<span class="kam-empty">-</span>`;
 
                 const stage = d.dealer_stage || 'New';
-                const stageClass = this.getStageColorClass(stage);
+                // Using existing helper if available or default color logic
+                const stageClass = this.getStageClass ? this.getStageClass(stage) : (stage.toLowerCase().replace(/\s+/g, '-'));
 
                 const phone = d.mobile_phone || '-';
                 const district = d.district || '-';
-                const state = d.billing_state || d.shipping_state || '-';
+                // const state = d.billing_state || d.shipping_state || '-'; // This line is effectively replaced by direct usage of d.state
 
                 const rowNumber = startIndex + index + 1; // Correct row number based on pagination
 
@@ -540,16 +718,17 @@ if (!window.DealerManager) {
                     <td style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">${rowNumber}</td>
                     <td>
                         <div class="row-title" title="${d.customer_name}">${d.customer_name}</div>
-                        <div class="row-subtitle">${d.customer_id || ''}</div>
+                        <div style="margin-top: 4px;" onclick="event.stopPropagation(); window.dealerManager.showInlineEdit('${d.customer_name.replace(/'/g, "\\'")}', 'key_account_manager', this)">
+                             ${kamHtml}
+                        </div>
                     </td>
-                    <td>
+                    <td class="contact-cell" onclick="event.stopPropagation(); window.dealerManager.showInlineContactEdit('${d.customer_name.replace(/'/g, "\\'")}', this)">
                         <div class="row-text">${d.first_name || '-'}</div>
                         <div class="row-subtext">${phone}</div>
                     </td>
-                    <td>${district}</td>
-                    <td>${state}</td>
-                    <td class="kam-cell" onclick="event.stopPropagation(); window.dealerManager.showInlineEdit('${d.customer_name.replace(/'/g, "\\'")}', 'key_account_manager', this)">
-                        ${kamHtml}
+                    <td>
+                        <div class="row-text">${d.state || '-'}</div>
+                        <div class="row-subtext">${district}</div>
                     </td>
                     <td class="stage-cell" onclick="event.stopPropagation(); window.dealerManager.showInlineEdit('${d.customer_name.replace(/'/g, "\\'")}', 'dealer_stage', this)">
                         <span class="status-pill status-${stageClass}">${stage}</span>
@@ -1005,6 +1184,115 @@ if (!window.DealerManager) {
                 // If failed, we might want to re-show or just leave it. 
                 // Since table might not have refreshed, the cell still says "Saving...".
                 // We should probably revert it or re-render.
+                this.refresh();
+            }
+        }
+
+        /**
+         * Show inline edit for Contact (Name + Phone)
+         */
+        showInlineContactEdit(dealerName, cell) {
+            this.closeInlineEdit();
+
+            const dealer = this.dealers.find(d => d.customer_name === dealerName);
+            if (!dealer) return;
+
+            const nameVal = dealer.first_name || '';
+            const phoneVal = dealer.mobile_phone || '';
+
+            const dropdown = document.createElement('div');
+            dropdown.className = 'inline-edit-dropdown';
+            // Custom layout for contact: two inputs
+            dropdown.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    <input type="text" class="inline-edit-input" placeholder="Name" value="${nameVal.replace(/"/g, '&quot;')}" />
+                    <input type="text" class="inline-edit-input" placeholder="Phone" value="${phoneVal.replace(/"/g, '&quot;')}" />
+                </div>
+                <div class="inline-edit-actions" style="flex-direction:column; justify-content:center;">
+                    <button class="inline-edit-btn save-btn" title="Save" style="height:32px; width:32px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+                    </button>
+                    <button class="inline-edit-btn cancel-btn" title="Cancel" style="height:32px; width:32px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            `;
+
+            // Adjust styles
+            dropdown.style.padding = '8px';
+            dropdown.style.alignItems = 'stretch';
+
+            const nameInput = dropdown.querySelector('input[placeholder="Name"]');
+            const phoneInput = dropdown.querySelector('input[placeholder="Phone"]');
+            const saveBtn = dropdown.querySelector('.save-btn');
+            const cancelBtn = dropdown.querySelector('.cancel-btn');
+
+            saveBtn.onclick = (e) => {
+                e.stopPropagation();
+                // Save both
+                const newName = nameInput.value.trim();
+                const newPhone = phoneInput.value.trim();
+
+                // Construct override object
+                const overrides = {};
+                if (newName !== nameVal) overrides.first_name = newName;
+                if (newPhone !== phoneVal) overrides.mobile_phone = newPhone;
+
+                // Only save if something changed
+                if (Object.keys(overrides).length > 0) {
+                    this.saveContactInlineEdit(dealerName, overrides, cell);
+                } else {
+                    this.closeInlineEdit();
+                }
+            };
+
+            cancelBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.closeInlineEdit();
+            };
+
+            // Trap click
+            dropdown.addEventListener('click', (e) => e.stopPropagation());
+
+            // Position
+            const rect = cell.getBoundingClientRect();
+            dropdown.style.position = 'absolute';
+            // Center vertically over cell or slightly offset
+            dropdown.style.top = `${rect.top + window.scrollY - 8}px`;
+            dropdown.style.left = `${rect.left + window.scrollX - 8}px`;
+            dropdown.style.minWidth = `${rect.width + 16}px`;
+            dropdown.style.zIndex = '2000';
+
+            // Mark cell
+            cell.dataset.originalContent = cell.innerHTML; // Saves the current HTML
+            cell.classList.add('editing');
+
+            document.body.appendChild(dropdown);
+
+            setTimeout(() => nameInput.focus(), 0);
+
+            // Close on outside click
+            setTimeout(() => {
+                const handleClickOutside = (e) => {
+                    if (!e.target.closest('.inline-edit-dropdown') && !e.target.closest('.editing')) {
+                        this.closeInlineEdit();
+                        document.removeEventListener('click', handleClickOutside);
+                    }
+                };
+                document.addEventListener('click', handleClickOutside);
+            }, 100);
+        }
+
+        async saveContactInlineEdit(dealerName, overrides, cell) {
+            this.closeInlineEdit();
+            if (cell) cell.innerHTML = '<span style="opacity:0.5; font-size: 12px;">Saving...</span>';
+
+            try {
+                await window.dataManager.saveDealerOverride(dealerName, overrides);
+                await this.refresh();
+            } catch (error) {
+                console.error('Failed to save contact:', error);
+                alert('Failed to save contact: ' + error.message);
                 this.refresh();
             }
         }

@@ -45,18 +45,30 @@
         </div>
 
         <div class="control-group filter-group">
-            <select id="filter-kam" class="filter-select">
-                <option value="all">All KAMs</option>
-            </select>
-            <select id="filter-stage" class="filter-select">
-                <option value="all">All Stages</option>
-            </select>
-            <select id="filter-state" class="filter-select">
-                <option value="all">All States</option>
-            </select>
-            <select id="filter-district" class="filter-select">
-                <option value="all">All Districts</option>
-            </select>
+            <div class="filter-wrapper">
+                <select id="filter-kam" class="filter-select">
+                    <option value="all">All KAMs</option>
+                </select>
+                <button class="filter-clear-btn" data-for="filter-kam" title="Clear filter">×</button>
+            </div>
+            <div class="filter-wrapper">
+                <select id="filter-stage" class="filter-select">
+                    <option value="all">All Stages</option>
+                </select>
+                <button class="filter-clear-btn" data-for="filter-stage" title="Clear filter">×</button>
+            </div>
+            <div class="filter-wrapper">
+                <select id="filter-state" class="filter-select">
+                    <option value="all">All States</option>
+                </select>
+                <button class="filter-clear-btn" data-for="filter-state" title="Clear filter">×</button>
+            </div>
+            <div class="filter-wrapper">
+                <select id="filter-district" class="filter-select">
+                    <option value="all">All Districts</option>
+                </select>
+                <button class="filter-clear-btn" data-for="filter-district" title="Clear filter">×</button>
+            </div>
         </div>
     </div>
 
@@ -64,11 +76,9 @@
         <table class="dealer-table">
             <colgroup>
                 <col style="width: 3%;">
-                <col style="width: 23%;">
-                <col style="width: 18%;">
-                <col style="width: 14%;">
-                <col style="width: 14%;">
-                <col style="width: 10%;">
+                <col style="width: 30%;">
+                <col style="width: 20%;">
+                <col style="width: 20%;">
                 <col style="width: 10%;">
                 <col style="width: 5%;">
             </colgroup>
@@ -77,9 +87,7 @@
                     <th>#</th>
                     <th>Dealer Name</th>
                     <th>Contact</th>
-                    <th>District</th>
-                    <th>State</th>
-                    <th>KAM</th>
+                    <th>State / District</th>
                     <th>Stage</th>
                     <th></th>
                 </tr>
@@ -257,6 +265,40 @@
     .filter-select option {
         background: var(--bg-secondary);
         color: var(--text-main);
+    }
+
+    .filter-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .filter-clear-btn {
+        position: absolute;
+        right: 25px;
+        /* Position to the left of the dropdown arrow */
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 18px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0;
+        display: none;
+        /* Hidden by default */
+        z-index: 5;
+        width: 16px;
+        height: 16px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+
+    .filter-clear-btn:hover {
+        color: var(--text-main);
+        background: rgba(255, 255, 255, 0.1);
     }
 
     /* **REFINED TABLE STYLING** */
@@ -621,5 +663,36 @@
 
     .editing {
         background: rgba(255, 255, 255, 0.05) !important;
+    }
+
+    .contact-cell {
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .contact-cell:hover:not(.editing) {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .inline-edit-input {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--border-light);
+        color: var(--text-main);
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        outline: none;
+        width: 140px;
+        margin-right: 4px;
+        transition: border-color 0.2s;
+    }
+
+    .inline-edit-input:focus {
+        border-color: var(--accent-color);
+    }
+
+    .inline-edit-input::placeholder {
+        color: var(--text-muted);
+        opacity: 0.7;
     }
 </style>
