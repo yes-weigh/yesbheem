@@ -102,40 +102,19 @@ if (!window.DealerManager) {
             const selector = document.getElementById('dealer-report-selector');
             if (!selector) return;
 
-            try {
-                const reports = await window.dataManager.listReports();
-                selector.innerHTML = '';
+            // Simplified: Always use All Reports
+            selector.innerHTML = '';
 
-                // 1. Real Reports
-                reports.forEach(report => {
-                    const opt = document.createElement('option');
-                    opt.value = report.id; // Use report ID instead of URL
-                    opt.textContent = report.name;
-                    selector.appendChild(opt);
-                });
+            const allOpt = document.createElement('option');
+            allOpt.value = 'ALL_REPORTS';
+            allOpt.textContent = 'All Reports (Aggregated)';
+            allOpt.style.fontWeight = 'bold';
+            selector.appendChild(allOpt);
 
-                // 2. All Reports Option
-                const allOpt = document.createElement('option');
-                allOpt.value = 'ALL_REPORTS';
-                allOpt.textContent = 'All Reports (Aggregated)';
-                allOpt.style.fontWeight = 'bold';
-                selector.appendChild(allOpt);
+            selector.value = 'ALL_REPORTS';
 
-                // Select Default (First or All)
-                if (reports.length > 0) {
-                    // Try to pick one used previously or defaults to first
-                    selector.value = reports[0].id; // Use report ID
-                } else {
-                    selector.value = 'ALL_REPORTS';
-                }
-
-                // Trigger Load
-                this.handleReportChange(selector.value);
-
-            } catch (e) {
-                console.error('Failed to list reports:', e);
-                selector.innerHTML = '<option disabled>Error loading reports</option>';
-            }
+            // Trigger Load
+            this.handleReportChange(selector.value);
         }
 
         async handleReportChange(url) {
@@ -339,11 +318,40 @@ if (!window.DealerManager) {
         loadColumnWidths() {
             try {
                 const saved = localStorage.getItem('dealerTableColumnWidths');
-                return saved ? JSON.parse(saved) : null;
+                if (!saved) return null;
+
+                const widths = JSON.parse(saved);
+                // Validation: Check if values are reasonable pixels (e.g., > 20px)
+                // If any value is too small (likely percentage treated as px), discard all
+                const isValid = Object.values(widths).every(w => {
+                    const val = parseFloat(w);
+                    return !isNaN(val) && val > 30; // 30px minimum sanity check
+                });
+
+                if (!isValid) {
+                    console.warn('Invalid column widths detected (too small), resetting to defaults.');
+                    this.resetColumnWidths(); // Clear bad data
+                    return null;
+                }
+
+                return widths;
             } catch (e) {
                 console.error('Failed to load column widths:', e);
                 return null;
             }
+        }
+
+        resetColumnWidths() {
+            localStorage.removeItem('dealerTableColumnWidths');
+            const table = document.querySelector('.dealer-table');
+            if (table) {
+                // Clear inline styles to revert to CSS defaults
+                const cols = table.querySelectorAll('col');
+                cols.forEach(col => col.style.width = '');
+                const headers = table.querySelectorAll('th');
+                headers.forEach(th => th.style.width = '');
+            }
+            console.log('Column widths reset.');
         }
 
         saveColumnWidths() {
@@ -355,9 +363,16 @@ if (!window.DealerManager) {
                 const cols = colGroup ? colGroup.querySelectorAll('col') : [];
                 const widths = {};
 
+                // Always use offsetWidth (pixels) instead of style.width (can be %)
                 if (cols.length > 0) {
                     cols.forEach((col, index) => {
-                        widths[index] = parseFloat(col.style.width) || col.offsetWidth;
+                        // For col elements, offsetWidth might be 0 if display:table-column
+                        // So we look at the corresponding header if possible, or fallback to parsing style if it is px
+                        // Actually, the most reliable source for CURRENT rendered width is the th offsetWidth
+                        const header = table.querySelectorAll('th')[index];
+                        if (header) {
+                            widths[index] = header.offsetWidth;
+                        }
                     });
                 } else {
                     const headers = table.querySelectorAll('th');
@@ -831,7 +846,8 @@ if (!window.DealerManager) {
             // Reload the current report to apply new overrides
             const selector = document.getElementById('dealer-report-selector');
             if (selector && selector.value) {
-                await window.dataManager.loadData('Kerala', [], selector.value);
+                // Use empty string for first arg to load all data (no state filtering) same as handleReportChange
+                await window.dataManager.loadData('', [], selector.value);
             }
 
             // Refresh the table with updated data
@@ -890,49 +906,57 @@ if (!window.DealerManager) {
             dropdown.className = 'inline-edit-dropdown';
             dropdown.innerHTML = `
                 <select class="inline-edit-select">
-                    <option value="">Select...</option>
+                    <option value="" ${currentValue === '' ? 'selected' : ''}>Not Assigned</option>
                     ${options.map(opt => `<option value="${opt}" ${opt === currentValue ? 'selected' : ''}>${opt}</option>`).join('')}
                 </select>
                 <div class="inline-edit-actions">
-                    <button class="inline-edit-btn save-btn" title="Save">✓</button>
-                    <button class="inline-edit-btn cancel-btn" title="Cancel">✕</button>
+                    <button class="inline-edit-btn save-btn" title="Save">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+                    </button>
+                    <button class="inline-edit-btn cancel-btn" title="Cancel">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
                 </div>
             `;
 
-            cell.dataset.originalContent = cell.innerHTML;
-            cell.innerHTML = '';
-            cell.appendChild(dropdown);
-            cell.classList.add('editing');
+            // Setup events
+            const select = dropdown.querySelector('select');
+            const saveBtn = dropdown.querySelector('.save-btn');
+            const cancelBtn = dropdown.querySelector('.cancel-btn');
 
-            const select = dropdown.querySelector('.inline-edit-select');
-            select.focus();
-
-            dropdown.querySelector('.save-btn').addEventListener('click', (e) => {
+            saveBtn.onclick = (e) => {
                 e.stopPropagation();
                 this.saveInlineEdit(dealerName, field, select.value, cell);
-            });
+            };
 
-            dropdown.querySelector('.cancel-btn').addEventListener('click', (e) => {
+            cancelBtn.onclick = (e) => {
                 e.stopPropagation();
                 this.closeInlineEdit();
-            });
+            };
 
-            select.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    this.saveInlineEdit(dealerName, field, select.value, cell);
-                } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    this.closeInlineEdit();
-                }
-            });
-
-            // Prevent clicks inside dropdown from closing it
+            // Trap click inside
             dropdown.addEventListener('click', (e) => {
                 e.stopPropagation();
             });
 
-            // Close on click outside - add listener after a delay to avoid immediate closure
+            // Position relative to cell but attached to body to escape overflow
+            const rect = cell.getBoundingClientRect();
+            dropdown.style.position = 'absolute';
+            dropdown.style.top = `${rect.top + window.scrollY - 4}px`; // Slight offset to cover padding
+            dropdown.style.left = `${rect.left + window.scrollX - 4}px`;
+            dropdown.style.minWidth = `${rect.width + 8}px`; // Match cell width + padding
+            dropdown.style.zIndex = '2000';
+
+            // Mark cell as editing and store original
+            cell.dataset.originalContent = cell.innerHTML;
+            cell.classList.add('editing');
+
+            document.body.appendChild(dropdown);
+
+            // Focus select
+            setTimeout(() => select.focus(), 0);
+
+            // Close on click outside
             setTimeout(() => {
                 const handleClickOutside = (e) => {
                     if (!e.target.closest('.inline-edit-dropdown') && !e.target.closest('.editing')) {
@@ -945,6 +969,13 @@ if (!window.DealerManager) {
         }
 
         closeInlineEdit() {
+            // Remove dropdown from body
+            const dropdown = document.querySelector('.inline-edit-dropdown');
+            if (dropdown) {
+                dropdown.remove();
+            }
+
+            // Restore cells
             const editingCells = document.querySelectorAll('.editing');
             editingCells.forEach(cell => {
                 if (cell.dataset.originalContent) {
@@ -956,8 +987,13 @@ if (!window.DealerManager) {
         }
 
         async saveInlineEdit(dealerName, field, newValue, cell) {
-            // Show loading state
-            cell.innerHTML = '<span style="opacity:0.5">Saving...</span>';
+            // Close the dropdown immediately so it doesn't get stuck
+            this.closeInlineEdit();
+
+            // Show loading state in the cell (which was just restored by closeInlineEdit, but we overwrite it now)
+            if (cell) {
+                cell.innerHTML = '<span style="opacity:0.5; font-size: 12px;">Saving...</span>';
+            }
 
             try {
                 // Save to Firestore (empty string to clear the value)
@@ -966,7 +1002,10 @@ if (!window.DealerManager) {
             } catch (error) {
                 console.error('Failed to save:', error);
                 alert('Failed to save: ' + error.message);
-                this.closeInlineEdit();
+                // If failed, we might want to re-show or just leave it. 
+                // Since table might not have refreshed, the cell still says "Saving...".
+                // We should probably revert it or re-render.
+                this.refresh();
             }
         }
     };

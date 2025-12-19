@@ -10,7 +10,7 @@
             </div>
 
             <!-- Data Source Selector -->
-            <div class="report-selector-container">
+            <div class="report-selector-container" style="display: none;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     style="margin-right: 6px; opacity: 0.7;">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -27,6 +27,8 @@
             <div style="margin-left: auto; display: flex; gap: 10px;">
                 <span id="dealer-count-display"
                     style="font-size: 0.8rem; color: var(--text-muted); align-self: center;"></span>
+                <button class="btn-secondary" onclick="window.dealerManager.resetColumnWidths()"
+                    title="Reset table column widths">Reset Columns</button>
                 <button class="btn-secondary" onclick="window.dealerManager.exportCSV()">Export CSV</button>
             </div>
         </div>
