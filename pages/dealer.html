@@ -49,6 +49,9 @@
             <select id="filter-stage" class="filter-select">
                 <option value="all">All Stages</option>
             </select>
+            <select id="filter-state" class="filter-select">
+                <option value="all">All States</option>
+            </select>
             <select id="filter-district" class="filter-select">
                 <option value="all">All Districts</option>
             </select>
@@ -58,16 +61,18 @@
     <div class="dealer-table-container">
         <table class="dealer-table">
             <colgroup>
-                <col style="width: 25%;">
-                <col style="width: 20%;">
-                <col style="width: 15%;">
-                <col style="width: 15%;">
+                <col style="width: 3%;">
+                <col style="width: 23%;">
+                <col style="width: 18%;">
+                <col style="width: 14%;">
+                <col style="width: 14%;">
                 <col style="width: 10%;">
                 <col style="width: 10%;">
                 <col style="width: 5%;">
             </colgroup>
             <thead>
                 <tr>
+                    <th>#</th>
                     <th>Dealer Name</th>
                     <th>Contact</th>
                     <th>District</th>
@@ -82,6 +87,9 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Pagination Controls -->
+    <div id="pagination-container"></div>
 
     <!-- Edit Modal -->
     <div id="dealer-edit-modal" class="modal-overlay" style="display: none;">
@@ -301,6 +309,29 @@
         background: var(--bg-primary);
         z-index: 10;
         white-space: nowrap;
+        position: relative;
+        user-select: none;
+    }
+
+    /* Resize handle */
+    .dealer-table th::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 4px;
+        height: 100%;
+        cursor: col-resize;
+        background: transparent;
+        transition: background 0.2s;
+    }
+
+    .dealer-table th:hover::after {
+        background: rgba(59, 130, 246, 0.3);
+    }
+
+    .dealer-table th.resizing::after {
+        background: rgba(59, 130, 246, 0.6);
     }
 
     .dealer-table td {
@@ -422,6 +453,51 @@
         color: var(--accent-color);
     }
 
+    /* Pagination */
+    #pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-top: 1px solid var(--border-light);
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .page-btn {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-light);
+        color: var(--text-main);
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .page-btn:hover:not(:disabled) {
+        border-color: var(--border-hover);
+        background: var(--bg-hover);
+    }
+
+    .page-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .page-current {
+        font-weight: 500;
+        color: var(--text-main);
+    }
+
     /* Modal Overlay */
     .modal-overlay {
         position: fixed;
@@ -446,5 +522,102 @@
         background: var(--bg-secondary);
         border: 1px solid var(--border-light);
         border-radius: 8px;
+    }
+
+    /* Inline Editing Styles */
+    .kam-cell,
+    .stage-cell {
+        cursor: pointer;
+        position: relative;
+        transition: background 0.2s;
+    }
+
+    .kam-cell:hover:not(.editing),
+    .stage-cell:hover:not(.editing) {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .inline-edit-dropdown {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--accent-color);
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .inline-edit-select {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--border-light);
+        color: var(--text-main);
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        outline: none;
+        cursor: pointer;
+        min-width: 120px;
+        transition: border-color 0.2s;
+    }
+
+    .inline-edit-select:focus {
+        border-color: var(--accent-color);
+    }
+
+    .inline-edit-select option {
+        background: var(--bg-secondary);
+        color: var(--text-main);
+    }
+
+    .inline-edit-actions {
+        display: flex;
+        gap: 4px;
+    }
+
+    .inline-edit-btn {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-light);
+        color: var(--text-main);
+        width: 28px;
+        height: 28px;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        font-weight: bold;
+        transition: all 0.2s;
+        padding: 0;
+    }
+
+    .inline-edit-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: scale(1.05);
+    }
+
+    .inline-edit-btn.save-btn {
+        color: #10b981;
+        border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .inline-edit-btn.save-btn:hover {
+        background: rgba(16, 185, 129, 0.15);
+        border-color: #10b981;
+    }
+
+    .inline-edit-btn.cancel-btn {
+        color: #ef4444;
+        border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .inline-edit-btn.cancel-btn:hover {
+        background: rgba(239, 68, 68, 0.15);
+        border-color: #ef4444;
+    }
+
+    .editing {
+        background: rgba(255, 255, 255, 0.05) !important;
     }
 </style>

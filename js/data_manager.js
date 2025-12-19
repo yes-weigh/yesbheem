@@ -743,6 +743,10 @@ class DataManager {
         }
 
         console.log("Data processing complete:", districtStats);
+
+        // Store the loaded data for dealer page to access
+        this.rawData = stateData;
+
         return districtStats;
     }
 
