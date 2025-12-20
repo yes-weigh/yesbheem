@@ -331,6 +331,8 @@ class ViewController {
             type: 'STATS_UPDATE',
             data: {
                 name: data.name,
+                gdp: data.gdp,
+                population: data.population,
                 achievement: data.achievement,
                 currentSales: data.currentSales,
                 dealerCount: data.dealerCount ? data.dealerCount : (data.dealers ? data.dealers.length : 0),

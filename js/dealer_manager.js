@@ -3,11 +3,8 @@
  * Controller for the Dealer Management Page
  * Handles data fetching, filtering, and table rendering.
  */
-/**
- * DealerManager
- * Controller for the Dealer Management Page
- * Handles data fetching, filtering, and table rendering.
- */
+
+import { DealerValidator } from './components/dealer-validator.js';
 
 if (!window.DealerManager) {
     window.DealerManager = class DealerManager {
@@ -15,6 +12,9 @@ if (!window.DealerManager) {
             this.dealers = [];
             this.filteredDealers = [];
             this.generalSettings = {};
+
+            // Initialize validator
+            this.validator = new DealerValidator();
 
             // Filters
             this.searchQuery = '';
@@ -171,9 +171,9 @@ if (!window.DealerManager) {
                     }
                 }
 
-                // Normalizing State
+                // Normalizing State using DealerValidator
                 const rawState = d.billing_state || d.shipping_state || '';
-                const state = this.normalizeState(rawState);
+                const state = this.validator.normalizeState(rawState);
 
                 return {
                     ...d, // Includes overrides applied by DataManager and district
@@ -536,53 +536,14 @@ if (!window.DealerManager) {
             }
         }
 
+        // normalizeState() and getLevenshteinDistance() moved to DealerValidator component
+        // Kept as wrapper methods for backward compatibility
         normalizeState(state) {
-            if (!state) return '';
-            let s = state.trim();
+            return this.validator.normalizeState(state);
+        }
 
-            // Canonical List of Indian States and UTs
-            const CANONICAL_STATES = [
-                "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
-                "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka", "Kerala",
-                "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha",
-                "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh",
-                "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh",
-                "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Lakshadweep", "Puducherry", "Ladakh"
-            ];
-
-            // Normalize helper: lowercase, remove spaces, replace & with 'and'
-            const clean = (str) => str.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
-            const target = clean(s);
-
-            let bestMatch = null;
-            let bestDist = Infinity;
-
-            for (const canonical of CANONICAL_STATES) {
-                const cleanCanonical = clean(canonical);
-
-                // 1. Exact Match on Cleaned String (Handles "Tamil Nadu" vs "Tamilnadu", "Jammu &Kashmir" vs "Jammu and Kashmir")
-                if (target === cleanCanonical) {
-                    return canonical;
-                }
-
-                // 2. Fuzzy Matching on Cleaned String
-                const dist = this.getLevenshteinDistance(target, cleanCanonical);
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    bestMatch = canonical;
-                }
-            }
-
-            // Threshold: allow small edits
-            // Since we stripped spaces, "Telengana" (9) -> "Telangana" (9) is 1 edit
-            const threshold = target.length < 5 ? 1 : 3;
-
-            if (bestMatch && bestDist <= threshold) {
-                return bestMatch;
-            }
-
-            // Fallback: Title Case the original
-            return s.toLowerCase().replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+        getLevenshteinDistance(a, b) {
+            return this.validator.getLevenshteinDistance(a, b);
         }
 
         applyFilters() {
@@ -608,9 +569,6 @@ if (!window.DealerManager) {
             // Reset pagination
             this.currentPage = 1;
 
-            // We might want to re-populate district filter based on visible data? Usually filtered list is better.
-            // But preventing circular dependency.
-
             this.renderTable();
             this.updateStats();
         }
@@ -623,7 +581,6 @@ if (!window.DealerManager) {
         }
 
         getStageColorClass(stage) {
-            // ... (existing logic)
             if (!stage) return 'new';
             const s = stage.toLowerCase();
             if (s === 'active') return 'active';
@@ -631,41 +588,6 @@ if (!window.DealerManager) {
             if (s.includes('black')) return 'blacklisted';
             if (s.includes('archived')) return 'archived';
             return 'new'; // Default
-        }
-
-        // Levenshtein Distance Algorithm
-        getLevenshteinDistance(a, b) {
-            const matrix = [];
-            let i, j;
-
-            if (a.length === 0) return b.length;
-            if (b.length === 0) return a.length;
-
-            for (i = 0; i <= b.length; i++) {
-                matrix[i] = [i];
-            }
-
-            for (j = 0; j <= a.length; j++) {
-                matrix[0][j] = j;
-            }
-
-            for (i = 1; i <= b.length; i++) {
-                for (j = 1; j <= a.length; j++) {
-                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
-                        matrix[i][j] = matrix[i - 1][j - 1];
-                    } else {
-                        matrix[i][j] = Math.min(
-                            matrix[i - 1][j - 1] + 1, // substitution
-                            Math.min(
-                                matrix[i][j - 1] + 1, // insertion
-                                matrix[i - 1][j] + 1 // deletion
-                            )
-                        );
-                    }
-                }
-            }
-
-            return matrix[b.length][a.length];
         }
 
         renderTable() {

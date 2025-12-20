@@ -1,6 +1,11 @@
 /**
  * MapInteractions - Handles district/region click events and interactions
  */
+import { getColorShade } from './utils/color-shade-generator.js';
+import { DistrictColorizer } from './components/district-colorizer.js';
+import { DistrictLabels } from './components/district-labels.js';
+import { DistrictHover } from './components/district-hover.js';
+
 class MapInteractions {
     constructor(dataManager, viewController) {
         this.dataManager = dataManager;
@@ -9,6 +14,11 @@ class MapInteractions {
         this.currentStateId = null;
         this.stateOverviewData = null; // Cache for state overview
         this.selectedDistrictId = null; // Track selected district
+
+        // Initialize component instances
+        this.colorizer = new DistrictColorizer();
+        this.labels = new DistrictLabels();
+        this.hover = new DistrictHover();
     }
 
     /**
@@ -41,6 +51,11 @@ class MapInteractions {
                 // I'll call it explicitly.
                 if (this.districtInsights) {
                     this.colorizeDistricts(metric);
+
+                    // Update hover component with new metric
+                    if (this.hover) {
+                        this.hover.updateMetric(metric);
+                    }
                 }
 
             } else if (viewType === 'states') {
@@ -92,6 +107,11 @@ class MapInteractions {
 
                     // Apply Coloring
                     this.colorizeDistricts(metric);
+
+                    // Update hover component with new metric
+                    if (this.hover) {
+                        this.hover.updateMetric(metric);
+                    }
                 }
             }
 
@@ -105,116 +125,15 @@ class MapInteractions {
         }, 50);
     }
 
-    /**
-     * Helper function to create color shades without transparency
-     * Converts hex to RGB, adjusts lightness, returns opaque hex color
-     * High intensity = full saturated color, Low intensity = darker (blended with black)
-     */
-    getColorShade(hexColor, intensity) {
-        // intensity is 0-1, where 0 is darkest (low sales), 1 is full color (high sales)
-        // Convert hex to RGB
-        const r = parseInt(hexColor.slice(1, 3), 16);
-        const g = parseInt(hexColor.slice(3, 5), 16);
-        const b = parseInt(hexColor.slice(5, 7), 16);
 
-        // Create shade by blending with black for low values
-        // Use a range from 30% to 100% of base color intensity
-        const minIntensity = 0.3;
-        const actualIntensity = minIntensity + (intensity * (1 - minIntensity));
-
-        // Blend with black (0, 0, 0) - darker for low values, full color for high values
-        const newR = Math.round(r * actualIntensity);
-        const newG = Math.round(g * actualIntensity);
-        const newB = Math.round(b * actualIntensity);
-
-        return `#${((1 << 24) + (newR << 16) + (newG << 8) + newB).toString(16).slice(1)}`;
-    }
+    // getColorShade() moved to utils/color-shade-generator.js
 
     /**
      * Colorize districts based on metric
+     * Delegates to DistrictColorizer component
      */
     colorizeDistricts(metric) {
-        console.log(`[Colorize] Metric: ${metric}, Data Available:`, !!this.districtInsights);
-        if (!metric || !this.districtInsights) return;
-
-        const districts = document.querySelectorAll('.district');
-        const dataArr = Object.values(this.districtInsights);
-
-        // Base colors for each metric
-        const colors = {
-            'sales': '#3b82f6',       // Blue
-            'dealer_count': '#f97316', // Orange
-            'gdp': '#10b981',          // Green
-            'population': '#8b5cf6'    // Purple
-        };
-        const baseColor = colors[metric] || '#3b82f6';
-
-        // Get Max for normalization
-        const parseVal = (d) => {
-            let val = 0;
-            if (metric === 'sales') val = d.currentSales || d.totalSales || 0;
-            else if (metric === 'dealer_count') val = d.dealerCount || 0;
-            else if (metric === 'gdp') {
-                let s = d.gdp;
-                val = s ? parseFloat(s.toString().replace(/,/g, '').replace(/[^0-9.]/g, '')) : 0;
-            }
-            else if (metric === 'population') {
-                let s = d.population;
-                val = s ? parseFloat(s.toString().replace(/,/g, '').replace(/[^0-9.]/g, '')) : 0;
-            }
-            return val || 0;
-        };
-
-        let maxVal = 0;
-        dataArr.forEach(d => {
-            const v = parseVal(d);
-            if (v > maxVal) maxVal = v;
-        });
-        console.log(`[Colorize] Max Value for ${metric}: ${maxVal}`);
-
-        // Apply colors to districts
-        districts.forEach(d => {
-            const districtName = d.getAttribute('title') || d.id;
-            const item = dataArr.find(x => x.name.trim().toLowerCase() === districtName.trim().toLowerCase().replace(/-/g, ' '));
-
-            d.classList.remove('highlighted'); // Reset selection style
-
-            const paths = d.querySelectorAll('path');
-
-            if (item) {
-                const val = parseVal(item);
-                if (val <= 0) {
-                    // No data - use light gray, fully opaque
-                    paths.forEach(p => {
-                        p.style.transition = 'fill 0.3s ease, stroke 0.3s ease';
-                        p.style.fill = '#e2e8f0';
-                        p.style.stroke = '#ffffff'; // White border
-                        p.style.opacity = '1'; // Fully opaque
-                    });
-                } else {
-                    // Calculate intensity (0-1) based on value
-                    const intensity = val / maxVal;
-
-                    // Get fully opaque color shade
-                    const shadedColor = this.getColorShade(baseColor, intensity);
-
-                    paths.forEach(p => {
-                        p.style.transition = 'fill 0.3s ease, stroke 0.3s ease';
-                        p.style.fill = shadedColor;
-                        p.style.stroke = '#ffffff'; // White border
-                        p.style.opacity = '1'; // Fully opaque - no transparency!
-                    });
-                }
-            } else {
-                // No matching data - light gray, fully opaque
-                paths.forEach(p => {
-                    p.style.transition = 'fill 0.3s ease, stroke 0.3s ease';
-                    p.style.fill = '#e2e8f0';
-                    p.style.stroke = '#ffffff'; // White border
-                    p.style.opacity = '1'; // Fully opaque
-                });
-            }
-        });
+        this.colorizer.colorizeDistricts(metric, this.districtInsights);
     }
 
     // Update initializeDistricts to add Hover and Labels
@@ -227,8 +146,6 @@ class MapInteractions {
         // Create dedicated label for State View since India view label gets hidden
         let hoverLabel = document.getElementById('state-hover-label');
         if (!hoverLabel && stateView) {
-            // ... existing hover label creation logic can remain or be shortened if not changing ...
-            // (Re-declaring it here to keep context, assuming previous block was good)
             hoverLabel = document.createElement('div');
             hoverLabel.id = 'state-hover-label';
             hoverLabel.style.position = 'absolute';
@@ -255,163 +172,30 @@ class MapInteractions {
 
         this.cacheStateData();
 
-        // 1. Clean up existing labels (if re-initializing)
-        const existingLabels = mapContainer ? mapContainer.querySelectorAll('.district-label') : [];
-        existingLabels.forEach(l => l.remove());
+        // Use DistrictLabels component to create labels
+        this.labels.createLabels(districts, mapContainer);
+
+        // Set default metric if missing
+        if (!this.currentViewMetric) {
+            console.log('[initializeDistricts] Defaulting metric to sales');
+            this.currentViewMetric = 'sales';
+        } else {
+            console.log(`[initializeDistricts] Metric already set to: ${this.currentViewMetric}`);
+        }
+
+        // Use DistrictHover component to initialize hover interactions
+        this.hover.initialize(districts, hoverLabel, this.districtInsights, this.currentViewMetric);
 
         districts.forEach(district => {
-            const districtName = district.getAttribute('title') || district.id;
-
-            // 2. ADD TEXT LABEL
-            // Use getBBox to find center
-            try {
-                // Ensure the district is visible/rendered to get BBox
-                const bbox = district.getBBox();
-                if (bbox && bbox.width > 0) {
-                    let cx = bbox.x + bbox.width / 2;
-                    let cy = bbox.y + bbox.height / 2;
-
-                    // Create Text Element
-                    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-
-                    // Format Name (Shorten heavy names if needed, or split lines)
-                    // e.g. Thiruvananthapuram -> TVM? Or keep full? 
-                    // Let's keep formatted name but handle length via font size if needed.
-                    // Simple logic: Capitalize words
-                    let labelText = districtName.replace(/-/g, ' ');
-
-                    // Special shortening for better map fit? 
-                    // "Thiruvananthapuram" is very long. Let's use "Trivandrum" or wrapping?
-                    // User asked for "District Name", implying full name usually.
-                    // We'll trust the space provided but maybe scale font.
-
-                    // Capitalize First Letter of Each Word
-                    labelText = labelText.split(' ').map(word => {
-                        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-                    }).join(' ');
-
-
-
-
-
-                    if (labelText.toLowerCase().trim() === 'alappuzha') {
-                        cy += 70; // Shift Down to wider area
-                        cx -= 30;
-                    } else if (labelText.toLowerCase().trim() === 'thrissur') {
-                        cx -= 80; // Shift Left for better centering
-                    } else if (labelText.toLowerCase().trim() === 'palakkad') {
-                        cy -= 50; // Shift Up
-                    }
-
-                    text.textContent = labelText;
-                    text.setAttribute('x', cx);
-                    text.setAttribute('y', cy);
-                    text.setAttribute('class', 'district-label'); // Mark for cleanup
-                    text.setAttribute('text-anchor', 'middle'); // Center horizontally
-                    text.setAttribute('dominant-baseline', 'middle'); // Center vertically
-                    text.style.pointerEvents = 'none'; // Click-through to path
-                    text.style.fill = 'rgba(255, 255, 255, 0.95)'; // White text, high contrast
-                    text.style.fontSize = '40px'; // User requested 40px
-                    text.style.fontWeight = '400'; // Not bold (Requested)
-                    text.style.fontFamily = 'Inter, sans-serif';
-                    text.style.textShadow = '0px 1px 3px rgba(0,0,0,0.9)'; // Stronger shadow
-
-                    // Adaptive Rotation: If district is tall, rotate text vertical (-90 deg)
-                    const lowerName = labelText.toLowerCase().trim();
-                    if (lowerName === 'malappuram') {
-                        text.setAttribute('transform', `rotate(-45, ${cx}, ${cy})`);
-                    } else if (lowerName === 'thiruvananthapuram') {
-                        text.setAttribute('transform', `rotate(45, ${cx}, ${cy})`);
-                        text.style.fontSize = '24px'; // Smaller font for long name
-                    } else if (lowerName === 'alappuzha') {
-                        text.setAttribute('transform', `rotate(60, ${cx}, ${cy})`); // Vertical
-                    } else if (bbox.height > bbox.width * 1.2) {
-                        text.setAttribute('transform', `rotate(-90, ${cx}, ${cy})`);
-                    }
-
-                    // Append to the SVG (Parent of district path)
-                    if (district.parentNode) {
-                        district.parentNode.appendChild(text);
-                    }
-                }
-            } catch (e) {
-                console.warn('Could not add label for district:', districtName, e);
-            }
-
-            // Click
+            // Click event
             district.addEventListener('click', (e) => {
                 e.stopPropagation();
                 districts.forEach(d => d.classList.remove('highlighted'));
                 district.classList.add('highlighted');
-                // Ensure opacity is full on selection for visibility?
                 district.style.opacity = '1';
 
                 this.selectedDistrictId = district.id;
                 this.handleDistrictClick(district.id);
-            });
-
-            // Hover
-            // Set default metric if missing
-            if (!this.currentViewMetric) {
-                console.log('[initializeDistricts] Defaulting metric to sales');
-                this.currentViewMetric = 'sales';
-            } else {
-                console.log(`[initializeDistricts] Metric already set to: ${this.currentViewMetric}`);
-            }
-
-            district.addEventListener('mouseenter', () => {
-                const districtName = district.getAttribute('title') || district.id;
-                let text = `<strong>${districtName}</strong>`;
-
-                // Add Data logic
-                if (this.currentViewMetric && this.districtInsights) {
-                    const dataArr = Object.values(this.districtInsights);
-                    const item = dataArr.find(x => x.name.trim().toLowerCase() === districtName.trim().toLowerCase().replace(/-/g, ' '));
-
-                    console.log(`[Hover] ${districtName}:`, item);
-
-                    if (item) {
-                        let valLabel = '';
-                        let val = '';
-                        let m = this.currentViewMetric;
-
-                        if (m === 'sales') {
-                            valLabel = 'Sales';
-                            // Format
-                            const s = item.currentSales || 0;
-                            if (s >= 10000000) val = `₹${(s / 10000000).toFixed(2)} Cr`;
-                            else val = `₹${(s / 100000).toFixed(2)} L`;
-                        } else if (m === 'dealer_count') {
-                            valLabel = 'Dealers';
-                            val = item.dealerCount || 0;
-                        } else if (m === 'gdp') {
-                            valLabel = 'GDP';
-                            val = item.gdp || 'N/A';
-                        } else if (m === 'population') {
-                            valLabel = 'Population';
-                            val = item.population || 'N/A';
-                        }
-
-                        if (valLabel) {
-                            text += `<div style="font-size:0.85rem; opacity:0.8; margin-top:2px;">${valLabel}: ${val}</div>`;
-                        }
-                    }
-                }
-
-                // For State View (Kerala), use the dedicated label
-                let label = document.getElementById('state-hover-label');
-                if (!label) label = document.getElementById('map-hover-label'); // Fallback
-
-                if (label) {
-                    label.innerHTML = text;
-                    label.style.display = 'block';
-                    // Positioning handled by CSS/Mouse move? No, usually fixed or follows mouse.
-                    // If fixed top-left, we are good.
-                }
-            });
-
-            district.addEventListener('mouseleave', () => {
-                if (hoverLabel) hoverLabel.style.display = 'none';
             });
         });
 
@@ -427,11 +211,9 @@ class MapInteractions {
                     }
 
                     // Reset View to Districts (default for map view)
-                    // If we want to KEEP the current view (e.g. GDP) but just deselect district, 
-                    // we should re-trigger handleViewChange with current dropdown value.
                     const viewSelector = document.getElementById('view-selector');
                     if (viewSelector) {
-                        // Unhide options (copy logic from fix)
+                        // Unhide options
                         const districtsOption = viewSelector.querySelector('option[value="districts"]');
                         if (districtsOption) {
                             districtsOption.hidden = false;
@@ -449,7 +231,6 @@ class MapInteractions {
 
                         this.handleViewChange(viewSelector.value);
                     }
-                    // this.renderSidebarContent(); // Redundant and causes overwrite issues
                 }
             });
         }
@@ -535,6 +316,8 @@ class MapInteractions {
             type: 'STATS_UPDATE',
             data: {
                 name: data.name,
+                gdp: data.gdp,
+                population: data.population,
                 achievement: data.achievement,
                 currentSales: data.currentSales,
                 dealerCount: data.dealerCount ? data.dealerCount : (data.dealers ? data.dealers.length : 0),
@@ -617,6 +400,12 @@ class MapInteractions {
                 if (data && Object.keys(data).length > 0) {
                     this.districtInsights = data;
                     console.log('District insights loaded:', Object.keys(data).length, 'districts');
+
+                    // Update hover component with new data
+                    if (this.hover) {
+                        this.hover.updateData(data);
+                        console.log('[loadDistrictData] Updated hover component with district data');
+                    }
 
                     // Show sorted district list in state overview
                     // This displays when user is looking at Kerala state (not a specific district)

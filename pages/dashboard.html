@@ -48,7 +48,7 @@
 </div>
 </div>
 
-<script type="module" src="js/data_manager.js?v=20251212_FIX"></script>
+<script type="module" src="js/data_manager.js?v=20251219_GDP_FIX"></script>
 <script type="module">
     console.log('Dashboard script loaded');
 
@@ -114,11 +114,33 @@
         let tableInfo = window.dashboardDataCache ? window.dashboardDataCache[key] : null;
 
         // Fallbacks/Overrides
-        // Population
-        let displayPop = tableInfo && tableInfo.pop ? tableInfo.pop : (data.name === 'India' || data.name === 'Pan India' ? '144 Cr' : 'N/A');
+        // Population - use data.population if available, otherwise check tableInfo
+        let displayPop = 'N/A';
+        if (tableInfo && tableInfo.pop) {
+            displayPop = tableInfo.pop;
+        } else if (data.population && data.population !== 'N/A') {
+            displayPop = data.population;
+        } else if (data.name === 'India' || data.name === 'Pan India') {
+            displayPop = '144 Cr'; // Fallback for India
+        }
 
-        // GDP
-        let displayGDP = tableInfo && tableInfo.gdp ? tableInfo.gdp : 'N/A';
+        // GDP - Debug logging
+        console.log('[Dashboard] GDP Debug:', {
+            rawGDP: data.gdp,
+            tableInfoGDP: tableInfo?.gdp,
+            entityName: entityName,
+            fullData: data
+        });
+
+        // GDP - Display raw value without parsing or conversion
+        let displayGDP = 'N/A';
+        if (tableInfo && tableInfo.gdp) {
+            // Use the cached value as-is
+            displayGDP = tableInfo.gdp;
+        } else if (data.gdp && data.gdp !== 'N/A') {
+            // Use the raw value from data as-is
+            displayGDP = data.gdp;
+        }
 
         // Target
         let displayTargetStr = tableInfo && tableInfo.target ? tableInfo.target : formatCurrency(data.monthlyTarget);
@@ -213,7 +235,9 @@
         if (!val) return '0';
         let num = parseFloat(val);
         if (isNaN(num)) return val;
-        // Indian Number System
+        // Indian Number System + T/B
+        if (num >= 1000000000000) return (num / 1000000000000).toFixed(2) + ' T';
+        if (num >= 1000000000) return (num / 1000000000).toFixed(2) + ' B';
         if (num >= 10000000) return (num / 10000000).toFixed(2) + ' Cr';
         else if (num >= 100000) return (num / 100000).toFixed(2) + ' L';
         else if (num >= 1000) return (num / 1000).toFixed(1) + ' k';
@@ -236,9 +260,11 @@
         if (isNaN(num)) return 0;
 
         let multiplier = 1;
-        if (unit.includes('CR')) multiplier = 10000000;
-        else if (unit.includes('L')) multiplier = 100000;
-        else if (unit.includes('K')) multiplier = 1000;
+        if (unit.includes('T')) multiplier = 1000000000000; // Trillion
+        else if (unit.includes('B')) multiplier = 1000000000; // Billion
+        else if (unit.includes('CR')) multiplier = 10000000; // Crore
+        else if (unit.includes('L')) multiplier = 100000; // Lakh
+        else if (unit.includes('K')) multiplier = 1000; // Thousand
 
         return num * multiplier;
     }

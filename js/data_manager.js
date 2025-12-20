@@ -4,14 +4,26 @@
  */
 import { db } from './services/firebase_config.js';
 import { doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { parseTargetValue } from './utils/data-parser.js';
+import { ZipCodeResolver } from './utils/zip-code-resolver.js';
+import { FirestoreService } from './services/firestore-service.js';
+import { DataAggregator } from './core/data-aggregator.js';
 
 class DataManager {
     constructor() {
         this.currentCSVUrl = null;
         // URL for the 'zip_codes' sheet CSV export
 
+        // Initialize Firestore service
+        this.firestoreService = new FirestoreService();
 
-        this.zipApiUrl = 'https://api.postalpincode.in/pincode/';
+        // Initialize DataAggregator with dependencies
+        this.aggregator = new DataAggregator(
+            this.firestoreService,
+            (name) => this.normalizeKey(name),
+            (val) => parseTargetValue(val),
+            (a, b) => this.getLevenshteinDistance(a, b)
+        );
 
         // Load cache from localStorage or initialize empty
         this.zipCache = this.loadCacheFromStorage();
@@ -32,10 +44,12 @@ class DataManager {
         // Cache for report data to avoid duplicate Firestore reads
         this.reportDataCache = new Map();
 
+        // Initialize ZipCodeResolver with cache and invalid zips
+        this.zipResolver = new ZipCodeResolver(this.zipCache, this.invalidZips);
+
         // Initialize by loading zip sheet
         this.dealerOverrides = {};
         this.loadDealerOverridesFromFirebase();
-
 
         this.sheetZips = new Set(); // Track what is IN the remote DB
         this.loadZipCacheFromFirebase();
@@ -49,21 +63,8 @@ class DataManager {
      * Load dealer overrides from Firestore (settings/dealer_overrides)
      */
     async loadDealerOverridesFromFirebase() {
-        try {
-            console.log('Fetching dealer_overrides from Firestore...');
-            const docRef = doc(db, "settings", "dealer_overrides");
-            const docSnap = await getDoc(docRef);
-
-            if (docSnap.exists()) {
-                this.dealerOverrides = docSnap.data();
-                console.log(`Loaded overrides for ${Object.keys(this.dealerOverrides).length} dealers.`);
-            } else {
-                // Create empty if needed
-                await setDoc(docRef, {});
-            }
-        } catch (e) {
-            console.warn('Failed to load dealer_overrides:', e);
-        }
+        const data = await this.firestoreService.loadDealerOverridesFromFirebase();
+        this.dealerOverrides = data;
     }
 
     /**
@@ -101,29 +102,16 @@ class DataManager {
      * Load zip codes from Firestore (settings/zip_codes)
      */
     async loadZipCacheFromFirebase() {
-        try {
-            console.log('Fetching zip_codes from Firestore...');
-            const docRef = doc(db, "settings", "zip_codes");
-            const docSnap = await getDoc(docRef);
-
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                let count = 0;
-                // Data is stored as { zip: district_name } map
-                for (const [zip, district] of Object.entries(data)) {
-                    this.zipCache[zip] = district;
-                    this.sheetZips.add(zip);
-                    count++;
-                }
-                console.log(`Loaded ${count} zip codes from Firestore into cache.`);
-                this.saveCacheToStorage();
-            } else {
-                console.log("No zip_codes document found in Firestore. Creating empty...");
-                // Create if not exists so writes don't fail later
-                await setDoc(docRef, {});
-            }
-        } catch (e) {
-            console.warn('Failed to load zip_codes from Firestore:', e);
+        const data = await this.firestoreService.loadZipCacheFromFirebase();
+        let count = 0;
+        // Data is stored as { zip: district_name } map
+        for (const [zip, district] of Object.entries(data)) {
+            this.zipCache[zip] = district;
+            this.sheetZips.add(zip);
+            count++;
+        }
+        if (count > 0) {
+            this.saveCacheToStorage();
         }
     }
 
@@ -260,9 +248,6 @@ class DataManager {
     }
 
     /**
-     * Fetch KPI Data (GDP, Population, Target) from Apps Script
-     */
-    /**
      * Fetch KPI Data (GDP, Population, Target) from Firestore
      * Migrates from Apps Script if not present in Firestore
      */
@@ -271,49 +256,8 @@ class DataManager {
             return this.kpiDataCache;
         }
 
-        try {
-            console.log('Fetching KPI data...');
-            const docRef = doc(db, "settings", "kpi_data");
-            const docSnap = await getDoc(docRef);
-
-            if (docSnap.exists()) {
-                console.log('KPI Data loaded from Firestore.');
-                this.kpiDataCache = docSnap.data();
-                return this.kpiDataCache;
-            } else {
-                console.log('KPI Data not found in Firestore. Fetching from legacy Apps Script for migration...');
-                // Fallback / Migration logic
-                const response = await fetch(this.kpiAppsScriptUrl, {
-                    method: 'POST',
-                    mode: 'cors',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8',
-                    },
-                    body: JSON.stringify({ action: 'download' })
-                });
-
-                const result = await response.json();
-                if (result.status === 'success') {
-                    // Index by normalized name for easy lookup
-                    const dataToSave = {};
-                    result.data.forEach(item => {
-                        const key = this.normalizeKey(item.name);
-                        dataToSave[key] = item;
-                    });
-
-                    // Save to Firestore
-                    console.log('Migrating KPI Data to Firestore...');
-                    await setDoc(docRef, dataToSave);
-                    console.log('KPI Data migration complete.');
-
-                    this.kpiDataCache = dataToSave;
-                    return this.kpiDataCache;
-                }
-            }
-        } catch (e) {
-            console.warn('Failed to fetch KPI data:', e);
-        }
-        return {};
+        this.kpiDataCache = await this.firestoreService.fetchKPIData(this.kpiAppsScriptUrl);
+        return this.kpiDataCache;
     }
 
     normalizeKey(name) {
@@ -325,57 +269,8 @@ class DataManager {
      * Get aggregated state data enriched with KPIs (GDP, Pop)
      */
     async getStatesWithKPIs() {
-        // Ensure both data sources are ready
-        const [dealers, kpiData] = await Promise.all([
-            this.fetchSheetData(),
-            this.fetchKPIData() // Now this works
-        ]);
-
-        // 1. Aggregate Sales by State
-        const stateMap = {};
-        const allStates = this.getAllStateNames();
-
-        allStates.forEach(name => {
-            stateMap[name] = {
-                name: name,
-                sales: 0,
-                dealerCount: 0,
-                population: 'N/A',
-                gdp: 'N/A'
-            };
-        });
-
-        // Fill Sales
-        if (dealers && Array.isArray(dealers)) {
-            dealers.forEach(row => {
-                const rawState = row['billing_state'] || row['shipping_state'] || 'Unknown';
-                const stateName = this.normalizeStateName(rawState);
-                const sales = parseFloat(row['sales'] || 0);
-
-                if (stateMap[stateName]) {
-                    stateMap[stateName].sales += isNaN(sales) ? 0 : sales;
-
-                    const customerName = row['customer_name'] || '';
-                    if (!customerName.toLowerCase().startsWith('yescloud')) {
-                        stateMap[stateName].dealerCount += 1;
-                    }
-                }
-            });
-        }
-
-        // Fill KPIs
-        Object.values(stateMap).forEach(state => {
-            const key = this.normalizeKey(state.name);
-            const kpi = kpiData ? kpiData[key] : null;
-            if (kpi) {
-                state.population = kpi.population || 'N/A';
-                state.gdp = kpi.gdp || 'N/A';
-            }
-        });
-
-        const results = Object.values(stateMap);
-        // Default Sort by Sales
-        return results.sort((a, b) => b.sales - a.sales);
+        const rawData = await this.fetchSheetData();
+        return this.aggregator.getStatesWithKPIs(rawData);
     }
 
     /**
@@ -384,44 +279,7 @@ class DataManager {
      * @returns {number} The numeric value
      */
     parseTargetValue(val) {
-        if (typeof val === 'number') return val;
-        if (!val || val === 'N/A' || val === '-') return 0;
-
-        const str = val.toString().trim().toUpperCase();
-
-        let multiplier = 1;
-        let numPart = str;
-
-        // Multipliers
-        if (str.includes('T')) {
-            // Trillion
-            multiplier = 1000000000000;
-            numPart = str.replace('T', '');
-        } else if (str.includes('B') || str.includes('BN')) {
-            // Billion
-            multiplier = 1000000000;
-            numPart = str.replace('B', '').replace('N', ''); // Handle BN
-        } else if (str.includes('CR')) {
-            // Crore
-            multiplier = 10000000;
-            numPart = str.replace('CR', '');
-        } else if (str.includes('L') || str.includes('LAC')) {
-            // Lakh
-            multiplier = 100000;
-            numPart = str.replace('LAC', '').replace('L', ''); // Handle LAC
-        } else if (str.includes('K')) {
-            // Thousand
-            multiplier = 1000;
-            numPart = str.replace('K', '');
-        }
-
-        // Remove Currency Symbols & non-numeric chars (except decimal)
-        const num = parseFloat(numPart.replace(/[^0-9.]/g, ''));
-        const result = isNaN(num) ? 0 : num * multiplier;
-
-        // console.log(`[ParseTarget] In: "${val}" -> Str: "${str}" -> Num: ${num} * ${multiplier} = ${result}`);
-
-        return result;
+        return parseTargetValue(val);
     }
 
     /**
@@ -455,15 +313,7 @@ class DataManager {
      * Implements caching to avoid rate limits
      */
     async getDistrictFromZip(zipCode) {
-        if (!zipCode) return null;
-
-        // Check cache first
-        if (this.zipCache[zipCode]) {
-            return this.zipCache[zipCode];
-        }
-
-        const location = await this.getLocationFromZip(zipCode);
-        return location ? location.district : null;
+        return this.zipResolver.getDistrictFromZip(zipCode);
     }
 
     /**
@@ -471,86 +321,21 @@ class DataManager {
      * Returns { district, state } or null
      */
     async getLocationFromZip(zipCode) {
-        if (!zipCode) return null;
-
-        // Note: We don't check simple zipCache here because it only stores District.
-        // If we want State, we prefer to hit the API if not cached in a richer cache.
-        // For now, we always hit API for the full location details (Edit Form use case).
-
-        try {
-            // Add a small delay to be nice to the API if we are making many requests
-            const response = await fetch(`${this.zipApiUrl}${zipCode}`);
-            const data = await response.json();
-
-            if (data && data[0].Status === "Success" && data[0].PostOffice && data[0].PostOffice.length > 0) {
-                const district = data[0].PostOffice[0].District;
-                const state = data[0].PostOffice[0].State;
-
-                // Update local district cache (legacy support)
-                this.zipCache[zipCode] = district;
-
-                // Write back to Firestore (legacy support)
-                this.writeZipToFirebase(zipCode, district);
-
-                return { district, state };
-            }
-        } catch (error) {
-            console.warn(`Failed to resolve zip location ${zipCode}:`, error);
-        }
-        return null;
+        return this.zipResolver.getLocationFromZip(zipCode);
     }
 
     /**
      * Writes a resolved zip code to Firestore
      */
     async writeZipToFirebase(zip, district) {
-        try {
-            console.log(`[Debug] Writing zip to Firestore: ${zip}, ${district}`);
-            const docRef = doc(db, "settings", "zip_codes");
-
-            // Use updateDoc to add/merge a specific field
-            await updateDoc(docRef, {
-                [zip]: district
-            });
-            console.log(`[Debug] Saved zip ${zip} to Firestore.`);
-        } catch (e) {
-            console.warn('[Debug] Failed to write zip to Firestore:', e);
-            // If document doesn't exist (edge case if creation failed), try setDoc with merge
-            if (e.code === 'not-found') {
-                await setDoc(doc(db, "settings", "zip_codes"), { [zip]: district }, { merge: true });
-            }
-        }
+        return this.zipResolver.writeZipToFirebase(zip, district);
     }
 
     /**
      * Normalizes district names to match our internal keys
      */
     normalizeDistrictName(districtName, validList = []) {
-        if (!districtName) return null;
-        const lower = districtName.toLowerCase().trim();
-        const cleanId = lower.replace(/\s+/g, '-');
-
-        // Check against valid list first
-        if (validList.includes(cleanId)) return cleanId;
-        if (validList.includes(lower)) return lower;
-
-        // Fallback for complex matches (Kerala legacy)
-        const map = {
-            'trivandrum': 'thiruvananthapuram',
-            'calicut': 'kozhikode',
-            'alleppey': 'alappuzha',
-            'cochin': 'ernakulam',
-            'kochi': 'ernakulam',
-            'trichur': 'thrissur',
-            'palghat': 'palakkad',
-            'cannanore': 'kannur',
-            'kasargod': 'kasaragod'
-        };
-
-        const mapped = map[lower];
-        if (mapped && validList.includes(mapped)) return mapped;
-
-        return null;
+        return this.zipResolver.normalizeDistrictName(districtName, validList);
     }
 
     /**
@@ -558,57 +343,7 @@ class DataManager {
      * Checks against cache, fetches missing ones, updates Firebase.
      */
     async resolveMissingDistricts(allData) {
-        if (!allData || allData.length === 0) return;
-
-        console.log(`[District Check] Scanning ${allData.length} dealers for missing district usage...`);
-        const missingZips = new Set();
-        let checkedCount = 0;
-
-        allData.forEach(row => {
-            let zip = row['billing_zipcode'] || row['shipping_zipcode'];
-            if (!zip) return;
-            zip = zip.replace(/\s/g, '');
-
-            // Skip known invalid zip codes
-            if (this.invalidZips.has(zip)) {
-                return;
-            }
-
-            // Check if we have a mapping
-            if (!this.zipCache[zip]) {
-                missingZips.add(zip);
-            }
-            checkedCount++;
-        });
-
-        if (missingZips.size === 0) {
-            console.log(`[District Check] All ${checkedCount} valid zips are mapped! Good to go.`);
-            return;
-        }
-
-        console.log(`[District Check] Found ${missingZips.size} unique zip codes missing district info.`);
-        console.log(`[District Check] Starting auto-fetch sequence...`);
-
-        let fetched = 0;
-        const total = missingZips.size;
-
-        for (const zip of missingZips) {
-            fetched++;
-            // Fetch logic handles caching and Firebase write
-            const district = await this.getDistrictFromZip(zip);
-
-            if (district) {
-                console.log(`[District Fetch] (${fetched}/${total}) Resolved ${zip} -> ${district}`);
-            } else {
-                console.log(`[District Fetch] (${fetched}/${total}) Failed to resolve ${zip}`);
-            }
-
-            // Small delay to be polite to API
-            await new Promise(r => setTimeout(r, 200));
-        }
-
-        console.log(`[District Check] Update complete. New mappings saved to Firebase.`);
-        this.saveCacheToStorage();
+        return this.zipResolver.resolveMissingDistricts(allData, () => this.saveCacheToStorage());
     }
 
     /**
@@ -770,16 +505,7 @@ class DataManager {
      * @returns {Array} Array of {name, totalSales} objects sorted by sales descending
      */
     getDistrictsSortedBySales(districtStats) {
-        if (!districtStats) return [];
-
-        const districtArray = Object.keys(districtStats).map(key => ({
-            name: districtStats[key].name,
-            totalSales: districtStats[key].currentSales || 0,
-            dealerCount: districtStats[key].dealerCount || 0
-        }));
-
-        // Sort by total sales descending (highest first)
-        return districtArray.sort((a, b) => b.totalSales - a.totalSales);
+        return this.aggregator.getDistrictsSortedBySales(districtStats);
     }
 
     /**
@@ -823,51 +549,7 @@ class DataManager {
      * Normalize state name to handle variations (e.g. Tamilnadu -> Tamil Nadu)
      */
     normalizeStateName(rawStateName) {
-        if (!rawStateName) return 'Unknown'; // Default to Unknown instead of Kerala to avoid pollution
-
-        // Canonical List of Indian States and UTs
-        const CANONICAL_STATES = [
-            "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
-            "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka", "Kerala",
-            "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha",
-            "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh",
-            "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh",
-            "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Lakshadweep", "Puducherry", "Ladakh"
-        ];
-
-        // Helper to clean string: lowercase, replace & with and, remove non-alphanumeric
-        const clean = (str) => str.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
-        const target = clean(rawStateName);
-
-        // 1. Exact Match on clean string
-        for (const canonical of CANONICAL_STATES) {
-            if (clean(canonical) === target) return canonical;
-        }
-
-        // 2. Fuzzy Match on clean string
-        let bestMatch = null;
-        let bestDist = Infinity;
-
-        for (const canonical of CANONICAL_STATES) {
-            const cleanCanonical = clean(canonical);
-            const dist = this.getLevenshteinDistance(target, cleanCanonical);
-
-            if (dist < bestDist) {
-                bestDist = dist;
-                bestMatch = canonical;
-            }
-        }
-
-        // Threshold logic
-        const threshold = target.length < 5 ? 1 : 3;
-
-        if (bestMatch && bestDist <= threshold) {
-            return bestMatch;
-        }
-
-        // Fallback: Return Title Case of original cleaned text or just original
-        // Let's return original trimmed if no match, to avoid data loss
-        return rawStateName.trim();
+        return this.aggregator.normalizeStateName(rawStateName);
     }
 
 
@@ -875,14 +557,7 @@ class DataManager {
      * Get list of all known state names
      */
     getAllStateNames() {
-        return [
-            'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
-            'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli', 'Daman and Diu', 'Delhi',
-            'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand',
-            'Karnataka', 'Kerala', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
-            'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan',
-            'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
-        ];
+        return this.aggregator.getAllStateNames();
     }
 
     /**
@@ -891,122 +566,16 @@ class DataManager {
      * @returns {Promise<object>} Aggregated state data
      */
     async getStateData(stateId) {
-        // Check if we have cached data for this state
-        // FORCE REFRESH: Cache disabled to ensure new normalize logic is used
-        /* if (this.stateDataCache[stateId]) {
-            console.log(`Using cached data for ${stateId}`);
-            return this.stateDataCache[stateId];
-        } */
-
-        console.log(`Getting state data for ${stateId}...`);
-
-        // State ID to name mapping
-        const stateNames = {
-            'IN-AN': 'Andaman and Nicobar Islands', 'IN-AP': 'Andhra Pradesh', 'IN-AR': 'Arunachal Pradesh',
-            'IN-AS': 'Assam', 'IN-BR': 'Bihar', 'IN-CH': 'Chandigarh', 'IN-CT': 'Chhattisgarh',
-            'IN-DD': 'Daman and Diu', 'IN-DL': 'Delhi', 'IN-GA': 'Goa', 'IN-GJ': 'Gujarat', 'IN-HP': 'Himachal Pradesh', 'IN-HR': 'Haryana',
-            'IN-JH': 'Jharkhand', 'IN-JK': 'Jammu and Kashmir', 'IN-KA': 'Karnataka', 'IN-KL': 'Kerala',
-            'IN-LD': 'Lakshadweep', 'IN-MH': 'Maharashtra', 'IN-ML': 'Meghalaya', 'IN-MN': 'Manipur',
-            'IN-MP': 'Madhya Pradesh', 'IN-MZ': 'Mizoram', 'IN-NL': 'Nagaland', 'IN-OR': 'Odisha',
-            'IN-PB': 'Punjab', 'IN-PY': 'Puducherry', 'IN-RJ': 'Rajasthan', 'IN-SK': 'Sikkim',
-            'IN-TG': 'Telangana', 'IN-TN': 'Tamil Nadu', 'IN-TR': 'Tripura', 'IN-UP': 'Uttar Pradesh',
-            'IN-UT': 'Uttarakhand', 'IN-WB': 'West Bengal'
-        };
-
-        const stateName = stateNames[stateId] || stateId;
         const rawData = await this.fetchSheetData();
-
-        // Ensure districts are resolved for this data
-        await this.resolveMissingDistricts(rawData);
-
-        // APPLY DEALER OVERRIDES TO RAW DATA BEFORE FILTERING
-        // This ensures dealers with overridden state/zip show up in correct state views
-        for (const row of rawData) {
-            const customerName = row['customer_name'];
-            if (this.dealerOverrides && this.dealerOverrides[customerName]) {
-                const ov = this.dealerOverrides[customerName];
-                for (const [key, val] of Object.entries(ov)) {
-                    if (val !== undefined) row[key] = val;
-                }
-            }
-        }
-
-        // Robust Filtering using Normalize (NOW AFTER OVERRIDES)
-        const targetState = this.normalizeStateName(stateName);
-
-        const stateData = rawData.filter(row => {
-            const raw = row['billing_state'] || row['shipping_state'] || '';
-            const normalizedRow = this.normalizeStateName(raw);
-            const match = normalizedRow === targetState;
-            // if (!match && raw.toLowerCase().includes('karnataka')) console.log(`[Filter Fail] Raw: "${raw}" -> Norm: "${normalizedRow}" vs Target: "${targetState}"`);
-            return match;
-        });
-
-
-
-        // Fetch KPI Data for Target lookup
-        const kpiData = await this.fetchKPIData();
-        const normalizeKey = this.normalizeKey(stateName);
-        const kpi = kpiData ? kpiData[normalizeKey] : null;
-
-
-
-        // Aggregate data
-        const aggregated = {
-            name: stateName,
-            population: kpi ? kpi.population : 'N/A',
-            dealerCount: 0,
-            currentSales: 0,
-            monthlyTarget: kpi && kpi.target ? this.parseTargetValue(kpi.target) : 500000,
-            dealers: []
-        };
-
-        // Process each row
-        for (const row of stateData) {
-            // Note: Overrides already applied before filtering
-            const customerName = row['customer_name'];
-            const isYesCloud = customerName.toLowerCase().startsWith('yescloud');
-
-            if (!isYesCloud) {
-                aggregated.dealerCount += 1;
-            }
-
-            let sales = parseFloat(row['sales'] || 0);
-            if (isNaN(sales)) sales = 0;
-
-            aggregated.currentSales += sales;
-
-            // INJECT DISTRICT
-            let zip = row['billing_zipcode'] || row['shipping_zipcode'];
-            if (zip) zip = zip.replace(/\s/g, '');
-            row['district'] = this.zipCache[zip] || 'Unknown';
-
-            aggregated.dealers.push({
-                name: customerName,
-                sales: sales,
-                state: row['billing_state'] || row['shipping_state'] || 'Unknown',
-                billingZip: row['billing_zipcode'],
-                shippingZip: row['shipping_zipcode'],
-                isYesCloud: isYesCloud,
-                rawData: row
-            });
-        }
-
-        // Sort dealers by sales
-        aggregated.dealers.sort((a, b) => b.sales - a.sales);
-
-        // Calculate achievement
-        if (aggregated.monthlyTarget > 0) {
-            aggregated.achievement = ((aggregated.currentSales / aggregated.monthlyTarget) * 100).toFixed(1) + "%";
-        } else {
-            aggregated.achievement = "0.0%";
-        }
-
-        // Cache the result
-        this.stateDataCache[stateId] = aggregated;
-        console.log(`State data aggregated and cached for ${stateName}:`, aggregated);
-
-        return aggregated;
+        return this.aggregator.getStateData(
+            stateId,
+            rawData,
+            this.dealerOverrides,
+            this.zipCache,
+            this.stateDataCache,
+            (data) => this.resolveMissingDistricts(data),
+            (name) => this.normalizeStateName(name)
+        );
     }
     /**
      * Get aggregated data for the entire country (Pan India)
@@ -1014,102 +583,12 @@ class DataManager {
      */
     async getCountryData() {
         const rawData = await this.fetchSheetData();
-        console.log(`Getting Pan India data... (${rawData.length} rows)`);
-
-        // Ensure districts are resolved
-        await this.resolveMissingDistricts(rawData);
-
-        // Fetch & Aggregate KPI Data
-        const kpiData = await this.fetchKPIData();
-        let totalPop = 0;
-        let totalTarget = 0;
-        let totalGDP = 0;
-
-        if (kpiData) {
-            // Check for explicit "India" entry first
-            const indiaKey = this.normalizeKey('India');
-            const indiaData = kpiData[indiaKey];
-
-            if (indiaData) {
-                console.log('Using explicit India KPI data:', indiaData);
-                totalPop = this.parseTargetValue(indiaData.population);
-                totalTarget = this.parseTargetValue(indiaData.target || indiaData.monthlyTarget);
-                totalGDP = this.parseTargetValue(indiaData.gdp);
-            } else {
-                // Fallback: Sum up all states if "India" entry is missing
-                console.log('Explicit India data not found, aggregating states...');
-                Object.values(kpiData).forEach(item => {
-                    // Avoid double counting if there's a variation of India in there
-                    const name = (item.name || '').toLowerCase();
-                    if (name !== 'india' && name !== 'pan india') {
-                        totalPop += this.parseTargetValue(item.population);
-                        totalTarget += this.parseTargetValue(item.target || item.monthlyTarget);
-                        totalGDP += this.parseTargetValue(item.gdp);
-                    }
-                });
-            }
-        }
-
-        const aggregated = {
-            name: 'Pan India',
-            population: totalPop || '1.4B+',
-            gdp: totalGDP || 0, // 0 usually triggers formatting logic or N/A in UI if handled
-            dealerCount: 0,
-            currentSales: 0,
-            monthlyTarget: totalTarget > 0 ? totalTarget : (500000 * 30),
-            dealers: []
-        };
-
-        // Process each row
-        for (const row of rawData) {
-            // APPLY OVERRIDES HERE
-            const customerName = row['customer_name'];
-            if (this.dealerOverrides && this.dealerOverrides[customerName]) {
-                const ov = this.dealerOverrides[customerName];
-                for (const [key, val] of Object.entries(ov)) {
-                    if (val !== undefined) row[key] = val;
-                }
-            }
-
-            // const customerName = row['customer_name'] || 'Unknown Dealer'; // Redefined above
-            const isYesCloud = (customerName || '').toLowerCase().startsWith('yescloud');
-
-            if (!isYesCloud) {
-                aggregated.dealerCount += 1;
-            }
-
-            let sales = parseFloat(row['sales'] || 0);
-            if (isNaN(sales)) sales = 0;
-            aggregated.currentSales += sales;
-
-            // INJECT DISTRICT
-            let zip = row['billing_zipcode'] || row['shipping_zipcode'];
-            if (zip) zip = zip.replace(/\s/g, '');
-            row['district'] = this.zipCache[zip] || 'Unknown';
-
-            aggregated.dealers.push({
-                name: customerName,
-                sales: sales,
-                state: row['billing_state'] || row['shipping_state'] || 'Kerala',
-                billingZip: row['billing_zipcode'],
-                shippingZip: row['shipping_zipcode'],
-                isYesCloud: isYesCloud,
-                rawData: row
-            });
-        }
-
-        // Sort dealers by sales (highest first)
-        aggregated.dealers.sort((a, b) => b.sales - a.sales);
-
-
-
-        if (aggregated.monthlyTarget > 0) {
-            aggregated.achievement = ((aggregated.currentSales / aggregated.monthlyTarget) * 100).toFixed(1) + "%";
-        } else {
-            aggregated.achievement = "0.0%";
-        }
-
-        return aggregated;
+        return this.aggregator.getCountryData(
+            rawData,
+            this.dealerOverrides,
+            this.zipCache,
+            (data) => this.resolveMissingDistricts(data)
+        );
     }
 
     /**
@@ -1117,39 +596,7 @@ class DataManager {
      * @param {Array} dealers - List of dealer objects
      */
     aggregateByState(dealers) {
-        if (!dealers || dealers.length === 0) return [];
-
-        const stateMap = {};
-
-        // 1. Initialize with ALL states having 0 sales
-        const allStates = this.getAllStateNames();
-        allStates.forEach(name => {
-            stateMap[name] = { name: name, totalSales: 0, dealerCount: 0 };
-        });
-
-        // 2. Aggregate sales by state
-        console.log(`Aggregating dealers: ${dealers.length} entries`);
-        dealers.forEach(dealer => {
-            let rawState = dealer.state || 'Unknown';
-            let stateKey = this.normalizeStateName(rawState);
-
-            if (!stateMap[stateKey]) {
-                // console.warn(`Unmapped state: ${rawState} -> ${stateKey}`); // Optional noisier log
-                stateMap[stateKey] = { name: stateKey, totalSales: 0, dealerCount: 0 };
-            }
-            stateMap[stateKey].totalSales += dealer.sales || 0;
-
-            // Only increment count if not yescloud
-            if (!dealer.isYesCloud && !dealer.name.toLowerCase().startsWith('yescloud')) {
-                stateMap[stateKey].dealerCount += 1;
-            }
-        });
-
-        // Convert to array and sort by totalSales
-        const statesArray = Object.values(stateMap);
-        statesArray.sort((a, b) => b.totalSales - a.totalSales);
-
-        return statesArray;
+        return this.aggregator.aggregateByState(dealers);
     }
 
     // --- Firebase Storage Methods ---
@@ -1324,24 +771,7 @@ class DataManager {
      * List available reports from Firestore (settings/reports)
      */
     async listReports() {
-        const docRef = doc(db, "settings", "reports");
-        try {
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                if (data.items && Array.isArray(data.items)) {
-                    console.log(`Loaded ${data.items.length} reports from Firestore.`);
-                    return data.items;
-                }
-            }
-
-            // No reports found
-            console.log('No reports found in Firestore.');
-            return [];
-        } catch (e) {
-            console.error('Failed to load reports from Firestore:', e);
-            return [];
-        }
+        return this.firestoreService.listReports();
     }
 
     /**
@@ -1356,25 +786,10 @@ class DataManager {
             return this.reportDataCache.get(reportId);
         }
 
-        try {
-            const docRef = doc(db, 'reports_data', reportId);
-            const docSnap = await getDoc(docRef);
-
-            if (docSnap.exists()) {
-                const reportData = docSnap.data();
-                console.log(`Loaded ${reportData.rowCount} rows for report "${reportData.name}" from Firestore`);
-
-                // Cache the data
-                this.reportDataCache.set(reportId, reportData.data);
-
-                return reportData.data; // Return the data array
-            } else {
-                throw new Error(`Report with ID "${reportId}" not found in Firestore`);
-            }
-        } catch (error) {
-            console.error('Error loading report data from Firestore:', error);
-            throw error;
-        }
+        const data = await this.firestoreService.loadReportDataFromFirestore(reportId);
+        // Cache the data
+        this.reportDataCache.set(reportId, data);
+        return data;
     }
 }
 
