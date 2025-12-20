@@ -136,12 +136,23 @@ class ViewController {
                         // Load data based on current view to avoid duplicate aggregation
                         if (this.currentView === 'india') {
                             // For India view, only load India overview (no need for Kerala data)
-                            // CRITICAL: Update data source ID!
+                            // CRITICAL: Update data source ID AND DataLayer!
                             this.dataManager.currentCSVUrl = reportUrl;
+
+                            // Set active report in DataLayer
+                            if (this.dataManager.dataLayer) {
+                                this.dataManager.dataLayer.setActiveReport(reportUrl === 'ALL_REPORTS' ? null : reportUrl);
+                            }
+
                             await this.loadIndiaOverview();
                             this.handleViewChange(viewSelector ? viewSelector.value : 'states');
                         } else if (this.currentView === 'state' && this.mapInteractions) {
                             // For state view, load state-specific data
+                            // Update DataLayer active report
+                            if (this.dataManager.dataLayer) {
+                                this.dataManager.dataLayer.setActiveReport(reportUrl === 'ALL_REPORTS' ? null : reportUrl);
+                            }
+
                             await this.dataManager.loadData('Kerala', [], reportUrl);
 
                             const stateId = this.mapInteractions.currentStateId;

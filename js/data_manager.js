@@ -8,6 +8,7 @@ import { parseTargetValue } from './utils/data-parser.js';
 import { ZipCodeResolver } from './utils/zip-code-resolver.js';
 import { FirestoreService } from './services/firestore-service.js';
 import { DataAggregator } from './core/data-aggregator.js';
+import { DataLayer } from './core/data-layer.js';
 
 class DataManager {
     constructor() {
@@ -24,6 +25,9 @@ class DataManager {
             (val) => parseTargetValue(val),
             (a, b) => this.getLevenshteinDistance(a, b)
         );
+
+        // Initialize DataLayer for unified data access
+        this.dataLayer = new DataLayer(this.firestoreService, this.aggregator);
 
         // Load cache from localStorage or initialize empty
         this.zipCache = this.loadCacheFromStorage();
@@ -166,15 +170,19 @@ class DataManager {
     }
 
     /**
-     * Fetches data from the Google Sheet (with caching) or CSV URL
-     */
-    /**
      * Fetch sheet data - now from Firestore or aggregated reports
      */
     async fetchSheetData() {
         if (!this.currentCSVUrl) {
             console.warn('No Data Source Selected.');
             return [];
+        }
+
+        // Set active report in data layer
+        if (this.currentCSVUrl === 'ALL_REPORTS') {
+            this.dataLayer.setActiveReport(null); // null = aggregated
+        } else {
+            this.dataLayer.setActiveReport(this.currentCSVUrl);
         }
 
         // Handle Aggregated "All Reports" Mode
@@ -562,33 +570,22 @@ class DataManager {
 
     /**
      * Get aggregated data for a specific state (other than Kerala which uses districts)
+     * NOW USES DATA LAYER with caching
      * @param {string} stateId - State ID (e.g., 'IN-TN' for Tamil Nadu)
      * @returns {Promise<object>} Aggregated state data
      */
     async getStateData(stateId) {
-        const rawData = await this.fetchSheetData();
-        return this.aggregator.getStateData(
-            stateId,
-            rawData,
-            this.dealerOverrides,
-            this.zipCache,
-            this.stateDataCache,
-            (data) => this.resolveMissingDistricts(data),
-            (name) => this.normalizeStateName(name)
-        );
+        console.log('[DataManager] Using DataLayer for state data:', stateId);
+        return this.dataLayer.getDashboardData(stateId, false);
     }
     /**
      * Get aggregated data for the entire country (Pan India)
+     * NOW USES DATA LAYER with caching
      * @returns {Promise<object>} Aggregated country data
      */
     async getCountryData() {
-        const rawData = await this.fetchSheetData();
-        return this.aggregator.getCountryData(
-            rawData,
-            this.dealerOverrides,
-            this.zipCache,
-            (data) => this.resolveMissingDistricts(data)
-        );
+        console.log('[DataManager] Using DataLayer for country data');
+        return this.dataLayer.getDashboardData(null, false);
     }
 
     /**

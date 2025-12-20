@@ -123,9 +123,15 @@ if (!window.DealerManager) {
             console.log('Switching to report:', url);
 
             try {
-                // Load data without state filtering for dealer page (show all dealers)
-                await window.dataManager.loadData('', [], url); // Empty state name = no filtering
-                this.loadData(); // Process loaded data
+                // Set active report in data layer
+                if (url === 'ALL_REPORTS') {
+                    window.dataManager.dataLayer.setActiveReport(null);
+                } else {
+                    window.dataManager.dataLayer.setActiveReport(url);
+                }
+
+                // Load data using DataLayer (with caching)
+                await this.loadData();
                 this.applyFilters();
             } catch (e) {
                 console.error('Failed to load report data:', e);
@@ -139,60 +145,57 @@ if (!window.DealerManager) {
             }
         }
 
-        loadData() {
+        async loadData() {
             // Force check again just in case (e.g. if we skipped wait due to race condition which shouldn't happen with await)
-            if (!window.dataManager || !window.dataManager.rawData) {
-                console.warn('DataManager not ready in loadData');
+            if (!window.dataManager || !window.dataManager.dataLayer) {
+                console.warn('DataManager or DataLayer not ready in loadData');
                 return;
             }
 
-            // Get raw data and merge with overrides (DataManager.loadData already applies overrides to objects in memory)
-            // But we want to ensure we have the latest.
-            // Actually, window.dataManager.rawData IS the source. 
-            // Let's create our own lightweight objects for the table.
+            console.log('[DealerManager] Loading dealer data from DataLayer...');
 
-            const raw = window.dataManager.rawData;
-            console.log(`DealerManager.loadData: Processing ${raw.length} dealers from DataManager`);
+            try {
+                // Use DataLayer to get merged dealer data (with caching)
+                const mergedDealers = await window.dataManager.dataLayer.getDealerManagementData(false);
+                console.log(`[DealerManager] Loaded ${mergedDealers.length} dealers from DataLayer`);
 
-            this.dealers = raw.map(d => {
-                // Ensure we have fields we need
-                // Override handling is ALREADY DONE in DataManager.loadData() -> it modifies the objects in place or returns processed ones.
-                // window.dataManager.rawData holds the objects that MIGHT have been mutated by DataManager.loadData logic if implemented that way.
-                // Let's verify DataManager logic. 
-                // Yes, viewed code confirms: "APPLY DEALER OVERRIDES TO RAW DATA... for (const row of rawData) ... if (val !== undefined) row[key] = val;"
-                // So rawData IS the source of truth with overrides.
-
-                // INJECT DISTRICT if not already present
-                if (!d.district && window.dataManager.zipCache) {
-                    let zip = d.billing_zipcode || d.shipping_zipcode;
-                    if (zip) {
-                        zip = zip.replace(/\s/g, '');
-                        d.district = window.dataManager.zipCache[zip] || 'Unknown';
+                // Process dealers for table display
+                this.dealers = mergedDealers.map(d => {
+                    // INJECT DISTRICT if not already present
+                    if (!d.district && window.dataManager.zipCache) {
+                        let zip = d.billing_zipcode || d.shipping_zipcode;
+                        if (zip) {
+                            zip = zip.replace(/\s/g, '');
+                            d.district = window.dataManager.zipCache[zip] || 'Unknown';
+                        }
                     }
-                }
 
-                // Normalizing State using DealerValidator
-                const rawState = d.billing_state || d.shipping_state || '';
-                const state = this.validator.normalizeState(rawState);
+                    // Normalizing State using DealerValidator
+                    const rawState = d.billing_state || d.shipping_state || '';
+                    const state = this.validator.normalizeState(rawState);
 
-                return {
-                    ...d, // Includes overrides applied by DataManager and district
-                    state: state, // Normalized state
-                    searchString: `${d.customer_name} ${d.first_name || ''} ${d.mobile_phone || ''} ${d.billing_zipcode || ''} ${state || ''} ${d.district || ''}`.toLowerCase()
-                };
-            });
+                    return {
+                        ...d, // Includes overrides and original data flags
+                        state: state, // Normalized state
+                        searchString: `${d.customer_name} ${d.first_name || ''} ${d.mobile_phone || ''} ${d.billing_zipcode || ''} ${state || ''} ${d.district || ''}`.toLowerCase()
+                    };
+                });
 
-            this.generalSettings = window.dataManager.generalSettings || {};
+                this.generalSettings = window.dataManager.generalSettings || {};
 
-            // Initialize filteredDealers to all dealers
-            this.filteredDealers = [...this.dealers];
+                // Initialize filteredDealers to all dealers
+                this.filteredDealers = [...this.dealers];
 
-            // Update dynamic filters after data is loaded
-            this.updateDistrictFilter();
-            this.updateStateFilter();
-            this.updateStageFilter();
+                // Update dynamic filters after data is loaded
+                this.updateDistrictFilter();
+                this.updateStateFilter();
+                this.updateStageFilter();
 
-            console.log(`DealerManager.loadData: Processed ${this.dealers.length} dealers, ${this.filteredDealers.length} filtered`);
+                console.log(`[DealerManager] Processed ${this.dealers.length} dealers, ${this.filteredDealers.length} filtered`);
+            } catch (error) {
+                console.error('[DealerManager] Failed to load data from DataLayer:', error);
+                throw error;
+            }
         }
 
         setupEventListeners() {

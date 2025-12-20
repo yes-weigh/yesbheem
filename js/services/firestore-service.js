@@ -3,7 +3,7 @@
  * @module services/firestore-service
  */
 import { db } from './firebase_config.js';
-import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { doc, getDoc, setDoc, updateDoc, deleteField } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /**
  * Service class for handling all Firestore database operations
@@ -104,26 +104,79 @@ export class FirestoreService {
 
     /**
      * Loads dealer overrides from Firestore (settings/dealer_overrides)
+     * LEGACY METHOD - Use getDealerOverrides() instead
      * @returns {Promise<Object>} Object containing dealer overrides indexed by dealer name
      */
     async loadDealerOverridesFromFirebase() {
+        return this.getDealerOverrides();
+    }
+
+    /**
+     * Get dealer overrides (NEW METHOD for data layer)
+     * @returns {Promise<Object>} Object containing dealer overrides indexed by customer_name
+     */
+    async getDealerOverrides() {
         try {
-            console.log('Fetching dealer_overrides from Firestore...');
+            console.log('[FirestoreService] Fetching dealer_overrides...');
             const docRef = doc(this.db, "settings", "dealer_overrides");
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                console.log(`Loaded overrides for ${Object.keys(data).length} dealers.`);
+                console.log(`[FirestoreService] Loaded overrides for ${Object.keys(data).length} dealers.`);
                 return data;
             } else {
                 // Create empty if needed
+                console.log('[FirestoreService] No overrides found, creating empty document');
                 await setDoc(docRef, {});
                 return {};
             }
         } catch (e) {
-            console.warn('Failed to load dealer_overrides:', e);
+            console.warn('[FirestoreService] Failed to load dealer_overrides:', e);
             return {};
+        }
+    }
+
+    /**
+     * Update dealer override (ONLY way to edit dealer data)
+     * Updates settings/dealer_overrides, NEVER touches reports_data
+     * @param {string} customerName - Customer name (key)
+     * @param {Object} updates - Fields to update
+     */
+    async updateDealerOverride(customerName, updates) {
+        try {
+            console.log(`[FirestoreService] Updating override for: ${customerName}`, updates);
+            const docRef = doc(this.db, "settings", "dealer_overrides");
+
+            // Use dot notation to update nested field
+            const updateData = {};
+            updateData[customerName] = updates;
+
+            await updateDoc(docRef, updateData);
+            console.log(`[FirestoreService] Override updated successfully`);
+        } catch (error) {
+            console.error('[FirestoreService] Failed to update dealer override:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Delete dealer override (revert to original CSV data)
+     * @param {string} customerName - Customer name to revert
+     */
+    async deleteDealerOverride(customerName) {
+        try {
+            console.log(`[FirestoreService] Deleting override for: ${customerName}`);
+            const docRef = doc(this.db, "settings", "dealer_overrides");
+
+            const updateData = {};
+            updateData[customerName] = deleteField();
+
+            await updateDoc(docRef, updateData);
+            console.log(`[FirestoreService] Override deleted successfully`);
+        } catch (error) {
+            console.error('[FirestoreService] Failed to delete dealer override:', error);
+            throw error;
         }
     }
 
@@ -154,25 +207,128 @@ export class FirestoreService {
 
     /**
      * Loads specific report data from Firestore (reports_data collection)
+     * LEGACY METHOD - Use getReportData() instead
      * @param {string} reportId - The unique ID of the report to load
      * @returns {Promise<Array>} Array of parsed CSV data objects
      * @throws {Error} If report is not found or loading fails
      */
     async loadReportDataFromFirestore(reportId) {
+        const data = await this.getReportData(reportId);
+        return data; // Return unfrozen for legacy compatibility
+    }
+
+    /**
+     * Get report data (READ-ONLY, FROZEN)
+     * This is the immutable source of truth from CSV uploads
+     * @param {string} reportId - The unique ID of the report to load
+     * @returns {Promise<Array>} Frozen array of CSV data (immutable)
+     * @throws {Error} If report is not found or loading fails
+     */
+    async getReportData(reportId) {
         try {
+            console.log(`[FirestoreService] Fetching report data: ${reportId}`);
             const docRef = doc(this.db, 'reports_data', reportId);
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
                 const reportData = docSnap.data();
-                console.log(`Loaded ${reportData.rowCount} rows for report "${reportData.name}" from Firestore`);
-                return reportData.data; // Return the data array
+                console.log(`[FirestoreService] Loaded ${reportData.rowCount} rows for report "${reportData.name}"`);
+
+                // Freeze to prevent accidental modification
+                const data = reportData.data || reportData.rows || [];
+                return Object.freeze(data);
             } else {
                 throw new Error(`Report with ID "${reportId}" not found in Firestore`);
             }
         } catch (error) {
-            console.error('Error loading report data from Firestore:', error);
+            console.error('[FirestoreService] Error loading report data:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Get aggregated report data (all reports combined)
+     * @returns {Promise<Array>} Frozen array of aggregated CSV data
+     */
+    async getAggregatedReportData() {
+        try {
+            console.log('[FirestoreService] Fetching aggregated report data');
+            const reports = await this.listReports();
+
+            if (!reports || reports.length === 0) {
+                console.warn('[FirestoreService] No reports found');
+                return Object.freeze([]);
+            }
+
+            // Fetch all reports in parallel
+            const allData = [];
+            const fetchPromises = reports.map(async (report) => {
+                try {
+                    const data = await this.getReportData(report.id);
+                    return Array.from(data); // Unfreeze for merging
+                } catch (error) {
+                    console.error(`[FirestoreService] Failed to load report ${report.id}:`, error);
+                    return [];
+                }
+            });
+
+            const results = await Promise.all(fetchPromises);
+            results.forEach(data => allData.push(...data));
+
+            console.log(`[FirestoreService] Aggregated ${allData.length} rows from ${reports.length} reports`);
+            return Object.freeze(allData);
+        } catch (error) {
+            console.error('[FirestoreService] Error loading aggregated data:', error);
+            return Object.freeze([]);
+        }
+    }
+
+    /**
+     * Upload new CSV report (Settings page only)
+     * Creates a new document in reports_data collection
+     * @param {string} reportId - Unique report ID
+     * @param {string} reportName - Display name for the report
+     * @param {Array} csvData - Parsed CSV data array
+     */
+    async uploadReport(reportId, reportName, csvData) {
+        try {
+            console.log(`[FirestoreService] Uploading report: ${reportName} (${csvData.length} rows)`);
+            const docRef = doc(this.db, 'reports_data', reportId);
+            await setDoc(docRef, {
+                name: reportName,
+                uploadedAt: new Date().toISOString(),
+                data: csvData,
+                rowCount: csvData.length
+            });
+            console.log(`[FirestoreService] Report uploaded successfully`);
+        } catch (error) {
+            console.error('[FirestoreService] Failed to upload report:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Load general settings (Key Accounts, Dealer Stages, etc.)
+     * @returns {Promise<Object>} General settings object
+     */
+    async loadGeneralSettings() {
+        try {
+            console.log('[FirestoreService] Fetching general settings...');
+            const docRef = doc(this.db, "settings", "general");
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                console.log('[FirestoreService] General settings loaded');
+                return data;
+            } else {
+                console.log('[FirestoreService] No general settings found, creating empty');
+                await setDoc(docRef, {});
+                return {};
+            }
+        } catch (e) {
+            console.warn('[FirestoreService] Failed to load general settings:', e);
+            return {};
         }
     }
 }
