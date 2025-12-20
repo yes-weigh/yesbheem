@@ -31,21 +31,16 @@ class Config {
     }
 
     /**
-     * Resolves a relative path to an absolute path using the base path
+     * Resolves a relative path to work correctly with the base tag
      * @param {string} path - Relative path (e.g., 'js/data_manager.js')
-     * @returns {string} - Absolute path (e.g., '/yesbheem/js/data_manager.js' or '/js/data_manager.js')
+     * @returns {string} - Path relative to base (e.g., 'js/data_manager.js')
      */
     resolvePath(path) {
-        // Remove leading slash if present
+        // Remove leading slash if present to make it relative
         const cleanPath = path.startsWith('/') ? path.substring(1) : path;
 
-        // If no base path, just add leading slash
-        if (!this.basePath) {
-            return '/' + cleanPath;
-        }
-
-        // Combine base path with the clean path
-        return '/' + this.basePath.replace(/^\//, '').replace(/\/$/, '') + '/' + cleanPath;
+        // Return the clean relative path - the base tag will handle the rest
+        return cleanPath;
     }
 
     /**
