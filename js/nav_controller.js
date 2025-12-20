@@ -211,10 +211,21 @@ class NavigationController {
     loadExternalScript(src, isModule = false) {
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = src;
+
+            // Resolve the path using the base path configuration
+            let resolvedSrc = src;
+            if (window.appConfig && !src.startsWith('http') && !src.startsWith('//')) {
+                // Only resolve relative paths, not absolute URLs
+                resolvedSrc = window.appConfig.resolvePath(src);
+            }
+
+            script.src = resolvedSrc;
             if (isModule) script.type = 'module';
             script.onload = resolve;
-            script.onerror = reject;
+            script.onerror = (error) => {
+                console.error('Failed to load script:', resolvedSrc, error);
+                reject(error);
+            };
             document.body.appendChild(script);
         });
     }

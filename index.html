@@ -13,6 +13,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+    <!-- Set base path dynamically -->
+    <script>
+        // Detect base path from URL
+        const pathname = window.location.pathname;
+        let basePath = '/';
+
+        // Check if we're in a subdirectory (e.g., /yesbheem/)
+        const match = pathname.match(/^(\/[^\/]+)\//);
+        if (match && match[1] !== '') {
+            basePath = match[1] + '/';
+        }
+
+        // Set base tag
+        const base = document.createElement('base');
+        base.href = window.location.origin + basePath;
+        document.head.appendChild(base);
+    </script>
+
     <!-- Modular CSS -->
     <link rel="stylesheet" href="css/variables.css">
     <link rel="stylesheet" href="css/base.css">
@@ -150,6 +168,8 @@
         </main>
     </div>
 
+    <!-- Configuration (must load first) -->
+    <script src="js/config.js"></script>
     <!-- Theme Manager -->
     <script src="js/theme_manager.js"></script>
     <!-- Navigation Controller -->
