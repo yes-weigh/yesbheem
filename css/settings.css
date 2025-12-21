@@ -30,7 +30,7 @@
 }
 
 .header-content h1 {
-    font-size: 2rem;
+    font-size: var(--text-3xl);
     font-weight: 700;
     color: var(--text-primary);
     margin: 0 0 0.5rem 0;
@@ -58,7 +58,7 @@
 }
 
 .section-header h3 {
-    font-size: 1.25rem;
+    font-size: var(--text-xl);
     font-weight: 600;
     color: var(--text-primary);
     margin: 0 0 0.25rem 0;
@@ -130,7 +130,7 @@
 }
 
 .card-title h2 {
-    font-size: 1.125rem;
+    font-size: var(--text-lg);
     font-weight: 600;
     color: var(--text-primary);
     margin: 0 0 0.25rem 0;
@@ -523,7 +523,7 @@
 .data-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.9rem;
+    font-size: var(--text-sm);
 }
 
 .data-table thead {

@@ -26,14 +26,17 @@
         </div>
 
         <!-- Injected Stats Grid -->
-        <div class="kpi-grid" id="dashboard-stats">
-            <!-- Stats inserted via JS -->
-            <div class="kpi-card card-blue shimmer"></div>
-            <div class="kpi-card card-orange shimmer"></div>
-            <div class="kpi-card card-cyan shimmer"></div>
-            <div class="kpi-card card-teal shimmer"></div>
-            <div class="kpi-card card-purple shimmer"></div>
-            <div class="kpi-card card-red shimmer"></div>
+        <!-- Injected Stats Grid -->
+        <div id="dashboard-skeleton" class="kpi-grid">
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+        </div>
+
+        <div class="kpi-grid" id="dashboard-stats" style="display: none;">
         </div>
     </div>
 
@@ -49,228 +52,7 @@
 </div>
 
 <script type="module" src="js/data_manager.js?v=20251219_GDP_FIX"></script>
-<script type="module">
-    console.log('Dashboard script loaded');
-
-    // --- Dashboard Initialization ---
-    // DataManager is attached to window in data_manager.js
-
-    const initDashboard = async () => {
-        // Ensure DataManager is ready
-        if (typeof DataManager === 'undefined') {
-            console.warn('DataManager not loaded yet, retrying...');
-            setTimeout(initDashboard, 100);
-            return;
-        }
-
-        const dm = new DataManager();
-
-        console.log('Initializing Dashboard Logic');
-
-        // Display Last Updated Date from Storage
-        try {
-            const lastUpdate = await dm.getLastStorageUpdate();
-            console.log('Last Update Time Fetched:', lastUpdate); // Debug Log
-
-            if (lastUpdate) {
-                const dateStr = new Date(lastUpdate).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                const dateEl = document.getElementById('last-updated-text');
-                if (dateEl) {
-                    dateEl.textContent = `(Updated: ${dateStr})`;
-                    console.log('UI Updated with date:', dateStr);
-                } else {
-                    console.error('Date Element #last-updated-text not found!');
-                }
-            }
-        } catch (e) {
-            console.warn('Could not fetch last update time:', e);
-        }
-    };
-
-    // Run initialization
-    initDashboard();
-
-    // Helper for robust key matching (Moved to top for scope safety)
-    function normalizeName(name) {
-        if (!name) return '';
-        return name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
-    }
-
-    let lastReceivedStats = null;
-
-    // Separate Render Function to avoid race conditions
-    function renderStats(data) {
-        if (!data) return;
-        lastReceivedStats = data; // Keep latest copy
-
-        const container = document.getElementById('dashboard-stats');
-        if (!container) return;
-
-        // Merge Data Logic
-        const entityName = data.name; // e.g. "Kerala", "India"
-        let key = normalizeName(entityName);
-        if (key === 'panindia') key = 'india';
-
-        let tableInfo = window.dashboardDataCache ? window.dashboardDataCache[key] : null;
-
-        // Fallbacks/Overrides
-        // Population - use data.population if available, otherwise check tableInfo
-        let displayPop = 'N/A';
-        if (tableInfo && tableInfo.pop) {
-            displayPop = tableInfo.pop;
-        } else if (data.population && data.population !== 'N/A') {
-            displayPop = data.population;
-        } else if (data.name === 'India' || data.name === 'Pan India') {
-            displayPop = '144 Cr'; // Fallback for India
-        }
-
-        // GDP - Debug logging
-        console.log('[Dashboard] GDP Debug:', {
-            rawGDP: data.gdp,
-            tableInfoGDP: tableInfo?.gdp,
-            entityName: entityName,
-            fullData: data
-        });
-
-        // GDP - Display raw value without parsing or conversion
-        let displayGDP = 'N/A';
-        if (tableInfo && tableInfo.gdp) {
-            // Use the cached value as-is
-            displayGDP = tableInfo.gdp;
-        } else if (data.gdp && data.gdp !== 'N/A') {
-            // Use the raw value from data as-is
-            displayGDP = data.gdp;
-        }
-
-        // Target
-        let displayTargetStr = tableInfo && tableInfo.target ? tableInfo.target : formatCurrency(data.monthlyTarget);
-        // Achievement Calculation
-        let displayAchievement = '0%';
-
-        // Parse target to raw number using helper
-        let targetRaw = parseUnitString(displayTargetStr);
-        let currentSalesRaw = parseFloat(data.currentSales) || 0;
-
-        if (targetRaw > 0) {
-            let ach = (currentSalesRaw / targetRaw) * 100;
-            displayAchievement = ach.toFixed(1) + '%';
-        } else {
-            displayAchievement = formatNumber(data.achievement) + '%';
-        }
-
-        // Update dashboard title
-        const titleElement = document.getElementById('dashboard-region-title');
-        if (titleElement) {
-            // Replace 'Pan India' with just 'India'
-            let displayName = data.name || 'India';
-            if (displayName === 'Pan India') {
-                displayName = 'India';
-            }
-            titleElement.textContent = displayName;
-        }
-
-        container.innerHTML = `
-            <!-- Population -->
-            <div class="kpi-card card-blue">
-                <div class="kpi-content">
-                    <span class="kpi-value">${displayPop}</span>
-                    <span class="kpi-label">Population</span>
-                </div>
-            </div>
-
-            <!-- GDP (New) -->
-            <div class="kpi-card card-teal">
-                <div class="kpi-content">
-                    <span class="kpi-value">${displayGDP}</span>
-                    <span class="kpi-label">GDP</span>
-                </div>
-            </div>
-
-            <!-- Dealers -->
-            <div class="kpi-card card-orange">
-                <div class="kpi-content">
-                    <span class="kpi-value">${data.dealerCount}</span>
-                    <span class="kpi-label">Active Dealers</span>
-                </div>
-            </div>
-
-            <!-- Target -->
-            <div class="kpi-card card-red">
-                <div class="kpi-content">
-                    <span class="kpi-value">${displayTargetStr}</span>
-                    <span class="kpi-label">Target</span>
-                </div>
-            </div>
-
-            <!-- Sales -->
-            <div class="kpi-card card-cyan">
-                <div class="kpi-content">
-                    <span class="kpi-value">₹${formatCurrency(data.currentSales)}</span>
-                    <span class="kpi-label">Total Sales</span>
-                </div>
-            </div>
-
-            <!-- Achievement -->
-            <div class="kpi-card card-purple">
-                <div class="kpi-content">
-                    <span class="kpi-value">${displayAchievement}</span>
-                    <span class="kpi-label">Achievement</span>
-                </div>
-            </div>
-        `;
-    }
-
-    window.addEventListener('message', function (event) {
-        if (event.data.type === 'STATS_UPDATE') {
-            renderStats(event.data.data);
-        }
-    });
-
-    function formatNumber(num) {
-        if (!num) return '0';
-        return parseFloat(num).toFixed(1);
-    }
-
-    function formatCurrency(val) {
-        if (!val) return '0';
-        let num = parseFloat(val);
-        if (isNaN(num)) return val;
-        // Indian Number System + T/B
-        if (num >= 1000000000000) return (num / 1000000000000).toFixed(2) + ' T';
-        if (num >= 1000000000) return (num / 1000000000).toFixed(2) + ' B';
-        if (num >= 10000000) return (num / 10000000).toFixed(2) + ' Cr';
-        else if (num >= 100000) return (num / 100000).toFixed(2) + ' L';
-        else if (num >= 1000) return (num / 1000).toFixed(1) + ' k';
-        return num.toFixed(0);
-    }
-
-    // Helper to parse "75 L", "5 Cr" to raw numbers
-    function parseUnitString(val) {
-        if (!val) return 0;
-        if (typeof val === 'number') return val;
-
-        const str = val.toString().trim().toUpperCase();
-        // Regex to separate Number and Unit
-        const match = str.match(/^([\d\.]+)\s*([A-Z]*)/);
-
-        if (!match) return 0;
-        const num = parseFloat(match[1]);
-        const unit = match[2];
-
-        if (isNaN(num)) return 0;
-
-        let multiplier = 1;
-        if (unit.includes('T')) multiplier = 1000000000000; // Trillion
-        else if (unit.includes('B')) multiplier = 1000000000; // Billion
-        else if (unit.includes('CR')) multiplier = 10000000; // Crore
-        else if (unit.includes('L')) multiplier = 100000; // Lakh
-        else if (unit.includes('K')) multiplier = 1000; // Thousand
-
-        return num * multiplier;
-    }
-
-
-</script>
+<script type="module" src="js/controllers/dashboard_controller.js"></script>
 
 <style>
     /* New Dashboard Header */
@@ -307,142 +89,120 @@
         margin: 0;
     }
 
+    /* KPI Card Styles */
     .kpi-card {
-        padding: 0.5rem 0.5rem;
-        border-radius: 6px;
-        display: flex;
-        justify-content: center;
-        /* Center content since icon is gone */
-        align-items: center;
-        color: white;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-        transition: all 0.2s ease;
-        position: relative;
-        overflow: hidden;
-        min-height: 80px;
-        max-height: 80px;
-        text-align: center;
-        /* Center text */
-    }
-
-    /* Manage Modal Styling */
-    #reportsList {
+        padding: var(--space-6);
+        border-radius: var(--radius-lg);
+        background: var(--surface-card);
+        border: 1px solid var(--border-light);
+        transition: all var(--duration-normal) var(--ease-out);
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        max-height: 400px;
-        overflow-y: auto;
-        padding-right: 5px;
-        /* Space for scrollbar */
-    }
-
-    .report-row {
-        display: flex;
         justify-content: space-between;
-        align-items: center;
-        padding: 12px;
-        background: var(--bg-panel);
-        border: 1px solid var(--border-light);
-        border-radius: 6px;
-        transition: background 0.2s;
-    }
-
-    .report-row:hover {
-        background: var(--surface-2);
-    }
-
-    .report-row .name {
-        font-weight: 500;
-        color: var(--text-main);
-    }
-
-    .report-row .date {
-        font-size: 0.8em;
-        color: var(--text-muted);
-    }
-
-    /* Scrollbar for list */
-    #reportsList::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    #reportsList::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    #reportsList::-webkit-scrollbar-thumb {
-        background: var(--border-color);
-        border-radius: 3px;
-    }
-
-    .kpi-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, transparent 50%);
-        pointer-events: none;
+        min-height: 140px;
+        /* Ensure enough height for new layout */
     }
 
     .kpi-card:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        border-color: var(--border-strong);
     }
 
-    /* Card Colors with enhanced gradients */
+    /* Specific Card Gradients (overrides background) */
     .card-blue {
-        background: linear-gradient(135deg, #4299e1 0%, #3182ce 50%, #2c5aa0 100%);
-    }
-
-    .card-orange {
-        background: linear-gradient(135deg, #ed8936 0%, #dd6b20 50%, #c05621 100%);
-    }
-
-    .card-cyan {
-        background: linear-gradient(135deg, #0bc5ea 0%, #0987a0 50%, #067a8e 100%);
+        background: linear-gradient(135deg, rgba(66, 153, 225, 0.1) 0%, rgba(66, 153, 225, 0.05) 100%);
+        border-left: 4px solid #4299e1;
     }
 
     .card-teal {
-        background: linear-gradient(135deg, #38b2ac 0%, #319795 50%, #2c7a7b 100%);
+        background: linear-gradient(135deg, rgba(56, 178, 172, 0.1) 0%, rgba(56, 178, 172, 0.05) 100%);
+        border-left: 4px solid #38b2ac;
     }
 
-    .card-purple {
-        background: linear-gradient(135deg, #9f7aea 0%, #805ad5 50%, #6b46c1 100%);
+    .card-orange {
+        background: linear-gradient(135deg, rgba(237, 137, 54, 0.1) 0%, rgba(237, 137, 54, 0.05) 100%);
+        border-left: 4px solid #ed8936;
     }
 
     .card-red {
-        background: linear-gradient(135deg, #f56565 0%, #e53e3e 50%, #c53030 100%);
+        background: linear-gradient(135deg, rgba(245, 101, 101, 0.1) 0%, rgba(245, 101, 101, 0.05) 100%);
+        border-left: 4px solid #f56565;
+    }
+
+    .card-cyan {
+        background: linear-gradient(135deg, rgba(11, 197, 234, 0.1) 0%, rgba(11, 197, 234, 0.05) 100%);
+        border-left: 4px solid #0bc5ea;
+    }
+
+    .card-purple {
+        background: linear-gradient(135deg, rgba(159, 122, 234, 0.1) 0%, rgba(159, 122, 234, 0.05) 100%);
+        border-left: 4px solid #9f7aea;
+    }
+
+
+    .kpi-header {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        margin-bottom: var(--space-3);
+    }
+
+    .kpi-icon {
+        font-size: var(--text-lg);
+    }
+
+    .kpi-label {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        font-weight: var(--font-medium);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 
     .kpi-content {
         display: flex;
-        flex-direction: column;
-        gap: 0.2rem;
-        z-index: 1;
-        flex: 1;
-        min-width: 0;
+        align-items: baseline;
+        gap: var(--space-3);
+        margin-bottom: var(--space-4);
     }
 
     .kpi-value {
-        font-size: 1.25rem;
-        font-weight: 700;
-        line-height: 1.2;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-size: var(--text-3xl);
+        font-weight: var(--font-bold);
+        color: var(--text-main);
+        /* Using text-main to ensure visibility */
+        line-height: 1;
     }
 
-    .kpi-label {
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 0.4px;
-        opacity: 0.9;
-        font-weight: 600;
-        white-space: nowrap;
-        margin-top: 0.2rem;
+    .kpi-trend {
+        display: flex;
+        align-items: center;
+        gap: var(--space-1);
+        font-size: var(--text-sm);
+        font-weight: var(--font-semibold);
+    }
+
+    .trend-up {
+        color: var(--color-success);
+    }
+
+    .trend-down {
+        color: var(--color-danger);
+    }
+
+    .kpi-progress {
+        height: 4px;
+        background: var(--bg-tertiary);
+        border-radius: 2px;
+        overflow: hidden;
+        width: 100%;
+    }
+
+    .kpi-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--color-accent), var(--color-info));
+        transition: width var(--duration-slow) var(--ease-out);
     }
 
     /* Dashboard Iframe */
@@ -640,7 +400,7 @@
     .data-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 0.9rem;
+        font-size: var(--text-sm);
     }
 
     .data-table th {
@@ -649,6 +409,7 @@
         padding: 10px 12px;
         font-weight: 600;
         color: var(--text-muted);
+        font-size: var(--text-sm);
         border-bottom: 1px solid var(--border-color);
         position: sticky;
         top: 0;

@@ -5,6 +5,7 @@ import { getColorShade } from './utils/color-shade-generator.js';
 import { DistrictColorizer } from './components/district-colorizer.js';
 import { DistrictLabels } from './components/district-labels.js';
 import { DistrictHover } from './components/district-hover.js';
+import FormatUtils from './utils/format-utils.js';
 
 class MapInteractions {
     constructor(dataManager, viewController) {
@@ -196,6 +197,51 @@ class MapInteractions {
 
                 this.selectedDistrictId = district.id;
                 this.handleDistrictClick(district.id);
+            });
+
+            // Tooltip Hover Events
+            district.addEventListener('mousemove', (e) => {
+                const tooltip = document.getElementById('map-tooltip');
+                if (!tooltip) return;
+
+                const districtId = district.id;
+                const data = this.districtInsights[districtId] || {
+                    name: districtId,
+                    dealerCount: 0,
+                    currentSales: 0,
+                    achievement: 0
+                };
+
+                // Update content
+                const titleEl = tooltip.querySelector('.tooltip-title');
+                if (titleEl) titleEl.textContent = data.name || districtId;
+
+                const dealersEl = tooltip.querySelector('#tooltip-dealers');
+                if (dealersEl) dealersEl.textContent = data.dealerCount || (data.dealers ? data.dealers.length : 0);
+
+                const salesEl = tooltip.querySelector('#tooltip-sales');
+                if (salesEl) salesEl.textContent = '₹' + FormatUtils.formatCurrency(data.currentSales || 0);
+
+                const achEl = tooltip.querySelector('#tooltip-achievement');
+                if (achEl) achEl.textContent = (data.achievement || 0);
+
+                // Position tooltip
+                // Ensure it doesn't go off screen
+                let x = e.pageX + 15;
+                let y = e.pageY + 15;
+
+                // Simple boundary check (optional, but good for UX)
+                if (x + 220 > window.innerWidth) x = e.pageX - 235;
+                if (y + 150 > window.innerHeight) y = e.pageY - 165;
+
+                tooltip.style.left = `${x}px`;
+                tooltip.style.top = `${y}px`;
+                tooltip.classList.add('visible');
+            });
+
+            district.addEventListener('mouseleave', () => {
+                const tooltip = document.getElementById('map-tooltip');
+                if (tooltip) tooltip.classList.remove('visible');
             });
         });
 

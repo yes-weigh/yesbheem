@@ -171,6 +171,11 @@ class NavigationController {
             // Insert the HTML without scripts
             contentArea.innerHTML = tempDiv.innerHTML;
 
+            // Trigger animation
+            contentArea.classList.remove('page-enter');
+            void contentArea.offsetWidth; // Force reflow
+            contentArea.classList.add('page-enter');
+
             // Now execute the scripts in order
             for (const script of scriptContents) {
                 if (script.type === 'src') {

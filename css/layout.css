@@ -85,3 +85,23 @@
         width: 100%;
     }
 }
+
+@media (max-width: 768px) {
+
+    /* Stack KPI cards */
+    .kpi-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
+    }
+
+    /* Adjust main content padding */
+    .main-content {
+        padding: var(--space-4);
+        margin-left: 0 !important;
+        /* Force sidebar collapse compliance */
+    }
+
+    .main-content.expanded {
+        margin-left: 0;
+    }
+}

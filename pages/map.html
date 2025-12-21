@@ -57,6 +57,26 @@
                 </div>
 
 
+                <!-- Map Tooltip -->
+                <div id="map-tooltip" class="map-tooltip">
+                    <div class="tooltip-title"></div>
+                    <div class="tooltip-stats">
+                        <div class="tooltip-stat">
+                            <span class="tooltip-label">Dealers:</span>
+                            <span class="tooltip-value" id="tooltip-dealers">-</span>
+                        </div>
+                        <div class="tooltip-stat">
+                            <span class="tooltip-label">Sales:</span>
+                            <span class="tooltip-value" id="tooltip-sales">-</span>
+                        </div>
+                        <div class="tooltip-stat">
+                            <span class="tooltip-label">Achievement:</span>
+                            <span class="tooltip-value" id="tooltip-achievement">-</span>
+                        </div>
+                    </div>
+                    <div class="tooltip-hint">Click to expand</div>
+                </div>
+
                 <!-- India Container -->
                 <div id="india-view" class="view-layer active">
                     <div id="india-map-container" class="pan-zoom-layer">
@@ -77,7 +97,8 @@
                 <div class="sidebar-content">
                     <div class="sidebar-header">
                         <h2 id="district-name">INDIA</h2>
-                        <p class="subtitle" id="district-description">Select a state to explore detailed analytics.</p>
+                        <p class="subtitle" id="district-description">Select a state to explore detailed analytics.
+                        </p>
                     </div>
 
                     <!-- Stats Grid Moved to Floating Tile -->
@@ -96,7 +117,7 @@
     <script type="module" src="../js/data_manager.js?v=20251219_GDP_FIX"></script>
     <script type="module" src="../js/ui_renderer.js?v=20251219_GDP_FIX"></script>
     <script type="module" src="../js/map_interactions.js?v=20251219_GDP_FIX"></script>
-    <script src="../js/view_controller.js?v=20251219_GDP_FIX"></script>
+    <script type="module" src="../js/view_controller.js?v=20251219_GDP_FIX"></script>
     <script src="../js/theme_manager.js?v=20251219_GDP_FIX"></script>
 </body>
 

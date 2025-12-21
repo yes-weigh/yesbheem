@@ -262,12 +262,15 @@
 }
 
 /* Mobile Sidebar Responsiveness */
-@media (max-width: 900px) {
+@media (max-width: 768px) {
     .sidebar {
         position: fixed;
         left: 0;
         top: 0;
         height: 100vh;
+        width: 80%;
+        /* Don't cover full screen so user can click out */
+        max-width: 300px;
         z-index: 1000;
         transform: translateX(-100%);
         transition: transform 0.3s;

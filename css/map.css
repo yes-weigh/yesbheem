@@ -478,3 +478,108 @@ path.selected {
         bottom: calc(45vh + 1rem);
     }
 }
+
+/* Map Tooltip Styles */
+.map-tooltip {
+    position: absolute;
+    background: var(--surface-card);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--duration-fast);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    min-width: 200px;
+}
+
+.map-tooltip.visible {
+    opacity: 1;
+}
+
+.tooltip-title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-semibold);
+    color: var(--text-primary);
+    margin-bottom: var(--space-3);
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: var(--space-2);
+}
+
+.tooltip-stats {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.tooltip-stat {
+    display: flex;
+    justify-content: space-between;
+}
+
+.tooltip-label {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+}
+
+.tooltip-value {
+    color: var(--text-primary);
+    font-weight: var(--font-medium);
+    font-size: var(--text-sm);
+}
+
+.tooltip-hint {
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    text-align: center;
+    font-style: italic;
+}
+
+/* Map Legend */
+.map-legend {
+    position: absolute;
+    bottom: var(--space-6, 24px);
+    right: var(--space-6, 24px);
+    background: rgba(30, 41, 59, 0.9);
+    /* Semi-transparent Slate-800 */
+    padding: var(--space-4, 16px);
+    border-radius: var(--radius-md, 8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    color: #f8fafc;
+    font-family: 'Inter', sans-serif;
+    z-index: 500;
+    min-width: 140px;
+}
+
+.legend-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #f8fafc;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.legend-items {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: #cbd5e1;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}

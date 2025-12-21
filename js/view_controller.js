@@ -1,3 +1,7 @@
+import FormatUtils from './utils/format-utils.js';
+import { ColorScales, LegendConfigs } from './utils/color-utils.js';
+import Toast from './utils/toast.js';
+
 class ViewController {
     constructor(dataManager) {
         this.dataManager = dataManager;
@@ -148,6 +152,12 @@ class ViewController {
                             this.handleViewChange(viewSelector ? viewSelector.value : 'states');
                         } else if (this.currentView === 'state' && this.mapInteractions) {
                             // For state view, load state-specific data
+
+                            // CRITICAL: Save current view BEFORE reload
+                            const viewSelector = document.getElementById('view-selector');
+                            const previousView = viewSelector ? viewSelector.value : null;
+                            console.log('Changing report in state view. Saved view:', previousView);
+
                             // Update DataLayer active report
                             if (this.dataManager.dataLayer) {
                                 this.dataManager.dataLayer.setActiveReport(reportUrl === 'ALL_REPORTS' ? null : reportUrl);
@@ -184,13 +194,32 @@ class ViewController {
                                         this.mapInteractions.handleViewChange(this.mapInteractions.currentMetric || 'districts');
                                     }
                                 } else {
-                                    this.mapInteractions.handleViewChange(this.mapInteractions.currentMetric || 'districts');
+                                    // CRITICAL FIX: Update mapInteractions.currentData with fresh state data
+                                    // This ensures the dealer list has the correct data before rendering  
+                                    this.mapInteractions.currentData = data;
+
+                                    // CRITICAL FIX: Restore the previous view instead of defaulting to districts
+                                    // This ensures dealer list refreshes if user was viewing dealers
+                                    if (previousView) {
+                                        console.log('Restoring view after report change:', previousView);
+                                        this.mapInteractions.handleViewChange(previousView);
+                                    } else {
+                                        this.mapInteractions.handleViewChange(this.mapInteractions.currentMetric || 'districts');
+                                    }
+                                }
+
+                                // CRITICAL FIX: Explicitly refresh dealer list if currently showing dealers
+                                // This ensures the list updates with the new data source
+                                const currentViewSelector = document.getElementById('view-selector');
+                                if (currentViewSelector && currentViewSelector.value === 'dealers') {
+                                    // Force dealer list rendering with updated data
+                                    this.mapInteractions.handleViewChange('dealers');
                                 }
                             }
                         }
                     } catch (err) {
                         console.error('Failed to change report:', err);
-                        alert('Failed to load report data');
+                        Toast.error('Failed to load report data');
                     }
                 }
             });
@@ -219,15 +248,19 @@ class ViewController {
             dealerSection.innerHTML = UIRenderer.renderLoading('Loading view...');
 
             setTimeout(async () => {
+                // Fetch KPI data first for all views
+                const kpiData = await this.dataManager.fetchKPIData();
+
                 if (view === 'states') {
                     if (this.indiaData && this.indiaData.dealers) {
-                        const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
+                        // Use aggregated data with KPIs (Achievement, etc.)
+                        const statesData = this.dataManager.aggregator.aggregateStatesWithKPIs(this.indiaData.dealers, kpiData);
                         dealerSection.innerHTML = UIRenderer.renderDistrictSalesList(statesData);
                         this.colorizeMapStates(statesData, 'states');
                     }
                 } else if (view === 'dealer_count') {
                     if (this.indiaData && this.indiaData.dealers) {
-                        const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
+                        const statesData = this.dataManager.aggregator.aggregateStatesWithKPIs(this.indiaData.dealers, kpiData);
                         // Sort by Dealer Count
                         statesData.sort((a, b) => b.dealerCount - a.dealerCount);
                         dealerSection.innerHTML = UIRenderer.renderDealerCountList(statesData);
@@ -237,7 +270,7 @@ class ViewController {
                     if (this.indiaData && this.indiaData.dealers) {
                         dealerSection.innerHTML = UIRenderer.renderDealerList(this.indiaData.dealers);
                         // Color map by dealer count to match Kerala behavior
-                        const statesData = this.dataManager.aggregateByState(this.indiaData.dealers);
+                        const statesData = this.dataManager.aggregator.aggregateStatesWithKPIs(this.indiaData.dealers, kpiData);
                         this.colorizeMapStates(statesData, 'dealer_count');
                     }
                 } else if (view === 'gdp' || view === 'population') {
@@ -274,6 +307,119 @@ class ViewController {
         } else if (this.mapInteractions) {
             this.mapInteractions.handleViewChange(view);
         }
+    }
+
+    /**
+     * Colorize map states based on performance metric
+     * @param {Array} statesData - Aggregated state data
+     * @param {string} metric - Metric to color by (default: 'states' -> sales/achievement)
+     */
+    /**
+     * Colorize map states based on performance metric
+     * @param {Array} statesData - Aggregated state data
+     * @param {string} metric - Metric to color by (default: 'states' -> sales/achievement)
+     */
+    colorizeMapStates(statesData, metric = 'states') {
+        const svg = this.containers.indiaMap;
+        if (!svg) return;
+
+        // Cache for tooltips
+        this.currentMapData = statesData;
+
+        const paths = svg.querySelectorAll('path');
+
+        // Create a lookup map for speed
+        const stateMap = {};
+        if (statesData) {
+            statesData.forEach(item => {
+                // Normalize names for matching
+                stateMap[item.name.toLowerCase()] = item;
+            });
+        }
+
+        paths.forEach(path => {
+            let stateName = path.getAttribute('title') || path.id.replace('IN-', '');
+            if (stateName === 'Dadra and Nagar Haveli and Daman and Diu') stateName = 'Dadra and Nagar Haveli';
+
+            const item = stateMap[stateName.toLowerCase()];
+            let color = '#1e293b'; // Default Slate-800 (No Data / Inactive)
+            let opacity = '0.4';
+
+            if (item) {
+                // Determine Scale based on Metric
+                if (metric === 'dealer_count') {
+                    color = ColorScales.dealer_count(item.dealerCount || 0);
+                    opacity = '0.8';
+                } else if (metric === 'population') {
+                    color = ColorScales.population(item.population || 0);
+                    opacity = '0.8';
+                } else if (metric === 'gdp') {
+                    color = ColorScales.gdp(item.gdp || 0);
+                    opacity = '0.8';
+                } else {
+                    // Default: Achievement (for 'states' view)
+                    color = ColorScales.achievement(item.achievement, item.monthlyTarget);
+
+                    // Specific Handling for "No Target" (Gray)
+                    if (color === '#475569') {
+                        opacity = '0.6';
+                    } else {
+                        opacity = '0.8';
+                    }
+                }
+            }
+
+            path.style.fill = color;
+            path.style.fillOpacity = opacity;
+            path.style.transition = 'fill 0.4s ease, fill-opacity 0.4s ease';
+        });
+
+        this.updateMapLegend(metric);
+    }
+
+    /**
+     * Get color based on achievement (Legacy wrapper or remove if unused)
+     */
+    getPerformanceColor(achievement, monthlyTarget) {
+        return ColorScales.achievement(achievement, monthlyTarget);
+    }
+
+    updateMapLegend(metric) {
+        let legend = document.getElementById('map-legend');
+        if (!legend) {
+            legend = document.createElement('div');
+            legend.id = 'map-legend';
+            legend.className = 'map-legend';
+            const container = document.getElementById('india-map-container');
+            if (container) container.appendChild(legend);
+            else return;
+        }
+
+        // Determine Config based on metric
+        let config = null;
+        if (metric === 'dealer_count') config = LegendConfigs.dealer_count;
+        else if (metric === 'population') config = LegendConfigs.population;
+        else if (metric === 'gdp') config = LegendConfigs.gdp;
+        else config = LegendConfigs.achievement;
+
+        if (!config) return;
+
+        let itemsHtml = config.items.map(item => `
+            <div class="legend-item">
+                <span class="legend-color" style="background: ${item.color}"></span>
+                <span>${item.label}</span>
+            </div>
+        `).join('');
+
+        let html = `
+            <div class="legend-title">${config.title}</div>
+            <div class="legend-items">
+                ${itemsHtml}
+            </div>
+        `;
+
+        legend.innerHTML = html;
+        legend.style.display = 'block';
     }
 
     async loadIndiaMap() {
@@ -369,83 +515,70 @@ class ViewController {
     initializeIndiaInteractions() {
         if (!this.containers.indiaMap) return;
 
-        // Create or get the valid label element
-        let hoverLabel = document.getElementById('map-hover-label');
-        if (!hoverLabel && this.containers.indiaMap) {
-            hoverLabel = document.createElement('div');
-            hoverLabel.id = 'map-hover-label';
-            hoverLabel.style.position = 'absolute';
-            hoverLabel.style.top = '20px';
-            hoverLabel.style.left = '20px';
-            hoverLabel.style.background = 'rgba(15, 23, 42, 0.9)'; // Dark background
-            hoverLabel.style.color = '#e2e8f0';
-            hoverLabel.style.padding = '8px 12px';
-            hoverLabel.style.borderRadius = '6px';
-            hoverLabel.style.fontSize = '1rem';
-            hoverLabel.style.fontWeight = '500';
-            hoverLabel.style.pointerEvents = 'none'; // Click-through
-            hoverLabel.style.zIndex = '1000';
-            hoverLabel.style.display = 'none'; // Hidden by default
-            hoverLabel.style.border = '1px solid rgba(255,255,255,0.1)';
-            hoverLabel.style.backdropFilter = 'blur(4px)';
-
-            // Append to the VIEW container, NOT the map container
-            // This prevents it from moving when the map is panned/zoomed
-            if (this.containers.india) {
-                this.containers.india.style.position = 'relative';
-                this.containers.india.appendChild(hoverLabel);
-            }
-        }
-
         const states = this.containers.indiaMap.querySelectorAll('path');
         states.forEach(state => {
             // Hover Listeners
-            state.addEventListener('mouseenter', () => {
+            state.addEventListener('mousemove', (e) => {
+                const tooltip = document.getElementById('map-tooltip');
+                if (!tooltip) return;
+
                 const stateName = state.getAttribute('title') || state.id.replace('IN-', '');
-                if (stateName && hoverLabel) {
-                    let text = `<strong>${stateName}</strong>`;
+                if (!stateName) return;
 
-                    // Add Data Detail if available
-                    if (this.currentMapData && this.currentMetric) {
+                // Find data for this state
+                let data = { name: stateName, dealerCount: 0, currentSales: 0, achievement: 0 };
+
+                if (this.indiaData && this.indiaData.dealers) {
+                    // Calculate aggregations dynamically or use cache if available
+                    // Note: aggregating every mousemove is expensive. 
+                    // Better to search in pre-aggregated list if available.
+                    // The `loadIndiaOverview` creates `this.indiaData`. 
+                    // We need state-level aggregation. `handleViewChange` creates it locally variables.
+                    // Let's rely on `this.dataManager.aggregateByState` but we need to optimize or cache it.
+                    // Ideally `this.indiaData` should have a `states` map? 
+                    // For now, let's look up in the dealer list if we have to, OR 
+                    // Use the `currentMapData` if it was set by `handleViewChange`.
+                    // Let's see if `currentMapData` is available (it is used in the old code!).
+
+                    if (this.currentMapData) {
                         const key = stateName.toLowerCase().trim();
+                        // Handle special case for Kerala/TN mismatches if any, but names should match
                         const item = this.currentMapData.find(d => d.name.toLowerCase().trim() === key);
-
                         if (item) {
-                            let valLabel = '';
-                            let val = '';
-
-                            if (this.currentMetric === 'states') { // Sales
-                                valLabel = 'Sales';
-                                // Format Sales: Cr or L
-                                const s = item.currentSales || item.sales || item.totalSales || 0;
-                                if (s >= 10000000) val = `₹${(s / 10000000).toFixed(2)} Cr`;
-                                else val = `₹${(s / 100000).toFixed(2)} L`;
-                            } else if (this.currentMetric === 'dealer_count') {
-                                valLabel = 'Dealers';
-                                val = item.dealerCount || 0;
-                            } else if (this.currentMetric === 'gdp') {
-                                valLabel = 'GDP';
-                                val = item.gdp || 'N/A';
-                            } else if (this.currentMetric === 'population') {
-                                valLabel = 'Population';
-                                val = item.population || 'N/A';
-                            }
-
-                            if (valLabel) {
-                                text += `<div style="font-size:0.85rem; opacity:0.8; margin-top:2px;">${valLabel}: ${val}</div>`;
-                            }
+                            data = item;
                         }
                     }
-
-                    hoverLabel.innerHTML = text;
-                    hoverLabel.style.display = 'block';
                 }
+
+                // Update Tooltip Content
+                const titleEl = tooltip.querySelector('.tooltip-title');
+                if (titleEl) titleEl.textContent = data.name;
+
+                const dealersEl = tooltip.querySelector('#tooltip-dealers');
+                if (dealersEl) dealersEl.textContent = data.dealerCount || (data.dealers ? data.dealers.length : 0);
+
+                const salesEl = tooltip.querySelector('#tooltip-sales');
+                if (salesEl) salesEl.textContent = '₹' + FormatUtils.formatCurrency(data.currentSales || data.sales || 0);
+
+                const achEl = tooltip.querySelector('#tooltip-achievement');
+                if (achEl) achEl.textContent = (data.achievement || 0) + '%';
+
+                // Position tooltip
+                let x = e.pageX + 15;
+                let y = e.pageY + 15;
+
+                // Boundary check
+                if (x + 220 > window.innerWidth) x = e.pageX - 235;
+                if (y + 150 > window.innerHeight) y = e.pageY - 165;
+
+                tooltip.style.left = `${x}px`;
+                tooltip.style.top = `${y}px`;
+                tooltip.classList.add('visible');
             });
 
             state.addEventListener('mouseleave', () => {
-                if (hoverLabel) {
-                    hoverLabel.style.display = 'none';
-                }
+                const tooltip = document.getElementById('map-tooltip');
+                if (tooltip) tooltip.classList.remove('visible');
             });
 
             state.addEventListener('click', (e) => {

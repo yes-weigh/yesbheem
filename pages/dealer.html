@@ -46,50 +46,64 @@
 
         <div class="control-group filter-group">
             <div class="filter-wrapper">
-                <select id="filter-kam" class="filter-select">
+                <select id="filter-kam" class="filter-select" aria-label="Filter by Key Account Manager">
                     <option value="all">All KAMs</option>
                 </select>
-                <button class="filter-clear-btn" data-for="filter-kam" title="Clear filter">×</button>
+                <button class="filter-clear-btn" data-for="filter-kam" title="Clear filter"
+                    aria-label="Clear KAM filter">×</button>
             </div>
             <div class="filter-wrapper">
-                <select id="filter-stage" class="filter-select">
+                <select id="filter-stage" class="filter-select" aria-label="Filter by Stage">
                     <option value="all">All Stages</option>
                 </select>
-                <button class="filter-clear-btn" data-for="filter-stage" title="Clear filter">×</button>
+                <button class="filter-clear-btn" data-for="filter-stage" title="Clear filter"
+                    aria-label="Clear Stage filter">×</button>
             </div>
             <div class="filter-wrapper">
-                <select id="filter-state" class="filter-select">
+                <select id="filter-state" class="filter-select" aria-label="Filter by State">
                     <option value="all">All States</option>
                 </select>
-                <button class="filter-clear-btn" data-for="filter-state" title="Clear filter">×</button>
+                <button class="filter-clear-btn" data-for="filter-state" title="Clear filter"
+                    aria-label="Clear State filter">×</button>
             </div>
             <div class="filter-wrapper">
-                <select id="filter-district" class="filter-select">
+                <select id="filter-district" class="filter-select" aria-label="Filter by District">
                     <option value="all">All Districts</option>
                 </select>
-                <button class="filter-clear-btn" data-for="filter-district" title="Clear filter">×</button>
+                <button class="filter-clear-btn" data-for="filter-district" title="Clear filter"
+                    aria-label="Clear District filter">×</button>
             </div>
         </div>
+        <div id="a11y-status" class="sr-only" aria-live="polite"></div>
+    </div>
+
+    <!-- Active Filters Section -->
+    <div class="active-filter-bar" id="active-filter-bar" style="display: none;">
+        <div class="active-filters-list" id="active-filters-list">
+            <!-- Chips injected here -->
+        </div>
+        <button id="clear-all-filters" class="clear-all-btn">Clear All</button>
     </div>
 
     <div class="dealer-table-container">
         <table class="dealer-table">
             <colgroup>
-                <col style="width: 3%;">
+                <col style="width: 45px; max-width: 45px;">
                 <col style="width: 30%;">
                 <col style="width: 20%;">
                 <col style="width: 20%;">
                 <col style="width: 10%;">
-                <col style="width: 5%;">
             </colgroup>
             <thead>
                 <tr>
-                    <th>#</th>
-                    <th>Dealer Name</th>
-                    <th>Contact</th>
-                    <th>State / District</th>
-                    <th>Stage</th>
-                    <th></th>
+                    <th style="width: 40px; padding: 0 10px; text-align: center;">
+                        <input type="checkbox" id="select-all-dealers" class="table-checkbox">
+                    </th>
+                    <th>Sl.No</th>
+                    <th class="sortable" data-sort="customer_name">Dealer Name</th>
+                    <th class="sortable" data-sort="first_name">Contact</th>
+                    <th class="sortable" data-sort="state">State / District</th>
+                    <th class="sortable" data-sort="dealer_stage">Stage</th>
                 </tr>
             </thead>
             <tbody id="dealer-table-body">
@@ -106,6 +120,44 @@
         <div class="modal-container">
             <!-- Content injected here -->
             <div id="dealer-edit-modal-content"></div>
+        </div>
+    </div>
+    <!-- Bulk Actions Bar -->
+    <div id="bulk-actions-bar" class="bulk-actions-bar">
+        <div class="bulk-selection-info">
+            <span id="bulk-selected-count">0</span>
+            <span class="bulk-label">Selected</span>
+        </div>
+        <div class="bulk-actions-buttons">
+            <button class="bulk-btn" onclick="event.stopPropagation(); window.dealerManager.bulkAssignKAM()">Assign
+                KAM</button>
+            <button class="bulk-btn" onclick="window.dealerManager.bulkExport()">Export</button>
+        </div>
+        <button class="bulk-close-btn" onclick="window.dealerManager.clearSelection()">×</button>
+    </div>
+</div>
+
+<!-- Bulk KAM Modal (Moved outside page-container) -->
+<div id="bulk-kam-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-container" style="max-width: 400px;">
+        <div style="margin-bottom: 20px;">
+            <h3 style="margin-bottom: 8px; color: var(--text-main);">Assign KAM</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Assign a Key Account Manager to <span
+                    id="bulk-kam-count" style="font-weight: bold; color: var(--text-main);">0</span> selected
+                dealers.</p>
+        </div>
+        <div style="margin-bottom: 24px;">
+            <label style="display: block; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 6px;">Select
+                KAM</label>
+            <select id="bulk-kam-select" class="filter-select" style="width: 100%; background: var(--bg-primary);">
+                <option value="">Not Assigned</option>
+            </select>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+            <button class="btn-secondary" onclick="window.dealerManager.closeBulkKAMModal()">Cancel</button>
+            <button class="bulk-btn"
+                style="background: var(--accent-color); border-color: var(--accent-color); color: white;"
+                onclick="window.dealerManager.confirmBulkAssign()">Confirm Assignment</button>
         </div>
     </div>
 </div>
@@ -353,7 +405,6 @@
         background: var(--bg-primary);
         z-index: 10;
         white-space: nowrap;
-        position: relative;
         user-select: none;
     }
 
@@ -374,6 +425,42 @@
         background: rgba(59, 130, 246, 0.3);
     }
 
+    /* Sortable Headers */
+    .dealer-table th.sortable {
+        cursor: pointer;
+        padding-right: 24px;
+        /* Space for icon */
+        transition: color 0.2s;
+    }
+
+    .dealer-table th.sortable:hover {
+        color: var(--text-main);
+        background: var(--bg-secondary);
+    }
+
+    .dealer-table th.sortable::before {
+        content: '↕';
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 12px;
+        opacity: 0.3;
+        font-family: sans-serif;
+    }
+
+    .dealer-table th.sortable.asc::before {
+        content: '↑';
+        opacity: 1;
+        color: var(--accent-color);
+    }
+
+    .dealer-table th.sortable.desc::before {
+        content: '↓';
+        opacity: 1;
+        color: var(--accent-color);
+    }
+
     .dealer-table th.resizing::after {
         background: rgba(59, 130, 246, 0.6);
     }
@@ -390,6 +477,15 @@
         text-overflow: ellipsis;
     }
 
+    /* Force first column (Sl.No) to strict width */
+    .dealer-table th:first-child,
+    .dealer-table td:first-child {
+        width: 45px;
+        max-width: 45px;
+        min-width: 45px;
+        padding: 10px 8px;
+    }
+
     .dealer-row {
         transition: background 0.15s;
         cursor: pointer;
@@ -403,7 +499,7 @@
 
     .row-title {
         font-weight: 500;
-        color: #fff;
+        color: var(--text-main);
         overflow: hidden;
         text-overflow: ellipsis;
     }
@@ -542,31 +638,7 @@
         color: var(--text-main);
     }
 
-    /* Modal Overlay */
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(4px);
-        z-index: 1000;
-        display: flex;
-        /* Flex but hidden */
-        align-items: center;
-        justify-content: center;
-    }
-
-    .modal-container {
-        /* The content injected will have its own width/styles, essentially .dealer-edit-form */
-        width: 100%;
-        max-width: 450px;
-        padding: 20px;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-light);
-        border-radius: 8px;
-    }
+    /* Modal Overlay - Moved to components.css */
 
     /* Inline Editing Styles */
     .kam-cell,

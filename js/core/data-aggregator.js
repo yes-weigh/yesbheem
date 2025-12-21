@@ -113,31 +113,78 @@ export class DataAggregator {
      * @returns {Array} Array of state aggregations sorted by sales
      */
     aggregateByState(dealers) {
+        return this.aggregateStatesWithKPIs(dealers, null);
+    }
+
+    /**
+     * Aggregate dealers by state and include KPI data (Target, Achievement)
+     * @param {Array} dealers - List of dealer objects
+     * @param {Object} kpiData - KPI data map (optional)
+     * @returns {Array} Array of state aggregations with sales, count, and achievement
+     */
+    aggregateStatesWithKPIs(dealers, kpiData) {
         if (!dealers || dealers.length === 0) return [];
 
         const stateMap = {};
 
-        // 1. Initialize with ALL states having 0 sales
+        // 1. Initialize with ALL states
         const allStates = this.getAllStateNames();
         allStates.forEach(name => {
-            stateMap[name] = { name: name, totalSales: 0, dealerCount: 0 };
+            stateMap[name] = {
+                name: name,
+                totalSales: 0,
+                currentSales: 0,
+                dealerCount: 0,
+                monthlyTarget: 0,
+                achievement: 0,
+                population: 'N/A',
+                gdp: 'N/A'
+            };
         });
 
-        // 2. Aggregate sales by state
-        console.log(`Aggregating dealers: ${dealers.length} entries`);
+        // 2. Aggregate sales
         dealers.forEach(dealer => {
             let rawState = dealer.state || 'Unknown';
             let stateKey = this.normalizeStateName(rawState);
 
             if (!stateMap[stateKey]) {
-                // console.warn(`Unmapped state: ${rawState} -> ${stateKey}`); // Optional noisier log
-                stateMap[stateKey] = { name: stateKey, totalSales: 0, dealerCount: 0 };
+                stateMap[stateKey] = {
+                    name: stateKey,
+                    totalSales: 0,
+                    currentSales: 0,
+                    dealerCount: 0,
+                    monthlyTarget: 0,
+                    achievement: 0
+                };
             }
-            stateMap[stateKey].totalSales += dealer.sales || 0;
 
-            // Only increment count if not yescloud
+            const val = dealer.sales || 0;
+            stateMap[stateKey].totalSales += val;
+            stateMap[stateKey].currentSales += val; // Alias for tooltip consistency
+
             if (!dealer.isYesCloud && !dealer.name.toLowerCase().startsWith('yescloud')) {
                 stateMap[stateKey].dealerCount += 1;
+            }
+        });
+
+        // 3. Enrich with KPIs and Calculate Achievement
+        Object.values(stateMap).forEach(state => {
+            const key = this.normalizeKey(state.name);
+            const kpi = kpiData ? kpiData[key] : null;
+
+            if (kpi) {
+                state.population = kpi.population || 'N/A';
+                state.gdp = kpi.gdp || 'N/A';
+                state.monthlyTarget = kpi.target ? this.parseTargetValue(kpi.target) : 500000;
+            } else {
+                state.monthlyTarget = 500000; // Default
+            }
+
+            // Calculate Achievement
+            if (state.monthlyTarget > 0) {
+                state.achievement = ((state.currentSales / state.monthlyTarget) * 100).toFixed(1); // Keep as number string
+            } else {
+                state.achievement = "0.0";
             }
         });
 

@@ -5,6 +5,9 @@
  */
 
 import { DealerValidator } from './components/dealer-validator.js';
+import { TABLE_UI } from './config/constants.js';
+import { DealerService } from './services/dealer-service.js';
+import { DealerFilterService } from './services/dealer-filter-service.js';
 
 if (!window.DealerManager) {
     window.DealerManager = class DealerManager {
@@ -15,6 +18,12 @@ if (!window.DealerManager) {
 
             // Initialize validator
             this.validator = new DealerValidator();
+
+            // Initialize DealerService (will be set after dataManager is available)
+            this.dealerService = null;
+
+            // Initialize DealerFilterService
+            this.filterService = new DealerFilterService();
 
             // Filters
             this.searchQuery = '';
@@ -27,6 +36,13 @@ if (!window.DealerManager) {
             this.currentPage = 1;
             this.itemsPerPage = 100; // Increased default to 100 based on user preference, but paginated
             this.isPaginationEnabled = true;
+
+            // Sorting
+            this.sortField = 'customer_name'; // Default sort
+            this.sortDirection = 'asc';
+
+            // Bulk Selection
+            this.selectedDealers = new Set();
 
             this.init();
         }
@@ -63,6 +79,9 @@ if (!window.DealerManager) {
                 }
 
                 await this.waitForDataManager();
+
+                // Initialize DealerService now that dataManager is available
+                this.dealerService = new DealerService(window.dataManager);
 
                 // Ensure settings are loaded
                 if (!window.dataManager.generalSettings || !window.dataManager.generalSettings.key_accounts) {
@@ -145,7 +164,7 @@ if (!window.DealerManager) {
             }
         }
 
-        async loadData() {
+        async loadData(forceRefresh = false) {
             // Force check again just in case (e.g. if we skipped wait due to race condition which shouldn't happen with await)
             if (!window.dataManager || !window.dataManager.dataLayer) {
                 console.warn('DataManager or DataLayer not ready in loadData');
@@ -155,12 +174,12 @@ if (!window.DealerManager) {
             console.log('[DealerManager] Loading dealer data from DataLayer...');
 
             try {
-                // Use DataLayer to get merged dealer data (with caching)
-                const mergedDealers = await window.dataManager.dataLayer.getDealerManagementData(false);
+                // Use DataLayer to get merged dealer data (with optional cache bypass)
+                const mergedDealers = await window.dataManager.dataLayer.getDealerManagementData(forceRefresh);
                 console.log(`[DealerManager] Loaded ${mergedDealers.length} dealers from DataLayer`);
 
                 // Process dealers for table display
-                this.dealers = mergedDealers.map(d => {
+                this.dealers = mergedDealers.map((d, index) => {
                     // INJECT DISTRICT if not already present
                     if (!d.district && window.dataManager.zipCache) {
                         let zip = d.billing_zipcode || d.shipping_zipcode;
@@ -174,9 +193,14 @@ if (!window.DealerManager) {
                     const rawState = d.billing_state || d.shipping_state || '';
                     const state = this.validator.normalizeState(rawState);
 
+                    // Ensure ID exists
+                    const uniqueId = d.id || d.cust_id || `temp_id_${index}`;
+
                     return {
                         ...d, // Includes overrides and original data flags
                         state: state, // Normalized state
+                        _internalId: uniqueId, // Explicit internal ID for selection
+                        id: d.id || uniqueId, // Fallback
                         searchString: `${d.customer_name} ${d.first_name || ''} ${d.mobile_phone || ''} ${d.billing_zipcode || ''} ${state || ''} ${d.district || ''}`.toLowerCase()
                     };
                 });
@@ -187,6 +211,7 @@ if (!window.DealerManager) {
                 this.filteredDealers = [...this.dealers];
 
                 // Update dynamic filters after data is loaded
+                this.updateKAMFilter();
                 this.updateDistrictFilter();
                 this.updateStateFilter();
                 this.updateStageFilter();
@@ -210,9 +235,14 @@ if (!window.DealerManager) {
             // Search Input
             const searchInput = document.getElementById('dealer-search');
             if (searchInput) {
+                let searchTimeout;
                 searchInput.addEventListener('input', (e) => {
-                    this.searchQuery = e.target.value.toLowerCase();
-                    this.applyFilters();
+                    const query = e.target.value.toLowerCase();
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        this.searchQuery = query;
+                        this.applyFilters();
+                    }, 300);
                 });
             }
 
@@ -237,30 +267,36 @@ if (!window.DealerManager) {
                 }
             });
 
-            // Filter Clear Buttons Logic
+            // Clear All Button Logic (New)
+            const clearAllBtn = document.getElementById('clear-all-filters');
+            if (clearAllBtn) {
+                clearAllBtn.addEventListener('click', () => {
+                    this.clearAllFilters();
+                });
+            }
+
+            // Filter Clear Buttons Logic (Legacy - keep for individual clear)
             const filterIds = ['filter-kam', 'filter-stage', 'filter-state', 'filter-district'];
 
             filterIds.forEach(filterId => {
                 const select = document.getElementById(filterId);
-                const btn = document.querySelector(`.filter-clear-btn[data-for="${filterId}"]`);
-
-                if (select && btn) {
-                    // Update button visibility on change
-                    select.addEventListener('change', () => {
+                // Listen to change to trigger updates
+                if (select) {
+                    // We don't need the old clear buttons logic as much if we have chips,
+                    // but keeping them for consistency with the dropdowns themselves.
+                    // The logic below updating visibility of the 'x' inside the dropdown wrapper:
+                    const btn = document.querySelector(`.filter-clear-btn[data-for="${filterId}"]`);
+                    if (btn) {
+                        select.addEventListener('change', () => {
+                            btn.style.display = select.value !== 'all' ? 'flex' : 'none';
+                        });
+                        btn.addEventListener('click', () => {
+                            select.value = 'all';
+                            select.dispatchEvent(new Event('change', { bubbles: true }));
+                        });
+                        // Init state
                         btn.style.display = select.value !== 'all' ? 'flex' : 'none';
-                    });
-
-                    // Update visibility on load (if value pre-set)
-                    if (select.value !== 'all') {
-                        btn.style.display = 'flex';
                     }
-
-                    // Clear button click
-                    btn.addEventListener('click', () => {
-                        select.value = 'all';
-                        select.dispatchEvent(new Event('change', { bubbles: true })); // Trigger change handler
-                        btn.style.display = 'none';
-                    });
                 }
             });
 
@@ -270,6 +306,12 @@ if (!window.DealerManager) {
 
             // Setup column resizing
             this.setupColumnResize();
+
+            // Setup Sorting
+            this.setupSorting();
+
+            // Setup Bulk Actions
+            this.setupBulkActions();
         }
 
         setupColumnResize() {
@@ -293,19 +335,28 @@ if (!window.DealerManager) {
             const savedWidths = this.loadColumnWidths();
             if (savedWidths && cols.length > 0) {
                 cols.forEach((col, index) => {
-                    if (savedWidths[index]) {
+                    if (index === 0) {
+                        // Always force first column (Sl.No) to 45px
+                        col.style.width = TABLE_UI.FIRST_COLUMN_WIDTH + 'px';
+                    } else if (savedWidths[index]) {
                         col.style.width = savedWidths[index] + 'px';
                     }
                 });
             } else if (savedWidths) {
                 headers.forEach((header, index) => {
-                    if (savedWidths[index]) {
+                    if (index === 0) {
+                        // Always force first column (Sl.No) to 45px
+                        header.style.width = TABLE_UI.FIRST_COLUMN_WIDTH + 'px';
+                    } else if (savedWidths[index]) {
                         header.style.width = savedWidths[index] + 'px';
                     }
                 });
             }
 
             headers.forEach((header, index) => {
+                // Skip resize for first column (Sl.No)
+                if (index === 0) return;
+
                 header.addEventListener('mousedown', (e) => {
                     // Only start resize if clicking on the right edge (resize handle)
                     const rect = header.getBoundingClientRect();
@@ -350,6 +401,14 @@ if (!window.DealerManager) {
                     currentCol = null;
                 }
             });
+
+            // Final enforcement: Force first column to 45px after all setup
+            if (cols.length > 0) {
+                cols[0].style.width = TABLE_UI.FIRST_COLUMN_WIDTH + 'px';
+            }
+            if (headers.length > 0) {
+                headers[0].style.width = TABLE_UI.FIRST_COLUMN_WIDTH + 'px';
+            }
         }
 
         loadColumnWidths() {
@@ -448,6 +507,31 @@ if (!window.DealerManager) {
 
             // Populate State Filter (extract from actual data)
             this.updateStateFilter();
+        }
+
+        updateKAMFilter() {
+            const kamSelect = document.getElementById('filter-kam');
+            if (!kamSelect) return;
+
+            // Preserve current selection if it exists
+            const currentVal = kamSelect.value || 'all';
+
+            let html = '<option value="all">All KAMs</option>';
+
+            // Only populate if we have settings with key_accounts
+            if (this.generalSettings && this.generalSettings.key_accounts && this.generalSettings.key_accounts.length > 0) {
+                this.generalSettings.key_accounts.forEach(kam => {
+                    html += `<option value="${kam}">${kam}</option>`;
+                });
+            }
+
+            kamSelect.innerHTML = html;
+
+            // Restore selection if it still exists in the options
+            if (currentVal !== 'all') {
+                const optionExists = this.generalSettings?.key_accounts?.includes(currentVal);
+                kamSelect.value = optionExists ? currentVal : 'all';
+            }
         }
 
         updateDistrictFilter() {
@@ -549,31 +633,108 @@ if (!window.DealerManager) {
             return this.validator.getLevenshteinDistance(a, b);
         }
 
-        applyFilters() {
-            this.filteredDealers = this.dealers.filter(d => {
-                // Search
-                if (this.searchQuery && !d.searchString.includes(this.searchQuery)) return false;
+        setupSorting() {
+            const table = document.querySelector('.dealer-table');
+            if (!table) return;
 
-                // Stage
-                if (this.stageFilter !== 'all' && d.dealer_stage !== this.stageFilter) return false;
-
-                // KAM
-                if (this.kamFilter !== 'all' && d.key_account_manager !== this.kamFilter) return false;
-
-                // District
-                if (this.districtFilter !== 'all' && d.district !== this.districtFilter) return false;
-
-                // State
-                if (this.stateFilter !== 'all' && d.state !== this.stateFilter) return false;
-
-                return true;
+            const headers = table.querySelectorAll('th.sortable');
+            headers.forEach(th => {
+                th.addEventListener('click', () => {
+                    const field = th.dataset.sort;
+                    if (field) {
+                        this.handleSort(field);
+                    }
+                });
             });
+            this.updateSortIcons();
+        }
+
+        handleSort(field) {
+            if (this.sortField === field) {
+                // Toggle direction
+                this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.sortField = field;
+                this.sortDirection = 'asc';
+            }
+
+            // Re-apply filters which triggers sort and render
+            this.applyFilters();
+            this.updateSortIcons();
+        }
+
+        updateSortIcons() {
+            const headers = document.querySelectorAll('.dealer-table th.sortable');
+            headers.forEach(th => {
+                th.classList.remove('asc', 'desc');
+                if (th.dataset.sort === this.sortField) {
+                    th.classList.add(this.sortDirection);
+                }
+            });
+        }
+
+        sortDealers() {
+            if (!this.sortField) return;
+
+            const field = this.sortField;
+            const dir = this.sortDirection === 'asc' ? 1 : -1;
+
+            this.filteredDealers.sort((a, b) => {
+                let valA = a[field] || '';
+                let valB = b[field] || '';
+
+                // Special handling for State/District combined column sorting
+                // If sorting by 'state', we actually want to sort by State THEN District
+                if (field === 'state') {
+                    valA = (a.state || '') + (a.district || '');
+                    valB = (b.state || '') + (b.district || '');
+                }
+
+                if (typeof valA === 'string') valA = valA.toLowerCase();
+                if (typeof valB === 'string') valB = valB.toLowerCase();
+
+                if (valA < valB) return -1 * dir;
+                if (valA > valB) return 1 * dir;
+                return 0;
+            });
+        }
+
+        applyFilters() {
+            // Sync current filters to service
+            this.filterService.setFilter('search', this.searchQuery);
+            this.filterService.setFilter('kam', this.kamFilter);
+            this.filterService.setFilter('stage', this.stageFilter);
+            this.filterService.setFilter('state', this.stateFilter);
+            this.filterService.setFilter('district', this.districtFilter);
+
+            // Apply filters using the service
+            this.filteredDealers = this.filterService.applyFilters(this.dealers);
+
+            // Screen reader announcement
+            const statusEl = document.getElementById('a11y-status');
+            if (statusEl) {
+                statusEl.textContent = `Showing ${this.filteredDealers.length} of ${this.dealers.length} dealers`;
+            }
+
+            // Apply Sorting
+            this.sortDealers();
 
             // Reset pagination
             this.currentPage = 1;
 
+            this.renderFilterChips(); // Update chips UI
+
             this.renderTable();
             this.updateStats();
+
+            // Ensure first column stays at correct width (uses TABLE_UI constant from Prompt 6)
+            const table = document.querySelector('.dealer-table');
+            if (table) {
+                const firstCol = table.querySelector('colgroup col:first-child');
+                const firstHeader = table.querySelector('th:first-child');
+                if (firstCol) firstCol.style.width = TABLE_UI.FIRST_COLUMN_WIDTH + 'px';
+                if (firstHeader) firstHeader.style.width = TABLE_UI.FIRST_COLUMN_WIDTH + 'px';
+            }
         }
 
         updateStats() {
@@ -581,6 +742,331 @@ if (!window.DealerManager) {
             const total = this.dealers.length;
             const el = document.getElementById('dealer-count-display');
             if (el) el.textContent = `Showing ${count} of ${total}`;
+        }
+
+        renderFilterChips() {
+            const container = document.getElementById('active-filters-list');
+            const bar = document.getElementById('active-filter-bar');
+
+            if (!container || !bar) return;
+
+            container.innerHTML = '';
+            let hasFilters = false;
+
+            const createChip = (label, value, type) => {
+                hasFilters = true;
+                const chip = document.createElement('div');
+                chip.className = 'filter-chip';
+                chip.innerHTML = `
+                    <span class="filter-chip-label">${label}:</span>
+                    <span>${value}</span>
+                    <button class="filter-chip-remove" title="Remove filter">×</button>
+                `;
+                chip.querySelector('.filter-chip-remove').addEventListener('click', () => {
+                    this.removeFilter(type);
+                });
+                container.appendChild(chip);
+            };
+
+            if (this.kamFilter && this.kamFilter !== 'all') {
+                createChip('KAM', this.kamFilter, 'kam');
+            }
+            if (this.stageFilter && this.stageFilter !== 'all') {
+                createChip('Stage', this.stageFilter, 'stage');
+            }
+            if (this.stateFilter && this.stateFilter !== 'all') {
+                createChip('State', this.stateFilter, 'state');
+            }
+            if (this.districtFilter && this.districtFilter !== 'all') {
+                createChip('District', this.districtFilter, 'district');
+            }
+
+            // Show/Hide bar based on filters
+            bar.style.display = hasFilters ? 'flex' : 'none';
+        }
+
+        removeFilter(type) {
+            const idMap = {
+                kam: 'filter-kam',
+                stage: 'filter-stage',
+                state: 'filter-state',
+                district: 'filter-district'
+            };
+            const el = document.getElementById(idMap[type]);
+            if (el) {
+                el.value = 'all';
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
+        clearAllFilters() {
+            // Reset local state (will be synced by change events anyway, but good to be explicit)
+            const map = {
+                'filter-kam': 'all',
+                'filter-stage': 'all',
+                'filter-state': 'all',
+                'filter-district': 'all'
+            };
+
+            // Trigger change on all selects to reset logic
+            Object.keys(map).forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.value !== 'all') {
+                    el.value = 'all';
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+            // Search query? 
+            // if (this.searchQuery) ...
+        }
+
+        // ==========================================
+        // BULK ACTIONS
+        // ==========================================
+
+        setupBulkActions() {
+            // Select All Checkbox
+            const selectAll = document.getElementById('select-all-dealers');
+            if (selectAll) {
+                selectAll.addEventListener('change', (e) => {
+                    this.toggleSelectAll(e.target.checked);
+                });
+            }
+
+            // Move Modal to Body to avoid stacking context issues
+            const modal = document.getElementById('bulk-kam-modal');
+            if (modal && modal.parentElement !== document.body) {
+                document.body.appendChild(modal);
+            }
+        }
+
+        toggleSelectAll(checked) {
+            // Select only currently filtered dealers
+            const visibleIds = this.filteredDealers.map(d => d.id || d.cust_id).filter(Boolean); // Prefer ID, fallback cust_id
+
+            if (checked) {
+                visibleIds.forEach(id => this.selectedDealers.add(id));
+            } else {
+                visibleIds.forEach(id => this.selectedDealers.delete(id));
+            }
+            this.renderTable(); // Re-render to update checkboxes
+            this.updateBulkActionBar();
+        }
+
+        toggleSelectRow(id, checked) {
+            console.log(`toggleSelectRow: ${id} -> ${checked}`); // Debug Log
+            if (checked) {
+                this.selectedDealers.add(id);
+            } else {
+                this.selectedDealers.delete(id);
+            }
+            console.log(`Selected Count: ${this.selectedDealers.size}`);
+            this.updateBulkActionBar();
+
+            // Update Select All Checkbox state
+            this.updateSelectAllCheckbox();
+        }
+
+        updateSelectAllCheckbox() {
+            const selectAll = document.getElementById('select-all-dealers');
+            if (!selectAll) return;
+
+            const visibleIds = this.filteredDealers.map(d => d.id || d.cust_id).filter(Boolean);
+            if (visibleIds.length === 0) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+                return;
+            }
+
+            const selectedVisible = visibleIds.filter(id => this.selectedDealers.has(id));
+
+            if (selectedVisible.length === visibleIds.length) {
+                selectAll.checked = true;
+                selectAll.indeterminate = false;
+            } else if (selectedVisible.length > 0) {
+                selectAll.checked = false;
+                selectAll.indeterminate = true;
+            } else {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+        }
+
+        updateBulkActionBar() {
+            const bar = document.getElementById('bulk-actions-bar');
+            const countEl = document.getElementById('bulk-selected-count');
+
+            if (!bar || !countEl) return;
+
+            const count = this.selectedDealers.size;
+            countEl.textContent = count;
+
+            if (count > 0) {
+                bar.classList.add('visible');
+            } else {
+                bar.classList.remove('visible');
+            }
+        }
+
+        clearSelection() {
+            this.selectedDealers.clear();
+            this.renderTable();
+            this.updateBulkActionBar();
+            this.updateSelectAllCheckbox();
+        }
+
+        bulkExport() {
+            if (this.selectedDealers.size === 0) return;
+
+            // Filter dealers to export
+            const dealersToExport = this.dealers.filter(d => this.selectedDealers.has(d.id || d.cust_id));
+            if (dealersToExport.length === 0) return;
+
+            // Simple CSV Export Logic
+            const headers = ['Dealer Name', 'Contact', 'Mobile', 'State', 'District', 'KAM', 'Stage'];
+            const rows = dealersToExport.map(d => [
+                d.customer_name,
+                d.first_name,
+                d.mobile_phone,
+                d.state,
+                d.district,
+                d.key_account,
+                d.dealer_stage
+            ]);
+
+            let csvContent = "data:text/csv;charset=utf-8,"
+                + headers.join(",") + "\n"
+                + rows.map(e => e.join(",")).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `dealers_export_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Uses Toast instead of alert
+            import('./utils/toast.js').then(module => {
+                module.Toast.success(`Exported ${dealersToExport.length} dealers`);
+            }).catch(() => alert(`Exported ${dealersToExport.length} dealers`));
+            this.clearSelection();
+        }
+
+        bulkAssignKAM() {
+            console.log('bulkAssignKAM clicked - Version 4');
+            const modal = document.getElementById('bulk-kam-modal');
+            const select = document.getElementById('bulk-kam-select');
+            const countEl = document.getElementById('bulk-kam-count');
+
+            if (!modal || !select) {
+                alert('Error: Modal not found!');
+                return;
+            }
+
+            // Safe populate select
+            if (select && this.generalSettings && Array.isArray(this.generalSettings.key_accounts)) {
+                let html = '<option value="">Not Assigned</option>'; // First option to clear KAM
+                this.generalSettings.key_accounts.forEach(kam => {
+                    html += `<option value="${kam}">${kam}</option>`;
+                });
+                select.innerHTML = html;
+            }
+
+            // Update count
+            if (countEl) countEl.textContent = this.selectedDealers.size;
+
+            // Show modal with forced styles AND active class (required by CSS)
+            modal.classList.add('active'); // CRITICAL: Required by settings.css/discussions.css
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.width = '100vw';
+            modal.style.height = '100vh';
+            modal.style.zIndex = '99999';
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+
+            console.log('Modal forced visible (v6 with active class)');
+        }
+
+        closeBulkKAMModal() {
+            const modal = document.getElementById('bulk-kam-modal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.remove('active');
+            }
+        }
+
+        async confirmBulkAssign() {
+            const select = document.getElementById('bulk-kam-select');
+            const kam = select ? select.value : null;
+
+            // Allow empty string (Not Assigned) to clear KAM, but not null/undefined
+            if (kam === null || kam === undefined) {
+                import('./utils/toast.js').then(module => {
+                    module.Toast.warning('Error: KAM selection not found');
+                });
+                return;
+            }
+
+            // Close modal immediately for better UX
+            this.closeBulkKAMModal();
+
+            // Get list of dealers to update
+            const dealersToUpdate = this.dealers.filter(d =>
+                this.selectedDealers.has(d._internalId || d.id || d.cust_id)
+            );
+
+            if (dealersToUpdate.length === 0) {
+                import('./utils/toast.js').then(module => {
+                    module.Toast.warning('No dealers selected');
+                });
+                return;
+            }
+
+            // Determine action message
+            const action = kam === '' ? 'Clearing' : `Assigning ${kam} to`;
+
+            // Show progress toast
+            import('./utils/toast.js').then(module => {
+                module.Toast.info(`${action} ${dealersToUpdate.length} dealers...`);
+            });
+
+            try {
+                // Update each dealer via DataLayer (follows existing architecture)
+                // This persists to Firebase via dealer_overrides
+                const updatePromises = dealersToUpdate.map(dealer => {
+                    const dealerName = dealer.customer_name;
+                    return window.dataManager.saveDealerOverride(dealerName, {
+                        key_account_manager: kam || '' // Empty string to clear
+                    });
+                });
+
+                await Promise.all(updatePromises);
+
+                // Refresh table to show updated data
+                await this.refresh();
+
+                const successMsg = kam === ''
+                    ? `Cleared KAM for ${dealersToUpdate.length} dealers`
+                    : `Assigned ${kam} to ${dealersToUpdate.length} dealers`;
+
+                import('./utils/toast.js').then(module => {
+                    module.Toast.success(successMsg);
+                });
+
+                this.clearSelection();
+
+            } catch (error) {
+                console.error('Failed to bulk assign KAM:', error);
+                import('./utils/toast.js').then(module => {
+                    module.Toast.error('Failed to save changes: ' + error.message);
+                });
+                // Refresh anyway to show current state
+                await this.refresh();
+            }
         }
 
         getStageColorClass(stage) {
@@ -623,7 +1109,8 @@ if (!window.DealerManager) {
                 displayData = this.filteredDealers.slice(startIndex, endIndex);
             }
 
-            let html = '';
+            const fragment = document.createDocumentFragment();
+
             displayData.forEach((d, index) => {
                 const kam = d.key_account_manager;
                 const kamHtml = kam ? `<span class="kam-badge">${kam}</span>` : `<span class="kam-empty">-</span>`;
@@ -634,20 +1121,32 @@ if (!window.DealerManager) {
 
                 const phone = d.mobile_phone || '-';
                 const district = d.district || '-';
-                // const state = d.billing_state || d.shipping_state || '-'; // This line is effectively replaced by direct usage of d.state
 
                 const rowNumber = startIndex + index + 1; // Correct row number based on pagination
+                const uniqueId = d._internalId || d.id || d.cust_id;
+                const isSelected = this.selectedDealers.has(uniqueId);
 
-                html += `
-                <tr class="dealer-row" onclick="window.dealerManager.handleEdit('${d.customer_name.replace(/'/g, "\\'")}')">
+                // Checkbox HTML
+                const checkboxHtml = `
+                    <td style="padding: 0 10px; text-align: center;">
+                        <input type="checkbox" class="table-checkbox row-checkbox" 
+                            ${isSelected ? 'checked' : ''}
+                            onclick="event.stopPropagation(); window.dealerManager.toggleSelectRow('${uniqueId}', this.checked)">
+                    </td>
+                `;
+
+                const tr = document.createElement('tr');
+                tr.className = 'dealer-row';
+                tr.innerHTML = `
+                    ${checkboxHtml}
                     <td style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">${rowNumber}</td>
                     <td>
                         <div class="row-title" title="${d.customer_name}">${d.customer_name}</div>
-                        <div style="margin-top: 4px;" onclick="event.stopPropagation(); window.dealerManager.showInlineEdit('${d.customer_name.replace(/'/g, "\\'")}', 'key_account_manager', this)">
+                        <div style="margin-top: 4px;" onclick="window.dealerManager.showInlineEdit('${d.customer_name.replace(/'/g, "\\'")}', 'key_account_manager', this)">
                              ${kamHtml}
                         </div>
                     </td>
-                    <td class="contact-cell" onclick="event.stopPropagation(); window.dealerManager.showInlineContactEdit('${d.customer_name.replace(/'/g, "\\'")}', this)">
+                    <td class="contact-cell" onclick="window.dealerManager.showInlineContactEdit('${d.customer_name.replace(/'/g, "\\'")}', this)">
                         <div class="row-text">${d.first_name || '-'}</div>
                         <div class="row-subtext">${phone}</div>
                     </td>
@@ -655,19 +1154,24 @@ if (!window.DealerManager) {
                         <div class="row-text">${d.state || '-'}</div>
                         <div class="row-subtext">${district}</div>
                     </td>
-                    <td class="stage-cell" onclick="event.stopPropagation(); window.dealerManager.showInlineEdit('${d.customer_name.replace(/'/g, "\\'")}', 'dealer_stage', this)">
+                    <td class="stage-cell" onclick="window.dealerManager.showInlineEdit('${d.customer_name.replace(/'/g, "\\'")}', 'dealer_stage', this)">
                         <span class="status-pill status-${stageClass}">${stage}</span>
                     </td>
-                    <td style="text-align: right;">
-                        <button class="action-btn edit-btn" title="Edit" onclick="console.log('Edit button clicked'); event.stopPropagation(); window.dealerManager.handleEdit('${d.customer_name.replace(/'/g, "\\'")}')">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                        </button>
-                    </td>
-                </tr>
-            `;
+                `;
+                fragment.appendChild(tr);
             });
 
-            tableBody.innerHTML = html;
+            tableBody.innerHTML = '';
+            tableBody.appendChild(fragment);
+
+            // Force first column to 45px after rendering
+            const table = document.querySelector('.dealer-table');
+            if (table) {
+                const firstCol = table.querySelector('colgroup col:first-child');
+                const firstHeader = table.querySelector('th:first-child');
+                if (firstCol) firstCol.style.width = TABLE_UI.FIRST_COLUMN_WIDTH + 'px';
+                if (firstHeader) firstHeader.style.width = TABLE_UI.FIRST_COLUMN_WIDTH + 'px';
+            }
 
             // Render pagination controls
             this.renderPagination();
@@ -888,7 +1392,8 @@ if (!window.DealerManager) {
             }
 
             try {
-                await window.dataManager.saveDealerOverride(dealerName, overrides);
+                // Use the service
+                await this.dealerService.saveDealerOverride(dealerName, overrides);
                 console.log('Save successful');
                 await this.refresh(); // Wait for refresh to complete
                 this.cancelEdit(); // Close panel
@@ -954,8 +1459,8 @@ if (!window.DealerManager) {
                 await window.dataManager.loadData('', [], selector.value);
             }
 
-            // Refresh the table with updated data
-            this.loadData(); // Reloads from window.dataManager.rawData which now has updated overrides
+            // Refresh the table with updated data (force cache bypass to get fresh data with overrides)
+            await this.loadData(true); // Pass true to force refresh and bypass cache
             this.applyFilters();
         }
 

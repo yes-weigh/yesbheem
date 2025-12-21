@@ -6,9 +6,108 @@
 
 body {
     background-color: var(--bg-deep);
-    color: var(--text-main);
-    font-family: var(--font-main);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+    font-size: var(--text-base);
+    font-weight: var(--font-normal);
+    line-height: 1.6;
     height: 100vh;
     overflow: hidden;
-    line-height: 1.5;
+}
+
+h1 {
+    font-size: var(--text-3xl);
+    font-weight: var(--font-bold);
+    line-height: 1.2;
+}
+
+h2 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-semibold);
+    line-height: 1.3;
+}
+
+h3 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-semibold);
+    line-height: 1.4;
+}
+
+.text-muted {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+}
+
+.text-secondary {
+    color: var(--text-secondary);
+}
+
+/* Page Transitions */
+.page-enter {
+    animation: page-enter 300ms ease-out forwards;
+}
+
+@keyframes page-enter {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes page-exit {
+    to {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+}
+
+/* Accessibility Focus Indicators */
+*:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Screen Reader Only Utility */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Skip Link */
+.skip-link {
+    position: absolute;
+    top: -50px;
+    left: 20px;
+    background: var(--accent);
+    color: white;
+    padding: 10px 15px;
+    z-index: 9999;
+    border-radius: 4px;
+    font-weight: bold;
+    text-decoration: none;
+    transition: top 0.3s;
+}
+
+.skip-link:focus {
+    top: 20px;
 }

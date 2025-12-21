@@ -9,6 +9,8 @@ import { ZipCodeResolver } from './utils/zip-code-resolver.js';
 import { FirestoreService } from './services/firestore-service.js';
 import { DataAggregator } from './core/data-aggregator.js';
 import { DataLayer } from './core/data-layer.js';
+import StringUtils from './utils/string-utils.js';
+
 
 class DataManager {
     constructor() {
@@ -426,7 +428,7 @@ class DataManager {
                 gdp: kpi ? kpi.gdp : 'N/A',
                 dealerCount: 0,
                 currentSales: 0,
-                monthlyTarget: kpi && kpi.target ? kpi.target : 500000,
+                monthlyTarget: kpi && kpi.target ? this.parseTargetValue(kpi.target) : 500000,
                 dealers: []
             };
         }
@@ -520,37 +522,7 @@ class DataManager {
      * Levenshtein Distance Algorithm
      */
     getLevenshteinDistance(a, b) {
-        const matrix = [];
-        let i, j;
-
-        if (a.length === 0) return b.length;
-        if (b.length === 0) return a.length;
-
-        for (i = 0; i <= b.length; i++) {
-            matrix[i] = [i];
-        }
-
-        for (j = 0; j <= a.length; j++) {
-            matrix[0][j] = j;
-        }
-
-        for (i = 1; i <= b.length; i++) {
-            for (j = 1; j <= a.length; j++) {
-                if (b.charAt(i - 1) === a.charAt(j - 1)) {
-                    matrix[i][j] = matrix[i - 1][j - 1];
-                } else {
-                    matrix[i][j] = Math.min(
-                        matrix[i - 1][j - 1] + 1, // substitution
-                        Math.min(
-                            matrix[i][j - 1] + 1, // insertion
-                            matrix[i - 1][j] + 1 // deletion
-                        )
-                    );
-                }
-            }
-        }
-
-        return matrix[b.length][a.length];
+        return StringUtils.getLevenshteinDistance(a, b);
     }
 
     /**
