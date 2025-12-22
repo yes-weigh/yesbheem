@@ -28,7 +28,42 @@ class NavigationController {
 
     init() {
         this.setupEventListeners();
-        this.loadPage(this.currentPage);
+
+        // Handle initial URL
+        const path = window.location.pathname;
+        let initialPage = 'dashboard';
+
+        // Check if path corresponds to a valid page
+        // We strip leading/trailing slashes and get the first segment
+        const cleanPath = path.replace(/^\/+|\/+$/g, '');
+        const segments = cleanPath.split('/');
+
+        // If we are in a subdirectory like /dealer/index.html, we might need to be careful
+        // But with our new setup, we expect /dealer or /dashboard
+        // If empty, default to dashboard
+
+        if (cleanPath) {
+            // Check if the last segment matches a page ID
+            const pageId = segments[segments.length - 1]; // e.g. "dealer" from "folder/dealer" or just "dealer"
+            const foundPage = this.pages.find(p => p.id === pageId);
+            if (foundPage) {
+                initialPage = pageId;
+            }
+        }
+
+        // Listen for browser back/forward buttons
+        window.addEventListener('popstate', (event) => {
+            if (event.state && event.state.pageId) {
+                this.handleNavigation(event.state.pageId, false);
+            } else {
+                // Fallback or root
+                this.handleNavigation('dashboard', false);
+            }
+        });
+
+        // Replace current state for the initial load so back button works correctly
+        history.replaceState({ pageId: initialPage }, '', window.location.pathname);
+        this.handleNavigation(initialPage, false);
     }
 
     setupEventListeners() {
@@ -109,6 +144,21 @@ class NavigationController {
     navigateTo(pageId) {
         if (pageId === this.currentPage) return;
 
+        // Push state to history
+        // Construct new URL: /pageId
+        // We need to respect the base path if we are hosted? 
+        // For now, assuming root.
+
+        let newUrl = '/' + pageId;
+        // Check if we are already at this URL to avoid duplicate states?
+        // simple pushState is fine.
+
+        history.pushState({ pageId: pageId }, '', newUrl);
+
+        this.handleNavigation(pageId, true);
+    }
+
+    handleNavigation(pageId, autoCollapse) {
         this.currentPage = pageId;
         this.updateActiveNavItem(pageId);
         this.loadPage(pageId);

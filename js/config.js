@@ -21,6 +21,15 @@ class Config {
             return '';
         }
 
+        // List of Known App Routes that should NOT be treated as base path prefixes
+        const appRoutes = ['/dashboard', '/dealer', '/discussions', '/instance', '/message', '/contact', '/product', '/pricelist', '/media', '/yesbheem', '/template', '/broadcast', '/welcome', '/chatbot', '/groupgrabber', '/report', '/integration', '/settings'];
+
+        // internal helper to check if current path starts with an app route
+        const isAppRoute = appRoutes.some(route => pathname.startsWith(route));
+        if (isAppRoute) {
+            return '';
+        }
+
         // Check if we're in a subdirectory (e.g., /yesbheem/)
         const match = pathname.match(/^(\/[^\/]+)\//);
         if (match) {
@@ -36,6 +45,11 @@ class Config {
      * @returns {string} - Path relative to base (e.g., 'js/data_manager.js')
      */
     resolvePath(path) {
+        // If path is already absolute (starts with /), return it as is
+        if (path.startsWith('/')) {
+            return path;
+        }
+
         // Remove leading slash if present to make it relative
         const cleanPath = path.startsWith('/') ? path.substring(1) : path;
 
