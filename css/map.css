@@ -144,6 +144,13 @@ path.selected {
     z-index: 100;
 }
 
+#report-selector {
+    min-width: 60px;
+    width: auto;
+    max-width: 100px;
+    padding-left: 0.5rem;
+}
+
 .view-dropdown {
     padding: 0.5rem 2rem 0.5rem 1rem;
     background: var(--bg-panel);
