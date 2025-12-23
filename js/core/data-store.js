@@ -22,6 +22,7 @@ export class DataStore {
             mergedDealers: {},         // Keyed by reportId/cacheKey -> Array
             rawReportData: null,       // Original CSV data (frozen)
             dealerOverrides: null,     // User edits
+            deactivatedDealers: null,
             kpiData: null,
             zipCache: null,
             generalSettings: null
@@ -81,20 +82,22 @@ export class DataStore {
     async _fetchAndMerge(reportId) {
         console.log('[DataStore] Fetching from Firestore and merging');
 
-        // Fetch both in parallel
-        const [reportData, overrides] = await Promise.all([
+        // Fetch all dependencies in parallel
+        const [reportData, overrides, deactivated] = await Promise.all([
             reportId
                 ? this.firestoreService.getReportData(reportId)
                 : this.firestoreService.getAggregatedReportData(),
-            this.firestoreService.getDealerOverrides()
+            this.firestoreService.getDealerOverrides(),
+            this.firestoreService.getDeactivatedDealers()
         ]);
 
         // Cache raw data (frozen to prevent modification)
         this.cache.rawReportData = Object.freeze(reportData);
         this.cache.dealerOverrides = overrides;
+        this.cache.deactivatedDealers = deactivated;
 
         // Merge and return
-        return this.dataMergeService.mergeData(reportData, overrides);
+        return this.dataMergeService.mergeData(reportData, overrides, deactivated);
     }
 
     /**
@@ -245,6 +248,26 @@ export class DataStore {
     }
 
     /**
+     * Get deactivated dealers list with caching
+     * @param {boolean} forceRefresh - Force fetch from Firestore
+     * @returns {Promise<Array<string>>} Deactivated dealers list
+     */
+    async getDeactivatedDealers(forceRefresh = false) {
+        const cacheKey = 'deactivatedDealers';
+
+        if (!forceRefresh && this.isCacheValid(cacheKey)) {
+            console.log('[DataStore] Returning cached deactivated dealers');
+            return this.cache.deactivatedDealers;
+        }
+
+        console.log('[DataStore] Fetching deactivated dealers from Firestore');
+        const list = await this.firestoreService.getDeactivatedDealers();
+        this.updateCache(cacheKey, list);
+        this.cache.deactivatedDealers = list;
+        return list;
+    }
+
+    /**
      * Subscribe to data changes
      * @param {string} dataType - Type of data to subscribe to ('dealers', 'kpi', etc.)
      * @param {Function} callback - Callback function to call when data changes
@@ -335,6 +358,7 @@ export class DataStore {
             mergedDealers: {},
             rawReportData: null,
             dealerOverrides: null,
+            deactivatedDealers: null,
             kpiData: null,
             zipCache: null,
             generalSettings: null

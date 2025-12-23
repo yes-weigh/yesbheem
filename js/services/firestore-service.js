@@ -331,4 +331,46 @@ export class FirestoreService {
             return {};
         }
     }
+
+    /**
+     * Get list of deactivated dealers
+     * @returns {Promise<Array<string>>} Array of dealer names
+     */
+    async getDeactivatedDealers() {
+        try {
+            console.log('[FirestoreService] Fetching deactivated dealers...');
+            const docRef = doc(this.db, "settings", "deactivated_dealers");
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const items = data.items || [];
+                console.log(`[FirestoreService] Loaded ${items.length} deactivated dealers.`);
+                return items;
+            } else {
+                console.log('[FirestoreService] No deactivated dealers list found, creating empty');
+                await setDoc(docRef, { items: [] });
+                return [];
+            }
+        } catch (e) {
+            console.error('[FirestoreService] Failed to load deactivated dealers:', e);
+            return [];
+        }
+    }
+
+    /**
+     * Update the list of deactivated dealers
+     * @param {Array<string>} fullList - Complete list of dealer names
+     */
+    async updateDeactivatedDealers(fullList) {
+        try {
+            console.log(`[FirestoreService] Updating deactivated dealers list (${fullList.length} items)`);
+            const docRef = doc(this.db, "settings", "deactivated_dealers");
+            await setDoc(docRef, { items: fullList }, { merge: true });
+            console.log('[FirestoreService] Deactivated dealers list updated');
+        } catch (e) {
+            console.error('[FirestoreService] Failed to update deactivated dealers:', e);
+            throw e;
+        }
+    }
 }

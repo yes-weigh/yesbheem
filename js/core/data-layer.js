@@ -187,4 +187,57 @@ export class DataLayer {
 
         return this.store.dataMergeService.getOverriddenFields(dealer);
     }
+    /**
+     * Deactivate dealers (Soft delete)
+     * @param {Array<string>} dealerNames - List of dealer names to deactivate
+     */
+    async deactivateDealers(dealerNames) {
+        if (!dealerNames || dealerNames.length === 0) return;
+        console.log(`[DataLayer] Deactivating ${dealerNames.length} dealers...`);
+
+        // 1. Get current list
+        const currentList = await this.store.getDeactivatedDealers();
+
+        // 2. Merge and Deduplicate
+        const newSet = new Set([...currentList, ...dealerNames]);
+        const newList = Array.from(newSet);
+
+        // 3. Save to Firestore
+        await this.store.firestoreService.updateDeactivatedDealers(newList);
+
+        // 4. Update Cache Immediately
+        this.store.cache.deactivatedDealers = newList;
+
+        // 5. Invalidate Merged Cache (Crucial: to reflect removal in lists)
+        this.store.invalidateCache('mergedDealers');
+
+        console.log('[DataLayer] Deactivation complete. Caches invalidated.');
+    }
+
+    /**
+     * Reactivate dealers (Restore)
+     * @param {Array<string>} dealerNames - List of dealer names to reactivate
+     */
+    async reactivateDealers(dealerNames) {
+        if (!dealerNames || dealerNames.length === 0) return;
+        console.log(`[DataLayer] Reactivating ${dealerNames.length} dealers...`);
+
+        // 1. Get current list
+        const currentList = await this.store.getDeactivatedDealers();
+
+        // 2. Filter out names to reactivate
+        const toRemove = new Set(dealerNames);
+        const newList = currentList.filter(name => !toRemove.has(name));
+
+        // 3. Save to Firestore
+        await this.store.firestoreService.updateDeactivatedDealers(newList);
+
+        // 4. Update Cache Immediately
+        this.store.cache.deactivatedDealers = newList;
+
+        // 5. Invalidate Merged Cache
+        this.store.invalidateCache('mergedDealers');
+
+        console.log('[DataLayer] Reactivation complete. Caches invalidated.');
+    }
 }

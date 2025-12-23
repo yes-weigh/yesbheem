@@ -162,9 +162,10 @@ export class DataAggregator {
             stateMap[stateKey].totalSales += val;
             stateMap[stateKey].currentSales += val; // Alias for tooltip consistency
 
-            if (!dealer.isYesCloud && !dealer.name.toLowerCase().startsWith('yescloud')) {
-                stateMap[stateKey].dealerCount += 1;
-            }
+            stateMap[stateKey].totalSales += val;
+            stateMap[stateKey].currentSales += val; // Alias for tooltip consistency
+
+            stateMap[stateKey].dealerCount += 1;
         });
 
         // 3. Enrich with KPIs and Calculate Achievement
@@ -228,10 +229,8 @@ export class DataAggregator {
                 if (stateMap[stateName]) {
                     stateMap[stateName].sales += isNaN(sales) ? 0 : sales;
 
-                    const customerName = row['customer_name'] || '';
-                    if (!customerName.toLowerCase().startsWith('yescloud')) {
-                        stateMap[stateName].dealerCount += 1;
-                    }
+                    stateMap[stateName].sales += isNaN(sales) ? 0 : sales;
+                    stateMap[stateName].dealerCount += 1;
                 }
             });
         }
@@ -283,17 +282,7 @@ export class DataAggregator {
         // Ensure districts are resolved for this data
         await resolveMissingDistrictsFn(rawData);
 
-        // APPLY DEALER OVERRIDES TO RAW DATA BEFORE FILTERING
-        // This ensures dealers with overridden state/zip show up in correct state views
-        for (const row of rawData) {
-            const customerName = row['customer_name'];
-            if (dealerOverrides && dealerOverrides[customerName]) {
-                const ov = dealerOverrides[customerName];
-                for (const [key, val] of Object.entries(ov)) {
-                    if (val !== undefined) row[key] = val;
-                }
-            }
-        }
+
 
         // Robust Filtering using Normalize (NOW AFTER OVERRIDES)
         const targetState = normalizeStateNameFn(stateName);
@@ -325,11 +314,8 @@ export class DataAggregator {
         for (const row of stateData) {
             // Note: Overrides already applied before filtering
             const customerName = row['customer_name'];
-            const isYesCloud = customerName.toLowerCase().startsWith('yescloud');
 
-            if (!isYesCloud) {
-                aggregated.dealerCount += 1;
-            }
+            aggregated.dealerCount += 1;
 
             let sales = parseFloat(row['sales'] || 0);
             if (isNaN(sales)) sales = 0;
@@ -347,7 +333,7 @@ export class DataAggregator {
                 state: row['billing_state'] || row['shipping_state'] || 'Unknown',
                 billingZip: row['billing_zipcode'],
                 shippingZip: row['shipping_zipcode'],
-                isYesCloud: isYesCloud,
+                isYesCloud: false,
                 rawData: row
             });
         }
@@ -436,20 +422,10 @@ export class DataAggregator {
 
         // Process each row
         for (const row of rawData) {
-            // APPLY OVERRIDES HERE
             const customerName = row['customer_name'];
-            if (dealerOverrides && dealerOverrides[customerName]) {
-                const ov = dealerOverrides[customerName];
-                for (const [key, val] of Object.entries(ov)) {
-                    if (val !== undefined) row[key] = val;
-                }
-            }
 
-            const isYesCloud = (customerName || '').toLowerCase().startsWith('yescloud');
 
-            if (!isYesCloud) {
-                aggregated.dealerCount += 1;
-            }
+            aggregated.dealerCount += 1;
 
             let sales = parseFloat(row['sales'] || 0);
             if (isNaN(sales)) sales = 0;
@@ -466,7 +442,7 @@ export class DataAggregator {
                 state: row['billing_state'] || row['shipping_state'] || 'Kerala',
                 billingZip: row['billing_zipcode'],
                 shippingZip: row['shipping_zipcode'],
-                isYesCloud: isYesCloud,
+                isYesCloud: false,
                 rawData: row
             });
         }

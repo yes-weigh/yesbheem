@@ -953,6 +953,53 @@ if (!window.DealerManager) {
             this.clearSelection();
         }
 
+        async bulkDeactivate() {
+            if (this.selectedDealers.size === 0) return;
+
+            const confirmMsg = `Are you sure you want to deactivate ${this.selectedDealers.size} dealers? They will be removed from the view.`;
+            if (!confirm(confirmMsg)) return;
+
+            const password = prompt("Enter password to confirm deactivation:");
+            if (password !== "1011") {
+                import('./utils/toast.js').then(module => {
+                    module.Toast.error("Incorrect password. Deactivation cancelled.");
+                }).catch(() => alert("Incorrect password. Deactivation cancelled."));
+                return;
+            }
+
+            // Get names to deactivate
+            // Use _internalId map if possible, but deactivation is by NAME
+            // So we need to map IDs back to Customer Names
+            const dealersToDeactivate = this.dealers
+                .filter(d => this.selectedDealers.has(d._internalId || d.id || d.cust_id))
+                .map(d => d.customer_name); // use customer_name for deactivation
+
+            if (dealersToDeactivate.length === 0) return;
+
+            import('./utils/toast.js').then(module => {
+                module.Toast.info(`Deactivating ${dealersToDeactivate.length} dealers...`);
+            });
+
+            try {
+                // Call DataLayer
+                await window.dataManager.dataLayer.deactivateDealers(dealersToDeactivate);
+
+                // Refresh Table
+                await this.refresh();
+
+                import('./utils/toast.js').then(module => {
+                    module.Toast.success(`Deactivated ${dealersToDeactivate.length} dealers`);
+                });
+                this.clearSelection();
+
+            } catch (error) {
+                console.error('Deactivation failed:', error);
+                import('./utils/toast.js').then(module => {
+                    module.Toast.error('Deactivation failed: ' + error.message);
+                });
+            }
+        }
+
         bulkAssignKAM() {
             console.log('bulkAssignKAM clicked - Version 4');
             const modal = document.getElementById('bulk-kam-modal');

@@ -14,6 +14,7 @@ export class SettingsController {
         // DOM Elements
         this.keyAccountsList = document.getElementById('key-accounts-list');
         this.dealerStagesList = document.getElementById('dealer-stages-list');
+        this.deactivatedList = document.getElementById('deactivated-dealers-list');
         this.addKeyAccountInput = document.getElementById('add-kam-input');
         this.addDealerStageInput = document.getElementById('add-stage-input');
 
@@ -71,6 +72,16 @@ export class SettingsController {
                     dealer_stages: this.dealerStages
                 });
             }
+
+            // Load Deactivated Dealers (Separate Document)
+            const deactivatedRef = doc(db, "settings", "deactivated_dealers");
+            const deactivatedSnap = await getDoc(deactivatedRef);
+            if (deactivatedSnap.exists()) {
+                this.deactivatedDealers = deactivatedSnap.data().items || [];
+            } else {
+                this.deactivatedDealers = [];
+            }
+
         } catch (error) {
             console.error("Error loading settings:", error);
             // Fallback for offline/error
@@ -153,9 +164,45 @@ export class SettingsController {
         }
     }
 
+    /**
+     * Restore Deactivated Dealer
+     */
+    async restoreDeactivatedDealer(name) {
+        if (!confirm(`Are you sure you want to restore "${name}"?`)) return;
+
+        try {
+            // Use DataLayer to handle logic and cache invalidation
+            if (window.dataManager && window.dataManager.dataLayer) {
+                await window.dataManager.dataLayer.reactivateDealers([name]);
+            } else {
+                throw new Error("DataLayer not initialized");
+            }
+
+            // Update local view
+            this.deactivatedDealers = this.deactivatedDealers.filter(item => item !== name);
+            this.renderDeactivatedDealers();
+            this.updateBadges();
+
+            // Notify user
+            import('../utils/toast.js').then(module => {
+                module.Toast.success(`Restored "${name}"`);
+            }).catch(() => { });
+
+        } catch (error) {
+            console.error("Error restoring dealer:", error);
+            alert("Failed to restore dealer.");
+        }
+    }
+
+    filterDeactivatedList(query) {
+        const lowerQuery = query.toLowerCase();
+        this.renderDeactivatedDealers(lowerQuery);
+    }
+
     renderAll() {
         this.renderKeyAccounts();
         this.renderDealerStages();
+        this.renderDeactivatedDealers();
     }
 
     renderKeyAccounts() {
@@ -188,6 +235,31 @@ export class SettingsController {
         `).join('');
     }
 
+    renderDeactivatedDealers(filterData = '') {
+        if (!this.deactivatedList) return;
+
+        const list = filterData
+            ? this.deactivatedDealers.filter(d => d.toLowerCase().includes(filterData))
+            : this.deactivatedDealers;
+
+        if (list.length === 0) {
+            this.deactivatedList.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 0.8rem; text-align: center;">No deactivated dealers found</div>';
+            return;
+        }
+
+        this.deactivatedList.innerHTML = list.map(name => `
+            <div class="list-item">
+                <span class="item-text" style="color: #f87171;">${this.escapeHtml(name)}</span>
+                <button class="delete-btn" title="Restore Dealer" onclick="window.settingsController.restoreDeactivatedDealer('${this.escapeHtml(name)}')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 14 15 8"></polyline>
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                    </svg>
+                </button>
+            </div>
+        `).join('');
+    }
+
     setLoading(loading) {
         this.isLoading = loading;
         // Optional: show/hide generic loader
@@ -206,6 +278,13 @@ export class SettingsController {
         if (stagesBadge) {
             const count = this.dealerStages.length;
             stagesBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+        }
+
+        // Update Deactivated Dealers badge
+        const deactivatedBadge = document.getElementById('deactivated-count');
+        if (deactivatedBadge) {
+            const count = this.deactivatedDealers ? this.deactivatedDealers.length : 0;
+            deactivatedBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
         }
     }
 

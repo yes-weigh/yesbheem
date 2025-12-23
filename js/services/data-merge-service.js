@@ -20,9 +20,10 @@ export class DataMergeService {
      * Overrides take precedence over original data
      * @param {Array} reportData - Original CSV data (frozen/immutable)
      * @param {Object} overrides - Dealer overrides by customer_name
+     * @param {Array<string>} deactivatedList - List of deactivated dealer names
      * @returns {Array} Merged data with override flags
      */
-    mergeData(reportData, overrides) {
+    mergeData(reportData, overrides, deactivatedList = []) {
         if (!reportData || !Array.isArray(reportData)) {
             console.warn('[DataMergeService] Invalid report data provided');
             return [];
@@ -44,7 +45,19 @@ export class DataMergeService {
             });
 
         // Consolidate duplicates (summing sales)
-        const consolidatedData = this._consolidateDealers(filteredData);
+        let consolidatedData = this._consolidateDealers(filteredData);
+
+        // Filter out Deactivated Dealers (Exact Name Match)
+        if (deactivatedList && deactivatedList.length > 0) {
+            const deactivatedSet = new Set(deactivatedList); // Optimize lookup
+            const beforeCount = consolidatedData.length;
+            consolidatedData = consolidatedData.filter(dealer => {
+                // Check exact name match against deactivated list
+                const name = dealer.customer_name || dealer['customer_name'];
+                return !deactivatedSet.has(name);
+            });
+            console.log(`[DataMergeService] Filtered out ${beforeCount - consolidatedData.length} deactivated dealers`);
+        }
 
         return consolidatedData.map(dealer => {
             const customerName = dealer.customer_name || dealer['customer_name'];
