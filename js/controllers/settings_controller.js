@@ -13,13 +13,10 @@ export class SettingsController {
         this.isLoading = false;
 
         // DOM Elements
-        this.keyAccountsList = document.getElementById('key-accounts-list');
-        this.dealerStagesList = document.getElementById('dealer-stages-list');
-        this.dealerCategoriesList = document.getElementById('dealer-categories-list');
-        this.deactivatedList = document.getElementById('deactivated-dealers-list');
-        this.addKeyAccountInput = document.getElementById('add-kam-input');
-        this.addDealerStageInput = document.getElementById('add-stage-input');
-        this.addCategoryInput = document.getElementById('add-category-input');
+        this.deactivatedList = null;
+        this.addKeyAccountInput = null;
+        this.addDealerStageInput = null;
+        this.addCategoryInput = null;
 
         this.init();
     }
@@ -33,32 +30,7 @@ export class SettingsController {
     }
 
     setupEventListeners() {
-        // Key Accounts Add
-        document.getElementById('add-kam-btn')?.addEventListener('click', () => {
-            this.handleAddItem('keyAccounts', this.addKeyAccountInput);
-        });
-
-        this.addKeyAccountInput?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.handleAddItem('keyAccounts', this.addKeyAccountInput);
-        });
-
-        // Dealer Stages Add
-        document.getElementById('add-stage-btn')?.addEventListener('click', () => {
-            this.handleAddItem('dealerStages', this.addDealerStageInput);
-        });
-
-        this.addDealerStageInput?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.handleAddItem('dealerStages', this.addDealerStageInput);
-        });
-
-        // Dealer Categories Add
-        document.getElementById('add-category-btn')?.addEventListener('click', () => {
-            this.handleAddItem('dealerCategories', this.addCategoryInput);
-        });
-
-        this.addCategoryInput?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.handleAddItem('dealerCategories', this.addCategoryInput);
-        });
+        // Listeners for Global Modal close are handled in openManageModal
     }
 
     /**
@@ -184,45 +156,119 @@ export class SettingsController {
      * Rename Item Handler with Integrity Check
      */
     async handleRenameItem(listName, oldValue) {
-        const newValue = prompt("Enter new name:", oldValue);
-        if (!newValue || newValue === oldValue || !newValue.trim()) return;
+        this.showRenameModal("Rename Item", oldValue, async (newValue) => {
+            if (!newValue || newValue === oldValue || !newValue.trim()) return;
 
-        const trimmedValue = newValue.trim();
-        let fieldName = '';
+            const trimmedValue = newValue.trim();
+            let fieldName = '';
 
-        if (listName === 'keyAccounts') {
-            if (this.keyAccounts.includes(trimmedValue)) { alert('Name already exists'); return; }
-            const idx = this.keyAccounts.indexOf(oldValue);
-            if (idx !== -1) {
-                this.keyAccounts[idx] = trimmedValue;
-                this.renderKeyAccounts();
-                await this.persistRename(listName, oldValue, trimmedValue);
-                fieldName = 'key_account_manager';
+            if (listName === 'keyAccounts') {
+                if (this.keyAccounts.includes(trimmedValue)) { alert('Name already exists'); return; }
+                const idx = this.keyAccounts.indexOf(oldValue);
+                if (idx !== -1) {
+                    this.keyAccounts[idx] = trimmedValue;
+                    this.renderKeyAccounts();
+                    await this.persistRename(listName, oldValue, trimmedValue);
+                    fieldName = 'key_account_manager';
+                }
+            } else if (listName === 'dealerStages') {
+                if (this.dealerStages.includes(trimmedValue)) { alert('Stage already exists'); return; }
+                const idx = this.dealerStages.indexOf(oldValue);
+                if (idx !== -1) {
+                    this.dealerStages[idx] = trimmedValue;
+                    this.renderDealerStages();
+                    await this.persistRename(listName, oldValue, trimmedValue);
+                    fieldName = 'dealer_stage';
+                }
+            } else if (listName === 'dealerCategories') {
+                if (this.dealerCategories.includes(trimmedValue)) { alert('Category already exists'); return; }
+                const idx = this.dealerCategories.indexOf(oldValue);
+                if (idx !== -1) {
+                    this.dealerCategories[idx] = trimmedValue;
+                    this.renderDealerCategories();
+                    await this.persistRename(listName, oldValue, trimmedValue);
+                    fieldName = 'categories';
+                }
             }
-        } else if (listName === 'dealerStages') {
-            if (this.dealerStages.includes(trimmedValue)) { alert('Stage already exists'); return; }
-            const idx = this.dealerStages.indexOf(oldValue);
-            if (idx !== -1) {
-                this.dealerStages[idx] = trimmedValue;
-                this.renderDealerStages();
-                await this.persistRename(listName, oldValue, trimmedValue);
-                fieldName = 'dealer_stage';
-            }
-        } else if (listName === 'dealerCategories') {
-            if (this.dealerCategories.includes(trimmedValue)) { alert('Category already exists'); return; }
-            const idx = this.dealerCategories.indexOf(oldValue);
-            if (idx !== -1) {
-                this.dealerCategories[idx] = trimmedValue;
-                this.renderDealerCategories();
-                await this.persistRename(listName, oldValue, trimmedValue);
-                fieldName = 'categories';
-            }
-        }
 
-        // Cascade Rename to DataManager
-        if (window.dataManager && fieldName) {
-            await window.dataManager.bulkUpdateMetadata(fieldName, oldValue, trimmedValue);
-        }
+            // Cascade Rename to DataManager
+            if (window.dataManager && fieldName) {
+                await window.dataManager.bulkUpdateMetadata(fieldName, oldValue, trimmedValue);
+            }
+        });
+    }
+
+    showRenameModal(title, currentValue, onSave) {
+        // Remove existing if any
+        const existing = document.getElementById('rename-modal');
+        if (existing) existing.remove();
+
+        // Create Modal
+        const modal = document.createElement('div');
+        modal.id = 'rename-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            transition: opacity 0.2s;
+        `;
+
+        modal.innerHTML = `
+            <div style="background: var(--bg-panel, #1e293b); padding: 24px; border-radius: 12px; width: 400px; max-width: 90%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid var(--border-light, rgba(255,255,255,0.1)); transform: scale(0.95); transition: transform 0.2s;">
+                <h3 style="margin: 0 0 16px 0; font-size: 1.1rem; color: var(--text-main, #f8fafc);">${title}</h3>
+                <input type="text" id="rename-input" value="${this.escapeHtml(currentValue)}" style="width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-light, rgba(255,255,255,0.1)); background: var(--bg-input, #0f172a); color: var(--text-main, #f8fafc); margin-bottom: 20px; font-size: 1rem; outline: none;">
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button id="rename-cancel" style="padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border-light, rgba(255,255,255,0.1)); background: transparent; color: var(--text-muted, #94a3b8); cursor: pointer; font-weight: 500;">Cancel</button>
+                    <button id="rename-save" style="padding: 8px 16px; border-radius: 6px; border: none; background: var(--primary-color, #3b82f6); color: white; cursor: pointer; font-weight: 500;">Save</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Animate in
+        requestAnimationFrame(() => {
+            modal.style.opacity = '1';
+            const content = modal.firstElementChild;
+            content.style.transform = 'scale(1)';
+        });
+
+        const input = modal.querySelector('#rename-input');
+        const cancelBtn = modal.querySelector('#rename-cancel');
+        const saveBtn = modal.querySelector('#rename-save');
+
+        input.focus();
+        input.select();
+
+        const close = () => {
+            modal.style.opacity = '0';
+            modal.firstElementChild.style.transform = 'scale(0.95)';
+            setTimeout(() => modal.remove(), 200);
+        };
+
+        const save = () => {
+            const val = input.value;
+            onSave(val);
+            close();
+        };
+
+        cancelBtn.onclick = close;
+        saveBtn.onclick = save;
+
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') save();
+            if (e.key === 'Escape') close();
+        };
+
+        modal.onclick = (e) => {
+            if (e.target === modal) close();
+        };
     }
 
     async persistRename(listName, oldValue, newValue) {
@@ -291,6 +337,103 @@ export class SettingsController {
             console.error("Error restoring dealer:", error);
             alert("Failed to restore dealer.");
         }
+    }
+
+    openManageModal(type) {
+        let title = '';
+        let listId = '';
+        let inputId = '';
+        let btnId = '';
+        let renderMethod = '';
+        let placeholder = '';
+
+        if (type === 'keyAccounts') {
+            title = 'Manage Key Account Managers';
+            listId = 'key-accounts-list';
+            inputId = 'add-kam-input';
+            btnId = 'add-kam-btn';
+            renderMethod = 'renderKeyAccounts';
+            placeholder = 'Enter name...';
+        } else if (type === 'dealerStages') {
+            title = 'Manage Dealer Stages';
+            listId = 'dealer-stages-list';
+            inputId = 'add-stage-input';
+            btnId = 'add-stage-btn';
+            renderMethod = 'renderDealerStages';
+            placeholder = 'Enter stage name...';
+        } else if (type === 'dealerCategories') {
+            title = 'Manage Dealer Categories';
+            listId = 'dealer-categories-list';
+            inputId = 'add-category-input';
+            btnId = 'add-category-btn';
+            renderMethod = 'renderDealerCategories';
+            placeholder = 'Enter category name...';
+        } else if (type === 'deactivatedDealers') {
+            title = 'Deactivated Dealers';
+            listId = 'deactivated-dealers-list';
+            inputId = 'search-deactivated-input';
+            renderMethod = 'renderDeactivatedDealers';
+            placeholder = 'Search deactivated dealers...';
+        }
+
+        const modalHtml = `
+            <div class="modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>${title}</h3>
+                    <button class="close-modal-btn" onclick="document.getElementById('manage-modal-overlay').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="input-group">
+                        <input type="text" id="${inputId}" class="modern-input" placeholder="${placeholder}">
+                        ${type !== 'deactivatedDealers' ? `
+                        <button id="${btnId}" class="add-btn">
+                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                        ` : ''}
+                    </div>
+                    <div class="data-list" id="${listId}"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-cancel" onclick="document.getElementById('manage-modal-overlay').remove()">Close</button>
+                </div>
+            </div>
+        `;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'manage-modal-overlay';
+        overlay.className = 'modal-overlay active';
+        overlay.innerHTML = modalHtml;
+        overlay.onclick = () => overlay.remove();
+        document.body.appendChild(overlay);
+
+        // Bind Elements to Class Instances
+        if (type === 'keyAccounts') {
+            this.keyAccountsList = document.getElementById(listId);
+            this.addKeyAccountInput = document.getElementById(inputId);
+            document.getElementById(btnId).onclick = () => this.handleAddItem('keyAccounts', this.addKeyAccountInput);
+            this.addKeyAccountInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('keyAccounts', this.addKeyAccountInput); };
+        } else if (type === 'dealerStages') {
+            this.dealerStagesList = document.getElementById(listId);
+            this.addDealerStageInput = document.getElementById(inputId);
+            document.getElementById(btnId).onclick = () => this.handleAddItem('dealerStages', this.addDealerStageInput);
+            this.addDealerStageInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('dealerStages', this.addDealerStageInput); };
+        } else if (type === 'dealerCategories') {
+            this.dealerCategoriesList = document.getElementById(listId);
+            this.addCategoryInput = document.getElementById(inputId);
+            document.getElementById(btnId).onclick = () => this.handleAddItem('dealerCategories', this.addCategoryInput);
+            this.addCategoryInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('dealerCategories', this.addCategoryInput); };
+        } else if (type === 'deactivatedDealers') {
+            this.deactivatedList = document.getElementById(listId);
+            const searchInput = document.getElementById(inputId);
+            searchInput.onkeyup = () => this.filterDeactivatedList(searchInput.value);
+        }
+
+        // Initial Render
+        this[renderMethod]();
+
+        // Focus Input
+        if (type === 'deactivatedDealers') document.getElementById(inputId)?.focus();
+        else document.getElementById(inputId)?.focus();
     }
 
     filterDeactivatedList(query) {

@@ -19,8 +19,9 @@
 
                 <div class="settings-grid">
                     <!-- Key Accounts Manager Card -->
-                    <div class="settings-card">
-                        <div class="card-header">
+                    <div class="settings-card hover-card"
+                        onclick="window.settingsController.openManageModal('keyAccounts')">
+                        <div class="card-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
                             <div class="card-icon">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -36,26 +37,12 @@
                             </div>
                             <div class="card-badge" id="kam-count">0 items</div>
                         </div>
-
-                        <div class="input-group">
-                            <input type="text" id="add-kam-input" class="modern-input" placeholder="Enter name...">
-                            <button id="add-kam-btn" class="add-btn" title="Add account manager">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </button>
-                        </div>
-
-                        <div class="data-list" id="key-accounts-list">
-                            <!-- Dynamic Items -->
-                        </div>
                     </div>
 
                     <!-- Dealer Stages Card -->
-                    <div class="settings-card">
-                        <div class="card-header">
+                    <div class="settings-card hover-card"
+                        onclick="window.settingsController.openManageModal('dealerStages')">
+                        <div class="card-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
                             <div class="card-icon"
                                 style="background: linear-gradient(135deg, #FF6B6B 0%, #EE5253 100%);">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -74,26 +61,12 @@
                             </div>
                             <div class="card-badge" id="stages-count">0 items</div>
                         </div>
-
-                        <div class="input-group">
-                            <input type="text" id="add-stage-input" class="modern-input" placeholder="Enter stage...">
-                            <button id="add-stage-btn" class="add-btn" title="Add stage">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </button>
-                        </div>
-
-                        <div class="data-list" id="dealer-stages-list">
-                            <!-- Dynamic Items -->
-                        </div>
                     </div>
 
                     <!-- Dealer Categories Card -->
-                    <div class="settings-card">
-                        <div class="card-header">
+                    <div class="settings-card hover-card"
+                        onclick="window.settingsController.openManageModal('dealerCategories')">
+                        <div class="card-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
                             <div class="card-icon"
                                 style="background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -110,27 +83,12 @@
                             </div>
                             <div class="card-badge" id="categories-count">0 items</div>
                         </div>
-
-                        <div class="input-group">
-                            <input type="text" id="add-category-input" class="modern-input"
-                                placeholder="Enter category...">
-                            <button id="add-category-btn" class="add-btn" title="Add category">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </button>
-                        </div>
-
-                        <div class="data-list" id="dealer-categories-list">
-                            <!-- Dynamic Items -->
-                        </div>
                     </div>
 
                     <!-- Deactivated Dealers Card -->
-                    <div class="settings-card">
-                        <div class="card-header">
+                    <div class="settings-card hover-card"
+                        onclick="window.settingsController.openManageModal('deactivatedDealers')">
+                        <div class="card-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
                             <div class="card-icon"
                                 style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -142,19 +100,9 @@
                             </div>
                             <div class="card-title">
                                 <h2>Deactivated Dealers</h2>
-                                <p>Manage deactivated dealers</p>
+                                <p>Manage and restore deactivated dealers</p>
                             </div>
                             <div class="card-badge" id="deactivated-count">0 items</div>
-                        </div>
-
-                        <div class="input-group">
-                            <input type="text" id="search-deactivated-input" class="modern-input"
-                                placeholder="Search deactivated..."
-                                onkeyup="window.settingsController.filterDeactivatedList(this.value)">
-                        </div>
-
-                        <div class="data-list" id="deactivated-dealers-list">
-                            <!-- Dynamic Items -->
                         </div>
                     </div>
                 </div>
