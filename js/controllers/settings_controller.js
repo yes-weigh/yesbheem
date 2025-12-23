@@ -297,6 +297,8 @@ export class SettingsController {
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
     }
+
+
 }
 
 // Attach to window for global access (needed for inline onclicks)

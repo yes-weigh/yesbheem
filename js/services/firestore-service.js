@@ -152,13 +152,15 @@ export class FirestoreService {
             const updateData = {};
             updateData[customerName] = updates;
 
-            await updateDoc(docRef, updateData);
+            await setDoc(docRef, updateData, { merge: true });
             console.log(`[FirestoreService] Override updated successfully`);
         } catch (error) {
             console.error('[FirestoreService] Failed to update dealer override:', error);
-            throw error;
         }
     }
+
+
+
 
     /**
      * Delete dealer override (revert to original CSV data)
