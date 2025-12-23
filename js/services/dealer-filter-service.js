@@ -44,13 +44,22 @@ export class DealerFilterService {
             }
 
             // Stage
-            if (this.filters.stage !== 'all' && dealer.dealer_stage !== this.filters.stage) {
-                return false;
+            if (this.filters.stage !== 'all') {
+                if (this.filters.stage === 'not_assigned') {
+                    // Filter for empty/undefined stages
+                    if (dealer.dealer_stage) return false;
+                } else if (dealer.dealer_stage !== this.filters.stage) {
+                    return false;
+                }
             }
 
             // KAM
-            if (this.filters.kam !== 'all' && dealer.key_account_manager !== this.filters.kam) {
-                return false;
+            if (this.filters.kam !== 'all') {
+                if (this.filters.kam === 'not_assigned') {
+                    if (dealer.key_account_manager) return false;
+                } else if (dealer.key_account_manager !== this.filters.kam) {
+                    return false;
+                }
             }
 
             // District

@@ -517,6 +517,7 @@ if (!window.DealerManager) {
             const currentVal = kamSelect.value || 'all';
 
             let html = '<option value="all">All KAMs</option>';
+            html += '<option value="not_assigned">Not Assigned</option>';
 
             // Only populate if we have settings with key_accounts
             if (this.generalSettings && this.generalSettings.key_accounts && this.generalSettings.key_accounts.length > 0) {
@@ -615,6 +616,7 @@ if (!window.DealerManager) {
                 const val = stageSelect.value;
 
                 let html = '<option value="all">All Stages</option>';
+                html += '<option value="not_assigned">Not Assigned</option>';
                 stages.forEach(s => {
                     html += `<option value="${s}">${s}</option>`;
                 });
@@ -1162,7 +1164,7 @@ if (!window.DealerManager) {
                 const kam = d.key_account_manager;
                 const kamHtml = kam ? `<span class="kam-badge">${kam}</span>` : `<span class="kam-empty">-</span>`;
 
-                const stage = d.dealer_stage || 'New';
+                const stage = d.dealer_stage || '-';
                 // Using existing helper if available or default color logic
                 const stageClass = this.getStageClass ? this.getStageClass(stage) : (stage.toLowerCase().replace(/\s+/g, '-'));
 
@@ -1222,6 +1224,43 @@ if (!window.DealerManager) {
 
             // Render pagination controls
             this.renderPagination();
+            this.updateHeaderStats();
+        }
+
+        updateHeaderStats() {
+            const stats = {
+                total: this.filteredDealers.length,
+                active: 0,
+                nonActive: 0,
+                notAssigned: 0,
+                blacklisted: 0
+            };
+
+            this.filteredDealers.forEach(d => {
+                const stage = (d.dealer_stage || '').toLowerCase();
+                const cleanStage = stage.replace(/\s+/g, '');
+
+                if (!stage) {
+                    stats.notAssigned++;
+                } else if (cleanStage === 'active') {
+                    stats.active++;
+                } else if (cleanStage === 'nonactive' || cleanStage === 'inactive') {
+                    stats.nonActive++;
+                } else if (cleanStage === 'blacklisted') {
+                    stats.blacklisted++;
+                }
+            });
+
+            const updateEl = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = val;
+            };
+
+            updateEl('stats-total', stats.total);
+            updateEl('stats-active', stats.active);
+            updateEl('stats-non-active', stats.nonActive);
+            updateEl('stats-not-assigned', stats.notAssigned);
+            updateEl('stats-blacklisted', stats.blacklisted);
         }
 
         renderPagination() {
@@ -1266,11 +1305,22 @@ if (!window.DealerManager) {
                 <div class="pagination-info">
                     ${infoText}
                 </div>
-                <div class="pagination-controls">
+                <!-- Pagination Controls -->
+                <div class="pagination-controls" style="margin-left:auto; margin-right: 20px;">
                     ${controlsHtml}
-                    <div style="width: 1px; height: 20px; background: var(--border-light); margin: 0 10px;"></div>
+                    <div style="width: 1px; height: 16px; background: var(--border-light); margin: 0 10px;"></div>
                     <button class="page-btn" onclick="window.dealerManager.togglePagination()">
                         ${toggleBtnText}
+                    </button>
+                </div>
+                
+                <!-- Action Buttons (Footer) -->
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-secondary" onclick="window.dealerManager.resetColumnWidths()" title="Reset table column widths" style="padding: 6px 12px; font-size: 0.85rem;">
+                        Reset Columns
+                    </button>
+                    <button class="btn-secondary" onclick="window.dealerManager.exportCSV()" style="padding: 6px 12px; font-size: 0.85rem;">
+                        Export CSV
                     </button>
                 </div>
             `;

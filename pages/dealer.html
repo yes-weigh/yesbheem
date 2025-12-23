@@ -1,30 +1,146 @@
 </style>
 
 <div class="page-container" id="dealer-page">
-    <div class="page-title-bar">
-        <div class="page-title-content">
-            <div class="page-breadcrumb">
-                <span class="breadcrumb-item">Yes Bheem</span>
-                <span class="breadcrumb-separator">/</span>
-                <span class="breadcrumb-item active">Dealer Management</span>
+    <style>
+        /* KPI Card Styles injected from dashboard */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            width: 100%;
+            margin-bottom: 0;
+        }
+
+        .kpi-card {
+            padding: 10px 15px;
+            border-radius: 8px;
+            background: var(--surface-card);
+            border: 1px solid var(--border-light);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 80px;
+        }
+
+        .kpi-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+
+        .kpi-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1;
+        }
+
+        /* Access Colors */
+        .card-blue {
+            border-left: 4px solid #4299e1;
+            background: linear-gradient(135deg, rgba(66, 153, 225, 0.1) 0%, rgba(66, 153, 225, 0.05) 100%);
+        }
+
+        .card-teal {
+            border-left: 4px solid #10b981;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+        }
+
+        .card-orange {
+            border-left: 4px solid #f59e0b;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+        }
+
+        .card-purple {
+            border-left: 4px solid #8b5cf6;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%);
+        }
+
+        .card-red {
+            border-left: 4px solid #ef4444;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+        }
+
+        @media (max-width: 1000px) {
+            .kpi-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+
+    <div class="page-title-bar" style="height: auto; padding: 10px 20px;">
+        <div class="page-title-content" style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
+            <!-- KPI Cards -->
+            <div class="kpi-grid">
+                <!-- Total Dealers -->
+                <div class="kpi-card card-blue">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Total Dealers</span>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-value" id="stats-total">0</span>
+                    </div>
+                </div>
+
+                <!-- Active -->
+                <div class="kpi-card card-teal">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Active</span>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-value" id="stats-active">0</span>
+                    </div>
+                </div>
+
+                <!-- Non Active -->
+                <div class="kpi-card card-orange">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Non Active</span>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-value" id="stats-non-active">0</span>
+                    </div>
+                </div>
+
+                <!-- Not Assigned -->
+                <div class="kpi-card card-purple">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Not Assigned</span>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-value" id="stats-not-assigned">0</span>
+                    </div>
+                </div>
+
+                <!-- Blacklisted -->
+                <div class="kpi-card card-red">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Blacklisted</span>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-value" id="stats-blacklisted">0</span>
+                    </div>
+                </div>
             </div>
 
-            <!-- Data Source Selector -->
-            <div class="report-selector-container" style="display: none;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    style="margin-right: 6px; opacity: 0.7;">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                </svg>
-                <select id="dealer-report-selector" class="report-select">
-                    <option value="" disabled selected>Loading reports...</option>
-                </select>
-            </div>
+            <!-- Controls Row (kept from original but adjusted) -->
+            <div style="display: flex; justify-content: flex-end; width: 100%; gap: 10px; display: none;">
+                <!-- Data Source Selector (Hidden in original too) -->
+                <div class="report-selector-container" style="display: none;">
+                    <select id="dealer-report-selector" class="report-select">
+                        <option value="" disabled selected>Loading reports...</option>
+                    </select>
+                </div>
 
-            <div style="margin-left: auto; display: flex; gap: 10px;">
                 <span id="dealer-count-display"
                     style="font-size: 0.8rem; color: var(--text-muted); align-self: center;"></span>
                 <button class="btn-secondary" onclick="window.dealerManager.resetColumnWidths()"
@@ -132,7 +248,9 @@
             <button class="bulk-btn" onclick="event.stopPropagation(); window.dealerManager.bulkAssignKAM()">Assign
                 KAM</button>
             <button class="bulk-btn" onclick="window.dealerManager.bulkExport()">Export</button>
-            <button class="bulk-btn" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);" onclick="window.dealerManager.bulkDeactivate()">Deactivate</button>
+            <button class="bulk-btn"
+                style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);"
+                onclick="window.dealerManager.bulkDeactivate()">Deactivate</button>
         </div>
         <button class="bulk-close-btn" onclick="window.dealerManager.clearSelection()">×</button>
     </div>
