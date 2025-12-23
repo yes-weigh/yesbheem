@@ -155,6 +155,17 @@
                         <span class="kpi-label">BLACKLISTED</span>
                     </div>
                 </div>
+
+                <!-- Unassigned KAM -->
+                <div class="kpi-card card-purple" onclick="window.dealerManager.setTopFilter('kam', 'not_assigned')"
+                    style="cursor: pointer; color: #a855f7;">
+                    <div class="kpi-content">
+                        <span class="kpi-value" id="stats-kam-unassigned">0</span>
+                    </div>
+                    <div class="kpi-header">
+                        <span class="kpi-label">KAM UNASSIGNED</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Controls Row (kept from original but adjusted) -->
@@ -232,13 +243,13 @@
                 <col style="width: 40px"> <!-- Checkbox -->
                 <col style="width: 45px"> <!-- Sl.No -->
                 <col style="width: 190px"> <!-- Name -->
-                <col style="width: 100px"> <!-- KAM -->
-                <col style="width: 95px"> <!-- Stage -->
-                <col style="width: 130px"> <!-- Categories -->
                 <col style="width: 130px"> <!-- Contact Name -->
                 <col style="width: 100px"> <!-- Phone -->
+                <col style="width: 100px"> <!-- KAM -->
                 <col style="width: 120px"> <!-- State -->
                 <col style="width: 120px"> <!-- District -->
+                <col style="width: 130px"> <!-- Categories -->
+                <col style="width: 95px"> <!-- Stage -->
             </colgroup>
             <thead>
                 <tr>
@@ -248,13 +259,19 @@
                     </th>
                     <th>Sl.No</th>
                     <th class="sortable" onclick="window.dealerManager.sortBy('customer_name')">Dealer Name</th>
-                    <th class="sortable" onclick="window.dealerManager.sortBy('key_account_manager')">KAM</th>
-                    <th class="sortable" onclick="window.dealerManager.sortBy('dealer_stage')">Stage</th>
-                    <th class="sortable" onclick="window.dealerManager.sortBy('categories')">Categories</th>
-                    <th class="sortable" onclick="window.dealerManager.sortBy('first_name')">Contact Name</th>
-                    <th class="sortable" onclick="window.dealerManager.sortBy('mobile_phone')">Phone</th>
-                    <th class="sortable" onclick="window.dealerManager.sortBy('state')">State</th>
-                    <th class="sortable" onclick="window.dealerManager.sortBy('district')">District</th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('first_name')">Contact
+                        Name<span>&uarr;</span></th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('mobile_phone')">Phone<span>&uarr;</span>
+                    </th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('key_account_manager')">
+                        KAM<span>&uarr;</span></th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('state')">State<span>&uarr;</span></th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('district')">District<span>&uarr;</span>
+                    </th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('categories')">
+                        Categories<span>&uarr;</span></th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('dealer_stage')">Stage<span>&uarr;</span>
+                    </th>
                 </tr>
             </thead>
             <tbody id="dealer-table-body">

@@ -136,6 +136,26 @@ if (!window.DealerManager) {
             this.handleReportChange(selector.value);
         }
 
+        setTopFilter(type, value) {
+            console.log(`Setting top filter: ${type} = ${value}`);
+            if (type === 'stage') {
+                this.stageFilter = value;
+                // Update dropdown to match if exists
+                const stageSelect = document.getElementById('filter-stage');
+                if (stageSelect) stageSelect.value = value;
+            } else if (type === 'kam') {
+                this.kamFilter = value;
+                // Update dropdown to match if exists
+                const kamSelect = document.getElementById('filter-kam');
+                if (kamSelect) kamSelect.value = value;
+            }
+            this.applyFilters();
+        }
+
+        setStageFilter(value) {
+            this.setTopFilter('stage', value);
+        }
+
         async handleReportChange(url) {
             if (!url) return;
             this.showLoadingState();
@@ -445,7 +465,6 @@ if (!window.DealerManager) {
                 const val = stageSelect.value;
 
                 let html = '<option value="all">All Stages</option>';
-                html += '<option value="not_assigned">Not Assigned</option>';
                 stages.forEach(s => {
                     html += `<option value="${s}">${s}</option>`;
                 });
@@ -1061,26 +1080,26 @@ if (!window.DealerManager) {
                         <td>
                             <div class="row-title" title="${name}">${name}</div>
                         </td>
-                        <td onclick="window.dealerManager.showInlineEdit('${name.replace(/'/g, "\\'")}', 'key_account_manager', this)">
-                             ${kamHtml}
-                        </td>
-                        <td class="stage-cell" onclick="window.dealerManager.showInlineEdit('${name.replace(/'/g, "\\'")}', 'dealer_stage', this)">
-                            <span class="status-pill status-${stageClass}">${stage}</span>
-                        </td>
-                        <td class="categories-cell" onclick="window.dealerManager.editDealerCategories('${uniqueId}', '${name.replace(/'/g, "\\'")}', this)">
-                            ${categoriesHtml}
-                        </td>
-                        <td class="contact-cell" onclick="window.dealerManager.showInlineContactEdit('${name.replace(/'/g, "\\'")}', this)">
+                        <td class="contact-cell" onclick="window.dealerManager.showInlineContactNameEdit('${name.replace(/'/g, "\\'")}', this)">
                             <div class="row-text">${d.first_name || '-'}</div>
                         </td>
-                        <td class="contact-cell" onclick="window.dealerManager.showInlineContactEdit('${name.replace(/'/g, "\\'")}', this)">
+                        <td class="contact-cell" onclick="window.dealerManager.showInlinePhoneEdit('${name.replace(/'/g, "\\'")}', this)">
                             <div class="row-text">${phone}</div>
+                        </td>
+                        <td onclick="window.dealerManager.showInlineEdit('${name.replace(/'/g, "\\'")}', 'key_account_manager', this)">
+                             ${kamHtml}
                         </td>
                         <td>
                             <div class="row-text">${d.state || '-'}</div>
                         </td>
                         <td>
-                             <div class="row-text">${district}</div>
+                            <div class="row-text">${district}</div>
+                        </td>
+                        <td class="categories-cell" onclick="window.dealerManager.editDealerCategories('${uniqueId}', '${name.replace(/'/g, "\\'")}', this)">
+                            ${categoriesHtml}
+                        </td>
+                        <td class="stage-cell" onclick="window.dealerManager.showInlineEdit('${name.replace(/'/g, "\\'")}', 'dealer_stage', this)">
+                            <span class="status-pill status-${stageClass}">${stage}</span>
                         </td>
                     `;
                     fragment.appendChild(tr);
@@ -1103,7 +1122,8 @@ if (!window.DealerManager) {
                 active: 0,
                 nonActive: 0,
                 notAssigned: 0,
-                blacklisted: 0
+                blacklisted: 0,
+                kamUnassigned: 0
             };
 
             this.filteredDealers.forEach(d => {
@@ -1119,6 +1139,10 @@ if (!window.DealerManager) {
                 } else if (cleanStage === 'blacklisted') {
                     stats.blacklisted++;
                 }
+
+                if (!d.key_account_manager) {
+                    stats.kamUnassigned++;
+                }
             });
 
             const updateEl = (id, val) => {
@@ -1131,6 +1155,7 @@ if (!window.DealerManager) {
             updateEl('stats-non-active', stats.nonActive);
             updateEl('stats-not-assigned', stats.notAssigned);
             updateEl('stats-blacklisted', stats.blacklisted);
+            updateEl('stats-kam-unassigned', stats.kamUnassigned);
         }
 
         renderPagination() {
@@ -1604,7 +1629,7 @@ if (!window.DealerManager) {
             dropdown.className = 'inline-edit-dropdown';
             dropdown.innerHTML = `
                 <select class="inline-edit-select">
-                    <option value="" ${currentValue === '' ? 'selected' : ''}>Not Assigned</option>
+                    ${field !== 'dealer_stage' ? `<option value="" ${currentValue === '' ? 'selected' : ''}>Not Assigned</option>` : ''}
                     ${options.map(opt => `<option value="${opt}" ${opt === currentValue ? 'selected' : ''}>${opt}</option>`).join('')}
                 </select>
                 <div class="inline-edit-actions">
@@ -1641,7 +1666,9 @@ if (!window.DealerManager) {
             const rect = cell.getBoundingClientRect();
             dropdown.style.position = 'absolute';
             dropdown.style.top = `${rect.top + window.scrollY - 4}px`; // Slight offset to cover padding
-            dropdown.style.left = `${rect.left + window.scrollX - 4}px`;
+            const isRightHalf = rect.left > window.innerWidth / 2;
+            const leftOffset = isRightHalf ? 120 : 8;
+            dropdown.style.left = `${rect.left + window.scrollX - leftOffset}px`;
             dropdown.style.minWidth = `${rect.width + 8}px`; // Match cell width + padding
             dropdown.style.zIndex = '2000';
 
@@ -1715,59 +1742,81 @@ if (!window.DealerManager) {
         /**
          * Show inline edit for Contact (Name + Phone)
          */
-        showInlineContactEdit(dealerName, cell) {
+        /**
+         * Show inline edit for Contact Person Name only
+         */
+        showInlineContactNameEdit(dealerName, cell) {
             this.closeInlineEdit();
 
             const dealer = this.dealers.find(d => d.customer_name === dealerName);
             if (!dealer) return;
 
-            const nameVal = dealer.first_name || '';
-            const phoneVal = dealer.mobile_phone || '';
+            const currentVal = dealer.first_name || '';
 
             const dropdown = document.createElement('div');
             dropdown.className = 'inline-edit-dropdown';
-            // Custom layout for contact: two inputs
+            // Simple row layout: Input + Actions
             dropdown.innerHTML = `
-                <div style="display:flex; flex-direction:column; gap:4px;">
-                    <input type="text" class="inline-edit-input" placeholder="Name" value="${nameVal.replace(/"/g, '&quot;')}" />
-                    <input type="text" class="inline-edit-input" placeholder="Phone" value="${phoneVal.replace(/"/g, '&quot;')}" />
-                </div>
-                <div class="inline-edit-actions" style="flex-direction:column; justify-content:center;">
-                    <button class="inline-edit-btn save-btn" title="Save" style="height:32px; width:32px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+                <input type="text" class="inline-edit-input" placeholder="Name" value="${currentVal.replace(/"/g, '&quot;')}" style="margin-right: 8px; flex: 1;" />
+                <div class="inline-edit-actions">
+                    <button class="inline-edit-btn save-btn" title="Save">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
                     </button>
-                    <button class="inline-edit-btn cancel-btn" title="Cancel" style="height:32px; width:32px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    <button class="inline-edit-btn cancel-btn" title="Cancel">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
                     </button>
                 </div>
             `;
 
-            // Adjust styles
-            dropdown.style.padding = '8px';
-            dropdown.style.alignItems = 'stretch';
+            this.setupInlineEdit(dropdown, dealerName, cell, 'first_name');
+        }
 
-            const nameInput = dropdown.querySelector('input[placeholder="Name"]');
-            const phoneInput = dropdown.querySelector('input[placeholder="Phone"]');
+        /**
+         * Show inline edit for Phone only
+         */
+        showInlinePhoneEdit(dealerName, cell) {
+            this.closeInlineEdit();
+
+            const dealer = this.dealers.find(d => d.customer_name === dealerName);
+            if (!dealer) return;
+
+            const currentVal = dealer.mobile_phone || '';
+
+            const dropdown = document.createElement('div');
+            dropdown.className = 'inline-edit-dropdown';
+            // Simple row layout: Input + Actions
+            dropdown.innerHTML = `
+                <input type="text" class="inline-edit-input" placeholder="Phone" value="${currentVal.replace(/"/g, '&quot;')}" style="margin-right: 8px; flex: 1;" />
+                <div class="inline-edit-actions">
+                    <button class="inline-edit-btn save-btn" title="Save">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+                    </button>
+                    <button class="inline-edit-btn cancel-btn" title="Cancel">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            `;
+
+            this.setupInlineEdit(dropdown, dealerName, cell, 'mobile_phone');
+        }
+
+        /**
+         * Generic setup for single-input inline edits (Name/Phone)
+         */
+        setupInlineEdit(dropdown, dealerName, cell, fieldKey) {
+            // styles matching previous implementation
+            dropdown.style.padding = '8px';
+            dropdown.style.alignItems = 'center';
+
+            const input = dropdown.querySelector('input');
             const saveBtn = dropdown.querySelector('.save-btn');
             const cancelBtn = dropdown.querySelector('.cancel-btn');
 
             saveBtn.onclick = (e) => {
                 e.stopPropagation();
-                // Save both
-                const newName = nameInput.value.trim();
-                const newPhone = phoneInput.value.trim();
-
-                // Construct override object
-                const overrides = {};
-                if (newName !== nameVal) overrides.first_name = newName;
-                if (newPhone !== phoneVal) overrides.mobile_phone = newPhone;
-
-                // Only save if something changed
-                if (Object.keys(overrides).length > 0) {
-                    this.saveContactInlineEdit(dealerName, overrides, cell);
-                } else {
-                    this.closeInlineEdit();
-                }
+                const newValue = input.value.trim();
+                // Check if changed? (Optional optimization)
+                this.saveContactInlineEdit(dealerName, { [fieldKey]: newValue }, cell);
             };
 
             cancelBtn.onclick = (e) => {
@@ -1775,11 +1824,10 @@ if (!window.DealerManager) {
                 this.closeInlineEdit();
             };
 
-            // Close on click outside or Esc key
+            // Common closing logic
             const closeHandler = (e) => {
                 const isClickOutside = e.type === 'click' && !e.target.closest('.inline-edit-dropdown') && !e.target.closest('.editing');
                 const isEsc = e.type === 'keydown' && e.key === 'Escape';
-
                 if (isClickOutside || isEsc) {
                     this.closeInlineEdit();
                     document.removeEventListener('click', closeHandler);
@@ -1787,41 +1835,27 @@ if (!window.DealerManager) {
                 }
             };
 
-            // Trap click inside for dropdown itself (prevent bubbling to doc click handler if we want, 
-            // but actually we rely on 'closest' check in handler, so just preventing propagation is fine for clicks)
             dropdown.addEventListener('click', (e) => e.stopPropagation());
 
-            // Add global listeners
             setTimeout(() => {
                 document.addEventListener('click', closeHandler);
                 document.addEventListener('keydown', closeHandler);
             }, 100);
+
             const rect = cell.getBoundingClientRect();
             dropdown.style.position = 'absolute';
-            // Center vertically over cell or slightly offset
             dropdown.style.top = `${rect.top + window.scrollY - 8}px`;
-            dropdown.style.left = `${rect.left + window.scrollX - 8}px`;
+            const isRightHalf = rect.left > window.innerWidth / 2;
+            const leftOffset = isRightHalf ? 120 : 8;
+            dropdown.style.left = `${rect.left + window.scrollX - leftOffset}px`;
             dropdown.style.minWidth = `${rect.width + 16}px`;
             dropdown.style.zIndex = '2000';
 
-            // Mark cell
-            cell.dataset.originalContent = cell.innerHTML; // Saves the current HTML
+            cell.dataset.originalContent = cell.innerHTML;
             cell.classList.add('editing');
 
             document.body.appendChild(dropdown);
-
-            setTimeout(() => nameInput.focus(), 0);
-
-            // Close on outside click
-            setTimeout(() => {
-                const handleClickOutside = (e) => {
-                    if (!e.target.closest('.inline-edit-dropdown') && !e.target.closest('.editing')) {
-                        this.closeInlineEdit();
-                        document.removeEventListener('click', handleClickOutside);
-                    }
-                };
-                document.addEventListener('click', handleClickOutside);
-            }, 100);
+            setTimeout(() => input.focus(), 0);
         }
 
         async saveContactInlineEdit(dealerName, overrides, cell) {
@@ -1833,7 +1867,7 @@ if (!window.DealerManager) {
                 await this.refresh();
             } catch (error) {
                 console.error('Failed to save contact:', error);
-                alert('Failed to save contact: ' + error.message);
+                alert('Failed to save: ' + error.message);
                 this.refresh();
             }
         }
