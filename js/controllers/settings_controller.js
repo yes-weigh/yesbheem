@@ -149,11 +149,17 @@ export class SettingsController {
     }
 
     /**
-     * Generic Remove Item Handler
+     * Generic Remove Item Handler with Integrity Check
      */
     async handleRemoveItem(listName, value) {
-        if (!confirm(`Are you sure you want to remove "${value}"?`)) return;
+        if (!confirm(`Are you sure you want to remove "${value}"?\nThis will remove it from all assigned dealers.`)) return;
 
+        let fieldName = '';
+        if (listName === 'keyAccounts') fieldName = 'key_account_manager';
+        else if (listName === 'dealerStages') fieldName = 'dealer_stage';
+        else if (listName === 'dealerCategories') fieldName = 'categories';
+
+        // 1. Remove from List
         if (listName === 'keyAccounts') {
             this.keyAccounts = this.keyAccounts.filter(item => item !== value);
             this.renderKeyAccounts();
@@ -167,6 +173,66 @@ export class SettingsController {
             this.renderDealerCategories();
             await this.persistItem(listName, value, 'remove');
         }
+
+        // 2. Cascade Delete to DataManager Overrides
+        if (window.dataManager && fieldName) {
+            await window.dataManager.bulkUpdateMetadata(fieldName, value, null);
+        }
+    }
+
+    /**
+     * Rename Item Handler with Integrity Check
+     */
+    async handleRenameItem(listName, oldValue) {
+        const newValue = prompt("Enter new name:", oldValue);
+        if (!newValue || newValue === oldValue || !newValue.trim()) return;
+
+        const trimmedValue = newValue.trim();
+        let fieldName = '';
+
+        if (listName === 'keyAccounts') {
+            if (this.keyAccounts.includes(trimmedValue)) { alert('Name already exists'); return; }
+            const idx = this.keyAccounts.indexOf(oldValue);
+            if (idx !== -1) {
+                this.keyAccounts[idx] = trimmedValue;
+                this.renderKeyAccounts();
+                await this.persistRename(listName, oldValue, trimmedValue);
+                fieldName = 'key_account_manager';
+            }
+        } else if (listName === 'dealerStages') {
+            if (this.dealerStages.includes(trimmedValue)) { alert('Stage already exists'); return; }
+            const idx = this.dealerStages.indexOf(oldValue);
+            if (idx !== -1) {
+                this.dealerStages[idx] = trimmedValue;
+                this.renderDealerStages();
+                await this.persistRename(listName, oldValue, trimmedValue);
+                fieldName = 'dealer_stage';
+            }
+        } else if (listName === 'dealerCategories') {
+            if (this.dealerCategories.includes(trimmedValue)) { alert('Category already exists'); return; }
+            const idx = this.dealerCategories.indexOf(oldValue);
+            if (idx !== -1) {
+                this.dealerCategories[idx] = trimmedValue;
+                this.renderDealerCategories();
+                await this.persistRename(listName, oldValue, trimmedValue);
+                fieldName = 'categories';
+            }
+        }
+
+        // Cascade Rename to DataManager
+        if (window.dataManager && fieldName) {
+            await window.dataManager.bulkUpdateMetadata(fieldName, oldValue, trimmedValue);
+        }
+    }
+
+    async persistRename(listName, oldValue, newValue) {
+        // Firestore Arrays don't support simple replace. We must Remove Old and Add New.
+        // Warning: This changes order if arrayUnion is used.
+        // If order matters, we might need to read-modify-write the whole array.
+        // For now, let's just do remove+add, assuming default alphabetic sort or irrelevant order.
+
+        await this.persistItem(listName, oldValue, 'remove');
+        await this.persistItem(listName, newValue, 'add');
     }
 
     /**
@@ -244,12 +310,17 @@ export class SettingsController {
         this.dealerCategoriesList.innerHTML = this.dealerCategories.map(name => `
             <div class="list-item">
                 <span class="item-text">${this.escapeHtml(name)}</span>
-                <button class="delete-btn" onclick="window.settingsController.handleRemoveItem('dealerCategories', '${this.escapeHtml(name)}')">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
+                <div class="actions">
+                    <button class="edit-btn" onclick="window.settingsController.handleRenameItem('dealerCategories', '${this.escapeHtml(name)}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                    </button>
+                    <button class="delete-btn" onclick="window.settingsController.handleRemoveItem('dealerCategories', '${this.escapeHtml(name)}')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
             </div>
         `).join('');
     }
@@ -259,12 +330,17 @@ export class SettingsController {
         this.keyAccountsList.innerHTML = this.keyAccounts.map(name => `
             <div class="list-item">
                 <span class="item-text">${this.escapeHtml(name)}</span>
-                <button class="delete-btn" onclick="window.settingsController.handleRemoveItem('keyAccounts', '${this.escapeHtml(name)}')">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
+                <div class="actions">
+                    <button class="edit-btn" onclick="window.settingsController.handleRenameItem('keyAccounts', '${this.escapeHtml(name)}')">
+                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                    </button>
+                    <button class="delete-btn" onclick="window.settingsController.handleRemoveItem('keyAccounts', '${this.escapeHtml(name)}')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
             </div>
         `).join('');
     }
@@ -274,12 +350,17 @@ export class SettingsController {
         this.dealerStagesList.innerHTML = this.dealerStages.map(stage => `
             <div class="list-item">
                 <span class="item-text">${this.escapeHtml(stage)}</span>
-                <button class="delete-btn" onclick="window.settingsController.handleRemoveItem('dealerStages', '${this.escapeHtml(stage)}')">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
+                <div class="actions">
+                    <button class="edit-btn" onclick="window.settingsController.handleRenameItem('dealerStages', '${this.escapeHtml(stage)}')">
+                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                    </button>
+                    <button class="delete-btn" onclick="window.settingsController.handleRemoveItem('dealerStages', '${this.escapeHtml(stage)}')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
             </div>
         `).join('');
     }

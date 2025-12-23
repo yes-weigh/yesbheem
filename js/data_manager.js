@@ -105,6 +105,71 @@ class DataManager {
     }
 
     /**
+     * Batch update overrides when a metadata value (KAM, Stage, Category) changes
+     * @param {string} field - 'key_account_manager', 'dealer_stage', or 'categories'
+     * @param {string} oldValue - The old value to trigger update
+     * @param {string|null} newValue - The new value (rename) or null (delete)
+     */
+    async bulkUpdateMetadata(field, oldValue, newValue) {
+        console.log(`Bulk updating metadata: ${field} | "${oldValue}" -> "${newValue}"`);
+        let modified = false;
+
+        // Loop through all overrides
+        for (const dealerName in this.dealerOverrides) {
+            const override = this.dealerOverrides[dealerName];
+            if (!override) continue;
+
+            if (field === 'categories') {
+                // Handle Array
+                if (Array.isArray(override.categories)) {
+                    const idx = override.categories.indexOf(oldValue);
+                    if (idx !== -1) {
+                        if (newValue) {
+                            override.categories[idx] = newValue; // Rename
+                        } else {
+                            override.categories.splice(idx, 1); // Delete
+                        }
+                        modified = true;
+                    }
+                }
+            } else {
+                // Handle String (KAM, Stage)
+                if (override[field] === oldValue) {
+                    if (newValue) {
+                        override[field] = newValue; // Rename
+                    } else {
+                        // Delete property to reset to original data, or set to empty string?
+                        // Usually delete property so it falls back to raw data, 
+                        // BUT here the override IS the source of truth for these fields usually.
+                        // Usage: if I delete "Closed" stage, dealer should have no stage?
+                        // Setting to null or delete property might fallback.
+                        // Let's remove the field from override so it clears out.
+                        delete override[field];
+                    }
+                    modified = true;
+                }
+            }
+        }
+
+        if (modified) {
+            try {
+                // Save to Firestore (replace entire map to ensure deletions propagate)
+                const docRef = doc(db, "settings", "dealer_overrides");
+                await setDoc(docRef, this.dealerOverrides);
+                console.log('Bulk update saved to Firestore.');
+
+                // If we delete a property, we might leave an empty object for a dealer.
+                // Not a big issue, but clean.
+            } catch (e) {
+                console.error('Failed to bulk update metadata:', e);
+                alert('Partially failed to update all dealers. Please check console.');
+            }
+        } else {
+            console.log('No dealers needed updates.');
+        }
+    }
+
+    /**
      * Load zip codes from Firestore (settings/zip_codes)
      */
     async loadZipCacheFromFirebase() {
