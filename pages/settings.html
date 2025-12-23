@@ -91,6 +91,43 @@
                         </div>
                     </div>
 
+                    <!-- Dealer Categories Card -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-icon"
+                                style="background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path
+                                        d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z">
+                                    </path>
+                                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                                </svg>
+                            </div>
+                            <div class="card-title">
+                                <h2>Dealer Categories</h2>
+                                <p>Manage product categories</p>
+                            </div>
+                            <div class="card-badge" id="categories-count">0 items</div>
+                        </div>
+
+                        <div class="input-group">
+                            <input type="text" id="add-category-input" class="modern-input"
+                                placeholder="Enter category...">
+                            <button id="add-category-btn" class="add-btn" title="Add category">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="data-list" id="dealer-categories-list">
+                            <!-- Dynamic Items -->
+                        </div>
+                    </div>
+
                     <!-- Deactivated Dealers Card -->
                     <div class="settings-card">
                         <div class="card-header">

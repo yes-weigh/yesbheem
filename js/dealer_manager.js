@@ -304,9 +304,6 @@ if (!window.DealerManager) {
             // Check if we can hook into window.viewController.saveDealerInfo which calls reload
             // Ideally we poll or simply re-render when we know data changed.
 
-            // Setup column resizing
-            this.setupColumnResize();
-
             // Setup Sorting
             this.setupSorting();
 
@@ -314,174 +311,6 @@ if (!window.DealerManager) {
             this.setupBulkActions();
         }
 
-        setupColumnResize() {
-            const table = document.querySelector('.dealer-table');
-            if (!table) return;
-
-            // Ensure fixed layout for consistent resizing
-            table.style.tableLayout = 'fixed';
-
-            const headers = table.querySelectorAll('th');
-            const colGroup = table.querySelector('colgroup');
-            const cols = colGroup ? colGroup.querySelectorAll('col') : [];
-
-            let isResizing = false;
-            let currentHeader = null;
-            let currentCol = null;
-            let startX = 0;
-            let startWidth = 0;
-
-            // Load saved column widths from localStorage
-            const savedWidths = this.loadColumnWidths();
-            if (savedWidths && cols.length > 0) {
-                cols.forEach((col, index) => {
-                    if (index === 0) {
-                        // Always force first column (Sl.No) to 45px
-                        col.style.width = TABLE_UI.FIRST_COLUMN_WIDTH + 'px';
-                    } else if (savedWidths[index]) {
-                        col.style.width = savedWidths[index] + 'px';
-                    }
-                });
-            } else if (savedWidths) {
-                headers.forEach((header, index) => {
-                    if (index === 0) {
-                        // Always force first column (Sl.No) to 45px
-                        header.style.width = TABLE_UI.FIRST_COLUMN_WIDTH + 'px';
-                    } else if (savedWidths[index]) {
-                        header.style.width = savedWidths[index] + 'px';
-                    }
-                });
-            }
-
-            headers.forEach((header, index) => {
-                // Skip resize for first column (Sl.No)
-                if (index === 0) return;
-
-                header.addEventListener('mousedown', (e) => {
-                    // Only start resize if clicking on the right edge (resize handle)
-                    const rect = header.getBoundingClientRect();
-                    const isRightEdge = e.clientX > rect.right - 10; // Increased hit area
-
-                    if (isRightEdge) {
-                        isResizing = true;
-                        currentHeader = header;
-                        currentCol = cols[index];
-                        startX = e.clientX;
-                        // Use current col width (computed) or header width
-                        startWidth = currentCol ? (parseFloat(getComputedStyle(currentCol).width) || header.offsetWidth) : header.offsetWidth;
-
-                        header.classList.add('resizing');
-                        e.preventDefault();
-                    }
-                });
-            });
-
-            document.addEventListener('mousemove', (e) => {
-                if (!isResizing) return;
-
-                const diff = e.clientX - startX;
-                const newWidth = Math.max(50, startWidth + diff); // Minimum 50px
-
-                if (currentCol) {
-                    currentCol.style.width = newWidth + 'px';
-                } else if (currentHeader) {
-                    currentHeader.style.width = newWidth + 'px';
-                }
-            });
-
-            document.addEventListener('mouseup', () => {
-                if (isResizing) {
-                    if (currentHeader) currentHeader.classList.remove('resizing');
-
-                    // Save column widths to localStorage
-                    this.saveColumnWidths();
-
-                    isResizing = false;
-                    currentHeader = null;
-                    currentCol = null;
-                }
-            });
-
-            // Final enforcement: Force first column to 45px after all setup
-            if (cols.length > 0) {
-                cols[0].style.width = TABLE_UI.FIRST_COLUMN_WIDTH + 'px';
-            }
-            if (headers.length > 0) {
-                headers[0].style.width = TABLE_UI.FIRST_COLUMN_WIDTH + 'px';
-            }
-        }
-
-        loadColumnWidths() {
-            try {
-                const saved = localStorage.getItem('dealerTableColumnWidths');
-                if (!saved) return null;
-
-                const widths = JSON.parse(saved);
-                // Validation: Check if values are reasonable pixels (e.g., > 20px)
-                // If any value is too small (likely percentage treated as px), discard all
-                const isValid = Object.values(widths).every(w => {
-                    const val = parseFloat(w);
-                    return !isNaN(val) && val > 30; // 30px minimum sanity check
-                });
-
-                if (!isValid) {
-                    console.warn('Invalid column widths detected (too small), resetting to defaults.');
-                    this.resetColumnWidths(); // Clear bad data
-                    return null;
-                }
-
-                return widths;
-            } catch (e) {
-                console.error('Failed to load column widths:', e);
-                return null;
-            }
-        }
-
-        resetColumnWidths() {
-            localStorage.removeItem('dealerTableColumnWidths');
-            const table = document.querySelector('.dealer-table');
-            if (table) {
-                // Clear inline styles to revert to CSS defaults
-                const cols = table.querySelectorAll('col');
-                cols.forEach(col => col.style.width = '');
-                const headers = table.querySelectorAll('th');
-                headers.forEach(th => th.style.width = '');
-            }
-            console.log('Column widths reset.');
-        }
-
-        saveColumnWidths() {
-            try {
-                const table = document.querySelector('.dealer-table');
-                if (!table) return;
-
-                const colGroup = table.querySelector('colgroup');
-                const cols = colGroup ? colGroup.querySelectorAll('col') : [];
-                const widths = {};
-
-                // Always use offsetWidth (pixels) instead of style.width (can be %)
-                if (cols.length > 0) {
-                    cols.forEach((col, index) => {
-                        // For col elements, offsetWidth might be 0 if display:table-column
-                        // So we look at the corresponding header if possible, or fallback to parsing style if it is px
-                        // Actually, the most reliable source for CURRENT rendered width is the th offsetWidth
-                        const header = table.querySelectorAll('th')[index];
-                        if (header) {
-                            widths[index] = header.offsetWidth;
-                        }
-                    });
-                } else {
-                    const headers = table.querySelectorAll('th');
-                    headers.forEach((header, index) => {
-                        widths[index] = header.offsetWidth;
-                    });
-                }
-
-                localStorage.setItem('dealerTableColumnWidths', JSON.stringify(widths));
-            } catch (e) {
-                console.error('Failed to save column widths:', e);
-            }
-        }
 
         renderFilters() {
             // Populate KAM Filter
@@ -1184,6 +1013,11 @@ if (!window.DealerManager) {
                     </td>
                 `;
 
+                const categories = d.categories || [];
+                const categoriesHtml = categories.length > 0
+                    ? categories.map(c => `<span class="category-badge">${c}</span>`).join(' ')
+                    : '-';
+
                 const tr = document.createElement('tr');
                 tr.className = 'dealer-row';
                 tr.innerHTML = `
@@ -1206,21 +1040,15 @@ if (!window.DealerManager) {
                     <td class="stage-cell" onclick="window.dealerManager.showInlineEdit('${d.customer_name.replace(/'/g, "\\'")}', 'dealer_stage', this)">
                         <span class="status-pill status-${stageClass}">${stage}</span>
                     </td>
+                    <td class="categories-cell" onclick="window.dealerManager.editDealerCategories('${uniqueId}', '${d.customer_name}', this)">
+                        ${categoriesHtml}
+                    </td>
                 `;
                 fragment.appendChild(tr);
             });
 
             tableBody.innerHTML = '';
             tableBody.appendChild(fragment);
-
-            // Force first column to 45px after rendering
-            const table = document.querySelector('.dealer-table');
-            if (table) {
-                const firstCol = table.querySelector('colgroup col:first-child');
-                const firstHeader = table.querySelector('th:first-child');
-                if (firstCol) firstCol.style.width = TABLE_UI.FIRST_COLUMN_WIDTH + 'px';
-                if (firstHeader) firstHeader.style.width = TABLE_UI.FIRST_COLUMN_WIDTH + 'px';
-            }
 
             // Render pagination controls
             this.renderPagination();
@@ -1458,6 +1286,131 @@ if (!window.DealerManager) {
             }
         }
 
+        async editDealerCategories(dealerId, dealerName, element) {
+            // Check if settings loaded
+            if (!this.generalSettings || !this.generalSettings.dealer_categories) {
+                alert('Categories not loaded');
+                return;
+            }
+
+            const categories = this.generalSettings.dealer_categories;
+            const dealer = this.dealers.find(d => (d._internalId || d.id || d.cust_id) === dealerId);
+            if (!dealer) return;
+            const currentCategories = dealer.categories || [];
+
+            // Remove existing
+            const existingPopover = document.getElementById('category-popover');
+            if (existingPopover) existingPopover.remove();
+
+            const popover = document.createElement('div');
+            popover.id = 'category-popover';
+            popover.style.cssText = `
+                position: absolute;
+                background: var(--bg-panel);
+                border: 1px solid var(--border-light);
+                border-radius: 6px;
+                padding: 0;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+                z-index: 9999;
+                min-width: 220px;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            `;
+
+            let checkboxesHtml = '';
+            // Sort categories
+            const sortedCategories = [...categories].sort();
+
+            sortedCategories.forEach(cat => {
+                const isChecked = currentCategories.includes(cat) ? 'checked' : '';
+                checkboxesHtml += `
+                    <label class="category-option" style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text-main); font-size: 0.9rem; padding: 10px 12px; transition: background 0.2s;">
+                        <input type="checkbox" value="${cat}" ${isChecked} style="width: 16px; height: 16px; accent-color: var(--primary-color);">
+                        ${cat}
+                    </label>
+                `;
+            });
+
+            popover.innerHTML = `
+                <style>
+                    .category-option:hover { background: rgba(255,255,255,0.05); }
+                </style>
+                <div style="padding: 10px 12px; font-weight: 600; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border-light);">
+                    Select Categories
+                </div>
+                <div style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column;">
+                    ${checkboxesHtml}
+                </div>
+                <div style="padding: 8px 10px; background: rgba(0,0,0,0.2); border-top: 1px solid var(--border-light);">
+                    <button id="save-cat-btn" style="width: 100%; background: var(--primary-color); color: white; border: none; padding: 6px; border-radius: 4px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Apply Changes</button>
+                </div>
+            `;
+
+            document.body.appendChild(popover);
+
+            // Positioning Logic
+            if (element) {
+                const rect = element.getBoundingClientRect();
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+
+                // Position to the left of the cell (since it's the last column)
+                // Align top of popover with top of cell
+                let top = rect.top + scrollTop;
+                let left = (rect.left + scrollLeft) - 225; // 220 width + margin
+
+                // Safety check left edge
+                if (left < 10) {
+                    left = rect.right + scrollLeft + 10; // Flip to right? Unlikely for last/end column
+                }
+
+                popover.style.top = `${top}px`;
+                popover.style.left = `${left}px`;
+            } else {
+                // Fallback center
+                popover.style.position = 'fixed';
+                popover.style.top = '50%';
+                popover.style.left = '50%';
+                popover.style.transform = 'translate(-50%, -50%)';
+            }
+
+            // Event Listeners
+            const closeHandler = (e) => {
+                const isClickOutside = e.type === 'click' && !popover.contains(e.target) && e.target !== element && !element.contains(e.target);
+                const isEsc = e.type === 'keydown' && e.key === 'Escape';
+
+                if (isClickOutside || isEsc) {
+                    popover.remove();
+                    document.removeEventListener('click', closeHandler);
+                    document.removeEventListener('keydown', closeHandler);
+                }
+            };
+
+            const saveHandler = async (e) => {
+                e.stopPropagation();
+                const checked = Array.from(popover.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+
+                const saveBtn = document.getElementById('save-cat-btn');
+                if (saveBtn) saveBtn.textContent = 'Saving...';
+
+                await this.dealerService.saveDealerOverride(dealerName, { categories: checked });
+                dealer.categories = checked;
+                this.renderTable();
+                popover.remove();
+                document.removeEventListener('click', closeHandler);
+                document.removeEventListener('keydown', closeHandler);
+            };
+
+            document.getElementById('save-cat-btn').addEventListener('click', saveHandler);
+
+            // Delay adding click listener
+            setTimeout(() => {
+                document.addEventListener('click', closeHandler);
+                document.addEventListener('keydown', closeHandler);
+            }, 100);
+        }
+
         async saveDealerInfo(dealerName) {
             console.log('Saving dealer:', dealerName);
             const panel = document.getElementById('dealer-side-panel');
@@ -1662,15 +1615,20 @@ if (!window.DealerManager) {
             // Focus select
             setTimeout(() => select.focus(), 0);
 
-            // Close on click outside
+            // Close on click outside or Esc key
             setTimeout(() => {
-                const handleClickOutside = (e) => {
-                    if (!e.target.closest('.inline-edit-dropdown') && !e.target.closest('.editing')) {
+                const closeHandler = (e) => {
+                    const isClickOutside = e.type === 'click' && !e.target.closest('.inline-edit-dropdown') && !e.target.closest('.editing');
+                    const isEsc = e.type === 'keydown' && e.key === 'Escape';
+
+                    if (isClickOutside || isEsc) {
                         this.closeInlineEdit();
-                        document.removeEventListener('click', handleClickOutside);
+                        document.removeEventListener('click', closeHandler);
+                        document.removeEventListener('keydown', closeHandler);
                     }
                 };
-                document.addEventListener('click', handleClickOutside);
+                document.addEventListener('click', closeHandler);
+                document.addEventListener('keydown', closeHandler);
             }, 100);
         }
 
@@ -1778,10 +1736,27 @@ if (!window.DealerManager) {
                 this.closeInlineEdit();
             };
 
-            // Trap click
+            // Close on click outside or Esc key
+            const closeHandler = (e) => {
+                const isClickOutside = e.type === 'click' && !e.target.closest('.inline-edit-dropdown') && !e.target.closest('.editing');
+                const isEsc = e.type === 'keydown' && e.key === 'Escape';
+
+                if (isClickOutside || isEsc) {
+                    this.closeInlineEdit();
+                    document.removeEventListener('click', closeHandler);
+                    document.removeEventListener('keydown', closeHandler);
+                }
+            };
+
+            // Trap click inside for dropdown itself (prevent bubbling to doc click handler if we want, 
+            // but actually we rely on 'closest' check in handler, so just preventing propagation is fine for clicks)
             dropdown.addEventListener('click', (e) => e.stopPropagation());
 
-            // Position
+            // Add global listeners
+            setTimeout(() => {
+                document.addEventListener('click', closeHandler);
+                document.addEventListener('keydown', closeHandler);
+            }, 100);
             const rect = cell.getBoundingClientRect();
             dropdown.style.position = 'absolute';
             // Center vertically over cell or slightly offset

@@ -9,14 +9,17 @@ export class SettingsController {
     constructor() {
         this.keyAccounts = [];
         this.dealerStages = [];
+        this.dealerCategories = [];
         this.isLoading = false;
 
         // DOM Elements
         this.keyAccountsList = document.getElementById('key-accounts-list');
         this.dealerStagesList = document.getElementById('dealer-stages-list');
+        this.dealerCategoriesList = document.getElementById('dealer-categories-list');
         this.deactivatedList = document.getElementById('deactivated-dealers-list');
         this.addKeyAccountInput = document.getElementById('add-kam-input');
         this.addDealerStageInput = document.getElementById('add-stage-input');
+        this.addCategoryInput = document.getElementById('add-category-input');
 
         this.init();
     }
@@ -31,21 +34,30 @@ export class SettingsController {
 
     setupEventListeners() {
         // Key Accounts Add
-        document.getElementById('add-kam-btn').addEventListener('click', () => {
+        document.getElementById('add-kam-btn')?.addEventListener('click', () => {
             this.handleAddItem('keyAccounts', this.addKeyAccountInput);
         });
 
-        this.addKeyAccountInput.addEventListener('keypress', (e) => {
+        this.addKeyAccountInput?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.handleAddItem('keyAccounts', this.addKeyAccountInput);
         });
 
         // Dealer Stages Add
-        document.getElementById('add-stage-btn').addEventListener('click', () => {
+        document.getElementById('add-stage-btn')?.addEventListener('click', () => {
             this.handleAddItem('dealerStages', this.addDealerStageInput);
         });
 
-        this.addDealerStageInput.addEventListener('keypress', (e) => {
+        this.addDealerStageInput?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.handleAddItem('dealerStages', this.addDealerStageInput);
+        });
+
+        // Dealer Categories Add
+        document.getElementById('add-category-btn')?.addEventListener('click', () => {
+            this.handleAddItem('dealerCategories', this.addCategoryInput);
+        });
+
+        this.addCategoryInput?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.handleAddItem('dealerCategories', this.addCategoryInput);
         });
     }
 
@@ -62,14 +74,17 @@ export class SettingsController {
                 const data = docSnap.data();
                 this.keyAccounts = data.key_accounts || [];
                 this.dealerStages = data.dealer_stages || [];
+                this.dealerCategories = data.dealer_categories || [];
             } else {
                 console.log("No settings document found. Creating default...");
                 // Initialize defaults
                 this.keyAccounts = [];
                 this.dealerStages = ['Contacted', 'Interested', 'Negotiation', 'Closed'];
+                this.dealerCategories = [];
                 await setDoc(docRef, {
                     key_accounts: this.keyAccounts,
-                    dealer_stages: this.dealerStages
+                    dealer_stages: this.dealerStages,
+                    dealer_categories: this.dealerCategories
                 });
             }
 
@@ -87,6 +102,7 @@ export class SettingsController {
             // Fallback for offline/error
             this.keyAccounts = [];
             this.dealerStages = [];
+            this.dealerCategories = [];
         } finally {
             this.setLoading(false);
         }
@@ -118,6 +134,15 @@ export class SettingsController {
             this.renderDealerStages();
             this.updateBadges();
             await this.persistItem(listName, value, 'add');
+        } else if (listName === 'dealerCategories') {
+            if (this.dealerCategories.includes(value)) {
+                alert('This category already exists!');
+                return;
+            }
+            this.dealerCategories.push(value);
+            this.renderDealerCategories();
+            this.updateBadges();
+            await this.persistItem(listName, value, 'add');
         }
 
         inputElement.value = '';
@@ -137,6 +162,10 @@ export class SettingsController {
             this.dealerStages = this.dealerStages.filter(item => item !== value);
             this.renderDealerStages();
             await this.persistItem(listName, value, 'remove');
+        } else if (listName === 'dealerCategories') {
+            this.dealerCategories = this.dealerCategories.filter(item => item !== value);
+            this.renderDealerCategories();
+            await this.persistItem(listName, value, 'remove');
         }
     }
 
@@ -145,7 +174,11 @@ export class SettingsController {
      */
     async persistItem(listName, value, action) {
         const docRef = doc(db, "settings", "general");
-        const firestoreField = listName === 'keyAccounts' ? 'key_accounts' : 'dealer_stages';
+        let firestoreField;
+
+        if (listName === 'keyAccounts') firestoreField = 'key_accounts';
+        else if (listName === 'dealerStages') firestoreField = 'dealer_stages';
+        else if (listName === 'dealerCategories') firestoreField = 'dealer_categories';
 
         try {
             if (action === 'add') {
@@ -202,7 +235,23 @@ export class SettingsController {
     renderAll() {
         this.renderKeyAccounts();
         this.renderDealerStages();
+        this.renderDealerCategories();
         this.renderDeactivatedDealers();
+    }
+
+    renderDealerCategories() {
+        if (!this.dealerCategoriesList) return;
+        this.dealerCategoriesList.innerHTML = this.dealerCategories.map(name => `
+            <div class="list-item">
+                <span class="item-text">${this.escapeHtml(name)}</span>
+                <button class="delete-btn" onclick="window.settingsController.handleRemoveItem('dealerCategories', '${this.escapeHtml(name)}')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        `).join('');
     }
 
     renderKeyAccounts() {

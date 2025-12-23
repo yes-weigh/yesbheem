@@ -149,6 +149,9 @@ export class FirestoreService {
             const docRef = doc(this.db, "settings", "dealer_overrides");
 
             // Use dot notation to update nested field
+            // To properly merge deep fields without overwriting the entire map entry, 
+            // we should technically use updateDoc with dot notation "key.field": value
+            // But since customer names can have dots, we use setDoc with merge which works well for maps.
             const updateData = {};
             updateData[customerName] = updates;
 

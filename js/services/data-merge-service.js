@@ -123,6 +123,15 @@ export class DataMergeService {
                 if (!existing.shipping_city && dealer.shipping_city) existing.shipping_city = dealer.shipping_city;
                 if (!existing.billing_state && dealer.billing_state) existing.billing_state = dealer.billing_state;
                 if (!existing.shipping_state && dealer.shipping_state) existing.shipping_state = dealer.shipping_state;
+
+                // Merge categories (union)
+                if (dealer.categories && Array.isArray(dealer.categories)) {
+                    const existingCats = existing.categories || [];
+                    const newCats = dealer.categories.filter(c => !existingCats.includes(c));
+                    if (newCats.length > 0) {
+                        existing.categories = [...existingCats, ...newCats];
+                    }
+                }
             }
         }
 
