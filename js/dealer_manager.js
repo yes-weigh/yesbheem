@@ -38,7 +38,7 @@ if (!window.DealerManager) {
             this.isPaginationEnabled = true;
 
             // Sorting
-            this.sortField = 'customer_name'; // Default sort
+            this.sortColumn = 'customer_name'; // Default sort
             this.sortDirection = 'asc';
 
             // Bulk Selection
@@ -505,9 +505,9 @@ if (!window.DealerManager) {
         }
 
         sortDealers() {
-            if (!this.sortField) return;
+            if (!this.sortColumn) return;
 
-            const field = this.sortField;
+            const field = this.sortColumn;
             const dir = this.sortDirection === 'asc' ? 1 : -1;
 
             this.filteredDealers.sort((a, b) => {
@@ -520,6 +520,10 @@ if (!window.DealerManager) {
                     valA = (a.state || '') + (a.district || '');
                     valB = (b.state || '') + (b.district || '');
                 }
+
+                // Handle array fields (like Categories)
+                if (Array.isArray(valA)) valA = valA.join(', ');
+                if (Array.isArray(valB)) valB = valB.join(', ');
 
                 if (typeof valA === 'string') valA = valA.toLowerCase();
                 if (typeof valB === 'string') valB = valB.toLowerCase();
@@ -614,6 +618,23 @@ if (!window.DealerManager) {
 
             // Show/Hide bar based on filters
             bar.style.display = hasFilters ? 'flex' : 'none';
+        }
+
+        setStageFilter(stage) {
+            // Update local state
+            this.stageFilter = stage;
+
+            // Update dropdown UI if matching option exists
+            const select = document.getElementById('filter-stage');
+            if (select) {
+                // If stage is 'not_assigned', value might not match options, so we might need to handle that or let it stay on "All Stages" visually but filter is active.
+                // Or "Active" / "Non Active" should match.
+                select.value = stage;
+                // If value doesn't exist, it won't select anything (or stay as is). 
+                // But we will manually trigger logic anyway.
+            }
+
+            this.applyFilters();
         }
 
         removeFilter(type) {
@@ -957,12 +978,23 @@ if (!window.DealerManager) {
             return 'new'; // Default
         }
 
+        sortBy(column) {
+            if (this.sortColumn === column) {
+                this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.sortColumn = column;
+                this.sortDirection = 'asc';
+            }
+
+            this.applyFilters();
+        }
+
         renderTable() {
             const tableBody = document.getElementById('dealer-table-body');
             if (!tableBody) return;
 
             if (this.filteredDealers.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--text-muted);">No dealers found matching criteria.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 2rem; color: var(--text-muted);">No dealers found matching criteria.</td></tr>';
                 this.renderPagination();
                 return;
             }
@@ -990,61 +1022,71 @@ if (!window.DealerManager) {
             const fragment = document.createDocumentFragment();
 
             displayData.forEach((d, index) => {
-                const kam = d.key_account_manager;
-                const kamHtml = kam ? `<span class="kam-badge">${kam}</span>` : `<span class="kam-empty">-</span>`;
+                // console.log('Rendering row', index);
+                try {
+                    const kam = d.key_account_manager;
+                    const kamHtml = kam ? `<span class="kam-badge">${kam}</span>` : `<span class="kam-empty">-</span>`;
 
-                const stage = d.dealer_stage || '-';
-                // Using existing helper if available or default color logic
-                const stageClass = this.getStageClass ? this.getStageClass(stage) : (stage.toLowerCase().replace(/\s+/g, '-'));
+                    const stage = d.dealer_stage || '-';
+                    // Using existing helper if available or default color logic
+                    const stageClass = this.getStageClass ? this.getStageClass(stage) : (stage.toLowerCase().replace(/\s+/g, '-'));
 
-                const phone = d.mobile_phone || '-';
-                const district = d.district || '-';
+                    const phone = d.mobile_phone || '-';
+                    const district = d.district || '-';
+                    const name = d.customer_name || 'Unknown';
 
-                const rowNumber = startIndex + index + 1; // Correct row number based on pagination
-                const uniqueId = d._internalId || d.id || d.cust_id;
-                const isSelected = this.selectedDealers.has(uniqueId);
+                    const rowNumber = startIndex + index + 1; // Correct row number based on pagination
+                    const uniqueId = d._internalId || d.id || d.cust_id;
+                    const isSelected = this.selectedDealers.has(uniqueId);
 
-                // Checkbox HTML
-                const checkboxHtml = `
-                    <td style="padding: 0 10px; text-align: center;">
-                        <input type="checkbox" class="table-checkbox row-checkbox" 
-                            ${isSelected ? 'checked' : ''}
-                            onclick="event.stopPropagation(); window.dealerManager.toggleSelectRow('${uniqueId}', this.checked)">
-                    </td>
-                `;
+                    // Checkbox HTML
+                    const checkboxHtml = `
+                        <td style="padding: 0 10px; text-align: center;">
+                            <input type="checkbox" class="table-checkbox row-checkbox" 
+                                ${isSelected ? 'checked' : ''}
+                                onclick="event.stopPropagation(); window.dealerManager.toggleSelectRow('${uniqueId}', this.checked)">
+                        </td>
+                    `;
 
-                const categories = d.categories || [];
-                const categoriesHtml = categories.length > 0
-                    ? categories.map(c => `<span class="category-badge">${c}</span>`).join(' ')
-                    : '-';
+                    const categories = d.categories || [];
+                    const categoriesHtml = categories.length > 0
+                        ? categories.map(c => `<span class="category-badge">${c}</span>`).join(' ')
+                        : '-';
 
-                const tr = document.createElement('tr');
-                tr.className = 'dealer-row';
-                tr.innerHTML = `
-                    ${checkboxHtml}
-                    <td style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">${rowNumber}</td>
-                    <td>
-                        <div class="row-title" title="${d.customer_name}">${d.customer_name}</div>
-                        <div style="margin-top: 4px;" onclick="window.dealerManager.showInlineEdit('${d.customer_name.replace(/'/g, "\\'")}', 'key_account_manager', this)">
+                    const tr = document.createElement('tr');
+                    tr.className = 'dealer-row';
+                    tr.innerHTML = `
+                        ${checkboxHtml}
+                        <td style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">${rowNumber}</td>
+                        <td>
+                            <div class="row-title" title="${name}">${name}</div>
+                        </td>
+                        <td onclick="window.dealerManager.showInlineEdit('${name.replace(/'/g, "\\'")}', 'key_account_manager', this)">
                              ${kamHtml}
-                        </div>
-                    </td>
-                    <td class="contact-cell" onclick="window.dealerManager.showInlineContactEdit('${d.customer_name.replace(/'/g, "\\'")}', this)">
-                        <div class="row-text">${d.first_name || '-'}</div>
-                        <div class="row-subtext">${phone}</div>
-                    </td>
-                    <td>
-                        <div class="row-text">${d.state || '-'}</div>
-                        <div class="row-subtext">${district}</div>
-                    </td>
-                    <td class="stage-cell" onclick="window.dealerManager.showInlineEdit('${d.customer_name.replace(/'/g, "\\'")}', 'dealer_stage', this)">
-                        <span class="status-pill status-${stageClass}">${stage}</span>
-                    </td>
-                    <td class="categories-cell" onclick="window.dealerManager.editDealerCategories('${uniqueId}', '${d.customer_name}', this)">
-                        ${categoriesHtml}
-                    </td>
-                `;
-                fragment.appendChild(tr);
+                        </td>
+                        <td class="stage-cell" onclick="window.dealerManager.showInlineEdit('${name.replace(/'/g, "\\'")}', 'dealer_stage', this)">
+                            <span class="status-pill status-${stageClass}">${stage}</span>
+                        </td>
+                        <td class="categories-cell" onclick="window.dealerManager.editDealerCategories('${uniqueId}', '${name.replace(/'/g, "\\'")}', this)">
+                            ${categoriesHtml}
+                        </td>
+                        <td class="contact-cell" onclick="window.dealerManager.showInlineContactEdit('${name.replace(/'/g, "\\'")}', this)">
+                            <div class="row-text">${d.first_name || '-'}</div>
+                        </td>
+                        <td class="contact-cell" onclick="window.dealerManager.showInlineContactEdit('${name.replace(/'/g, "\\'")}', this)">
+                            <div class="row-text">${phone}</div>
+                        </td>
+                        <td>
+                            <div class="row-text">${d.state || '-'}</div>
+                        </td>
+                        <td>
+                             <div class="row-text">${district}</div>
+                        </td>
+                    `;
+                    fragment.appendChild(tr);
+                } catch (e) {
+                    console.error('Error rendering row:', e, d);
+                }
             });
 
             tableBody.innerHTML = '';
@@ -1144,9 +1186,6 @@ if (!window.DealerManager) {
                 
                 <!-- Action Buttons (Footer) -->
                 <div style="display: flex; gap: 10px;">
-                    <button class="btn-secondary" onclick="window.dealerManager.resetColumnWidths()" title="Reset table column widths" style="padding: 6px 12px; font-size: 0.85rem;">
-                        Reset Columns
-                    </button>
                     <button class="btn-secondary" onclick="window.dealerManager.exportCSV()" style="padding: 6px 12px; font-size: 0.85rem;">
                         Export CSV
                     </button>

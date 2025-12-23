@@ -1,90 +1,105 @@
-```
 </style>
 
 <div class="page-container" id="dealer-page">
     <style>
-        /* Puzzler-Inspired High Density UI */
+        /* Ultra Modern Compact KPI */
+        /* Screenshot Match KPI Design */
         .kpi-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 12px;
+            gap: 16px;
             width: 100%;
             margin-bottom: 0;
         }
 
-        /* Mini Stat Cards */
         .kpi-card {
-            padding: 10px 16px;
-            border-radius: 10px;
-            background: rgba(30, 41, 59, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 12px 20px;
+            border-radius: 16px;
+            /* Rounded card */
+            background: var(--surface-card);
+            /* Adaptive */
             display: flex;
             flex-direction: row;
             /* Horizontal layout */
             align-items: center;
             justify-content: space-between;
-            min-height: 0;
-            /* Important for density */
+            min-height: 60px;
+            position: relative;
             backdrop-filter: blur(10px);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-light);
+            /* Left Accent via property or pseudo */
+            overflow: hidden;
         }
 
-        .kpi-header {
-            margin: 0;
-            order: 2;
-            /* Label on right or secondary */
+        /* The Colored Curve Accent */
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 12px;
+            bottom: 12px;
+            width: 3px;
+            border-radius: 0 4px 4px 0;
+            background: currentColor;
+            /* Uses color from class */
+            box-shadow: 2px 0 8px currentColor;
+            /* Glow effect */
         }
 
-        .kpi-label {
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            text-align: right;
+        /* Container for Value (Left) */
+        .kpi-content {
+            order: 1;
+            /* First */
         }
 
         .kpi-value {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--text-main);
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #eceff4;
+            /* Bright white/grey */
             line-height: 1;
-            order: 1;
-            /* Value first */
+            letter-spacing: -0.5px;
         }
 
-        .kpi-content {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+        /* Container for Label (Right) */
+        .kpi-header {
+            order: 2;
+            /* Second */
+            margin-bottom: 0;
         }
 
-        /* Access Colors - Left Border Strip for color coding */
+        .kpi-label {
+            font-size: 0.70rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: right;
+            opacity: 0.7;
+        }
+
+        /* Access Colors - Define text color for pseudo element inheritance */
         .card-blue {
-            border-left: 3px solid #4299e1;
-            border-bottom: none;
+            color: #3b82f6;
         }
 
+        /* Blue */
         .card-teal {
-            border-left: 3px solid #10b981;
-            border-bottom: none;
+            color: #10b981;
         }
 
+        /* Green/Teal */
         .card-orange {
-            border-left: 3px solid #f59e0b;
-            border-bottom: none;
+            color: #f59e0b;
         }
 
         .card-purple {
-            border-left: 3px solid #8b5cf6;
-            border-bottom: none;
+            color: #8b5cf6;
         }
 
         .card-red {
-            border-left: 3px solid #ef4444;
-            border-bottom: none;
+            color: #ef4444;
         }
-
 
         @media (max-width: 1000px) {
             .kpi-grid {
@@ -93,149 +108,198 @@
         }
     </style>
 
-    <div class="page-title-bar" style="height: auto; padding: 12px 20px 8px 20px; border-bottom: none;">
-        <div class="page-title-content" style="width: 100%; display: flex; flex-direction: column; gap: 12px;">
-            <!-- KPI Cards - Mini -->
+    <div class="page-title-bar" style="height: auto; padding: 10px 20px;">
+        <div class="page-title-content" style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
+            <!-- KPI Cards -->
             <div class="kpi-grid">
                 <!-- Total Dealers -->
-                <div class="kpi-card card-blue">
+                <div class="kpi-card card-blue" onclick="window.dealerManager.setStageFilter('all')"
+                    style="cursor: pointer;">
                     <div class="kpi-content">
                         <span class="kpi-value" id="stats-total">0</span>
                     </div>
-                    <span class="kpi-label">Total</span>
+                    <div class="kpi-header">
+                        <span class="kpi-label">TOTAL</span>
+                    </div>
                 </div>
 
                 <!-- Active -->
-                <div class="kpi-card card-teal">
+                <div class="kpi-card card-teal" onclick="window.dealerManager.setStageFilter('Active')"
+                    style="cursor: pointer;">
                     <div class="kpi-content">
                         <span class="kpi-value" id="stats-active">0</span>
                     </div>
-                    <span class="kpi-label">Active</span>
+                    <div class="kpi-header">
+                        <span class="kpi-label">ACTIVE</span>
+                    </div>
                 </div>
 
                 <!-- Non Active -->
-                <div class="kpi-card card-orange">
+                <div class="kpi-card card-orange" onclick="window.dealerManager.setStageFilter('Non Active')"
+                    style="cursor: pointer;">
                     <div class="kpi-content">
                         <span class="kpi-value" id="stats-non-active">0</span>
                     </div>
-                    <span class="kpi-label">Inactive</span>
+                    <div class="kpi-header">
+                        <span class="kpi-label">INACTIVE</span>
+                    </div>
                 </div>
 
                 <!-- Not Assigned -->
-                <div class="kpi-card card-purple">
+                <div class="kpi-card card-purple" onclick="window.dealerManager.setStageFilter('not_assigned')"
+                    style="cursor: pointer;">
                     <div class="kpi-content">
                         <span class="kpi-value" id="stats-not-assigned">0</span>
                     </div>
-                    <span class="kpi-label">Unassigned</span>
+                    <div class="kpi-header">
+                        <span class="kpi-label">UNASSIGNED</span>
+                    </div>
                 </div>
 
                 <!-- Blacklisted -->
-                <div class="kpi-card card-red">
+                <div class="kpi-card card-red" onclick="window.dealerManager.setStageFilter('Blocked')"
+                    style="cursor: pointer;">
                     <div class="kpi-content">
                         <span class="kpi-value" id="stats-blacklisted">0</span>
                     </div>
-                    <span class="kpi-label">Blocked</span>
+                    <div class="kpi-header">
+                        <span class="kpi-label">BLOCKED</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Controls Row - Hidden but kept for logic -->
-            <div style="display: none;">
-                <select id="dealer-report-selector"></select>
-                <button onclick="window.dealerManager.resetColumnWidths()">Reset</button>
-                <button onclick="window.dealerManager.exportCSV()">Export</button>
+            <!-- Controls Row (kept from original but adjusted) -->
+            <div style="display: flex; justify-content: flex-end; width: 100%; gap: 10px; display: none;">
+                <!-- Data Source Selector (Hidden in original too) -->
+                <div class="report-selector-container" style="display: none;">
+                    <select id="dealer-report-selector" class="report-select">
+                        <option value="" disabled selected>Loading reports...</option>
+                    </select>
+                </div>
+
+                <span id="dealer-count-display"
+                    style="font-size: 0.8rem; color: var(--text-muted); align-self: center;"></span>
+                <button class="btn-secondary" onclick="window.dealerManager.resetColumnWidths()"
+                    title="Reset table column widths">Reset Columns</button>
+                <button class="btn-secondary" onclick="window.dealerManager.exportCSV()">Export CSV</button>
             </div>
         </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="content-layout">
-        <!-- Table Section -->
-        <div class="table-section">
+    <div class="dealer-controls-bar">
+        <div class="control-group search-group">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="dealer-search" placeholder="Search dealers..." autocomplete="off">
+        </div>
 
-            <!-- Controls Bar - Sleek & Integrated -->
-            <div class="table-controls" id="table-controls-bar" style="padding: 4px 20px 12px 20px;">
-                <div class="search-container">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="search-icon">
-                        <path
-                            d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                    <!-- Sleek pill search -->
-                    <input type="text" id="dealer-search" placeholder="Search..."
-                        onkeyup="window.dealerManager.handleSearch(event)"
-                        style="border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding-left: 36px;">
-                </div>
-
-                <div class="filters-group">
-                    <!-- Minimal Filters -->
-                    <select id="filter-kam" onchange="window.dealerManager.handleFilterChange()"
-                        style="border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
-                        <option value="all">KAM: Any</option>
-                    </select>
-                    <select id="filter-stage" onchange="window.dealerManager.handleFilterChange()"
-                        style="border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
-                        <option value="all">Stage: Any</option>
-                    </select>
-                    <select id="filter-state" onchange="window.dealerManager.handleFilterChange()"
-                        style="border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
-                        <option value="all">State: Any</option>
-                    </select>
-                </div>
+        <div class="control-group filter-group">
+            <div class="filter-wrapper">
+                <select id="filter-kam" class="filter-select" aria-label="Filter by Key Account Manager">
+                    <option value="all">All KAMs</option>
+                </select>
+                <button class="filter-clear-btn" data-for="filter-kam" title="Clear filter"
+                    aria-label="Clear KAM filter">×</button>
             </div>
-
-            <!-- Table Container -->
-            <div class="dealer-table-container">
-                <table class="dealer-table">
-                    <colgroup>
-                        <col style="width: 40px;"> <!-- Checkbox -->
-                        <col style="width: 50px;"> <!-- Sl. -->
-                        <col style="width: 25%;"> <!-- Name -->
-                        <col style="width: 15%;"> <!-- Contact -->
-                        <col style="width: 15%;"> <!-- State -->
-                        <col style="width: 100px;"> <!-- Stage -->
-                        <col style="width: auto;"> <!-- Categories -->
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th style="padding-left: 12px;"><input type="checkbox" id="select-all-dealers"
-                                    onclick="window.dealerManager.toggleSelectAll(this)"></th>
-                            <th class="sortable" onclick="window.dealerManager.sortDealers('sl_no')">#</th>
-                            <th class="sortable" onclick="window.dealerManager.sortDealers('customer_name')">DEALER</th>
-                            <th class="sortable" onclick="window.dealerManager.sortDealers('mobile_phone')">CONTACT</th>
-                            <th class="sortable" onclick="window.dealerManager.sortDealers('state')">LOCATION</th>
-                            <th class="sortable" onclick="window.dealerManager.sortDealers('dealer_stage')">STATUS</th>
-                            <th>Categories</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dealer-table-body">
-                        <!-- Populated by JS -->
-                    </tbody>
-                </table>
+            <div class="filter-wrapper">
+                <select id="filter-stage" class="filter-select" aria-label="Filter by Stage">
+                    <option value="all">All Stages</option>
+                </select>
+                <button class="filter-clear-btn" data-for="filter-stage" title="Clear filter"
+                    aria-label="Clear Stage filter">×</button>
             </div>
-
-            <div class="pagination-container" id="pagination-container"
-                style="padding: 10px 20px; border-top: 1px solid rgba(255,255,255,0.05);">
-                <!-- Pagination -->
+            <div class="filter-wrapper">
+                <select id="filter-state" class="filter-select" aria-label="Filter by State">
+                    <option value="all">All States</option>
+                </select>
+                <button class="filter-clear-btn" data-for="filter-state" title="Clear filter"
+                    aria-label="Clear State filter">×</button>
+            </div>
+            <div class="filter-wrapper">
+                <select id="filter-district" class="filter-select" aria-label="Filter by District">
+                    <option value="all">All Districts</option>
+                </select>
+                <button class="filter-clear-btn" data-for="filter-district" title="Clear filter"
+                    aria-label="Clear District filter">×</button>
             </div>
         </div>
+        <div id="a11y-status" class="sr-only" aria-live="polite"></div>
     </div>
-</div>
 
-<!-- Bulk Actions Bar -->
-<div id="bulk-actions-bar" class="bulk-actions-bar">
-    <div class="bulk-selection-info">
-        <span id="bulk-selected-count">0</span>
-        <span class="bulk-label">Selected</span>
+    <!-- Active Filters Section -->
+    <div class="active-filter-bar" id="active-filter-bar" style="display: none;">
+        <div class="active-filters-list" id="active-filters-list">
+            <!-- Chips injected here -->
+            <button id="clear-all-filters" class="clear-all-btn">Clear All</button>
+        </div>
     </div>
-    <div class="bulk-actions-buttons">
-        <button class="bulk-btn" onclick="event.stopPropagation(); window.dealerManager.bulkAssignKAM()">Assign
-            KAM</button>
-        <button class="bulk-btn" onclick="window.dealerManager.bulkExport()">Export</button>
-        <button class="bulk-btn"
-            style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);"
-            onclick="window.dealerManager.bulkDeactivate()">Deactivate</button>
+
+    <div class="dealer-table-container">
+        <table class="dealer-table">
+            <colgroup>
+                <col style="width: 40px"> <!-- Checkbox -->
+                <col style="width: 45px"> <!-- Sl.No -->
+                <col style="width: 190px"> <!-- Name -->
+                <col style="width: 100px"> <!-- KAM -->
+                <col style="width: 95px"> <!-- Stage -->
+                <col style="width: 130px"> <!-- Categories -->
+                <col style="width: 130px"> <!-- Contact Name -->
+                <col style="width: 100px"> <!-- Phone -->
+                <col style="width: 120px"> <!-- State -->
+                <col style="width: 120px"> <!-- District -->
+            </colgroup>
+            <thead>
+                <tr>
+                    <th style="text-align: center">
+                        <input type="checkbox" id="select-all-dealers"
+                            onclick="window.dealerManager.toggleSelectAll(this.checked)">
+                    </th>
+                    <th>Sl.No</th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('customer_name')">Dealer Name</th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('key_account_manager')">KAM</th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('dealer_stage')">Stage</th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('categories')">Categories</th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('first_name')">Contact Name</th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('mobile_phone')">Phone</th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('state')">State</th>
+                    <th class="sortable" onclick="window.dealerManager.sortBy('district')">District</th>
+                </tr>
+            </thead>
+            <tbody id="dealer-table-body">
+                <!-- Data populated by JS -->
+            </tbody>
+        </table>
     </div>
-    <button class="bulk-close-btn" onclick="window.dealerManager.clearSelection()">×</button>
+
+    <!-- Pagination Controls -->
+    <div id="pagination-container"></div>
+
+    <!-- Edit Modal -->
+    <div id="dealer-edit-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <!-- Content injected here -->
+            <div id="dealer-edit-modal-content"></div>
+        </div>
+    </div>
+    <!-- Bulk Actions Bar -->
+    <div id="bulk-actions-bar" class="bulk-actions-bar">
+        <div class="bulk-selection-info">
+            <span id="bulk-selected-count">0</span>
+            <span class="bulk-label">Selected</span>
+        </div>
+        <div class="bulk-actions-buttons">
+            <button class="bulk-btn" onclick="event.stopPropagation(); window.dealerManager.bulkAssignKAM()">Assign
+                KAM</button>
+            <button class="bulk-btn" onclick="window.dealerManager.bulkExport()">Export</button>
+            <button class="bulk-btn"
+                style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);"
+                onclick="window.dealerManager.bulkDeactivate()">Deactivate</button>
+        </div>
+        <button class="bulk-close-btn" onclick="window.dealerManager.clearSelection()">×</button>
+    </div>
 </div>
 
 <!-- Bulk KAM Modal (Moved outside page-container) -->
@@ -358,7 +422,8 @@
         display: flex;
         gap: 16px;
         border-bottom: 1px solid var(--border-light);
-        background: rgba(15, 23, 42, 0.4);
+        background: var(--bg-primary);
+        /* Blend with page or use secondary */
         backdrop-filter: blur(8px);
         align-items: center;
         flex-wrap: wrap;
@@ -385,7 +450,8 @@
 
     #dealer-search {
         width: 100%;
-        background: rgba(0, 0, 0, 0.2);
+        background: var(--bg-secondary);
+        /* Adaptive */
         border: 1px solid var(--border-strong);
         border-radius: 6px;
         padding: 8px 10px 8px 34px;
@@ -396,11 +462,12 @@
     }
 
     #dealer-search:focus {
-        border-color: var(--accent-color);
+        border-color: var(--accent);
     }
 
     .filter-select {
-        background: rgba(0, 0, 0, 0.2);
+        background: var(--bg-secondary);
+        /* Adaptive */
         border: 1px solid var(--border-strong);
         color: var(--text-main);
         padding: 8px 12px;
@@ -412,7 +479,7 @@
     }
 
     .filter-select:hover {
-        border-color: rgba(255, 255, 255, 0.2);
+        border-color: var(--border-highlight);
     }
 
     .filter-select option {
@@ -595,12 +662,12 @@
     }
 
     .dealer-table td {
-        padding: 10px 16px;
+        padding: 4px 12px;
+        /* Compact padding */
         border-bottom: 1px solid rgba(255, 255, 255, 0.03);
         color: var(--text-main);
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         vertical-align: middle;
-        /* Ensure text truncates if too long */
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -613,12 +680,72 @@
         max-width: 45px;
         min-width: 45px;
         padding: 10px 8px;
+        text-align: center;
+        /* Center checkbox */
+    }
+
+    /* Ultra Modern Checkbox */
+    .dealer-table input[type="checkbox"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--border-light);
+        /* Adaptive border */
+        border-radius: 6px;
+        background: var(--bg-secondary);
+        /* Adaptive background */
+        position: relative;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        margin: 0;
+        vertical-align: middle;
+        display: inline-block;
+    }
+
+    .dealer-table input[type="checkbox"]:hover {
+        border-color: var(--accent);
+        background: var(--surface-hover);
+        /* Adaptive hover bg */
+        transform: scale(1.05);
+    }
+
+    .dealer-table input[type="checkbox"]:checked {
+        background-color: var(--accent);
+        border-color: var(--accent);
+        box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
+        /* Glow matching purple accent */
+    }
+
+    .dealer-table input[type="checkbox"]:checked::after {
+        content: '';
+        position: absolute;
+        left: 6px;
+        top: 2px;
+        width: 6px;
+        height: 12px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+        animation: checkAnim 0.2s ease-out forwards;
+    }
+
+    @keyframes checkAnim {
+        from {
+            opacity: 0;
+            transform: rotate(45deg) scale(0.5);
+        }
+
+        to {
+            opacity: 1;
+            transform: rotate(45deg) scale(1);
+        }
     }
 
     .dealer-row {
         transition: background 0.15s;
         cursor: pointer;
-        height: 44px;
+        height: 38px;
         /* Ultra compact row height */
     }
 
