@@ -317,7 +317,353 @@ class UIRenderer {
                     <button onclick="window.viewController.saveDealerInfo('${dealerName.replace(/'/g, "\\'")}')" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; border: none; background: var(--accent-color); color: white; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.2s;">Save</button>
                 </div>
             </div>
+            </div>
             `;
+    }
+    /**
+     * Render the Full Dealer Details Modal (Center Screen)
+     * @param {Object} data - { aggregated, overrides, history }
+     * @param {Object} settings - { key_accounts, dealer_stages, dealer_categories }
+     */
+    static renderDealerDetailsModal(data, settings) {
+        const { aggregated, history } = data;
+        const dealerName = aggregated.customer_name || 'Unknown Dealer';
+
+        // Helper: Safe Value
+        const v = (key) => {
+            let val = aggregated[key];
+            if (val === undefined || val === null) return '';
+            return val.toString().replace(/"/g, '&quot;');
+        };
+
+        // --- OVERVIEW: 3-Column Grid Layout ---
+
+        // Helper: Render Floating Label Input
+        const renderFloatingInput = (label, field, type = 'text', readonly = false, extraAttrs = '') => `
+            <div class="floating-group">
+                <input type="${type}" 
+                       class="floating-input" 
+                       id="inp_${field}" 
+                       data-field="${field}" 
+                       value="${v(field)}" 
+                       placeholder=" "
+                       ${readonly ? 'readonly tabindex="-1"' : ''}
+                       ${extraAttrs}>
+                <label class="floating-label" for="inp_${field}">${label}</label>
+                ${field === 'billing_zipcode' ? `
+                    <svg class="zip-loading-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none; position: absolute; right: 10px; top: 12px; animation: spin 1s linear infinite; color: var(--accent-color);">
+                        <circle cx="12" cy="12" r="10" opacity="0.25"></circle>
+                        <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path>
+                    </svg>
+                ` : ''}
+            </div>
+        `;
+
+        // Helper: Render Floating Select
+        const renderFloatingSelect = (label, field, options) => {
+            const current = v(field);
+            const opts = options.map(o => `<option value="${o}" ${o === current ? 'selected' : ''}>${o}</option>`).join('');
+            return `
+                <div class="floating-group">
+                    <select class="floating-input" id="inp_${field}" data-field="${field}">
+                        <option value=""></option>
+                        ${opts}
+                    </select>
+                    <label class="floating-label" for="inp_${field}">${label}</label>
+                </div>
+            `;
+        };
+
+        // Categories Widget (Clickable)
+        const cats = aggregated.categories || [];
+        const catText = Array.isArray(cats) ? cats.join(', ') : (cats || '');
+        const categoriesWidget = `
+            <div class="floating-group" onclick="window.dealerManager.editDealerCategories('${aggregated._internalId || aggregated.id || aggregated.cust_id}', '${dealerName.replace(/'/g, "\\'")}', this)" style="cursor: pointer;">
+                <div class="floating-input readonly" style="display:flex; align-items:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
+                    ${catText || '<span style="opacity:0.3">No categories...</span>'}
+                </div>
+                <label class="floating-label" style="top: 2px; font-size: 0.65rem; color: var(--accent-color);">Categories</label>
+                <div style="position:absolute; right:10px; top:12px; opacity:0.5; pointer-events:none;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+            </div>
+        `;
+
+        const overviewHtml = `
+            <div class="compact-grid">
+                <!-- Col 1: Identity -->
+                <div class="grid-col">
+                    <h5 class="col-title">Identity</h5>
+                    ${renderFloatingSelect('Key Account Manager', 'key_account_manager', settings.key_accounts || [])}
+                    ${renderFloatingSelect('Dealer Stage', 'dealer_stage', settings.dealer_stages || [])}
+                    ${categoriesWidget}
+                </div>
+
+                <!-- Col 2: Contact -->
+                <div class="grid-col">
+                    <h5 class="col-title">Contact</h5>
+                    ${renderFloatingInput('Contact Name', 'first_name')}
+                    ${renderFloatingInput('Mobile Phone', 'mobile_phone')}
+                </div>
+
+                <!-- Col 3: Location -->
+                <div class="grid-col">
+                    <h5 class="col-title">Location</h5>
+                    ${renderFloatingInput('Zip Code', 'billing_zipcode', 'text', false, 'onchange="window.dealerManager.handlePopupZipChange(this)"')}
+                    ${renderFloatingInput('District', 'district', 'text', true)}
+                    ${renderFloatingInput('State', 'billing_state', 'text', true)}
+                    <input type="hidden" data-field="shipping_zipcode" value="${v('shipping_zipcode') || v('billing_zipcode')}">
+                </div>
+            </div>
+        `;
+
+        // --- HISTORY TAB CONTENT ---
+        const historyRows = history.map(h => {
+            const sales = parseFloat(h.data.sales || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
+            const date = new Date(h.date).toLocaleDateString();
+            return `
+                <tr>
+                    <td>${h.reportName}</td>
+                    <td>${date}</td>
+                    <td class="text-right">${sales}</td>
+                </tr>
+             `;
+        }).join('');
+
+        const historyHtml = `
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Report Name</th>
+                        <th>Upload Date</th>
+                        <th class="text-right">Sales Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${historyRows.length > 0 ? historyRows : '<tr><td colspan="3" class="text-center">No history found</td></tr>'}
+                </tbody>
+            </table>
+        `;
+
+        // --- MODAL SHELL ---
+        return `
+            <div class="dealer-modal-overlay" onclick="window.dealerManager.closeDealerDetails()">
+                <div class="dealer-modal" onclick="event.stopPropagation()">
+                    <!-- Header -->
+                    <div class="dealer-modal-header">
+                        <div class="header-left">
+                            <h2>${dealerName}</h2>
+                        </div>
+                        <div class="header-actions">
+                             ${aggregated.dealer_stage ? `<span class="badge stage-badge stage-${(aggregated.dealer_stage || '').toLowerCase()}">${aggregated.dealer_stage}</span>` : ''}
+                            <button class="close-btn" onclick="window.dealerManager.closeDealerDetails()">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="dealer-modal-tabs">
+                        <button class="tab-btn active" onclick="window.dealerManager.switchModalTab('overview')">Overview</button>
+                        <button class="tab-btn" onclick="window.dealerManager.switchModalTab('history')">History (${history.length})</button>
+                    </div>
+
+                    <!-- Body -->
+                    <div class="dealer-modal-content" id="modal-tab-overview">
+                        ${overviewHtml}
+                    </div>
+                    
+                    <div class="dealer-modal-content" id="modal-tab-history" style="display: none;">
+                        ${historyHtml}
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="dealer-modal-footer">
+                        <div class="footer-note">
+                            <span style="color:var(--accent-color);">*</span> Changes saved as overrides
+                        </div>
+                        <div class="footer-actions">
+                            <button class="btn-cancel" onclick="window.dealerManager.closeDealerDetails()">Cancel</button>
+                            <button class="btn-save" onclick="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}')">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <style>
+                .dealer-modal-overlay {
+                    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                    background: rgba(0, 0, 0, 0.85);
+                    backdrop-filter: blur(8px);
+                    z-index: 10000;
+                    display: flex; align-items: center; justify-content: center;
+                    animation: fadeIn 0.2s ease-out;
+                }
+                .dealer-modal {
+                    background: linear-gradient(145deg, rgba(16, 23, 42, 0.95), rgba(8, 12, 22, 0.98));
+                    width: 750px;
+                    max-width: 95%;
+                    border-radius: 16px;
+                    border: 1px solid rgba(255,255,255,0.08);
+                    box-shadow: 0 25px 60px rgba(0,0,0,0.6), 0 0 20px rgba(59, 130, 246, 0.1);
+                    display: flex; flex-direction: column;
+                    overflow: hidden;
+                    animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                
+                @keyframes scaleUp {
+                    from { transform: scale(0.95) translateY(10px); opacity: 0; }
+                    to { transform: scale(1) translateY(0); opacity: 1; }
+                }
+
+                /* Header */
+                .dealer-modal-header {
+                    padding: 16px 24px;
+                    border-bottom: 1px solid rgba(255,255,255,0.06);
+                    display: flex; justify-content: space-between; align-items: center;
+                    background: linear-gradient(to right, rgba(59, 130, 246, 0.05), transparent);
+                }
+                .dealer-modal-header h2 { 
+                    margin: 0; font-size: 1.25rem; font-weight: 700; color: #f8fafc; 
+                    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+                }
+                .header-actions { display: flex; gap: 12px; align-items: center; }
+                .stage-badge { 
+                    padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; 
+                    text-transform: uppercase; background: rgba(16, 185, 129, 0.2); color: #34d399; 
+                    border: 1px solid rgba(16, 185, 129, 0.3);
+                }
+                .stage-badge.stage-churned { background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
+                .stage-badge.stage-prospect { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+
+                .close-btn { 
+                    background: rgba(255,255,255,0.05); border: none; color: #94a3b8; 
+                    border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+                    cursor: pointer; transition: all 0.2s; 
+                }
+                .close-btn:hover { background: rgba(255,255,255,0.1); color: #fff; transform: rotate(90deg); }
+
+                /* Tabs */
+                .dealer-modal-tabs {
+                    display: flex; padding: 0 24px;
+                    background: rgba(0,0,0,0.3);
+                    border-bottom: 1px solid rgba(255,255,255,0.06);
+                }
+                .tab-btn {
+                    padding: 14px 4px; margin-right: 24px;
+                    background: none; border: none; color: #64748b;
+                    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+                    position: relative; transition: color 0.2s;
+                }
+                .tab-btn.active { color: #f8fafc; }
+                .tab-btn.active::after {
+                    content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+                    height: 2px; background: #3b82f6; box-shadow: 0 -1px 8px #3b82f6;
+                }
+
+                /* Content Body */
+                .dealer-modal-content { padding: 24px; flex: 1; }
+                
+                /* Compact Grid Layout */
+                .compact-grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 20px;
+                }
+                .col-title {
+                    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+                    color: rgba(148, 163, 184, 0.5); margin: 0 0 16px 0; font-weight: 700;
+                    border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 4px;
+                }
+
+                /* Floating Labels */
+                .floating-group { position: relative; margin-bottom: 16px; }
+                .floating-input {
+                    width: 100%;
+                    padding: 16px 12px 6px;
+                    height: 48px;
+                    background: rgba(15, 23, 42, 0.6);
+                    border: 1px solid rgba(51, 65, 85, 0.6);
+                    border-radius: 8px;
+                    color: #f1f5f9;
+                    font-size: 0.9rem;
+                    font-family: inherit;
+                    transition: all 0.2s;
+                    box-sizing: border-box;
+                }
+                .floating-input:focus {
+                    outline: none;
+                    border-color: #3b82f6;
+                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                    background: rgba(15, 23, 42, 0.9);
+                }
+                .floating-label {
+                    position: absolute;
+                    top: 14px; left: 12px;
+                    font-size: 0.85rem;
+                    color: #64748b;
+                    pointer-events: none;
+                    transition: all 0.2s ease-out;
+                }
+                /* Active State for Float */
+                .floating-input:focus ~ .floating-label,
+                .floating-input:not(:placeholder-shown) ~ .floating-label {
+                    top: 4px;
+                    font-size: 0.65rem;
+                    color: #3b82f6;
+                    font-weight: 600;
+                }
+                /* Select handling */
+                select.floating-input { padding-top: 16px; cursor: pointer; }
+                select.floating-input option { background: #0f172a; }
+
+                /* Readonly */
+                .floating-input[readonly] {
+                    background: rgba(30, 41, 59, 0.3);
+                    border-color: rgba(255,255,255,0.05);
+                    cursor: default;
+                    color: #94a3b8;
+                }
+
+                /* Footer */
+                .dealer-modal-footer {
+                    padding: 16px 24px;
+                    border-top: 1px solid rgba(255,255,255,0.06);
+                    background: rgba(0,0,0,0.2);
+                    display: flex; justify-content: space-between; align-items: center;
+                }
+                .footer-note { font-size: 0.75rem; color: #475569; font-style: italic; }
+                
+                .btn-cancel {
+                    padding: 8px 16px; margin-right: 8px;
+                    background: transparent; border: 1px solid rgba(255,255,255,0.1);
+                    color: #94a3b8; border-radius: 6px; cursor: pointer; transition: 0.2s;
+                }
+                .btn-cancel:hover { background: rgba(255,255,255,0.05); color: #fff; }
+                
+                .btn-save {
+                    padding: 8px 24px;
+                    background: linear-gradient(135deg, #3b82f6, #2563eb);
+                    border: none; color: white; border-radius: 6px;
+                    font-weight: 600; cursor: pointer;
+                    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+                    transition: transform 0.1s, box-shadow 0.2s;
+                }
+                .btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4); }
+                .btn-save:active { transform: translateY(0); }
+
+                .history-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+                .history-table th { 
+                    text-align: left; padding: 12px; font-size: 0.75rem; color: #64748b; 
+                    text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); 
+                }
+                .history-table td { 
+                    padding: 12px; font-size: 0.85rem; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,0.03); 
+                }
+                .history-table tr:hover td { background: rgba(255,255,255,0.02); }
+                .text-right { text-align: right; }
+            </style>
+        `;
     }
 }
 

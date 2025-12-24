@@ -633,6 +633,89 @@ class DataManager {
         return this.aggregator.aggregateByState(dealers);
     }
 
+    /**
+     * Get detailed history for a specific dealer across all reports.
+     * @param {string} dealerName - The customer name to search for
+     * @returns {Object} { aggregated, overrides, history: Array<{ reportName, date, data }> }
+     */
+    async getDealerHistory(dealerName) {
+        if (!dealerName) return null;
+
+        console.log(`Fetching history for dealer: ${dealerName}`);
+
+        // 1. Get all available reports
+        const reports = await this.listReports();
+        const history = [];
+        const normalizedTarget = this.normalizeKey(dealerName);
+
+        // 2. Iterate and find matches
+        // We load ALL reports to find history. Optimally we might index this, 
+        // but for now iterating valid reports is fine.
+        for (const report of reports) {
+            try {
+                const data = await this.loadReportDataFromFirestore(report.id);
+                // Find matching row
+                const match = data.find(row => this.normalizeKey(row.customer_name) === normalizedTarget);
+
+                if (match) {
+                    history.push({
+                        reportId: report.id,
+                        reportName: report.name,
+                        date: report.timeCreated || 'Unknown Date', // Or parse a date col if exists
+                        data: match
+                    });
+                }
+            } catch (e) {
+                console.warn(`Failed to search report ${report.name} for history:`, e);
+            }
+        }
+
+        // Sort history by date desc (newest first)
+        history.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        // 3. Get Overrides
+        const overrides = this.dealerOverrides[dealerName] || {};
+
+        // 4. Construct Aggregated/Current View
+        // We use the latest record as base and apply overrides
+        let current = {};
+        if (history.length > 0) {
+            current = { ...history[0].data }; // Latest data
+        }
+
+        // Apply overrides to current view
+        for (const [key, val] of Object.entries(overrides)) {
+            if (val !== undefined && val !== '') {
+                current[key] = val;
+            }
+        }
+
+        // 5. Post-process Enrichment (Match Main Table Logic)
+
+        // Inject District from Zip
+        if (!current.district && this.zipCache) {
+            let zip = current.billing_zipcode || current.shipping_zipcode;
+            if (zip) {
+                // Ensure zip is string and clean
+                zip = String(zip).replace(/\s/g, '');
+                current.district = this.zipCache[zip] || '';
+            }
+        }
+
+        // Ensure proper null checks for display
+        if (!current.mobile_phone && current.phone) current.mobile_phone = current.phone; // Fallback
+
+
+        // Ensure standard fields exist if missing
+        if (!current.customer_name) current.customer_name = dealerName;
+
+        return {
+            aggregated: current,
+            overrides: overrides,
+            history: history
+        };
+    }
+
     // --- Firebase Storage Methods ---
 
     /**

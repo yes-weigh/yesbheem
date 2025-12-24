@@ -26,6 +26,8 @@ if (!window.DealerManager) {
             // Initialize DealerFilterService
             this.filterService = new DealerFilterService();
 
+            this.dataManager = window.dataManager;
+
             // Filters
             this.searchQuery = '';
             this.stageFilter = 'all';
@@ -81,6 +83,7 @@ if (!window.DealerManager) {
                 }
 
                 await this.waitForDataManager();
+                this.dataManager = window.dataManager;
 
                 // Initialize DealerService now that dataManager is available
                 this.dealerService = new DealerService(window.dataManager);
@@ -1140,7 +1143,7 @@ if (!window.DealerManager) {
                         ${checkboxHtml}
                         <td style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">${rowNumber}</td>
                         <td>
-                            <div class="row-title" title="${name}">${name}</div>
+                            <div class="row-title" title="${name}" onclick="window.dealerManager.showDealerDetails('${name.replace(/'/g, "\\'")}')" style="cursor: pointer; color: var(--accent-color); transition: color 0.2s;">${name}</div>
                         </td>
                         <td class="contact-cell" onclick="window.dealerManager.showInlineContactNameEdit('${name.replace(/'/g, "\\'")}', this)">
                             <div class="row-text">${d.first_name || '-'}</div>
@@ -1409,6 +1412,149 @@ if (!window.DealerManager) {
             } catch (e) {
                 console.error('Error rendering edit form:', e);
                 alert('Error showing edit form: ' + e.message);
+            }
+        }
+
+        /**
+         * Show the Dealer Details Modal
+         */
+        async showDealerDetails(dealerName) {
+            console.log('Showing details for:', dealerName);
+
+            // remove any existing
+            this.closeDealerDetails();
+
+            // Show Loading
+            import('./utils/toast.js').then(module => {
+                module.Toast.info('Loading dealer history...');
+            });
+
+            try {
+                // Fetch History
+                const historyData = await this.dataManager.getDealerHistory(dealerName);
+
+                // Render Modal
+                const html = window.UIRenderer.renderDealerDetailsModal(historyData, this.generalSettings);
+
+                // Inject
+                document.body.insertAdjacentHTML('beforeend', html);
+
+            } catch (e) {
+                console.error('Failed to show details:', e);
+                import('./utils/toast.js').then(module => {
+                    module.Toast.error('Failed to load dealer details');
+                });
+            }
+        }
+
+        closeDealerDetails() {
+            const modal = document.querySelector('.dealer-modal-overlay');
+            if (modal) modal.remove();
+        }
+
+        switchModalTab(tabId) {
+            // Update Buttons
+            document.querySelectorAll('.dealer-modal-tabs .tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.innerText.toLowerCase().includes(tabId)) btn.classList.add('active');
+            });
+
+            // Update Content
+            document.querySelectorAll('.dealer-modal-content').forEach(content => {
+                content.style.display = 'none';
+            });
+
+            const activeContent = document.getElementById(`modal-tab-${tabId}`);
+            if (activeContent) activeContent.style.display = 'block';
+        }
+
+        async handlePopupZipChange(inputField) {
+            const zipCode = inputField.value.trim();
+
+            // Validate zip code format (6 digits for India)
+            if (!zipCode || !/^\d{6}$/.test(zipCode)) {
+                return;
+            }
+
+            // Find the loading spinner and show it
+            const container = inputField.parentElement;
+            const spinner = container.querySelector('.zip-loading-spinner');
+            if (spinner) {
+                spinner.style.display = 'inline-block';
+            }
+
+            try {
+                console.log(`[DealerManager] Fetching location for zip: ${zipCode}`);
+                const location = await this.dataManager.getLocationFromZip(zipCode);
+
+                if (location) {
+                    // Find fields in the modal
+                    // We use document.querySelector because the modal is globally unique when open
+                    const modal = document.querySelector('.dealer-modal');
+                    if (modal) {
+                        const districtInput = modal.querySelector('input[data-field="district"]');
+                        const stateInput = modal.querySelector('input[data-field="billing_state"]');
+                        const shippingZipInput = modal.querySelector('input[data-field="shipping_zipcode"]');
+
+                        if (districtInput) {
+                            districtInput.value = location.district;
+                            // Trigger visual feedback or change event if needed
+                            districtInput.classList.add('flash-update');
+                            setTimeout(() => districtInput.classList.remove('flash-update'), 1000);
+                        }
+                        if (stateInput) {
+                            stateInput.value = location.state;
+                        }
+                        // Auto-sync shipping zip to match billing zip for "single zip" experience
+                        if (shippingZipInput) {
+                            shippingZipInput.value = zipCode;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error resolving zip code:', error);
+            } finally {
+                if (spinner) {
+                    spinner.style.display = 'none';
+                }
+            }
+        }
+
+        async saveDealerDetails(dealerName) {
+            const modal = document.querySelector('.dealer-modal');
+            if (!modal) return;
+
+            const saveBtn = modal.querySelector('.btn-save');
+            if (saveBtn) {
+                saveBtn.innerText = 'Saving...';
+                saveBtn.disabled = true;
+            }
+
+            // Collect Inputs
+            const overrides = {};
+            modal.querySelectorAll('.details-input:not(.readonly)').forEach(input => {
+                const field = input.dataset.field;
+                const val = input.value.trim();
+                if (field) overrides[field] = val;
+            });
+
+            try {
+                await this.dataManager.saveDealerOverride(dealerName, overrides);
+                import('./utils/toast.js').then(module => {
+                    module.Toast.success('Dealer details updated');
+                });
+
+                await this.refresh();
+                this.closeDealerDetails();
+            } catch (e) {
+                console.error('Save details failed:', e);
+                import('./utils/toast.js').then(module => {
+                    module.Toast.error('Failed to save changes');
+                });
+                if (saveBtn) {
+                    saveBtn.innerText = 'Save Changes';
+                    saveBtn.disabled = false;
+                }
             }
         }
 
