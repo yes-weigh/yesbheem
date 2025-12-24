@@ -355,7 +355,7 @@ class UIRenderer {
                        ${extraAttrs}>
                 <label class="floating-label" for="inp_${field}">${label}</label>
                 ${field === 'billing_zipcode' ? `
-                    <svg class="zip-loading-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none; position: absolute; right: 10px; top: 12px; animation: spin 1s linear infinite; color: var(--accent-color);">
+                    <svg class="zip-loading-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none; position: absolute; right: 10px; top: 12px; animation: spin 1s linear infinite; color: var(--color-info);">
                         <circle cx="12" cy="12" r="10" opacity="0.25"></circle>
                         <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path>
                     </svg>
@@ -386,7 +386,7 @@ class UIRenderer {
                 <div class="floating-input readonly" style="display:flex; align-items:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
                     ${catText || '<span style="opacity:0.3">No categories...</span>'}
                 </div>
-                <label class="floating-label" style="top: 2px; font-size: 0.65rem; color: var(--accent-color);">Categories</label>
+                <label class="floating-label" style="top: 2px; font-size: 0.65rem; color: var(--color-info);">Categories</label>
                 <div style="position:absolute; right:10px; top:12px; opacity:0.5; pointer-events:none;">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
                 </div>
@@ -447,9 +447,9 @@ class UIRenderer {
                     ${historyRows.length > 0 ? historyRows : '<tr><td colspan="3" class="text-center">No history found</td></tr>'}
                 </tbody>
                 <tfoot>
-                    <tr style="background: rgba(255,255,255,0.05); font-weight: 700;">
-                        <td colspan="2" style="text-align: right; color: #fff; border-top: 1px solid rgba(255,255,255,0.1);">Total Sales</td>
-                        <td class="text-right" style="color: #10b981; border-top: 1px solid rgba(255,255,255,0.1);">${totalSales}</td>
+                    <tr style="background: var(--modal-footer-bg); font-weight: 700;">
+                        <td colspan="2" style="text-align: right; color: var(--modal-input-text); border-top: 1px solid var(--modal-table-border);">Total Sales</td>
+                        <td class="text-right" style="color: var(--color-success); border-top: 1px solid var(--modal-table-border);">${totalSales}</td>
                     </tr>
                 </tfoot>
             </table>
@@ -466,8 +466,8 @@ class UIRenderer {
                         </div>
                         <div class="header-actions">
                              <div class="total-sales-display" style="margin-right: 20px; text-align: right;">
-                                <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; font-weight:600;">Total Sales</div>
-                                <div style="font-size: 1.1rem; font-weight: 700; color: #10b981; line-height: 1.2;">${totalSales}</div>
+                                <div style="font-size: 0.65rem; color: var(--modal-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; font-weight:600;">Total Sales</div>
+                                <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-success); line-height: 1.2;">${totalSales}</div>
                              </div>
                              ${aggregated.dealer_stage ? `<span class="badge stage-badge stage-${(aggregated.dealer_stage || '').toLowerCase()}">${aggregated.dealer_stage}</span>` : ''}
                             <button class="close-btn" onclick="window.dealerManager.closeDealerDetails()">
@@ -494,7 +494,7 @@ class UIRenderer {
                     <!-- Footer -->
                     <div class="dealer-modal-footer">
                         <div class="footer-note">
-                            <span style="color:var(--accent-color);">*</span> Changes saved as overrides
+                            <span style="color:var(--color-info);">*</span> Changes saved as overrides
                         </div>
                         <div class="footer-actions">
                             <button class="btn-cancel" onclick="window.dealerManager.closeDealerDetails()">Cancel</button>
@@ -507,22 +507,23 @@ class UIRenderer {
             <style>
                 .dealer-modal-overlay {
                     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                    background: rgba(0, 0, 0, 0.85);
+                    background: var(--modal-overlay-bg);
                     backdrop-filter: blur(8px);
                     z-index: 10000;
                     display: flex; align-items: center; justify-content: center;
-                    animation: fadeIn 0.2s ease-out;
+                    animation: fadeIn 0.1s ease-out;
                 }
                 .dealer-modal {
-                    background: linear-gradient(145deg, rgba(16, 23, 42, 0.95), rgba(8, 12, 22, 0.98));
+                    background: var(--modal-bg-gradient);
                     width: 750px;
                     max-width: 95%;
                     border-radius: 16px;
-                    border: 1px solid rgba(255,255,255,0.08);
-                    box-shadow: 0 25px 60px rgba(0,0,0,0.6), 0 0 20px rgba(59, 130, 246, 0.1);
+                    border: var(--modal-border);
+                    box-shadow: var(--modal-shadow);
+                    color: var(--modal-input-text);
                     display: flex; flex-direction: column;
                     overflow: hidden;
-                    animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+                    animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
                 }
                 
                 @keyframes scaleUp {
@@ -533,13 +534,14 @@ class UIRenderer {
                 /* Header */
                 .dealer-modal-header {
                     padding: 16px 24px;
-                    border-bottom: 1px solid rgba(255,255,255,0.06);
+                    border-bottom: var(--modal-tabs-border);
                     display: flex; justify-content: space-between; align-items: center;
-                    background: linear-gradient(to right, rgba(59, 130, 246, 0.05), transparent);
+                    background: var(--modal-header-bg);
                 }
                 .dealer-modal-header h2 { 
-                    margin: 0; font-size: 1.25rem; font-weight: 700; color: #f8fafc; 
-                    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+                    margin: 0; font-size: 1.25rem; font-weight: 700; 
+                    color: var(--modal-h2-color);
+                    text-shadow: 0 2px 10px rgba(0,0,0,0.1);
                 }
                 .header-actions { display: flex; gap: 12px; align-items: center; }
                 .stage-badge { 
@@ -551,28 +553,29 @@ class UIRenderer {
                 .stage-badge.stage-prospect { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
 
                 .close-btn { 
-                    background: rgba(255,255,255,0.05); border: none; color: #94a3b8; 
+                    background: rgba(255,255,255,0.05); border: none; color: var(--modal-text-secondary); 
                     border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
                     cursor: pointer; transition: all 0.2s; 
                 }
-                .close-btn:hover { background: rgba(255,255,255,0.1); color: #fff; transform: rotate(90deg); }
+                .close-btn:hover { background: rgba(100,100,255,0.1); color: var(--modal-h2-color); transform: rotate(90deg); }
 
                 /* Tabs */
                 .dealer-modal-tabs {
                     display: flex; padding: 0 24px;
-                    background: rgba(0,0,0,0.3);
-                    border-bottom: 1px solid rgba(255,255,255,0.06);
+                    background: var(--modal-tabs-bg);
+                    border-bottom: var(--modal-tabs-border);
                 }
                 .tab-btn {
                     padding: 14px 4px; margin-right: 24px;
-                    background: none; border: none; color: #64748b;
+                    background: none; border: none; 
+                    color: var(--modal-label-color);
                     font-size: 0.85rem; font-weight: 600; cursor: pointer;
                     position: relative; transition: color 0.2s;
                 }
-                .tab-btn.active { color: #f8fafc; }
+                .tab-btn.active { color: var(--modal-h2-color); }
                 .tab-btn.active::after {
                     content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
-                    height: 2px; background: #3b82f6; box-shadow: 0 -1px 8px #3b82f6;
+                    height: 2px; background: var(--color-info); box-shadow: 0 -1px 8px var(--color-info);
                 }
 
                 /* Content Body */
@@ -586,8 +589,8 @@ class UIRenderer {
                 }
                 .col-title {
                     font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
-                    color: rgba(148, 163, 184, 0.5); margin: 0 0 16px 0; font-weight: 700;
-                    border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 4px;
+                    color: var(--modal-label-color); margin: 0 0 16px 0; font-weight: 700;
+                    border-bottom: 1px dashed var(--modal-table-border); padding-bottom: 4px;
                 }
 
                 /* Floating Labels */
@@ -596,10 +599,10 @@ class UIRenderer {
                     width: 100%;
                     padding: 16px 12px 6px;
                     height: 48px;
-                    background: rgba(15, 23, 42, 0.6);
-                    border: 1px solid rgba(51, 65, 85, 0.6);
+                    background: var(--modal-input-bg);
+                    border: var(--modal-input-border);
                     border-radius: 8px;
-                    color: #f1f5f9;
+                    color: var(--modal-input-text);
                     font-size: 0.9rem;
                     font-family: inherit;
                     transition: all 0.2s;
@@ -607,15 +610,15 @@ class UIRenderer {
                 }
                 .floating-input:focus {
                     outline: none;
-                    border-color: #3b82f6;
+                    border-color: var(--color-info);
                     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-                    background: rgba(15, 23, 42, 0.9);
+                    background: var(--modal-input-focus-bg);
                 }
                 .floating-label {
                     position: absolute;
                     top: 14px; left: 12px;
                     font-size: 0.85rem;
-                    color: #64748b;
+                    color: var(--modal-label-color);
                     pointer-events: none;
                     transition: all 0.2s ease-out;
                 }
@@ -624,36 +627,36 @@ class UIRenderer {
                 .floating-input:not(:placeholder-shown) ~ .floating-label {
                     top: 4px;
                     font-size: 0.65rem;
-                    color: #3b82f6;
+                    color: var(--color-info);
                     font-weight: 600;
                 }
                 /* Select handling */
                 select.floating-input { padding-top: 16px; cursor: pointer; }
-                select.floating-input option { background: #0f172a; }
+                select.floating-input option { background: var(--modal-input-bg); color: var(--modal-input-text); }
 
                 /* Readonly */
                 .floating-input[readonly] {
-                    background: rgba(30, 41, 59, 0.3);
-                    border-color: rgba(255,255,255,0.05);
+                    background: var(--modal-readonly-bg);
+                    border-color: transparent;
                     cursor: default;
-                    color: #94a3b8;
+                    color: var(--modal-text-secondary);
                 }
 
                 /* Footer */
                 .dealer-modal-footer {
                     padding: 16px 24px;
-                    border-top: 1px solid rgba(255,255,255,0.06);
-                    background: rgba(0,0,0,0.2);
+                    border-top: var(--modal-footer-border);
+                    background: var(--modal-footer-bg);
                     display: flex; justify-content: space-between; align-items: center;
                 }
-                .footer-note { font-size: 0.75rem; color: #475569; font-style: italic; }
+                .footer-note { font-size: 0.75rem; color: var(--modal-text-secondary); font-style: italic; }
                 
                 .btn-cancel {
                     padding: 8px 16px; margin-right: 8px;
-                    background: transparent; border: 1px solid rgba(255,255,255,0.1);
-                    color: #94a3b8; border-radius: 6px; cursor: pointer; transition: 0.2s;
+                    background: transparent; border: 1px solid var(--modal-table-border);
+                    color: var(--modal-text-secondary); border-radius: 6px; cursor: pointer; transition: 0.2s;
                 }
-                .btn-cancel:hover { background: rgba(255,255,255,0.05); color: #fff; }
+                .btn-cancel:hover { background: rgba(255,255,255,0.05); color: var(--modal-h2-color); }
                 
                 .btn-save {
                     padding: 8px 24px;
@@ -668,11 +671,14 @@ class UIRenderer {
 
                 .history-table { width: 100%; border-collapse: separate; border-spacing: 0; }
                 .history-table th { 
-                    text-align: left; padding: 12px; font-size: 0.75rem; color: #64748b; 
-                    text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); 
+                    text-align: left; padding: 12px; font-size: 0.75rem; 
+                    color: var(--modal-table-header); 
+                    text-transform: uppercase; border-bottom: 1px solid var(--modal-table-border); 
                 }
                 .history-table td { 
-                    padding: 12px; font-size: 0.85rem; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,0.03); 
+                    padding: 12px; font-size: 0.85rem; 
+                    color: var(--modal-table-row); 
+                    border-bottom: 1px solid rgba(255,255,255,0.03); 
                 }
                 .history-table tr:hover td { background: rgba(255,255,255,0.02); }
                 .text-right { text-align: right; }

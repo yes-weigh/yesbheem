@@ -1,158 +1,192 @@
 :root {
-    /* =========================================
+   /* =========================================
        NEW DESIGN SYSTEM
        ========================================= */
 
-    /* Base Colors */
-    --bg-primary: #0F172A;
-    --bg-secondary: #1E293B;
-    --bg-tertiary: #334155;
-    --surface-card: #1E293B;
-    --surface-hover: #334155;
+   /* Base Colors */
+   --bg-primary: #0F172A;
+   --bg-secondary: #1E293B;
+   --bg-tertiary: #334155;
+   --surface-card: #1E293B;
+   --surface-hover: #334155;
 
-    /* Text Colors */
-    --text-primary: #F8FAFC;
-    --text-secondary: #CBD5E1;
-    --text-muted: #64748B;
+   /* Text Colors */
+   --text-primary: #F8FAFC;
+   --text-secondary: #CBD5E1;
+   --text-muted: #64748B;
 
-    /* Data Visualization & State */
-    --color-success: #10B981;
-    --color-warning: #F59E0B;
-    --color-danger: #EF4444;
-    --color-info: #3B82F6;
-    --color-accent: #8B5CF6;
+   /* Data Visualization & State */
+   --color-success: #10B981;
+   --color-warning: #F59E0B;
+   --color-danger: #EF4444;
+   --color-info: #3B82F6;
+   --color-accent: #8B5CF6;
 
-    /* Borders */
-    --border-light: rgba(203, 213, 225, 0.1);
-    --border-medium: rgba(203, 213, 225, 0.2);
-    --border-strong: rgba(203, 213, 225, 0.3);
+   /* Borders */
+   --border-light: rgba(203, 213, 225, 0.1);
+   --border-medium: rgba(203, 213, 225, 0.2);
+   --border-strong: rgba(203, 213, 225, 0.3);
 
-    /* Spacing System (8px grid) */
-    --space-1: 4px;
-    --space-2: 8px;
-    --space-3: 12px;
-    --space-4: 16px;
-    --space-6: 24px;
-    --space-8: 32px;
-    --space-12: 48px;
-    --space-16: 64px;
+   /* Spacing System (8px grid) */
+   --space-1: 4px;
+   --space-2: 8px;
+   --space-3: 12px;
+   --space-4: 16px;
+   --space-6: 24px;
+   --space-8: 32px;
+   --space-12: 48px;
+   --space-16: 64px;
 
-    /* Border Radius */
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
+   /* Border Radius */
+   --radius-sm: 4px;
+   --radius-md: 8px;
+   --radius-lg: 12px;
+   --radius-xl: 16px;
 
-    /* Typography Scale */
-    --text-xs: 0.75rem;    /* 12px */
-    --text-sm: 0.875rem;   /* 14px */
-    --text-base: 1rem;     /* 16px */
-    --text-lg: 1.125rem;   /* 18px */
-    --text-xl: 1.25rem;    /* 20px */
-    --text-2xl: 1.5rem;    /* 24px */
-    --text-3xl: 2rem;      /* 32px */
+   /* Typography Scale */
+   --text-xs: 0.75rem;
+   /* 12px */
+   --text-sm: 0.875rem;
+   /* 14px */
+   --text-base: 1rem;
+   /* 16px */
+   --text-lg: 1.125rem;
+   /* 18px */
+   --text-xl: 1.25rem;
+   /* 20px */
+   --text-2xl: 1.5rem;
+   /* 24px */
+   --text-3xl: 2rem;
+   /* 32px */
 
-    /* Font Weights */
-    --font-normal: 400;
-    --font-medium: 500;
-    --font-semibold: 600;
-    --font-bold: 700;
+   /* Font Weights */
+   --font-normal: 400;
+   --font-medium: 500;
+   --font-semibold: 600;
+   --font-bold: 700;
 
-    /* Animations */
-    --duration-instant: 100ms;
-    --duration-fast: 200ms;
-    --duration-normal: 300ms;
-    --duration-slow: 500ms;
-    --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+   /* Animations */
+   --duration-instant: 100ms;
+   --duration-fast: 200ms;
+   --duration-normal: 300ms;
+   --duration-slow: 500ms;
+   --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
 
-    /* =========================================
+   /* =========================================
        COMPATIBILITY LAYER (Old -> New Mapping)
        ========================================= */
-    
-    /* VS Code Dark Modern Palette - Mapped to New System */
-    /* --bg-deep: #1e1e1e; */
-    --bg-deep: var(--bg-primary);
-    
-    /* --bg-dark: #1e1e1e; */
-    --bg-dark: var(--bg-primary);
-    
-    /* --bg-panel: #252526; */
-    --bg-panel: var(--bg-secondary);
-    
-    /* --bg-secondary: #2d2d2d; */
-    /* Renamed old bg-secondary to map to tertiary or secondary */
-    /* --bg-secondary (OLD) was #2d2d2d which is lighter than panel */
-    --bg-secondary-old: var(--bg-tertiary); 
-    
-    /* --bg-card: #252526; */
-    --bg-card: var(--surface-card);
-    
-    /* --bg-sidebar: #252526; */
-    --bg-sidebar: var(--surface-card);
-    
-    /* --bg-sidebar-hover: #2a2d2e; */
-    --bg-sidebar-hover: var(--surface-hover);
-    
-    /* --bg-header: #3c3c3c; */
-    --bg-header: var(--bg-tertiary);
 
-    /* --primary: #007acc; */
-    --primary: var(--color-info);
-    
-    /* --primary-glow: rgba(0, 122, 204, 0.4); */
-    --primary-glow: rgba(59, 130, 246, 0.4); /* Blue-ish glow */
+   /* VS Code Dark Modern Palette - Mapped to New System */
+   /* --bg-deep: #1e1e1e; */
+   --bg-deep: var(--bg-primary);
 
-    /* --accent: #007acc; */
-    --accent: var(--color-accent); /* Switching to purple accent? Or stay info? Prompt gave accent=#8B5CF6. Let's use that. */
-    
-    /* --accent-glow: rgba(0, 122, 204, 0.4); */
-    --accent-glow: rgba(139, 92, 246, 0.4);
+   /* --bg-dark: #1e1e1e; */
+   --bg-dark: var(--bg-primary);
 
-    /* --text-main: #cccccc; */
-    --text-main: var(--text-primary);
-    
-    /* --text-muted: #969696; */
-    /* --text-muted is already defined in new system, so we don't need to re-declare it, but we should ensure it matches intent. */
-    /* New text-secondary is #CBD5E1, text-muted is #64748B. Old text-muted was #969696. Matches reasonably. */
-    
-    /* --text-highlight: #ffffff; */
-    --text-highlight: var(--text-primary);
+   /* --bg-panel: #252526; */
+   --bg-panel: var(--bg-secondary);
 
-    /* --border-light: #333333; */
-    /* Already defined in new system as rgba. */
-    
-    /* --border-highlight: #454545; */
-    --border-highlight: var(--border-medium);
+   /* --bg-secondary: #2d2d2d; */
+   /* Renamed old bg-secondary to map to tertiary or secondary */
+   /* --bg-secondary (OLD) was #2d2d2d which is lighter than panel */
+   --bg-secondary-old: var(--bg-tertiary);
 
-    /* Map Colors - Dark */
-    /* --map-fill: #252526; */
-    --map-fill: var(--surface-card);
-    
-    /* --map-stroke: #454545; */
-    --map-stroke: var(--border-medium);
-    
-    /* --map-hover: #264f78; */
-    --map-hover: var(--color-info); /* Or a darkened version? Info is bright. Let's trust --color-info for now or use tertiary. */
-    
-    /* --map-text: #cccccc; */
-    --map-text: var(--text-secondary);
+   /* --bg-card: #252526; */
+   --bg-card: var(--surface-card);
 
-    --font-main: 'Inter', 'Outfit', sans-serif; /* Updating font stack preference if desired, or keeping old? Prompt asked for variables update. Keeping it safe but maybe adding Inter.*/
-    /* --font-main: 'Segoe UI', 'Outfit', sans-serif; */
+   /* --bg-sidebar: #252526; */
+   --bg-sidebar: var(--surface-card);
 
-    /* Metrics */
-    --header-height: 64px; /* Modern header usually taller, but old was 50px. Let's stick to old to prevent layout shift unless requested. */
-    /* --header-height: 50px; */
-    
-    --sidebar-width: 240px; /* Modern usually wider. Old 210px. */
-    /* --sidebar-width: 210px; */
-    
-    --sidebar-collapsed-width: 64px;
-    /* --sidebar-collapsed-width: 50px; */
+   /* --bg-sidebar-hover: #2a2d2e; */
+   --bg-sidebar-hover: var(--surface-hover);
 
-    /* Re-mapping radius to new system if they differ visually too much, but prompt said "Add Spacing System". */
-    /* Old --radius-lg was 0px. New is 12px. Using new radius logic might break "Flat Design" comment. */
-    /* However, prompt says "Add Spacing System... --radius-lg: 12px". I will defer to the PROMPT. */
+   /* --bg-header: #3c3c3c; */
+   --bg-header: var(--bg-tertiary);
+
+   /* --primary: #007acc; */
+   --primary: var(--color-info);
+
+   /* --primary-glow: rgba(0, 122, 204, 0.4); */
+   --primary-glow: rgba(59, 130, 246, 0.4);
+   /* Blue-ish glow */
+
+   /* --accent: #007acc; */
+   --accent: var(--color-accent);
+   /* Switching to purple accent? Or stay info? Prompt gave accent=#8B5CF6. Let's use that. */
+
+   /* --accent-glow: rgba(0, 122, 204, 0.4); */
+   --accent-glow: rgba(139, 92, 246, 0.4);
+
+   /* --text-main: #cccccc; */
+   --text-main: var(--text-primary);
+
+   /* --text-muted: #969696; */
+   /* --text-muted is already defined in new system, so we don't need to re-declare it, but we should ensure it matches intent. */
+   /* New text-secondary is #CBD5E1, text-muted is #64748B. Old text-muted was #969696. Matches reasonably. */
+
+   /* --text-highlight: #ffffff; */
+   --text-highlight: var(--text-primary);
+
+   /* --border-light: #333333; */
+   /* Already defined in new system as rgba. */
+
+   /* --border-highlight: #454545; */
+   --border-highlight: var(--border-medium);
+
+   /* Map Colors - Dark */
+   /* --map-fill: #252526; */
+   --map-fill: var(--surface-card);
+
+   /* --map-stroke: #454545; */
+   --map-stroke: var(--border-medium);
+
+   /* --map-hover: #264f78; */
+   --map-hover: var(--color-info);
+   /* Or a darkened version? Info is bright. Let's trust --color-info for now or use tertiary. */
+
+   /* --map-text: #cccccc; */
+   --map-text: var(--text-secondary);
+
+   --font-main: 'Inter', 'Outfit', sans-serif;
+   /* Updating font stack preference if desired, or keeping old? Prompt asked for variables update. Keeping it safe but maybe adding Inter.*/
+   /* --font-main: 'Segoe UI', 'Outfit', sans-serif; */
+
+   /* Metrics */
+   --header-height: 64px;
+   /* Modern header usually taller, but old was 50px. Let's stick to old to prevent layout shift unless requested. */
+   /* --header-height: 50px; */
+
+   --sidebar-width: 240px;
+   /* Modern usually wider. Old 210px. */
+   /* --sidebar-width: 210px; */
+
+   --sidebar-collapsed-width: 64px;
+   /* --sidebar-collapsed-width: 50px; */
+
+   /* Re-mapping radius to new system if they differ visually too much, but prompt said "Add Spacing System". */
+   /* Old --radius-lg was 0px. New is 12px. Using new radius logic might break "Flat Design" comment. */
+   /* However, prompt says "Add Spacing System... --radius-lg: 12px". I will defer to the PROMPT. */
+   /* Modal Component */
+   --modal-overlay-bg: rgba(0, 0, 0, 0.85);
+   --modal-bg-gradient: linear-gradient(145deg, rgba(16, 23, 42, 0.95), rgba(8, 12, 22, 0.98));
+   --modal-border: 1px solid rgba(255, 255, 255, 0.08);
+   --modal-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 20px rgba(59, 130, 246, 0.1);
+   --modal-header-bg: linear-gradient(to right, rgba(59, 130, 246, 0.05), transparent);
+   --modal-h2-color: #f8fafc;
+   --modal-tabs-bg: rgba(0, 0, 0, 0.3);
+   --modal-tabs-border: 1px solid rgba(255, 255, 255, 0.06);
+   --modal-input-bg: rgba(15, 23, 42, 0.6);
+   --modal-input-border: 1px solid rgba(51, 65, 85, 0.6);
+   --modal-input-focus-bg: rgba(15, 23, 42, 0.9);
+   --modal-input-text: #f1f5f9;
+   --modal-label-color: #64748b;
+   --modal-readonly-bg: rgba(30, 41, 59, 0.3);
+   --modal-footer-bg: rgba(0, 0, 0, 0.2);
+   --modal-footer-border: 1px solid rgba(255, 255, 255, 0.06);
+   --modal-text-secondary: #94a3b8;
+   --modal-table-header: #64748b;
+   --modal-table-row: #cbd5e1;
+   --modal-table-border: rgba(255, 255, 255, 0.1);
 }
 
 /* 
@@ -163,51 +197,79 @@
    OR just leave it isolated to not break it with dark colors.)
 */
 [data-theme="light"] {
-    /* VS Code Light Modern - preserving original values or mapping to new light equivalents if I had them. 
+   /* VS Code Light Modern - preserving original values or mapping to new light equivalents if I had them. 
        Since I don't have a specific "Light Mode" palette from the prompt, 
        I will keep the ORIGINAL Light Mode values to avoid making Light Mode look like Dark Mode.
     */
-    --bg-deep: #ffffff;
-    --bg-dark: #ffffff;
-    --bg-panel: #f3f3f3;
-    --bg-secondary: #e5e5e5; /* This line might conflict with root's bg-secondary if I'm not careful, but scope handles it. */
-    --bg-card: #f3f3f3;
-    --bg-sidebar: #f3f3f3;
-    --bg-sidebar-hover: #e8e8e8;
-    --bg-header: #dddddd;
+   --bg-deep: #ffffff;
+   --bg-dark: #ffffff;
+   --bg-panel: #f3f3f3;
+   --bg-secondary: #e5e5e5;
+   /* This line might conflict with root's bg-secondary if I'm not careful, but scope handles it. */
+   --bg-card: #f3f3f3;
+   --bg-sidebar: #f3f3f3;
+   --bg-sidebar-hover: #e8e8e8;
+   --bg-header: #dddddd;
 
-    --primary: #007acc;
-    --primary-glow: rgba(0, 122, 204, 0.2);
+   --primary: #007acc;
+   --primary-glow: rgba(0, 122, 204, 0.2);
 
-    --accent: #007acc;
-    --accent-glow: rgba(0, 122, 204, 0.2);
+   --accent: #007acc;
+   --accent-glow: rgba(0, 122, 204, 0.2);
 
-    --text-main: #333333;
-    --text-muted: #616161;
-    --text-highlight: #000000;
+   --text-main: #333333;
+   --text-muted: #616161;
+   --text-highlight: #000000;
 
-    /* Overriding the global border-light which is rgba(white-ish) for dark mode */
-    --border-light: #e5e5e5; 
-    --border-highlight: #cecece;
-    --border-medium: #d4d4d4; 
+   /* Overriding the global border-light which is rgba(white-ish) for dark mode */
+   --border-light: #e5e5e5;
+   --border-highlight: #cecece;
+   --border-medium: #d4d4d4;
 
-    /* Map Colors - Light */
-    --map-fill: #ebf1f5;
-    --map-stroke: #cbd5e1;
-    --map-hover: #b3d4fc;
-    --map-text: #333333;
-    
-    /* Re-declaring new vars to light equivalents if used? 
+   /* Map Colors - Light */
+   --map-fill: #ebf1f5;
+   --map-stroke: #cbd5e1;
+   --map-hover: #b3d4fc;
+   --map-text: #333333;
+
+   /* Re-declaring new vars to light equivalents if used? 
        If the code uses --bg-primary, it will get the dark color from :root. 
        Ideally we should set --bg-primary here too. 
        Approximation for Light Mode: */
-    --bg-primary: #ffffff;
-    --bg-secondary: #f8fafc; /* slate-50 */
-    --bg-tertiary: #f1f5f9; /* slate-100 */
-    --surface-card: #ffffff;
-    --surface-hover: #f1f5f9;
-    
-    --text-primary: #0f172a; /* slate-900 */
-    --text-secondary: #334155; /* slate-700 */
-    --text-muted: #64748B; /* slate-500 */
+   --bg-primary: #ffffff;
+   --bg-secondary: #f8fafc;
+   /* slate-50 */
+   --bg-tertiary: #f1f5f9;
+   /* slate-100 */
+   --surface-card: #ffffff;
+   --surface-hover: #f1f5f9;
+
+   --text-primary: #0f172a;
+   /* slate-900 */
+   --text-secondary: #334155;
+   /* slate-700 */
+   --text-muted: #64748B;
+   /* slate-500 */
+
+   /* Modal Component - Light Theme */
+   --modal-overlay-bg: rgba(255, 255, 255, 0.5);
+   --modal-bg-gradient: linear-gradient(145deg, #ffffff, #f8fafc);
+   --modal-border: 1px solid rgba(0, 0, 0, 0.05);
+   --modal-shadow: 0 25px 50px rgba(0, 0, 0, 0.15), 0 0 15px rgba(59, 130, 246, 0.05);
+   --modal-header-bg: linear-gradient(to right, rgba(59, 130, 246, 0.05), transparent);
+   --modal-h2-color: #0f172a;
+   --modal-tabs-bg: rgba(241, 245, 249, 0.5);
+   --modal-tabs-border: 1px solid rgba(0, 0, 0, 0.05);
+   --modal-input-bg: #ffffff;
+   --modal-input-border: 1px solid #cbd5e1;
+   --modal-input-focus-bg: #ffffff;
+   --modal-input-text: #0f172a;
+   --modal-label-color: #64748b;
+   --modal-readonly-bg: #f1f5f9;
+   --modal-footer-bg: rgba(241, 245, 249, 0.8);
+   --modal-footer-border: 1px solid rgba(0, 0, 0, 0.05);
+   --modal-text-secondary: #64748b;
+   --modal-table-header: #64748b;
+   --modal-table-row: #334155;
+   --modal-table-border: rgba(0, 0, 0, 0.05);
 }

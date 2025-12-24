@@ -55,28 +55,29 @@
 <script type="module" src="js/controllers/dashboard_controller.js"></script>
 
 <style>
-    /* New Dashboard Header */
+    /* New Dashboard Header (Theme Aware) */
     .dashboard-header {
-        background: var(--bg-secondary);
+        background: var(--modal-header-bg);
         padding: 0.5rem 0.4rem;
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
-        border-bottom: 1px solid var(--border-light);
+        border-bottom: 1px solid var(--modal-border);
         min-height: 85px;
+        backdrop-filter: blur(8px);
     }
 
     .dashboard-title h2 {
         margin: 0;
         font-size: 1.1rem;
         font-weight: 600;
-        color: var(--text-main);
+        color: var(--modal-h2-color);
         display: inline-block;
         margin-right: 0.5rem;
     }
 
     .dashboard-title .subtitle {
-        color: var(--text-muted);
+        color: var(--modal-text-secondary);
         font-size: 0.9rem;
     }
 
@@ -89,58 +90,67 @@
         margin: 0;
     }
 
-    /* KPI Card Styles */
+    /* KPI Card Styles (Theme Aware) */
     .kpi-card {
         padding: 8px 12px;
         border-radius: var(--radius-lg);
-        background: var(--surface-card);
-        border: 1px solid var(--border-light);
+        background: var(--modal-bg-gradient);
+        border: 1px solid var(--modal-border);
         transition: all var(--duration-normal) var(--ease-out);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         min-height: auto;
         height: auto;
-        /* Ensure enough height for new layout */
+        backdrop-filter: blur(12px);
     }
 
     .kpi-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-        border-color: var(--border-strong);
+        box-shadow: var(--modal-shadow);
+        border-color: var(--modal-border);
     }
 
-    /* Specific Card Gradients (overrides background) */
+    /* Specific Card Accents (Only Color & Border) */
     .card-blue {
-        background: linear-gradient(135deg, rgba(66, 153, 225, 0.1) 0%, rgba(66, 153, 225, 0.05) 100%);
         border-left: 4px solid #4299e1;
+        color: #4299e1;
     }
 
     .card-teal {
-        background: linear-gradient(135deg, rgba(56, 178, 172, 0.1) 0%, rgba(56, 178, 172, 0.05) 100%);
         border-left: 4px solid #38b2ac;
+        color: #38b2ac;
     }
 
     .card-orange {
-        background: linear-gradient(135deg, rgba(237, 137, 54, 0.1) 0%, rgba(237, 137, 54, 0.05) 100%);
         border-left: 4px solid #ed8936;
+        color: #ed8936;
     }
 
     .card-red {
-        background: linear-gradient(135deg, rgba(245, 101, 101, 0.1) 0%, rgba(245, 101, 101, 0.05) 100%);
         border-left: 4px solid #f56565;
+        color: #f56565;
     }
 
     .card-cyan {
-        background: linear-gradient(135deg, rgba(11, 197, 234, 0.1) 0%, rgba(11, 197, 234, 0.05) 100%);
         border-left: 4px solid #0bc5ea;
+        color: #0bc5ea;
     }
 
     .card-purple {
-        background: linear-gradient(135deg, rgba(159, 122, 234, 0.1) 0%, rgba(159, 122, 234, 0.05) 100%);
         border-left: 4px solid #9f7aea;
+        color: #9f7aea;
     }
 
+    /* Override standard gradients - remove them to let glass shine */
+    .card-blue,
+    .card-teal,
+    .card-orange,
+    .card-red,
+    .card-cyan,
+    .card-purple {
+        background: var(--modal-bg-gradient);
+    }
 
     .kpi-header {
         display: flex;
@@ -155,7 +165,7 @@
 
     .kpi-label {
         font-size: 0.75rem;
-        color: var(--text-muted);
+        color: var(--modal-text-secondary);
         font-weight: var(--font-medium);
         text-transform: uppercase;
         letter-spacing: 0.05em;
@@ -171,11 +181,12 @@
     .kpi-value {
         font-size: 1.5rem;
         font-weight: var(--font-bold);
-        color: var(--text-main);
-        /* Using text-main to ensure visibility */
+        color: var(--modal-h2-color);
+        /* Defaults to white/dark */
         line-height: 1;
     }
 
+    /* Force specific colors if needed, but let's try semantic first */
     .kpi-trend {
         display: flex;
         align-items: center;
@@ -194,7 +205,7 @@
 
     .kpi-progress {
         height: 4px;
-        background: var(--bg-tertiary);
+        background: rgba(255, 255, 255, 0.1);
         border-radius: 2px;
         overflow: hidden;
         width: 100%;
@@ -202,7 +213,9 @@
 
     .kpi-progress-bar {
         height: 100%;
-        background: linear-gradient(90deg, var(--color-accent), var(--color-info));
+        background: currentColor;
+        /* Use the card's text color */
+        opacity: 0.8;
         transition: width var(--duration-slow) var(--ease-out);
     }
 
