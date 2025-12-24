@@ -469,7 +469,15 @@ class UIRenderer {
                                 <div style="font-size: 0.65rem; color: var(--modal-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; font-weight:600;">Total Sales</div>
                                 <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-success); line-height: 1.2;">${totalSales}</div>
                              </div>
-                             ${aggregated.dealer_stage ? `<span class="badge stage-badge stage-${(aggregated.dealer_stage || '').toLowerCase()}">${aggregated.dealer_stage}</span>` : ''}
+                             ${(() => {
+                const stageName = aggregated.dealer_stage;
+                if (!stageName) return '';
+                const image = (settings.stage_images || {})[stageName];
+                if (image) {
+                    return `<img src="${image}" alt="${stageName}" title="${stageName}" style="height: 32px; width: 32px; object-fit: cover; border-radius: 50%;">`;
+                }
+                return `<span class="badge stage-badge stage-${(stageName || '').toLowerCase()}">${stageName}</span>`;
+            })()}
                             <button class="close-btn" onclick="window.dealerManager.closeDealerDetails()">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
@@ -479,7 +487,7 @@ class UIRenderer {
                     <!-- Tabs -->
                     <div class="dealer-modal-tabs">
                         <button class="tab-btn active" onclick="window.dealerManager.switchModalTab('overview')">Overview</button>
-                        <button class="tab-btn" onclick="window.dealerManager.switchModalTab('history')">History (${history.length})</button>
+                        <button class="tab-btn" onclick="window.dealerManager.switchModalTab('sales')">Sales (${history.length})</button>
                     </div>
 
                     <!-- Body -->
@@ -487,7 +495,7 @@ class UIRenderer {
                         ${overviewHtml}
                     </div>
                     
-                    <div class="dealer-modal-content" id="modal-tab-history" style="display: none;">
+                    <div class="dealer-modal-content" id="modal-tab-sales" style="display: none;">
                         ${historyHtml}
                     </div>
 
