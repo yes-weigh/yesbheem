@@ -226,6 +226,9 @@
                 <button class="filter-clear-btn" data-for="filter-district" title="Clear filter"
                     aria-label="Clear District filter">×</button>
             </div>
+            <div class="filter-wrapper" id="category-selector-container">
+                <!-- Category Selector Component Injected Here -->
+            </div>
         </div>
         <div id="a11y-status" class="sr-only" aria-live="polite"></div>
     </div>
@@ -434,6 +437,8 @@
         backdrop-filter: blur(8px);
         align-items: center;
         flex-wrap: wrap;
+        position: relative;
+        z-index: 50;
     }
 
     .control-group {

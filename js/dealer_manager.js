@@ -8,6 +8,7 @@ import { DealerValidator } from './components/dealer-validator.js';
 import { TABLE_UI } from './config/constants.js';
 import { DealerService } from './services/dealer-service.js';
 import { DealerFilterService } from './services/dealer-filter-service.js';
+import { CategorySelector } from './components/category-selector.js';
 
 if (!window.DealerManager) {
     window.DealerManager = class DealerManager {
@@ -31,6 +32,7 @@ if (!window.DealerManager) {
             this.kamFilter = 'all';
             this.districtFilter = 'all';
             this.stateFilter = 'all';
+            this.categoryFilter = [];
 
             // Pagination
             this.currentPage = 1;
@@ -92,6 +94,16 @@ if (!window.DealerManager) {
                 await this.loadReportsList();
 
                 this.renderFilters();
+
+                // Init Category Selector
+                this.categorySelector = new CategorySelector({
+                    containerId: 'category-selector-container',
+                    onChange: (selected) => {
+                        this.categoryFilter = selected;
+                        this.applyFilters();
+                    }
+                });
+
                 this.setupEventListeners();
 
             } catch (error) {
@@ -235,6 +247,17 @@ if (!window.DealerManager) {
                 this.updateDistrictFilter();
                 this.updateStateFilter();
                 this.updateStageFilter();
+
+                // Populate Categories
+                const allCategories = new Set();
+                this.dealers.forEach(d => {
+                    if (Array.isArray(d.categories)) {
+                        d.categories.forEach(c => allCategories.add(c));
+                    }
+                });
+                if (this.categorySelector) {
+                    this.categorySelector.setCategories(Array.from(allCategories));
+                }
 
                 console.log(`[DealerManager] Processed ${this.dealers.length} dealers, ${this.filteredDealers.length} filtered`);
             } catch (error) {
@@ -536,8 +559,18 @@ if (!window.DealerManager) {
                 // Special handling for State/District combined column sorting
                 // If sorting by 'state', we actually want to sort by State THEN District
                 if (field === 'state') {
-                    valA = (a.state || '') + (a.district || '');
-                    valB = (b.state || '') + (b.district || '');
+                    const stateA = (a.state || '').toLowerCase().trim();
+                    const stateB = (b.state || '').toLowerCase().trim();
+
+                    if (stateA !== stateB) {
+                        return (stateA < stateB ? -1 : 1) * dir;
+                    }
+                    // Same state, sort by district
+                    const distA = (a.district || '').toLowerCase().trim();
+                    const distB = (b.district || '').toLowerCase().trim();
+                    if (distA < distB) return -1 * dir;
+                    if (distA > distB) return 1 * dir;
+                    return 0;
                 }
 
                 // Handle array fields (like Categories)
@@ -560,6 +593,7 @@ if (!window.DealerManager) {
             this.filterService.setFilter('stage', this.stageFilter);
             this.filterService.setFilter('state', this.stateFilter);
             this.filterService.setFilter('district', this.districtFilter);
+            this.filterService.setFilter('categories', this.categoryFilter);
 
             // Apply filters using the service
             this.filteredDealers = this.filterService.applyFilters(this.dealers);
@@ -634,6 +668,9 @@ if (!window.DealerManager) {
             if (this.districtFilter && this.districtFilter !== 'all') {
                 createChip('District', this.districtFilter, 'district');
             }
+            if (this.categoryFilter && this.categoryFilter.length > 0) {
+                createChip('Categories', this.categoryFilter.length + ' selected', 'categories');
+            }
 
             // Show/Hide bar based on filters
             bar.style.display = hasFilters ? 'flex' : 'none';
@@ -663,6 +700,25 @@ if (!window.DealerManager) {
                 state: 'filter-state',
                 district: 'filter-district'
             };
+
+            if (type === 'categories') {
+                if (this.categorySelector) this.categorySelector.reset(); // Logic handled in reset
+                // But wait, reset clears all? No reset() in selector clears selection.
+                // We need to trigger apply.
+                // Assuming reset() calls or we trigger apply.
+                // Actually CategorySelector.reset() clears and re-renders but doesn't trigger callback unless we want it to?
+                // Let's manually clear.
+                this.categoryFilter = [];
+                // Selector internal state
+                if (this.categorySelector) {
+                    this.categorySelector.selectedCategories.clear();
+                    this.categorySelector.renderList();
+                    this.categorySelector.updateTriggerText();
+                }
+                this.applyFilters();
+                return;
+            }
+
             const el = document.getElementById(idMap[type]);
             if (el) {
                 el.value = 'all';
@@ -687,6 +743,12 @@ if (!window.DealerManager) {
                     el.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             });
+
+            // Clear Categories
+            this.categoryFilter = [];
+            if (this.categorySelector) {
+                this.categorySelector.reset();
+            }
             // Search query? 
             // if (this.searchQuery) ...
         }
@@ -1353,7 +1415,9 @@ if (!window.DealerManager) {
         async editDealerCategories(dealerId, dealerName, element) {
             // Check if settings loaded
             if (!this.generalSettings || !this.generalSettings.dealer_categories) {
-                alert('Categories not loaded');
+                import('./utils/toast.js').then(module => {
+                    module.Toast.warning('Categories configuration not loaded');
+                });
                 return;
             }
 
@@ -1368,46 +1432,83 @@ if (!window.DealerManager) {
 
             const popover = document.createElement('div');
             popover.id = 'category-popover';
+            // Fancy styling matching CategorySelector
             popover.style.cssText = `
                 position: absolute;
-                background: var(--bg-panel);
+                background: #1e293b;
                 border: 1px solid var(--border-light);
-                border-radius: 6px;
+                border-radius: 12px;
                 padding: 0;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+                box-shadow: 0 10px 25px rgba(0,0,0,0.5);
                 z-index: 9999;
-                min-width: 220px;
+                min-width: 240px;
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
+                opacity: 0;
+                transform: translateY(-10px);
+                transition: opacity 0.2s ease, transform 0.2s ease;
             `;
 
-            let checkboxesHtml = '';
             // Sort categories
             const sortedCategories = [...categories].sort();
 
+            let listHtml = '';
             sortedCategories.forEach(cat => {
-                const isChecked = currentCategories.includes(cat) ? 'checked' : '';
-                checkboxesHtml += `
-                    <label class="category-option" style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text-main); font-size: 0.9rem; padding: 10px 12px; transition: background 0.2s;">
-                        <input type="checkbox" value="${cat}" ${isChecked} style="width: 16px; height: 16px; accent-color: var(--primary-color);">
-                        ${cat}
-                    </label>
+                const isChecked = currentCategories.includes(cat);
+                listHtml += `
+                    <div class="popover-item ${isChecked ? 'selected' : ''}" data-value="${cat}" onclick="this.classList.toggle('selected')">
+                        <div class="popover-checkbox"></div>
+                        <span>${cat}</span>
+                    </div>
                 `;
             });
 
             popover.innerHTML = `
                 <style>
-                    .category-option:hover { background: rgba(255,255,255,0.05); }
+                    .popover-item {
+                        display: flex;
+                        align-items: center;
+                        padding: 8px 16px;
+                        cursor: pointer;
+                        transition: background 0.15s;
+                        color: var(--text-main);
+                        font-size: 0.9rem;
+                        gap: 12px;
+                    }
+                    .popover-item:hover {
+                        background: rgba(255,255,255,0.05);
+                    }
+                    .popover-checkbox {
+                        width: 16px;
+                        height: 16px;
+                        border: 2px solid var(--border-light);
+                        border-radius: 4px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        transition: all 0.2s;
+                        flex-shrink: 0;
+                    }
+                    .popover-item.selected .popover-checkbox {
+                        background: var(--accent-color, #3b82f6);
+                        border-color: var(--accent-color, #3b82f6);
+                    }
+                    .popover-item.selected .popover-checkbox::after {
+                        content: '✓';
+                        font-size: 10px;
+                        color: white;
+                        font-weight: bold;
+                    }
                 </style>
-                <div style="padding: 10px 12px; font-weight: 600; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border-light);">
-                    Select Categories
+                <div style="padding: 12px 16px; font-weight: 700; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2);">
+                    Edit Categories
                 </div>
-                <div style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column;">
-                    ${checkboxesHtml}
+                <div class="popover-list" style="max-height: 250px; overflow-y: auto; padding: 6px 0;">
+                    ${listHtml}
                 </div>
-                <div style="padding: 8px 10px; background: rgba(0,0,0,0.2); border-top: 1px solid var(--border-light);">
-                    <button id="save-cat-btn" style="width: 100%; background: var(--primary-color); color: white; border: none; padding: 6px; border-radius: 4px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Apply Changes</button>
+                <div style="padding: 10px; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05);">
+                    <button id="save-cat-btn" style="width: 100%; background: var(--accent-color, #3b82f6); color: white; border: none; padding: 8px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: opacity 0.2s;">Apply Changes</button>
                 </div>
             `;
 
@@ -1419,25 +1520,40 @@ if (!window.DealerManager) {
                 const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
                 const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
 
-                // Position to the left of the cell (since it's the last column)
-                // Align top of popover with top of cell
-                let top = rect.top + scrollTop;
-                let left = (rect.left + scrollLeft) - 225; // 220 width + margin
+                // Align right edge of popover with right edge of cell usually
+                // But element is the cell.
+                // Let's align top-right of popover to bottom-right of cell content or similarly
+                // Actually, let's center it slightly or align right to prevent overflow
 
-                // Safety check left edge
-                if (left < 10) {
-                    left = rect.right + scrollLeft + 10; // Flip to right? Unlikely for last/end column
+                const popWidth = 240;
+                let top = rect.bottom + scrollTop + 4;
+                let left = rect.right + scrollLeft - popWidth; // Align right edges
+
+                // Check bounds
+                if (left < 10) left = 10;
+
+                // If bottom overflow, flip up
+                if (top + 300 > document.body.offsetHeight) {
+                    top = rect.top + scrollTop - 310; // approximate height
                 }
 
                 popover.style.top = `${top}px`;
                 popover.style.left = `${left}px`;
             } else {
-                // Fallback center
-                popover.style.position = 'fixed';
                 popover.style.top = '50%';
                 popover.style.left = '50%';
                 popover.style.transform = 'translate(-50%, -50%)';
             }
+
+            // Animate In
+            requestAnimationFrame(() => {
+                popover.style.opacity = '1';
+                if (!element) {
+                    popover.style.transform = 'translate(-50%, -50%)'; // Keep center
+                } else {
+                    popover.style.transform = 'translateY(0)';
+                }
+            });
 
             // Event Listeners
             const closeHandler = (e) => {
@@ -1445,7 +1561,10 @@ if (!window.DealerManager) {
                 const isEsc = e.type === 'keydown' && e.key === 'Escape';
 
                 if (isClickOutside || isEsc) {
-                    popover.remove();
+                    popover.style.opacity = '0';
+                    popover.style.transform = 'translateY(-10px)';
+                    setTimeout(() => popover.remove(), 200);
+
                     document.removeEventListener('click', closeHandler);
                     document.removeEventListener('keydown', closeHandler);
                 }
@@ -1453,15 +1572,24 @@ if (!window.DealerManager) {
 
             const saveHandler = async (e) => {
                 e.stopPropagation();
-                const checked = Array.from(popover.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+                // Gather selected values
+                const selectedItems = Array.from(popover.querySelectorAll('.popover-item.selected')).map(el => el.getAttribute('data-value'));
 
                 const saveBtn = document.getElementById('save-cat-btn');
-                if (saveBtn) saveBtn.textContent = 'Saving...';
+                if (saveBtn) {
+                    saveBtn.textContent = 'Saving...';
+                    saveBtn.style.opacity = '0.7';
+                }
 
-                await this.dealerService.saveDealerOverride(dealerName, { categories: checked });
-                dealer.categories = checked;
-                this.renderTable();
-                popover.remove();
+                await this.dealerService.saveDealerOverride(dealerName, { categories: selectedItems });
+                dealer.categories = selectedItems;
+                this.renderTable(); // Re-render table row
+
+                // Close
+                popover.style.opacity = '0';
+                popover.style.transform = 'translateY(-10px)';
+                setTimeout(() => popover.remove(), 200);
+
                 document.removeEventListener('click', closeHandler);
                 document.removeEventListener('keydown', closeHandler);
             };
@@ -1665,10 +1793,8 @@ if (!window.DealerManager) {
             // Position relative to cell but attached to body to escape overflow
             const rect = cell.getBoundingClientRect();
             dropdown.style.position = 'absolute';
-            dropdown.style.top = `${rect.top + window.scrollY - 4}px`; // Slight offset to cover padding
-            const isRightHalf = rect.left > window.innerWidth / 2;
-            const leftOffset = isRightHalf ? 120 : 8;
-            dropdown.style.left = `${rect.left + window.scrollX - leftOffset}px`;
+            dropdown.style.top = `${rect.top + window.scrollY - 4}px`; // Slight offset
+            dropdown.style.left = `${rect.left + window.scrollX - 4}px`;
             dropdown.style.minWidth = `${rect.width + 8}px`; // Match cell width + padding
             dropdown.style.zIndex = '2000';
 
@@ -1845,9 +1971,7 @@ if (!window.DealerManager) {
             const rect = cell.getBoundingClientRect();
             dropdown.style.position = 'absolute';
             dropdown.style.top = `${rect.top + window.scrollY - 8}px`;
-            const isRightHalf = rect.left > window.innerWidth / 2;
-            const leftOffset = isRightHalf ? 120 : 8;
-            dropdown.style.left = `${rect.left + window.scrollX - leftOffset}px`;
+            dropdown.style.left = `${rect.left + window.scrollX - 8}px`;
             dropdown.style.minWidth = `${rect.width + 16}px`;
             dropdown.style.zIndex = '2000';
 

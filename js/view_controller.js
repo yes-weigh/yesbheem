@@ -1396,7 +1396,8 @@ class ViewController {
         const forms = document.querySelectorAll('.dealer-edit-form');
         let targetForm = null;
         for (const form of forms) {
-            if (form.innerHTML.includes(dealerName)) { // Simple check, or querySelector span
+            // Robust check using data attribute (handles special chars like &)
+            if (form.getAttribute('data-dealer-name') === dealerName) {
                 targetForm = form;
                 break;
             }

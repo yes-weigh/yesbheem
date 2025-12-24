@@ -9,14 +9,15 @@ export class DealerFilterService {
             kam: 'all',
             stage: 'all',
             state: 'all',
-            district: 'all'
+            district: 'all',
+            categories: []
         };
     }
 
     /**
      * Set a specific filter value
      * @param {string} type - Filter type (search, kam, stage, state, district)
-     * @param {string} value - Filter value
+     * @param {string|Array} value - Filter value
      */
     setFilter(type, value) {
         this.filters[type] = value;
@@ -25,7 +26,7 @@ export class DealerFilterService {
     /**
      * Get a specific filter value
      * @param {string} type - Filter type
-     * @returns {string} Current filter value
+     * @returns {string|Array} Current filter value
      */
     getFilter(type) {
         return this.filters[type];
@@ -72,6 +73,18 @@ export class DealerFilterService {
                 return false;
             }
 
+            // Categories
+            if (this.filters.categories && this.filters.categories.length > 0) {
+                // If dealer has no categories but refinement is active, exclude
+                if (!dealer.categories || !Array.isArray(dealer.categories) || dealer.categories.length === 0) {
+                    return false;
+                }
+
+                // Check for intersection (OR logic)
+                const hasMatch = dealer.categories.some(cat => this.filters.categories.includes(cat));
+                if (!hasMatch) return false;
+            }
+
             return true;
         });
     }
@@ -85,7 +98,8 @@ export class DealerFilterService {
             kam: 'all',
             stage: 'all',
             state: 'all',
-            district: 'all'
+            district: 'all',
+            categories: []
         };
     }
 }
