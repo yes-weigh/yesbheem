@@ -224,14 +224,26 @@ export class FirestoreService {
 
     /**
      * Get report data (READ-ONLY, FROZEN)
-     * This is the immutable source of truth from CSV uploads
+     * CACHED IN MEMORY to prevent excessive reads.
+     * Use clearCache() if you need to force refresh.
      * @param {string} reportId - The unique ID of the report to load
      * @returns {Promise<Array>} Frozen array of CSV data (immutable)
      * @throws {Error} If report is not found or loading fails
      */
     async getReportData(reportId) {
+        // Initialize cache if needed
+        if (!this.reportCache) {
+            this.reportCache = new Map();
+        }
+
+        // Return from cache if available
+        if (this.reportCache.has(reportId)) {
+            // console.log(`[FirestoreService] Returning cached data for: ${reportId}`);
+            return this.reportCache.get(reportId);
+        }
+
         try {
-            console.log(`[FirestoreService] Fetching report data: ${reportId}`);
+            console.log(`[FirestoreService] Fetching report data from Network: ${reportId}`);
             const docRef = doc(this.db, 'reports_data', reportId);
             const docSnap = await getDoc(docRef);
 
@@ -241,7 +253,12 @@ export class FirestoreService {
 
                 // Freeze to prevent accidental modification
                 const data = reportData.data || reportData.rows || [];
-                return Object.freeze(data);
+                const frozenData = Object.freeze(data);
+
+                // Store in cache
+                this.reportCache.set(reportId, frozenData);
+
+                return frozenData;
             } else {
                 throw new Error(`Report with ID "${reportId}" not found in Firestore`);
             }
@@ -249,6 +266,14 @@ export class FirestoreService {
             console.error('[FirestoreService] Error loading report data:', error);
             throw error;
         }
+    }
+
+    /**
+     * Clears the internal memory cache
+     */
+    clearCache() {
+        this.reportCache = new Map();
+        console.log('[FirestoreService] Cache cleared');
     }
 
     /**
