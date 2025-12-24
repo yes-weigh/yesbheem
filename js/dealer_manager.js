@@ -9,6 +9,8 @@ import { TABLE_UI } from './config/constants.js';
 import { DealerService } from './services/dealer-service.js';
 import { DealerFilterService } from './services/dealer-filter-service.js';
 import { CategorySelector } from './components/category-selector.js';
+import { StageSelector } from './components/stage-selector.js';
+import { KAMSelector } from './components/kam-selector.js';
 
 if (!window.DealerManager) {
     window.DealerManager = class DealerManager {
@@ -107,6 +109,32 @@ if (!window.DealerManager) {
                     }
                 });
 
+                // Init Stage Selector
+                this.stageSelector = new StageSelector({
+                    containerId: 'stage-selector-container',
+                    onChange: (selected) => {
+                        this.stageFilter = selected;
+                        this.applyFilters();
+                    },
+                    getStageImage: (stage) => {
+                        if (!this.generalSettings || !this.generalSettings.stage_images) return null;
+                        return this.generalSettings.stage_images[stage] || null;
+                    }
+                });
+
+                // Init KAM Selector
+                this.kamSelector = new KAMSelector({
+                    containerId: 'kam-selector-container',
+                    onChange: (selected) => {
+                        this.kamFilter = selected;
+                        this.applyFilters();
+                    },
+                    getKAMImage: (kamName) => {
+                        if (!this.generalSettings || !this.generalSettings.key_account_images) return null;
+                        return this.generalSettings.key_account_images[kamName] || null;
+                    }
+                });
+
                 this.setupEventListeners();
 
             } catch (error) {
@@ -156,13 +184,11 @@ if (!window.DealerManager) {
             if (type === 'stage') {
                 this.stageFilter = value;
                 // Update dropdown to match if exists
-                const stageSelect = document.getElementById('filter-stage');
-                if (stageSelect) stageSelect.value = value;
+                if (this.stageSelector) this.stageSelector.setValue(value);
             } else if (type === 'kam') {
                 this.kamFilter = value;
                 // Update dropdown to match if exists
-                const kamSelect = document.getElementById('filter-kam');
-                if (kamSelect) kamSelect.value = value;
+                if (this.kamSelector) this.kamSelector.setValue(value);
             }
             this.applyFilters();
         }
@@ -294,14 +320,8 @@ if (!window.DealerManager) {
 
             // Filters (delegated if they are dynamically rendered, or direct)
             document.addEventListener('change', (e) => {
-                if (e.target.id === 'filter-stage') {
-                    this.stageFilter = e.target.value;
-                    this.applyFilters();
-                }
-                if (e.target.id === 'filter-kam') {
-                    this.kamFilter = e.target.value;
-                    this.applyFilters();
-                }
+                // Stage filter is now handled by StageSelector component
+                // KAM filter is now handled by KAMSelector component
                 if (e.target.id === 'filter-district') {
                     this.districtFilter = e.target.value;
                     this.applyFilters();
@@ -385,28 +405,9 @@ if (!window.DealerManager) {
         }
 
         updateKAMFilter() {
-            const kamSelect = document.getElementById('filter-kam');
-            if (!kamSelect) return;
-
-            // Preserve current selection if it exists
-            const currentVal = kamSelect.value || 'all';
-
-            let html = '<option value="all">All KAMs</option>';
-            html += '<option value="not_assigned">Not Assigned</option>';
-
-            // Only populate if we have settings with key_accounts
-            if (this.generalSettings && this.generalSettings.key_accounts && this.generalSettings.key_accounts.length > 0) {
-                this.generalSettings.key_accounts.forEach(kam => {
-                    html += `<option value="${kam}">${kam}</option>`;
-                });
-            }
-
-            kamSelect.innerHTML = html;
-
-            // Restore selection if it still exists in the options
-            if (currentVal !== 'all') {
-                const optionExists = this.generalSettings?.key_accounts?.includes(currentVal);
-                kamSelect.value = optionExists ? currentVal : 'all';
+            if (this.kamSelector && this.generalSettings && this.generalSettings.key_accounts) {
+                this.kamSelector.setKAMs(this.generalSettings.key_accounts);
+                this.kamSelector.setValue(this.kamFilter);
             }
         }
 
@@ -485,17 +486,10 @@ if (!window.DealerManager) {
         }
 
         updateStageFilter() {
-            const stageSelect = document.getElementById('filter-stage');
-            if (stageSelect && this.dealers.length > 0) {
+            if (this.stageSelector && this.dealers.length > 0) {
                 const stages = [...new Set(this.dealers.map(d => d.dealer_stage).filter(Boolean))].sort();
-                const val = stageSelect.value;
-
-                let html = '<option value="all">All Stages</option>';
-                stages.forEach(s => {
-                    html += `<option value="${s}">${s}</option>`;
-                });
-                stageSelect.innerHTML = html;
-                stageSelect.value = val;
+                this.stageSelector.setStages(stages);
+                this.stageSelector.setValue(this.stageFilter);
             }
         }
 

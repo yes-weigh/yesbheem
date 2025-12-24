@@ -196,19 +196,11 @@
         </div>
 
         <div class="control-group filter-group">
-            <div class="filter-wrapper">
-                <select id="filter-kam" class="filter-select" aria-label="Filter by Key Account Manager">
-                    <option value="all">All KAMs</option>
-                </select>
-                <button class="filter-clear-btn" data-for="filter-kam" title="Clear filter"
-                    aria-label="Clear KAM filter">×</button>
+            <div class="filter-wrapper" id="kam-selector-container">
+                <!-- KAM Selector Component Injected Here -->
             </div>
-            <div class="filter-wrapper">
-                <select id="filter-stage" class="filter-select" aria-label="Filter by Stage">
-                    <option value="all">All Stages</option>
-                </select>
-                <button class="filter-clear-btn" data-for="filter-stage" title="Clear filter"
-                    aria-label="Clear Stage filter">×</button>
+            <div class="filter-wrapper" id="stage-selector-container">
+                <!-- Stage Selector Component Injected Here -->
             </div>
             <div class="filter-wrapper">
                 <select id="filter-state" class="filter-select" aria-label="Filter by State">
@@ -247,7 +239,7 @@
                 <col style="width: 190px"> <!-- Name -->
                 <col style="width: 130px"> <!-- Contact Name -->
                 <col style="width: 100px"> <!-- Phone -->
-                <col style="width: 60px"> <!-- KAM -->
+                <col style="width: 100px"> <!-- KAM -->
                 <col style="width: 120px"> <!-- State -->
                 <col style="width: 120px"> <!-- District -->
                 <col style="width: 100px"> <!-- Categories -->
