@@ -1109,11 +1109,27 @@ if (!window.DealerManager) {
                 // console.log('Rendering row', index);
                 try {
                     const kam = d.key_account_manager;
-                    const kamHtml = kam ? `<span class="kam-badge">${kam}</span>` : `<span class="kam-empty">-</span>`;
+                    const kamImages = (window.dataManager.generalSettings && window.dataManager.generalSettings.key_account_images) || {};
+                    const kamImg = kam ? kamImages[kam] : null;
 
-                    const stage = d.dealer_stage || '-';
-                    // Using existing helper if available or default color logic
-                    const stageClass = this.getStageClass ? this.getStageClass(stage) : (stage.toLowerCase().replace(/\s+/g, '-'));
+                    const kamHtml = kam
+                        ? (kamImg
+                            ? `<img src="${kamImg}" class="kam-avatar" title="${kam}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex'"> <span class="kam-badge" style="display:none">${kam}</span>`
+                            : `<span class="kam-badge">${kam}</span>`)
+                        : `<span class="kam-empty">-</span>`;
+
+                    const stage = d.dealer_stage || ('');
+                    const stageImages = (window.dataManager.generalSettings && window.dataManager.generalSettings.stage_images) || {};
+                    const stageImg = stage ? stageImages[stage] : null;
+
+                    let stageHtml = '-';
+                    if (stage) {
+                        if (stageImg) {
+                            stageHtml = `<img src="${stageImg}" class="kam-avatar" title="Stage: ${stage}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex'"> <span class="badge stage-badge stage-${this.getStageColorClass(stage)}" style="display:none">${stage}</span>`;
+                        } else {
+                            stageHtml = `<span class="badge stage-badge stage-${this.getStageColorClass(stage)}">${stage}</span>`;
+                        }
+                    }
 
                     const phone = d.mobile_phone || '-';
                     const district = d.district || '-';
@@ -1133,8 +1149,16 @@ if (!window.DealerManager) {
                     `;
 
                     const categories = d.categories || [];
+                    const categoryImages = (window.dataManager.generalSettings && window.dataManager.generalSettings.category_images) || {};
+
                     const categoriesHtml = categories.length > 0
-                        ? categories.map(c => `<span class="category-badge">${c}</span>`).join(' ')
+                        ? categories.map(c => {
+                            const cImg = categoryImages[c];
+                            if (cImg) {
+                                return `<img src="${cImg}" class="kam-avatar" title="${c}" style="width:20px; height:20px; border-width:1px; margin-right:4px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex'"> <span class="category-badge" style="display:none">${c}</span>`;
+                            }
+                            return `<span class="category-badge">${c}</span>`;
+                        }).join(' ')
                         : '-';
 
                     const tr = document.createElement('tr');
@@ -1160,11 +1184,13 @@ if (!window.DealerManager) {
                         <td>
                             <div class="row-text">${district}</div>
                         </td>
-                        <td class="categories-cell" onclick="window.dealerManager.editDealerCategories('${uniqueId}', '${name.replace(/'/g, "\\'")}', this)">
-                            ${categoriesHtml}
+                         <td class="categories-cell" onclick="window.dealerManager.editDealerCategories('${uniqueId}', '${name.replace(/'/g, "\\'")}', this)">
+                            <div class="tags-container">
+                                ${categoriesHtml}
+                            </div>
                         </td>
                         <td class="stage-cell" onclick="window.dealerManager.showInlineEdit('${name.replace(/'/g, "\\'")}', 'dealer_stage', this)">
-                            <span class="status-pill status-${stageClass}">${stage}</span>
+                            ${stageHtml}
                         </td>
                     `;
                     fragment.appendChild(tr);
@@ -1937,10 +1963,22 @@ if (!window.DealerManager) {
             });
 
             // Position relative to cell but attached to body to escape overflow
+            // Position relative to cell but attached to body to escape overflow
             const rect = cell.getBoundingClientRect();
+            const isRightEdge = (window.innerWidth - rect.right) < 150; // Threshold for last columns
+
             dropdown.style.position = 'absolute';
-            dropdown.style.top = `${rect.top + window.scrollY - 4}px`; // Slight offset
-            dropdown.style.left = `${rect.left + window.scrollX - 4}px`;
+            dropdown.style.top = `${rect.top + window.scrollY - 4}px`;
+
+            if (isRightEdge) {
+                // Align to right edge of cell
+                dropdown.style.right = `${window.innerWidth - rect.right - window.scrollX - 4}px`;
+                dropdown.style.left = 'auto'; // Reset left
+            } else {
+                dropdown.style.left = `${rect.left + window.scrollX - 4}px`;
+                dropdown.style.right = 'auto';
+            }
+
             dropdown.style.minWidth = `${rect.width + 8}px`; // Match cell width + padding
             dropdown.style.zIndex = '2000';
 

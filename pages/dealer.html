@@ -247,10 +247,10 @@
                 <col style="width: 190px"> <!-- Name -->
                 <col style="width: 130px"> <!-- Contact Name -->
                 <col style="width: 100px"> <!-- Phone -->
-                <col style="width: 100px"> <!-- KAM -->
+                <col style="width: 60px"> <!-- KAM -->
                 <col style="width: 120px"> <!-- State -->
                 <col style="width: 120px"> <!-- District -->
-                <col style="width: 130px"> <!-- Categories -->
+                <col style="width: 100px"> <!-- Categories -->
                 <col style="width: 95px"> <!-- Stage -->
             </colgroup>
             <thead>
@@ -1065,5 +1065,23 @@
     .inline-edit-input::placeholder {
         color: var(--text-muted);
         opacity: 0.7;
+    }
+
+    .kam-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--modal-border);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        transition: transform 0.2s;
+        cursor: help;
+        /* Indicates tooltip available */
+    }
+
+    .kam-avatar:hover {
+        transform: scale(1.2);
+        z-index: 10;
+        border-color: var(--accent-color);
     }
 </style>
