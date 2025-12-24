@@ -329,6 +329,10 @@ class UIRenderer {
         const { aggregated, history } = data;
         const dealerName = aggregated.customer_name || 'Unknown Dealer';
 
+        // Calculate Total Sales from History
+        const totalSalesVal = history.reduce((sum, item) => sum + parseFloat(item.data.sales || 0), 0);
+        const totalSales = totalSalesVal.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+
         // Helper: Safe Value
         const v = (key) => {
             let val = aggregated[key];
@@ -442,6 +446,12 @@ class UIRenderer {
                 <tbody>
                     ${historyRows.length > 0 ? historyRows : '<tr><td colspan="3" class="text-center">No history found</td></tr>'}
                 </tbody>
+                <tfoot>
+                    <tr style="background: rgba(255,255,255,0.05); font-weight: 700;">
+                        <td colspan="2" style="text-align: right; color: #fff; border-top: 1px solid rgba(255,255,255,0.1);">Total Sales</td>
+                        <td class="text-right" style="color: #10b981; border-top: 1px solid rgba(255,255,255,0.1);">${totalSales}</td>
+                    </tr>
+                </tfoot>
             </table>
         `;
 
@@ -455,6 +465,10 @@ class UIRenderer {
                             <h2>${dealerName}</h2>
                         </div>
                         <div class="header-actions">
+                             <div class="total-sales-display" style="margin-right: 20px; text-align: right;">
+                                <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; font-weight:600;">Total Sales</div>
+                                <div style="font-size: 1.1rem; font-weight: 700; color: #10b981; line-height: 1.2;">${totalSales}</div>
+                             </div>
                              ${aggregated.dealer_stage ? `<span class="badge stage-badge stage-${(aggregated.dealer_stage || '').toLowerCase()}">${aggregated.dealer_stage}</span>` : ''}
                             <button class="close-btn" onclick="window.dealerManager.closeDealerDetails()">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
