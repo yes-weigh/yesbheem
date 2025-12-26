@@ -1588,8 +1588,33 @@ if (!window.DealerManager) {
             }
 
             const categories = this.generalSettings.dealer_categories;
-            const dealer = this.dealers.find(d => (d._internalId || d.id || d.cust_id) === dealerId);
-            if (!dealer) return;
+
+            if (categories.length === 0) {
+                import('./utils/toast.js').then(module => {
+                    module.Toast.info('No categories defined. Please add them in Settings.');
+                });
+                return;
+            }
+
+            console.log('editDealerCategories calling with:', { dealerId, dealerName });
+
+            // Try explicit ID match first
+            let dealer = this.dealers.find(d => (d._internalId || d.id || d.cust_id) === dealerId);
+
+            // Fallback: Try Name Match if ID failed or was undefined
+            if (!dealer && dealerName) {
+                console.log('ID match failed, trying name match for:', dealerName);
+                const normalizedTarget = dealerName.toLowerCase().trim();
+                dealer = this.dealers.find(d => (d.customer_name || '').toLowerCase().trim() === normalizedTarget);
+            }
+
+            if (!dealer) {
+                console.error('Dealer not found!', { dealerId, dealerName });
+                import('./utils/toast.js').then(module => {
+                    module.Toast.error('Dealer not found. Please refresh.');
+                });
+                return;
+            }
             const currentCategories = dealer.categories || [];
 
             // Remove existing
@@ -1598,7 +1623,7 @@ if (!window.DealerManager) {
 
             const popover = document.createElement('div');
             popover.id = 'category-popover';
-            // Fancy styling matching CategorySelector
+            // Fancy styling matching CategorySelector but with higher Z-Index for Modal
             popover.style.cssText = `
                 position: absolute;
                 background: #1e293b;
@@ -1606,7 +1631,7 @@ if (!window.DealerManager) {
                 border-radius: 12px;
                 padding: 0;
                 box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-                z-index: 9999;
+                z-index: 10005; 
                 min-width: 240px;
                 display: flex;
                 flex-direction: column;
@@ -1635,19 +1660,20 @@ if (!window.DealerManager) {
                     .popover-item {
                         display: flex;
                         align-items: center;
-                        padding: 8px 16px;
+                        padding: 10px 16px;
                         cursor: pointer;
                         transition: background 0.15s;
                         color: var(--text-main);
                         font-size: 0.9rem;
                         gap: 12px;
+                        border-left: 3px solid transparent;
                     }
                     .popover-item:hover {
                         background: rgba(255,255,255,0.05);
                     }
                     .popover-checkbox {
-                        width: 16px;
-                        height: 16px;
+                        width: 18px;
+                        height: 18px;
                         border: 2px solid var(--border-light);
                         border-radius: 4px;
                         display: flex;
@@ -1656,25 +1682,34 @@ if (!window.DealerManager) {
                         transition: all 0.2s;
                         flex-shrink: 0;
                     }
+                    .popover-item.selected {
+                        background: rgba(59, 130, 246, 0.1);
+                        border-left-color: var(--accent-color);
+                        color: white;
+                    }
                     .popover-item.selected .popover-checkbox {
                         background: var(--accent-color, #3b82f6);
                         border-color: var(--accent-color, #3b82f6);
                     }
                     .popover-item.selected .popover-checkbox::after {
                         content: '✓';
-                        font-size: 10px;
+                        font-size: 11px;
                         color: white;
                         font-weight: bold;
                     }
+                    /* Scrollbar */
+                    .popover-list::-webkit-scrollbar { width: 6px; }
+                    .popover-list::-webkit-scrollbar-track { background: transparent; }
+                    .popover-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
                 </style>
                 <div style="padding: 12px 16px; font-weight: 700; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2);">
                     Edit Categories
                 </div>
-                <div class="popover-list" style="max-height: 250px; overflow-y: auto; padding: 6px 0;">
+                <div class="popover-list" style="max-height: 250px; overflow-y: auto; padding: 4px 0;">
                     ${listHtml}
                 </div>
                 <div style="padding: 10px; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05);">
-                    <button id="save-cat-btn" style="width: 100%; background: var(--accent-color, #3b82f6); color: white; border: none; padding: 8px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: opacity 0.2s;">Apply Changes</button>
+                    <button id="save-cat-btn" style="width: 100%; background: var(--accent-color, #3b82f6); color: white; border: none; padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: opacity 0.2s;">Apply Changes</button>
                 </div>
             `;
 
@@ -1686,19 +1721,12 @@ if (!window.DealerManager) {
                 const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
                 const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
 
-                // Align right edge of popover with right edge of cell usually
-                // But element is the cell.
-                // Let's align top-right of popover to bottom-right of cell content or similarly
-                // Actually, let's center it slightly or align right to prevent overflow
-
                 const popWidth = 240;
                 let top = rect.bottom + scrollTop + 4;
                 let left = rect.right + scrollLeft - popWidth; // Align right edges
 
                 // Check bounds
                 if (left < 10) left = 10;
-
-                // If bottom overflow, flip up
                 if (top + 300 > document.body.offsetHeight) {
                     top = rect.top + scrollTop - 310; // approximate height
                 }
@@ -1723,15 +1751,20 @@ if (!window.DealerManager) {
 
             // Event Listeners
             const closeHandler = (e) => {
-                const isClickOutside = e.type === 'click' && !popover.contains(e.target) && e.target !== element && !element.contains(e.target);
+                const isClickOutside = !popover.contains(e.target); // Capture phase check
                 const isEsc = e.type === 'keydown' && e.key === 'Escape';
 
                 if (isClickOutside || isEsc) {
+                    // Prevent closing if we clicked the element that opened it
+                    if (e.type === 'click' && (element && (element === e.target || element.contains(e.target)))) {
+                        return;
+                    }
+
                     popover.style.opacity = '0';
                     popover.style.transform = 'translateY(-10px)';
                     setTimeout(() => popover.remove(), 200);
 
-                    document.removeEventListener('click', closeHandler);
+                    document.removeEventListener('click', closeHandler, true); // Remove capture listener
                     document.removeEventListener('keydown', closeHandler);
                 }
             };
@@ -1747,24 +1780,45 @@ if (!window.DealerManager) {
                     saveBtn.style.opacity = '0.7';
                 }
 
-                await this.dealerService.saveDealerOverride(dealerName, { categories: selectedItems });
-                dealer.categories = selectedItems;
-                this.renderTable(); // Re-render table row
+                try {
+                    await this.dealerService.saveDealerOverride(dealerName, { categories: selectedItems });
+                    if (dealer) dealer.categories = selectedItems;
 
-                // Close
-                popover.style.opacity = '0';
-                popover.style.transform = 'translateY(-10px)';
-                setTimeout(() => popover.remove(), 200);
+                    // Update Modal UI instantly
+                    if (element) {
+                        const displayDiv = element.querySelector('.floating-input');
+                        if (displayDiv) {
+                            if (selectedItems.length > 0) {
+                                displayDiv.innerHTML = selectedItems.join(', ');
+                            } else {
+                                displayDiv.innerHTML = '<span style="opacity:0.3">No categories...</span>';
+                            }
+                        }
+                    }
 
-                document.removeEventListener('click', closeHandler);
-                document.removeEventListener('keydown', closeHandler);
+                    this.renderTable(); // Re-render table row
+
+                    // Close
+                    popover.style.opacity = '0';
+                    popover.style.transform = 'translateY(-10px)';
+                    setTimeout(() => popover.remove(), 200);
+
+                    document.removeEventListener('click', closeHandler, true);
+                    document.removeEventListener('keydown', closeHandler);
+                } catch (err) {
+                    console.error('Failed to save categories:', err);
+                    if (saveBtn) {
+                        saveBtn.textContent = 'Failed';
+                        setTimeout(() => saveBtn.textContent = 'Apply Changes', 2000);
+                    }
+                }
             };
 
             document.getElementById('save-cat-btn').addEventListener('click', saveHandler);
 
             // Delay adding click listener
             setTimeout(() => {
-                document.addEventListener('click', closeHandler);
+                document.addEventListener('click', closeHandler, true); // Use Capture
                 document.addEventListener('keydown', closeHandler);
             }, 100);
         }

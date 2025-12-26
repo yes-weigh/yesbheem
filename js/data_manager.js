@@ -197,14 +197,19 @@ class DataManager {
 
             if (docSnap.exists()) {
                 this.generalSettings = docSnap.data();
+                // Ensure defaults
+                if (!this.generalSettings.key_accounts) this.generalSettings.key_accounts = [];
+                if (!this.generalSettings.dealer_stages) this.generalSettings.dealer_stages = [];
+                if (!this.generalSettings.dealer_categories) this.generalSettings.dealer_categories = [];
                 console.log('Loaded General Settings:', this.generalSettings);
             } else {
-                await setDoc(docRef, { key_accounts: [], dealer_stages: [] });
-                this.generalSettings = { key_accounts: [], dealer_stages: [] };
+                const defaults = { key_accounts: [], dealer_stages: [], dealer_categories: [] };
+                await setDoc(docRef, defaults);
+                this.generalSettings = defaults;
             }
         } catch (e) {
             console.warn('Failed to load general settings:', e);
-            this.generalSettings = { key_accounts: [], dealer_stages: [] };
+            this.generalSettings = { key_accounts: [], dealer_stages: [], dealer_categories: [] };
         }
     }
 
