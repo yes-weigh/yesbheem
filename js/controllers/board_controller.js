@@ -22,6 +22,7 @@ class BoardController {
         this.draggedItem = null;
         this.isEditing = false;
         this.currentTaskId = null;
+        this.currentTasks = [];
 
         this.init();
     }
@@ -34,7 +35,22 @@ class BoardController {
 
         // Subscribe to boards
         this.taskService.subscribeToBoards(
-            (boards) => this.renderBoardsSidebar(boards),
+            (boards) => {
+                this.renderBoardsSidebar(boards);
+
+                // If we are currently viewing a board, re-render it to reflect changes (bg, columns, etc)
+                if (this.taskService.currentBoardId) {
+                    // Check if current board still exists
+                    const currentBoard = boards.find(b => b.id === this.taskService.currentBoardId);
+                    if (currentBoard) {
+                        this.renderBoard(this.currentTasks);
+                    } else {
+                        // Board deleted? Switch to first or default handled by renderBoardsSidebar logic partially, 
+                        // but verify sidebar logic handles switching if current is lost. 
+                        // Actually renderBoardsSidebar does auto-switch if current is invalid (line 372).
+                    }
+                }
+            },
             (error) => console.error(error)
         );
     }
@@ -448,6 +464,7 @@ class BoardController {
     }
 
     renderBoard(tasks) {
+        this.currentTasks = tasks || [];
         const board = this.taskService.boards.find(b => b.id === this.taskService.currentBoardId);
         const columns = board?.columns || [
             { id: 'todo', title: 'To Do', color: '#64748b' },
