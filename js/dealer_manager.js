@@ -692,19 +692,11 @@ if (!window.DealerManager) {
 
         removeFilter(type) {
             const idMap = {
-                kam: 'filter-kam',
-                stage: 'filter-stage',
                 state: 'filter-state',
                 district: 'filter-district'
             };
 
             if (type === 'categories') {
-                if (this.categorySelector) this.categorySelector.reset(); // Logic handled in reset
-                // But wait, reset clears all? No reset() in selector clears selection.
-                // We need to trigger apply.
-                // Assuming reset() calls or we trigger apply.
-                // Actually CategorySelector.reset() clears and re-renders but doesn't trigger callback unless we want it to?
-                // Let's manually clear.
                 this.categoryFilter = [];
                 // Selector internal state
                 if (this.categorySelector) {
@@ -713,6 +705,11 @@ if (!window.DealerManager) {
                     this.categorySelector.updateTriggerText();
                 }
                 this.applyFilters();
+                return;
+            }
+
+            if (type === 'kam' || type === 'stage') {
+                this.setTopFilter(type, 'all');
                 return;
             }
 
