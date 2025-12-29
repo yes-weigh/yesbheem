@@ -106,6 +106,7 @@ export class DataMergeService {
                 map.set(key, {
                     ...dealer,
                     sales: isNaN(initialSales) ? 0 : initialSales,
+                    total_sales: isNaN(initialSales) ? 0 : initialSales,
                     // Store original name case for display or use current one
                     customer_name: rawName
                 });
@@ -114,7 +115,9 @@ export class DataMergeService {
                 const currentSales = parseFloat(dealer.sales || 0);
 
                 // Sum sales
-                existing.sales += isNaN(currentSales) ? 0 : currentSales;
+                const safeSales = isNaN(currentSales) ? 0 : currentSales;
+                existing.sales += safeSales;
+                existing.total_sales = (existing.total_sales || 0) + safeSales;
 
                 // Merge address info if missing in existing entry but present in current
                 if (!existing.billing_zipcode && dealer.billing_zipcode) existing.billing_zipcode = dealer.billing_zipcode;

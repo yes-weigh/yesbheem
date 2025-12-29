@@ -162,8 +162,7 @@ export class DataAggregator {
             stateMap[stateKey].totalSales += val;
             stateMap[stateKey].currentSales += val; // Alias for tooltip consistency
 
-            stateMap[stateKey].totalSales += val;
-            stateMap[stateKey].currentSales += val; // Alias for tooltip consistency
+
 
             stateMap[stateKey].dealerCount += 1;
         });
@@ -229,7 +228,7 @@ export class DataAggregator {
                 if (stateMap[stateName]) {
                     stateMap[stateName].sales += isNaN(sales) ? 0 : sales;
 
-                    stateMap[stateName].sales += isNaN(sales) ? 0 : sales;
+
                     stateMap[stateName].dealerCount += 1;
                 }
             });

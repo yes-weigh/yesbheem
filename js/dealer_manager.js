@@ -11,6 +11,8 @@ import { DealerFilterService } from './services/dealer-filter-service.js';
 import { CategorySelector } from './components/category-selector.js';
 import { StageSelector } from './components/stage-selector.js';
 import { KAMSelector } from './components/kam-selector.js';
+import { StateSelector } from './components/state-selector.js';
+import FormatUtils from './utils/format-utils.js';
 
 if (!window.DealerManager) {
     window.DealerManager = class DealerManager {
@@ -132,6 +134,16 @@ if (!window.DealerManager) {
                     getKAMImage: (kamName) => {
                         if (!this.generalSettings || !this.generalSettings.key_account_images) return null;
                         return this.generalSettings.key_account_images[kamName] || null;
+                    }
+                });
+
+                // Init State Selector
+                this.stateSelector = new StateSelector({
+                    containerId: 'state-selector-container',
+                    onChange: (selected) => {
+                        this.stateFilter = selected;
+                        this.updateDistrictFilter(); // Update dependent filter
+                        this.applyFilters();
                     }
                 });
 
@@ -326,9 +338,8 @@ if (!window.DealerManager) {
                     this.districtFilter = e.target.value;
                     this.applyFilters();
                 }
-                if (e.target.id === 'filter-state') {
-                    this.stateFilter = e.target.value;
-                    this.updateDistrictFilter(); // Update dependent filter
+                if (e.target.id === 'filter-district') {
+                    this.districtFilter = e.target.value;
                     this.applyFilters();
                 }
             });
@@ -471,17 +482,10 @@ if (!window.DealerManager) {
         }
 
         updateStateFilter() {
-            const stateSelect = document.getElementById('filter-state');
-            if (stateSelect && this.dealers.length > 0) {
+            if (this.stateSelector && this.dealers.length > 0) {
                 const states = [...new Set(this.dealers.map(d => d.state).filter(Boolean))].sort();
-                const val = stateSelect.value;
-
-                let html = '<option value="all">All States</option>';
-                states.forEach(s => {
-                    html += `<option value="${s}">${s}</option>`;
-                });
-                stateSelect.innerHTML = html;
-                stateSelect.value = val;
+                this.stateSelector.setStates(states);
+                this.stateSelector.setValue(this.stateFilter);
             }
         }
 
@@ -576,6 +580,16 @@ if (!window.DealerManager) {
 
                 if (typeof valA === 'string') valA = valA.toLowerCase();
                 if (typeof valB === 'string') valB = valB.toLowerCase();
+
+                if (typeof valB === 'string') valB = valB.toLowerCase();
+
+                // Numeric sort
+                if (field === 'total_sales') {
+                    // Treat null/undefined as 0
+                    const numA = parseFloat(valA) || 0;
+                    const numB = parseFloat(valB) || 0;
+                    return (numA - numB) * dir;
+                }
 
                 if (valA < valB) return -1 * dir;
                 if (valA > valB) return 1 * dir;
@@ -692,7 +706,6 @@ if (!window.DealerManager) {
 
         removeFilter(type) {
             const idMap = {
-                state: 'filter-state',
                 district: 'filter-district'
             };
 
@@ -713,7 +726,18 @@ if (!window.DealerManager) {
                 return;
             }
 
-            const el = document.getElementById(idMap[type]);
+            if (type === 'kam' || type === 'stage') {
+                this.setTopFilter(type, 'all');
+                return;
+            }
+
+            if (type === 'state') {
+                this.stateFilter = 'all';
+                if (this.stateSelector) this.stateSelector.setValue('all');
+                this.updateDistrictFilter();
+                this.applyFilters();
+                return;
+            }
             if (el) {
                 el.value = 'all';
                 el.dispatchEvent(new Event('change', { bubbles: true }));
@@ -723,9 +747,9 @@ if (!window.DealerManager) {
         clearAllFilters() {
             // Reset local state (will be synced by change events anyway, but good to be explicit)
             const map = {
+
                 'filter-kam': 'all',
                 'filter-stage': 'all',
-                'filter-state': 'all',
                 'filter-district': 'all'
             };
 
@@ -742,6 +766,11 @@ if (!window.DealerManager) {
             this.categoryFilter = [];
             if (this.categorySelector) {
                 this.categorySelector.reset();
+            }
+            if (this.stateSelector) {
+                this.stateSelector.setValue('all');
+                this.stateFilter = 'all';
+                this.updateDistrictFilter();
             }
             // Search query? 
             // if (this.searchQuery) ...
@@ -1122,7 +1151,10 @@ if (!window.DealerManager) {
                         }
                     }
 
+
                     const phone = d.mobile_phone || '-';
+                    const sales = d.total_sales || 0;
+                    const formattedSales = FormatUtils.formatCurrency(sales);
                     const district = d.district || '-';
                     const name = d.customer_name || 'Unknown';
 
@@ -1162,6 +1194,9 @@ if (!window.DealerManager) {
                         </td>
                         <td class="contact-cell" onclick="window.dealerManager.showInlineContactNameEdit('${name.replace(/'/g, "\\'")}', this)">
                             <div class="row-text">${d.first_name || '-'}</div>
+                        </td>
+                        <td style="text-align: right; padding-right: 15px;">
+                            <div class="row-text" style="font-family: monospace; font-size: 0.9rem;">${formattedSales}</div>
                         </td>
                         <td class="contact-cell" onclick="window.dealerManager.showInlinePhoneEdit('${name.replace(/'/g, "\\'")}', this)">
                             <div class="row-text">${phone}</div>

@@ -225,6 +225,10 @@ export class CategorySelector {
 
         if (this.isOpen) {
             this.triggerBtn.style.borderColor = 'var(--accent-color)';
+            // Notify other popups to close
+            document.dispatchEvent(new CustomEvent('filter-popup-opened', {
+                detail: { id: this.containerId }
+            }));
         } else {
             this.triggerBtn.style.borderColor = 'var(--border-strong)';
         }
@@ -258,6 +262,20 @@ export class CategorySelector {
     attachGlobalListeners() {
         document.addEventListener('click', () => {
             if (this.isOpen) {
+                this.closeDropdown();
+            }
+        });
+
+        // Listen for other popups opening
+        document.addEventListener('filter-popup-opened', (e) => {
+            if (this.isOpen && e.detail.id !== this.containerId) {
+                this.closeDropdown();
+            }
+        });
+
+        // Close on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isOpen) {
                 this.closeDropdown();
             }
         });
