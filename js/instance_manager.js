@@ -174,8 +174,17 @@ class InstanceManager {
     }
 
     renderQR(qrCode) {
-        // Use public API to render QR code image from the string
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrCode)}`;
+        // Check if the QR code is already a data URI (base64 image)
+        const isDataUri = qrCode.startsWith('data:image');
+
+        let qrUrl;
+        if (isDataUri) {
+            qrUrl = qrCode;
+        } else {
+            // Use public API to render QR code image from the string
+            qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrCode)}`;
+        }
+
         this.qrContainer.innerHTML = `
             <img src="${qrUrl}" alt="Scan me" style="border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
             <p style="margin-top:1rem; font-size: 0.9rem" class="text-muted">Scan with WhatsApp</p>
