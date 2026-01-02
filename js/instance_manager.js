@@ -1,6 +1,7 @@
 class InstanceManager {
     constructor() {
-        console.log('InstanceManager: Initializing...');
+        this.VERSION = 'v' + Date.now().toString().slice(-4);
+        console.log(`InstanceManager ${this.VERSION}: Initializing...`);
         this.apiBase = window.appConfig.apiUrl + '/api/auth';
         this.container = document.getElementById('instance-list');
         this.modal = document.getElementById('qr-modal');
@@ -8,7 +9,7 @@ class InstanceManager {
         this.pollInterval = null;
 
         if (!this.container || !this.modal) {
-            console.error('InstanceManager: Critical elements not found in DOM');
+            console.error(`InstanceManager ${this.VERSION}: Critical elements not found`);
             return;
         }
 
@@ -16,7 +17,7 @@ class InstanceManager {
     }
 
     async init() {
-        console.log('InstanceManager: Calling init...');
+        console.log(`InstanceManager ${this.VERSION}: Calling init...`);
         // Setup listeners immediately so the button works even if network is slow
         this.setupEventListeners();
 
@@ -27,14 +28,14 @@ class InstanceManager {
 
     setupEventListeners() {
         const addBtn = document.getElementById('btn-add-instance');
-        console.log('InstanceManager: Setup listeners. Add Button found?', !!addBtn);
+        console.log(`InstanceManager ${this.VERSION}: Add Button found?`, !!addBtn);
 
         if (addBtn) {
-            // Remove old listeners by cloning (simple hack) or just assume fresh DOM
-            addBtn.addEventListener('click', () => {
-                console.log('InstanceManager: Add Instance Clicked');
+            addBtn.onclick = (e) => { // Use onclick to prevent multiple bindings accumulation
+                e.preventDefault(); // Prevent any default behavior
+                console.log(`InstanceManager ${this.VERSION}: Add Instance Clicked`);
                 this.createNewSession();
-            });
+            };
         }
 
         // Close Modal
@@ -77,17 +78,20 @@ class InstanceManager {
     }
 
     async createNewSession() {
+        console.log(`InstanceManager ${this.VERSION}: Creating new session...`);
         const sessionId = 'session_' + Math.floor(Math.random() * 10000);
         this.showModal();
         this.renderQRSpinner();
 
         try {
+            console.log(`InstanceManager ${this.VERSION}: Requesting QR...`);
             const response = await fetch(`${this.apiBase}/qr`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sessionId })
             });
             const data = await response.json();
+            console.log(`InstanceManager ${this.VERSION}: QR Response`, data);
 
             if (data.success && data.message === 'Already connected') {
                 alert('Session ID collision or already connected.');
@@ -176,11 +180,16 @@ class InstanceManager {
     }
 
     showModal() {
+        console.log(`InstanceManager ${this.VERSION}: Showing Modal. Current classes:`, this.modal.classList.toString());
         this.modal.classList.remove('hidden');
+        // Force display just in case
+        this.modal.style.display = 'flex';
+        console.log(`InstanceManager ${this.VERSION}: Modal classes after remove:`, this.modal.classList.toString());
     }
 
     closeModal() {
         this.modal.classList.add('hidden');
+        this.modal.style.display = ''; // Clear inline style
         this.qrContainer.innerHTML = '';
         if (this.pollInterval) clearInterval(this.pollInterval);
     }
