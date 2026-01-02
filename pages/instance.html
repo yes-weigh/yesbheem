@@ -1,21 +1,142 @@
 <div class="page-container" id="instance-page">
     <div class="page-content">
         <div class="page-header-simple">
-            <h1>Instance Management</h1>
-            <p class="subtitle">Manage your WhatsApp instances</p>
+            <div class="page-title-bar">
+                <div class="page-title-content">
+                    <h1>Instance Management</h1>
+                    <p class="subtitle">Connect and manage your WhatsApp Accounts</p>
+                </div>
+                <div class="page-actions">
+                    <button id="btn-add-instance" class="primary-btn">
+                        <span class="btn-icon">+</span>
+                        Add Instance
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <div class="placeholder-card">
-            <div class="icon-placeholder">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="14" width="7" height="7"></rect>
-                    <rect x="3" y="14" width="7" height="7"></rect>
-                </svg>
-            </div>
-            <h2>Instance Management Coming Soon</h2>
-            <p>This section will allow you to create, manage, and monitor multiple WhatsApp instances.</p>
+        <div id="instance-list" class="instance-grid">
+            <!-- Instances will be loaded here -->
         </div>
     </div>
 </div>
+
+<!-- QR Code Modal -->
+<div id="qr-modal" class="modal-overlay hidden">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h2>Scan QR Code</h2>
+            <button class="toast-close close-modal">&times;</button>
+        </div>
+        <div id="qr-container" class="qr-display-area">
+            <!-- QR Code will be rendered here -->
+        </div>
+        <div class="modal-footer">
+            <p class="text-muted text-sm text-center">Open WhatsApp > Linked Devices > Link a Device</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .instance-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+        padding: 1rem 0;
+    }
+
+    .instance-card {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        transition: all 0.2s;
+    }
+
+    .instance-card:hover {
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+
+    .instance-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .instance-icon {
+        width: 48px;
+        height: 48px;
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--primary);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .instance-status {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        width: fit-content;
+    }
+
+    .instance-status.connected {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .instance-status.disconnected {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .instance-actions {
+        display: flex;
+        justify-content: flex-end;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-light);
+    }
+
+    .primary-btn {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: background 0.2s;
+    }
+
+    .primary-btn:hover {
+        background: var(--primary-dark);
+    }
+
+    .qr-display-area {
+        min-height: 250px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+</style>
+
+<script src="js/instance_manager.js"></script>
