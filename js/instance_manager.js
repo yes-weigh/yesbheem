@@ -16,10 +16,13 @@ class InstanceManager {
     }
 
     async init() {
-        console.log('InstanceManager: Calling fetchInstances...');
-        this.renderLoading();
-        await this.fetchInstances();
+        console.log('InstanceManager: Calling init...');
+        // Setup listeners immediately so the button works even if network is slow
         this.setupEventListeners();
+
+        this.renderLoading();
+        // Don't await this, let it load in background
+        this.fetchInstances();
     }
 
     setupEventListeners() {
