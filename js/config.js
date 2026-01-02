@@ -6,7 +6,7 @@
 class Config {
     constructor() {
         this.basePath = this.detectBasePath();
-        this.apiUrl = 'http://35.222.174.141:3000'; // Static IP for WhatsApp Backend
+        this.apiUrl = 'https://whatsapp.yesgatc.in'; // Secure Domain
         console.log('Config initialized with basePath:', this.basePath);
     }
 
