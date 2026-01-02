@@ -1,25 +1,38 @@
 class InstanceManager {
     constructor() {
+        console.log('InstanceManager: Initializing...');
         this.apiBase = window.appConfig.apiUrl + '/api/auth';
         this.container = document.getElementById('instance-list');
         this.modal = document.getElementById('qr-modal');
         this.qrContainer = document.getElementById('qr-container');
         this.pollInterval = null;
 
+        if (!this.container || !this.modal) {
+            console.error('InstanceManager: Critical elements not found in DOM');
+            return;
+        }
+
         this.init();
     }
 
     async init() {
+        console.log('InstanceManager: Calling fetchInstances...');
         this.renderLoading();
         await this.fetchInstances();
         this.setupEventListeners();
     }
 
     setupEventListeners() {
-        // Add Instance Button
-        document.getElementById('btn-add-instance').addEventListener('click', () => {
-            this.createNewSession();
-        });
+        const addBtn = document.getElementById('btn-add-instance');
+        console.log('InstanceManager: Setup listeners. Add Button found?', !!addBtn);
+
+        if (addBtn) {
+            // Remove old listeners by cloning (simple hack) or just assume fresh DOM
+            addBtn.addEventListener('click', () => {
+                console.log('InstanceManager: Add Instance Clicked');
+                this.createNewSession();
+            });
+        }
 
         // Close Modal
         document.querySelector('.close-modal').addEventListener('click', () => {
