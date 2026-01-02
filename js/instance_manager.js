@@ -182,6 +182,7 @@ class InstanceManager {
     showModal() {
         console.log(`InstanceManager ${this.VERSION}: Showing Modal. Current classes:`, this.modal.classList.toString());
         this.modal.classList.remove('hidden');
+        this.modal.classList.add('active'); // Required by global CSS in settings/discussions
         // Force display just in case
         this.modal.style.display = 'flex';
         console.log(`InstanceManager ${this.VERSION}: Modal classes after remove:`, this.modal.classList.toString());
@@ -189,6 +190,7 @@ class InstanceManager {
 
     closeModal() {
         this.modal.classList.add('hidden');
+        this.modal.classList.remove('active');
         this.modal.style.display = ''; // Clear inline style
         this.qrContainer.innerHTML = '';
         if (this.pollInterval) clearInterval(this.pollInterval);
