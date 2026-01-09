@@ -64,6 +64,47 @@ class NavigationController {
         // Replace current state for the initial load so back button works correctly
         history.replaceState({ pageId: initialPage }, '', window.location.pathname);
         this.handleNavigation(initialPage, false);
+
+        // Check Access Control
+        this.checkAccess();
+    }
+
+    async checkAccess() {
+        try {
+            const { getAuth, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+            const { app } = await import('./services/firebase_config.js');
+            const auth = getAuth(app);
+
+            onAuthStateChanged(auth, async (user) => {
+                const settingsLink = document.querySelector('.nav-item[data-page="settings"]');
+
+                if (user) {
+                    const tokenResult = await user.getIdTokenResult();
+                    const isAdmin = tokenResult.claims.role === 'admin';
+
+                    if (settingsLink) {
+                        settingsLink.style.display = isAdmin ? 'flex' : 'none';
+                    }
+
+                    // Security Redirect if on settings page
+                    if (window.location.pathname.includes('settings') && !isAdmin) {
+                        console.warn('Unauthorized access to settings. Redirecting...');
+                        this.navigateTo('dashboard');
+                    }
+
+                    // Also check current "virtual" page if using our router
+                    if (this.currentPage === 'settings' && !isAdmin) {
+                        this.navigateTo('dashboard');
+                    }
+
+                } else {
+                    // Not logged in - hide settings by default
+                    if (settingsLink) settingsLink.style.display = 'none';
+                }
+            });
+        } catch (e) {
+            console.error('Error in checkAccess:', e);
+        }
     }
 
     setupEventListeners() {
@@ -87,12 +128,32 @@ class NavigationController {
             });
         });
 
-        // Mobile responsiveness
         if (window.innerWidth <= 768) {
             this.sidebarCollapsed = true;
             this.updateSidebarState();
         }
         this.updateToggleIcon();
+
+        // Sign Out Event Listener
+        const signOutBtn = document.getElementById('sign-out-button');
+        if (signOutBtn) {
+            signOutBtn.addEventListener('click', async () => {
+                try {
+                    console.log('Signing out...');
+                    // Dynamic import for Firebase Auth since this is a non-module script
+                    const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+                    const { app } = await import('./services/firebase_config.js');
+                    const auth = getAuth(app);
+
+                    await signOut(auth);
+                    console.log('Signed out successfully');
+                    window.location.href = 'login.html';
+                } catch (error) {
+                    console.error('Sign out failed:', error);
+                    alert('Sign out failed: ' + error.message);
+                }
+            });
+        }
     }
 
     toggleSidebar() {

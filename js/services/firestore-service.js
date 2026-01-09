@@ -2,8 +2,9 @@
  * @fileoverview Firestore service for all database operations
  * @module services/firestore-service
  */
-import { db } from './firebase_config.js';
+import { db, app } from './firebase_config.js';
 import { doc, getDoc, setDoc, updateDoc, deleteField } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 /**
  * Service class for handling all Firestore database operations
@@ -14,6 +15,21 @@ export class FirestoreService {
      */
     constructor() {
         this.db = db;
+        this.auth = getAuth(app);
+        this._authPromise = new Promise((resolve) => {
+            const unsubscribe = onAuthStateChanged(this.auth, (user) => {
+                resolve(user);
+                unsubscribe();
+            });
+        });
+    }
+
+    /**
+     * Waits for Firebase Auth to initialize
+     * @returns {Promise<User|null>}
+     */
+    async waitForAuth() {
+        return this._authPromise;
     }
 
     /**
@@ -35,6 +51,7 @@ export class FirestoreService {
     async fetchKPIData(kpiAppsScriptUrl) {
         try {
             console.log('Fetching KPI data...');
+            await this.waitForAuth();
             const docRef = doc(this.db, "settings", "kpi_data");
             const docSnap = await getDoc(docRef);
 
@@ -83,6 +100,7 @@ export class FirestoreService {
     async loadZipCacheFromFirebase() {
         try {
             console.log('Fetching zip_codes from Firestore...');
+            await this.waitForAuth();
             const docRef = doc(this.db, "settings", "zip_codes");
             const docSnap = await getDoc(docRef);
 
@@ -118,6 +136,7 @@ export class FirestoreService {
     async getDealerOverrides() {
         try {
             console.log('[FirestoreService] Fetching dealer_overrides...');
+            await this.waitForAuth();
             const docRef = doc(this.db, "settings", "dealer_overrides");
             const docSnap = await getDoc(docRef);
 
@@ -190,6 +209,7 @@ export class FirestoreService {
      * @returns {Promise<Array>} Array of report objects
      */
     async listReports() {
+        await this.waitForAuth();
         const docRef = doc(this.db, "settings", "reports");
         try {
             const docSnap = await getDoc(docRef);
@@ -244,6 +264,7 @@ export class FirestoreService {
 
         try {
             console.log(`[FirestoreService] Fetching report data from Network: ${reportId}`);
+            await this.waitForAuth();
             const docRef = doc(this.db, 'reports_data', reportId);
             const docSnap = await getDoc(docRef);
 
@@ -344,6 +365,7 @@ export class FirestoreService {
     async loadGeneralSettings() {
         try {
             console.log('[FirestoreService] Fetching general settings...');
+            await this.waitForAuth();
             const docRef = doc(this.db, "settings", "general");
             const docSnap = await getDoc(docRef);
 
@@ -369,6 +391,7 @@ export class FirestoreService {
     async getDeactivatedDealers() {
         try {
             console.log('[FirestoreService] Fetching deactivated dealers...');
+            await this.waitForAuth();
             const docRef = doc(this.db, "settings", "deactivated_dealers");
             const docSnap = await getDoc(docRef);
 

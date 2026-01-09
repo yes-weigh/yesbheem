@@ -1,0 +1,97 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+
+    // Check if the user is authenticated and NOT suspended (Kill Switch)
+    function isActiveUser() {
+      return request.auth != null &&
+             (
+               !exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.suspended != true
+             );
+    }
+
+    // Check if the user is using a Trusted Device (Hardware Binding)
+    function isTrustedDevice() {
+      return request.auth.token.keys().hasAny(['trustedDevice']) && request.auth.token.trustedDevice == true;
+    }
+
+    // --- Collection Rules ---
+
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users Profile
+    match /users/{userId} {
+      // User can read their own profile if active
+      allow read: if isActiveUser() && request.auth.uid == userId;
+      // Only Admin (or system) can write (e.g., to suspend)
+      allow write: if false; 
+    }
+
+    // Security Audit Logs (Traitor Tracking)
+    // Security Audit Logs (Traitor Tracking)
+    match /security_audit/{logId} {
+      // Allow creation of logs by any authenticated user (even if suspended, we want to log their attempts)
+      allow create: if request.auth != null;
+      // No one can read/delete logs
+      allow read, update, delete: if false; 
+    }
+
+    // Role-Based Access Control (RBAC) - Admin Only
+    match /authorized_users/{email} {
+      allow read, write: if request.auth.token.role == 'admin';
+    }
+
+    // Temp OTPs (for auth flow)
+    match /temp_otps/{email} {
+      // Only readable by the auth functions (Admin SDK) - so deny client access
+      allow read, write: if false;
+    }
+
+    // General Collections (Sales, Dealers, etc.) - Applying strict security
+    match /dealers/{dealerId} {
+      allow read: if isActiveUser() && isTrustedDevice();
+      allow write: if isActiveUser() && isTrustedDevice();
+    }
+    
+    match /sales_data/{docId} {
+      allow read: if isActiveUser() && isTrustedDevice();
+      allow write: if isActiveUser() && isTrustedDevice();
+    }
+    
+    // General Collections
+    match /dealers/{dealerId} {
+      allow read: if isActiveUser() && isTrustedDevice();
+      allow write: if isActiveUser() && isTrustedDevice();
+    }
+    
+    match /sales_data/{docId} {
+      allow read: if isActiveUser() && isTrustedDevice();
+      allow write: if isActiveUser() && isTrustedDevice();
+    }
+    
+    // Configuration Documents (All stored in 'settings' collection)
+    match /settings/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isActiveUser() && isTrustedDevice();
+    }
+
+    // Report Data (Actual CSV content stored in separate collection)
+    match /reports_data/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isActiveUser() && isTrustedDevice();
+    }
+
+    // Broad fallback for other collections (Be careful here, usually better to start with specific)
+    // For now, let's enforce Active + Trusted for anything else the app might use
+    // match /{path=**}/documents {
+    //   allow read: if isActiveUser() && isTrustedDevice();
+    // }
+  }
+}
