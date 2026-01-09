@@ -20,18 +20,30 @@ exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail
     const { phoneNumber, email, deviceFingerprint } = request.data;
 
     // 1. Traitor Tracking: Check if this device is authorized
-    const userRef = admin.firestore().collection('users').doc(email);
-    const userDoc = await userRef.get();
+    let uid;
+    try {
+        const userRecord = await admin.auth().getUserByEmail(email);
+        uid = userRecord.uid;
+    } catch (e) {
+        console.log(`User ${email} not found in Auth. Skipping hardware check (New User).`);
+        uid = null;
+    }
 
-    if (userDoc.exists && userDoc.data().authorizedDevice) {
-        if (userDoc.data().authorizedDevice !== deviceFingerprint) {
-            // Log suspicious activity
-            await admin.firestore().collection('security_audit').add({
-                event: 'UNAUTHORIZED_DEVICE_ATTEMPT',
-                user: email,
-                fingerprint: deviceFingerprint,
-                timestamp: admin.firestore.FieldValue.serverTimestamp()
-            });
+    if (uid) {
+        const userRef = admin.firestore().collection('users').doc(uid);
+        const userDoc = await userRef.get();
+
+        if (userDoc.exists && userDoc.data().authorizedDevice) {
+            if (userDoc.data().authorizedDevice !== deviceFingerprint) {
+                // Log suspicious activity
+                await admin.firestore().collection('security_audit').add({
+                    event: 'UNAUTHORIZED_DEVICE_ATTEMPT',
+                    user: email, // Log email for readability
+                    uid: uid,
+                    fingerprint: deviceFingerprint,
+                    timestamp: admin.firestore.FieldValue.serverTimestamp()
+                });
+            }
         }
     }
 
@@ -185,6 +197,14 @@ exports.verifySplitOTP = onCall(async (request) => {
 
     const customToken = await admin.auth().createCustomToken(uid, customClaims);
     console.log(`Generated Fortress Token for ${email} [${uid}] with role: ${customClaims.role}`);
+
+    // 4. Hardware Binding: Lock the device to the user profile
+    await admin.firestore().collection('users').doc(uid).set({
+        authorizedDevice: deviceFingerprint,
+        lastLogin: admin.firestore.FieldValue.serverTimestamp(),
+        active: true,
+        role: userRole || 'user'
+    }, { merge: true }); // Merge to preserve any other existing flags
 
     return { token: customToken };
 });
