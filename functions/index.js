@@ -14,8 +14,9 @@ const smtpEmail = defineSecret('SMTP_EMAIL');
 const smtpPassword = defineSecret('SMTP_PASSWORD');
 const smtpHost = defineSecret('SMTP_HOST');
 const smtpPort = defineSecret('SMTP_PORT');
+const smtpUser = defineSecret('SMTP_USER');
 
-exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail, smtpPassword, smtpHost, smtpPort] }, async (request) => {
+exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail, smtpPassword, smtpHost, smtpPort, smtpUser] }, async (request) => {
     const { phoneNumber, email, deviceFingerprint } = request.data;
 
     // 1. Traitor Tracking: Check if this device is authorized
@@ -75,7 +76,7 @@ exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail
             port: parseInt(smtpPort.value()),
             secure: parseInt(smtpPort.value()) === 465, // true for 465, false for other ports
             auth: {
-                user: smtpEmail.value(),
+                user: smtpUser.value(),
                 pass: smtpPassword.value()
             }
         });
