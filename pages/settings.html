@@ -18,6 +18,24 @@
                 </div>
 
                 <div class="settings-grid">
+                    <!-- Security Dashboard Card -->
+                    <div class="settings-card hover-card" onclick="window.settingsSecurityController.openDashboard()">
+                        <div class="card-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+                            <div class="card-icon"
+                                style="background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                </svg>
+                            </div>
+                            <div class="card-title">
+                                <h2>Security Dashboard</h2>
+                                <p>Monitor active sessions & audits</p>
+                            </div>
+                            <div class="card-badge">View</div>
+                        </div>
+                    </div>
+
                     <!-- Authorized Users Card (Admin Only) -->
                     <div class="settings-card hover-card" onclick="window.settingsUsersController.openManageModal()">
                         <div class="card-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
@@ -247,9 +265,11 @@
         import { SettingsController } from './js/controllers/settings_controller.js';
         import { SettingsDataController } from './js/controllers/settings_data_controller.js';
         import { SettingsUsersController } from './js/controllers/settings_users_controller.js';
+        import { SettingsSecurityController } from './js/controllers/settings_security_controller.js';
 
         // Initialize controllers
         window.settingsController = new SettingsController();
         window.settingsDataController = new SettingsDataController();
         window.settingsUsersController = new SettingsUsersController();
+        window.settingsSecurityController = new SettingsSecurityController();
     </script>

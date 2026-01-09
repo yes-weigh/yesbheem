@@ -33,16 +33,42 @@ exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail
         const userRef = admin.firestore().collection('users').doc(uid);
         const userDoc = await userRef.get();
 
-        if (userDoc.exists && userDoc.data().authorizedDevice) {
-            if (userDoc.data().authorizedDevice !== deviceFingerprint) {
-                // Log suspicious activity
-                await admin.firestore().collection('security_audit').add({
-                    event: 'UNAUTHORIZED_DEVICE_ATTEMPT',
-                    user: email, // Log email for readability
-                    uid: uid,
-                    fingerprint: deviceFingerprint,
-                    timestamp: admin.firestore.FieldValue.serverTimestamp()
-                });
+        if (userDoc.exists) {
+            const userData = userDoc.data();
+            const isAdmin = userData.role === 'admin';
+
+            // Multi-Device Logic for Admins, Strict for Users
+            let isAuthorized = false;
+
+            if (isAdmin && userData.authorizedDevices && Array.isArray(userData.authorizedDevices)) {
+                isAuthorized = userData.authorizedDevices.includes(deviceFingerprint);
+            } else if (userData.authorizedDevice) {
+                // Legacy or User Single-Device Mode
+                isAuthorized = userData.authorizedDevice === deviceFingerprint;
+            } else {
+                // No device bound yet (New User or Reset)
+                isAuthorized = true;
+            }
+
+            if (userDoc.data().authorizedDevice || (userDoc.data().authorizedDevices && userDoc.data().authorizedDevices.length > 0)) {
+                // Only enforce if at least one device is already bound
+                if (!isAuthorized) {
+                    await admin.firestore().collection('security_audit').add({
+                        event: 'UNAUTHORIZED_DEVICE_ATTEMPT',
+                        reason: isAdmin ? 'Admin Device Not Recognized' : 'User Device Mismatch',
+                        user: email,
+                        uid: uid,
+                        fingerprint: deviceFingerprint,
+                        timestamp: admin.firestore.FieldValue.serverTimestamp()
+                    });
+                    // We ideally want to BLOCK here, but the legacy code didn't explicitly throw, just logged. 
+                    // To enforce Security, we SHOULD throw. 
+                    // However, to match previous behavior of "Traitor Tracking" (Log + maybe alert), I will keep it as logging 
+                    // BUT the frontend "AuthFortress" expects a success to assume it's safe. 
+                    // If we want to strictly BLOCK:
+                    // throw new HttpsError('permission-denied', 'Unauthorized Device.'); 
+                    // For now, adhering to existing pattern but logging smarter.
+                }
             }
         }
     }
@@ -198,13 +224,68 @@ exports.verifySplitOTP = onCall(async (request) => {
     const customToken = await admin.auth().createCustomToken(uid, customClaims);
     console.log(`Generated Fortress Token for ${email} [${uid}] with role: ${customClaims.role}`);
 
-    // 4. Hardware Binding: Lock the device to the user profile
-    await admin.firestore().collection('users').doc(uid).set({
-        authorizedDevice: deviceFingerprint,
+    // 4. Intelligence: Resolve IP & Location
+    let clientIp = request.rawRequest.headers['x-forwarded-for'] || request.rawRequest.connection.remoteAddress;
+    if (clientIp && clientIp.includes(',')) clientIp = clientIp.split(',')[0].trim();
+
+    let locationData = { city: 'Unknown', region: 'Unknown', country: 'Unknown' };
+    try {
+        if (clientIp && clientIp.length > 7) {
+            // Sanitize IP: Remove anything that is not a number or dot (ipv4) or colon (ipv6)
+            // This prevents the issue seen in the screenshot where a '$' symbol was included.
+            const cleanIp = clientIp.replace(/[^0-9a-fA-F:.]/g, '');
+
+            const locRes = await axios.get(`http://ip-api.com/json/${cleanIp}?fields=city,regionName,country`);
+            if (locRes.data && locRes.data.city) {
+                locationData = {
+                    city: locRes.data.city,
+                    region: locRes.data.regionName,
+                    country: locRes.data.country
+                };
+            }
+        }
+    } catch (locErr) {
+        console.error('Location lookup failed:', locErr.message);
+    }
+
+    const sessionInfo = {
+        ip: clientIp,
+        location: `${locationData.city}, ${locationData.region}`,
+        lastActiveAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    // 5. Hardware Binding & Session Logging
+    const userRef = admin.firestore().collection('users').doc(uid);
+    const updatePayload = {
         lastLogin: admin.firestore.FieldValue.serverTimestamp(),
         active: true,
-        role: userRole || 'user'
-    }, { merge: true }); // Merge to preserve any other existing flags
+        email: email, // Store email for Admin Dashboard visibility
+        // Update the active session for this specific fingerprint
+        [`activeSessions.${deviceFingerprint}`]: sessionInfo
+    };
+
+    // Role-Based Binding Logic
+    if (userRole === 'admin') {
+        // Admins: Add to Array (Multi-Device)
+        updatePayload['authorizedDevices'] = admin.firestore.FieldValue.arrayUnion(deviceFingerprint);
+    } else {
+        // Users: Strict Single Device (Overwrite)
+        updatePayload['authorizedDevice'] = deviceFingerprint;
+    }
+
+    await userRef.set(updatePayload, { merge: true });
+
+    // 6. Audit Logging (Immutable History)
+    await admin.firestore().collection('user_activity_logs').add({
+        uid: uid,
+        email: email,
+        action: 'LOGIN',
+        role: userRole,
+        deviceFingerprint: deviceFingerprint,
+        ip: clientIp,
+        location: sessionInfo.location,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
 
     return { token: customToken };
 });

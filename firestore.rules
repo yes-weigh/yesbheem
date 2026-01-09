@@ -30,8 +30,8 @@ service cloud.firestore {
     match /users/{userId} {
       // User can read their own profile if active
       allow read: if isActiveUser() && request.auth.uid == userId;
-      // Only Admin (or system) can write (e.g., to suspend)
-      allow write: if false; 
+      // Only Admin can write (to kill sessions/manage locks)
+      allow write: if request.auth.token.role == 'admin'; 
     }
 
     // Security Audit Logs (Traitor Tracking)
@@ -40,7 +40,8 @@ service cloud.firestore {
       // Allow creation of logs by any authenticated user (even if suspended, we want to log their attempts)
       allow create: if request.auth != null;
       // No one can read/delete logs
-      allow read, update, delete: if false; 
+      allow read: if request.auth.token.role == 'admin';
+      allow update, delete: if false; // Immutable logs 
     }
 
     // Role-Based Access Control (RBAC) - Admin Only
