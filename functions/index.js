@@ -7,68 +7,23 @@ const nodemailer = require('nodemailer');
 admin.initializeApp();
 
 // Define secrets to be used at runtime
+// Define secrets to be used at runtime
 const watiToken = defineSecret('WATI_TOKEN');
 const watiEndpoint = defineSecret('WATI_ENDPOINT');
 const smtpEmail = defineSecret('SMTP_EMAIL');
 const smtpPassword = defineSecret('SMTP_PASSWORD');
+const smtpHost = defineSecret('SMTP_HOST');
+const smtpPort = defineSecret('SMTP_PORT');
 
-exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail, smtpPassword] }, async (request) => {
-    const { phoneNumber, email, deviceFingerprint } = request.data;
-
-    // 1. Traitor Tracking: Check if this device is authorized
-    const userRef = admin.firestore().collection('users').doc(email);
-    const userDoc = await userRef.get();
-
-    if (userDoc.exists && userDoc.data().authorizedDevice) {
-        if (userDoc.data().authorizedDevice !== deviceFingerprint) {
-            // Log suspicious activity
-            await admin.firestore().collection('security_audit').add({
-                event: 'UNAUTHORIZED_DEVICE_ATTEMPT',
-                user: email,
-                fingerprint: deviceFingerprint,
-                timestamp: admin.firestore.FieldValue.serverTimestamp()
-            });
-        }
-    }
-
-    const codeA = Math.floor(100000 + Math.random() * 900000).toString();
-    const codeB = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Wati Dispatch using .value() for secrets
-    const watiUrl = `${watiEndpoint.value()}/api/v1/sendTemplateMessage?whatsappNumber=${phoneNumber}`;
-    console.log(`Attempting WATI Dispatch to ${phoneNumber} at ${watiUrl}`);
-
-    try {
-        const watiResponse = await axios.post(watiUrl, {
-            template_name: "yesgatcauth",
-            broadcast_name: "OTP_Dispatch",
-            parameters: [{ name: "1", value: codeA }]
-        }, { headers: { 'Authorization': watiToken.value() } });
-
-        console.log('WATI Response Status:', watiResponse.status);
-        console.log('WATI Response Data:', JSON.stringify(watiResponse.data));
-    } catch (watiError) {
-        console.error('WATI Dispatch Failed:', watiError.message);
-        if (watiError.response) {
-            console.error('WATI Error Data:', JSON.stringify(watiError.response.data));
-            console.error('WATI Error Status:', watiError.response.status);
-        }
-        // Decide if we want to fail the whole process or just log it. 
-        // For auth, if phone fails, we probably should signal it, but let's see.
-    }
-
-    // Store in Firestore for verification
-    await admin.firestore().collection('temp_otps').doc(email).set({
-        partA: codeA,
-        partB: codeB,
-        fingerprint: deviceFingerprint,
-        expires: Date.now() + 300000
-    });
+exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail, smtpPassword, smtpHost, smtpPort] }, async (request) => {
+    // ... (existing code)
 
     // 3. Email Dispatch (Part B)
     try {
         const transporter = nodemailer.createTransport({
-            service: 'gmail',
+            host: smtpHost.value(),
+            port: parseInt(smtpPort.value()),
+            secure: parseInt(smtpPort.value()) === 465, // true for 465, false for other ports
             auth: {
                 user: smtpEmail.value(),
                 pass: smtpPassword.value()
