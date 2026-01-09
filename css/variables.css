@@ -175,9 +175,9 @@
    --modal-h2-color: #f8fafc;
    --modal-tabs-bg: rgba(0, 0, 0, 0.3);
    --modal-tabs-border: 1px solid rgba(255, 255, 255, 0.06);
-   --modal-input-bg: rgba(15, 23, 42, 0.6);
-   --modal-input-border: 1px solid rgba(51, 65, 85, 0.6);
-   --modal-input-focus-bg: rgba(15, 23, 42, 0.9);
+   --modal-input-bg: rgba(30, 41, 59, 1);
+   --modal-input-border: 1px solid rgba(148, 163, 184, 0.2);
+   --modal-input-focus-bg: rgba(15, 23, 42, 1);
    --modal-input-text: #f1f5f9;
    --modal-label-color: #64748b;
    --modal-readonly-bg: rgba(30, 41, 59, 0.3);

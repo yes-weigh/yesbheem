@@ -96,39 +96,11 @@ class SecurityOverlay {
     }
 
     createOverlay() {
-        if (this.overlay) return;
-
-        this.overlay = document.createElement('div');
-        this.overlay.style.position = 'fixed';
-        this.overlay.style.top = '0';
-        this.overlay.style.left = '0';
-        this.overlay.style.width = '100vw';
-        this.overlay.style.height = '100vh';
-        this.overlay.style.pointerEvents = 'none';
-        this.overlay.style.zIndex = '9999';
-        this.overlay.style.opacity = '0.04'; // Slightly visible for demo, prompt said 0.005 but 0.04 is better for "visible if contrast adjusted" without being invisible
-        this.overlay.style.display = 'flex';
-        this.overlay.style.flexWrap = 'wrap';
-        this.overlay.style.overflow = 'hidden';
-        this.overlay.style.userSelect = 'none';
-        this.overlay.style.mixBlendMode = 'difference';
-
-        const watermarkText = `${this.user.email} | ${this.ip} | ${this.fingerprint} | SESSION_MONITORED`;
-
-        // Tile the text
-        const count = 200;
-        for (let i = 0; i < count; i++) {
-            const span = document.createElement('span');
-            span.innerText = watermarkText;
-            span.style.fontSize = '12px';
-            span.style.color = '#fff';
-            span.style.transform = 'rotate(-15deg)';
-            span.style.margin = '20px';
-            span.style.whiteSpace = 'nowrap';
-            this.overlay.appendChild(span);
-        }
-
-        document.body.appendChild(this.overlay);
+        // Overlay disabled by user request (Traitor Tracking UI removed)
+        // if (this.overlay) return;
+        // this.overlay = document.createElement('div');
+        // ... (visuals removed)
+        console.log("[SecurityOverlay] Monitoring active (Silent Mode)");
     }
 
     startWatchdog() {

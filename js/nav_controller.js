@@ -77,14 +77,51 @@ class NavigationController {
 
             onAuthStateChanged(auth, async (user) => {
                 const settingsLink = document.querySelector('.nav-item[data-page="settings"]');
+                const userNameEl = document.querySelector('.user-name-small');
+                const userAvatarEl = document.querySelector('.user-avatar-small');
 
                 if (user) {
+                    // Update Profile Display
+                    try {
+                        const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+                        const { db } = await import('./services/firebase_config.js');
+
+                        const userDoc = await getDoc(doc(db, "authorized_users", user.email));
+                        const userData = userDoc.exists() ? userDoc.data() : {};
+
+                        // Name
+                        if (userNameEl) {
+                            userNameEl.textContent = userData.displayName || user.email.split('@')[0];
+                        }
+
+                        // Avatar
+                        if (userAvatarEl) {
+                            if (userData.photoURL) {
+                                userAvatarEl.style.backgroundImage = `url('${userData.photoURL}')`;
+                                userAvatarEl.style.backgroundSize = 'cover';
+                                userAvatarEl.innerText = '';
+                            } else {
+                                const name = userData.displayName || user.email;
+                                userAvatarEl.innerText = name.charAt(0).toUpperCase();
+                                userAvatarEl.style.backgroundImage = 'none';
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Profile fetch error:", err);
+                    }
+
                     const tokenResult = await user.getIdTokenResult();
                     const isAdmin = tokenResult.claims.role === 'admin';
 
                     if (settingsLink) {
                         settingsLink.style.display = isAdmin ? 'flex' : 'none';
                     }
+
+                    // Ensure Sign Out button is visible
+                    const signOutBtn = document.getElementById('sign-out-button');
+                    const divider = document.querySelector('.dropdown-divider');
+                    if (signOutBtn) signOutBtn.style.display = 'flex';
+                    if (divider) divider.style.display = 'block';
 
                     // Security Redirect if on settings page
                     if (window.location.pathname.includes('settings') && !isAdmin) {
@@ -100,6 +137,14 @@ class NavigationController {
                 } else {
                     // Not logged in - hide settings by default
                     if (settingsLink) settingsLink.style.display = 'none';
+                    if (userNameEl) userNameEl.textContent = 'Guest';
+                    if (userAvatarEl) userAvatarEl.innerText = 'G';
+
+                    // Hide Sign Out for Guest
+                    const signOutBtn = document.getElementById('sign-out-button');
+                    const divider = document.querySelector('.dropdown-divider');
+                    if (signOutBtn) signOutBtn.style.display = 'none';
+                    if (divider) divider.style.display = 'none';
                 }
             });
         } catch (e) {

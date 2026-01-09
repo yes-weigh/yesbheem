@@ -4,369 +4,321 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YesWeigh | Secure Quantified Access</title>
-    <!-- FingerprintJS is loaded via module in auth_fortress.js -->
+    <title>Login | YesWeigh</title>
+    <link rel="stylesheet" href="css/variables.css">
     <style>
-        :root {
-            --bg-color: #050505;
-            --primary-color: #00ff41;
-            /* Hacker Green */
-            --danger-color: #ff3333;
-            --text-color: #e0e0e0;
-            --panel-bg: #111;
-            --border-color: #333;
-            --font-mono: 'Courier New', Courier, monospace;
-        }
-
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: var(--font-mono);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-main);
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
             overflow: hidden;
-            /* Security: Prevent selection */
-            user-select: none;
         }
 
-        /* Prevent right click / context menu context visual is handled by JS but CSS helps */
-
-        .fortress-container {
-            width: 450px;
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            padding: 40px;
-            box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
-            position: relative;
-            border-radius: 4px;
-        }
-
-        .header {
+        .login-card {
+            width: 400px;
+            padding: 3rem;
+            background: var(--modal-bg-gradient);
+            border-radius: 24px;
+            box-shadow: var(--modal-shadow);
+            border: 1px solid var(--modal-border);
             text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
+            backdrop-filter: blur(12px);
+            position: relative;
+            overflow: hidden;
         }
 
-        .header h1 {
-            color: var(--primary-color);
-            font-size: 1.5rem;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            margin: 0;
-            text-shadow: 0 0 5px var(--primary-color);
+        .brand-logo {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #60A5FA, #A78BFA);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 2.5rem;
         }
 
         .input-group {
-            margin-bottom: 20px;
-            position: relative;
+            margin-bottom: 1.5rem;
+            text-align: left;
         }
 
         .input-group label {
             display: block;
-            font-size: 0.8rem;
-            color: #888;
-            margin-bottom: 5px;
-            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 500;
         }
 
-        .input-field {
+        .modern-input {
             width: 100%;
-            background: #000;
-            border: 1px solid var(--border-color);
-            color: var(--primary-color);
-            padding: 10px;
-            font-family: var(--font-mono);
+            padding: 0.75rem 1rem;
+            background: var(--modal-input-bg);
+            border: 1px solid var(--modal-border);
+            border-radius: 12px;
+            color: var(--text-primary);
             font-size: 1rem;
+            transition: all 0.2s ease;
             box-sizing: border-box;
+            /* Fix padding issue */
+        }
+
+        .modern-input:focus {
             outline: none;
-            transition: border-color 0.3s;
-        }
-
-        .input-field:focus {
             border-color: var(--primary-color);
-            box-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+            background: var(--surface-card);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
         }
 
-        .btn-action {
+        .btn-primary {
             width: 100%;
-            background: #000;
-            border: 1px solid var(--primary-color);
-            color: var(--primary-color);
-            padding: 15px;
-            font-family: var(--font-mono);
-            text-transform: uppercase;
-            font-weight: bold;
+            padding: 0.875rem;
+            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
             cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 10px;
+            transition: all 0.2s ease;
+            margin-top: 1rem;
         }
 
-        .btn-action:hover {
-            background: var(--primary-color);
-            color: #000;
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
 
-        .btn-action:disabled {
-            border-color: #444;
-            color: #444;
+        .btn-primary:disabled {
+            opacity: 0.7;
             cursor: not-allowed;
-            background: #000;
+            transform: none;
         }
 
-        /* Stage 2: OTP Split View */
-        .otp-split-container {
-            display: none;
-            /* Hidden by default */
-            display: flex;
-            /* overridden by JS */
-            gap: 20px;
-        }
-
+        /* Helpers */
         .hidden {
             display: none !important;
         }
 
-        .otp-box {
-            flex: 1;
-        }
-
-        .otp-box input {
-            text-align: center;
-            letter-spacing: 5px;
-        }
-
-        /* Terminal Logs */
-        .system-log {
-            margin-top: 30px;
-            border-top: 1px dashed #333;
-            padding-top: 10px;
-            height: 100px;
-            overflow-y: hidden;
-            font-size: 0.75rem;
-            color: #666;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-        }
-
-        .log-entry {
-            margin: 2px 0;
-            opacity: 0;
-            animation: fadeIn 0.2s forwards;
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
         }
 
         @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
             to {
                 opacity: 1;
+                transform: translateY(0);
             }
         }
 
-        .success {
-            color: var(--primary-color);
+        .otp-container {
+            display: flex;
+            gap: 15px;
         }
 
-        .error {
-            color: var(--danger-color);
+        .otp-field {
+            flex: 1;
         }
 
-        .warning {
-            color: yellow;
+        .otp-field input {
+            text-align: center;
+            letter-spacing: 2px;
+            font-family: monospace;
+            font-size: 1.2rem;
         }
 
-        /* Scanning overlay effect */
-        .scan-line {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: rgba(0, 255, 65, 0.5);
-            box-shadow: 0 0 10px var(--primary-color);
-            animation: scan 3s linear infinite;
-            pointer-events: none;
-            display: none;
-        }
-
-        @keyframes scan {
-            0% {
-                top: 0;
-            }
-
-            100% {
-                top: 100%;
-            }
-        }
-
-        /* Lock Icon */
-        .lock-icon {
-            display: block;
-            margin: 0 auto 20px;
-            width: 40px;
-            height: 40px;
-            border: 2px solid var(--primary-color);
-            border-radius: 50%;
-            position: relative;
-        }
-
-        .lock-icon::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        .loading-spinner {
+            display: inline-block;
             width: 20px;
             height: 20px;
-            background: var(--primary-color);
-            mask: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C9.243 2 7 4.243 7 7v3H6c-1.103 0-2 .897-2 2v8c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-8c0-1.103-.897-2-2-2h-1V7c0-2.757-2.243-5-5-5zm0 2c1.654 0 3 1.346 3 3v3H9V7c0-1.654 1.346-3 3-3zm0 10c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2z"/></svg>') no-repeat center;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .toast-msg {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            min-height: 1.2em;
+            color: var(--text-secondary);
+        }
+
+        .text-error {
+            color: #EF4444;
+        }
+
+        .text-success {
+            color: #10B981;
         }
     </style>
 </head>
 
 <body>
 
-    <div class="fortress-container">
-        <div class="scan-line" id="scanLine"></div>
-        <div class="header">
-            <div class="lock-icon"></div>
-            <h1>Global Access</h1>
-            <div style="font-size: 0.6rem; color: #555; margin-top: 5px;">AUTHORIZATION LEVEL: RESTRICTED</div>
-        </div>
+    <div class="login-card fade-in">
+        <div class="brand-logo">YesWeigh</div>
+        <div class="brand-subtitle">Secure Access Portal</div>
 
-        <!-- STAGE 1: Credentials -->
+        <!-- Stage 1: Email/Phone -->
         <div id="stage1">
             <div class="input-group">
-                <label>Identifier [EMAIL]</label>
-                <input type="email" id="email" class="input-field" placeholder="USR.ID" autocomplete="off">
+                <label>Email Address</label>
+                <input type="email" id="email" class="modern-input" placeholder="name@company.com">
             </div>
             <div class="input-group">
-                <label>Secure Comms [PHONE]</label>
-                <input type="text" id="phone" class="input-field" placeholder="+91.........." autocomplete="off">
+                <label>Phone Number</label>
+                <input type="text" id="phone" class="modern-input" placeholder="91XXXXXXXXXX">
             </div>
-            <button id="initBtn" class="btn-action">Establish Secure Link</button>
+            <button id="initBtn" class="btn-primary">Continue</button>
         </div>
 
-        <!-- STAGE 2: Dual Keys -->
+        <!-- Stage 2: OTP Verification -->
         <div id="stage2" class="hidden">
-            <div class="otp-split-container">
-                <div class="otp-box">
-                    <label style="color: #25D366; font-size: 0.7rem; display: block; margin-bottom: 5px;">WHATSAPP
-                        KEY</label>
-                    <input type="text" id="otpA" class="input-field" maxlength="6" placeholder="******">
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px;">
+                Enter the security codes sent to your devices.
+            </p>
+            <div class="otp-container">
+                <div class="otp-field">
+                    <label style="font-size: 0.75rem; color: #10B981; margin-bottom: 5px; display:block;">WhatsApp
+                        Code</label>
+                    <input type="text" id="otpA" class="modern-input" maxlength="6" placeholder="000000">
                 </div>
-                <div class="otp-box">
-                    <label style="color: #4285F4; font-size: 0.7rem; display: block; margin-bottom: 5px;">EMAIL
-                        KEY</label>
-                    <input type="text" id="otpB" class="input-field" maxlength="6" placeholder="******">
+                <div class="otp-field">
+                    <label style="font-size: 0.75rem; color: #3B82F6; margin-bottom: 5px; display:block;">Email
+                        Code</label>
+                    <input type="text" id="otpB" class="modern-input" maxlength="6" placeholder="000000">
                 </div>
             </div>
-            <div style="margin-top: 20px;">
-                <button id="verifyBtn" class="btn-action">Verify Identity</button>
-            </div>
+            <button id="verifyBtn" class="btn-primary">Verify & Login</button>
+            <button id="backBtn"
+                style="background: none; border: none; color: var(--text-secondary); margin-top: 15px; cursor: pointer; font-size: 0.85rem;">Back</button>
         </div>
 
-        <div class="system-log" id="systemLog">
-            <div class="log-entry">System Standby...</div>
-        </div>
+        <div id="statusMsg" class="toast-msg"></div>
     </div>
 
     <script type="module">
         import { AuthFortress } from './js/auth_fortress.js';
 
         const fortress = new AuthFortress();
-        const logContainer = document.getElementById('systemLog');
-        const scanLine = document.getElementById('scanLine');
+        const msgEl = document.getElementById('statusMsg');
 
         const initBtn = document.getElementById('initBtn');
         const verifyBtn = document.getElementById('verifyBtn');
+        const backBtn = document.getElementById('backBtn');
 
         const stage1 = document.getElementById('stage1');
         const stage2 = document.getElementById('stage2');
 
-        function addLog(msg, type = 'info') {
-            const div = document.createElement('div');
-            div.className = `log-entry ${type}`;
-            div.innerText = `> ${msg}`;
-            logContainer.appendChild(div);
-            logContainer.scrollTop = logContainer.scrollHeight;
+        function setStatus(msg, type = 'neutral') {
+            msgEl.textContent = msg;
+            msgEl.className = 'toast-msg';
+            if (type === 'error') msgEl.classList.add('text-error');
+            if (type === 'success') msgEl.classList.add('text-success');
         }
 
-        // Disable standard context menu for security feel
-        document.addEventListener('contextmenu', event => event.preventDefault());
+        function setLoading(btn, isLoading) {
+            if (isLoading) {
+                btn.disabled = true;
+                const originalText = btn.innerText;
+                btn.dataset.original = originalText;
+                btn.innerHTML = `<span class="loading-spinner"></span> Processing`;
+            } else {
+                btn.disabled = false;
+                btn.innerText = btn.dataset.original || 'Submit';
+            }
+        }
 
         initBtn.addEventListener('click', async () => {
-            const email = document.getElementById('email').value;
-            const phone = document.getElementById('phone').value;
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
 
             if (!email || !phone) {
-                addLog('Input Error: Missing Credentials', 'error');
+                setStatus('Please enter both Email and Phone.', 'error');
                 return;
             }
 
-            initBtn.disabled = true;
-            scanLine.style.display = 'block';
-            addLog('Initializing Handshake Protocol...');
-
-            // Artificial delay for Security Theater
-            setTimeout(() => addLog('Scanning Hardware Signature...', 'warning'), 600);
-            setTimeout(() => addLog('Encrypting Payload...', 'info'), 1200);
+            setLoading(initBtn, true);
+            setStatus('');
 
             try {
+                // Initialize login
                 const response = await fortress.initiateLogin(email, phone);
+                setStatus('Codes sent successfully.', 'success');
 
                 setTimeout(() => {
-                    addLog(response.message, 'success');
                     stage1.classList.add('hidden');
                     stage2.classList.remove('hidden');
-                    stage2.classList.add('otp-split-container'); // Apply flex
-                    stage2.style.display = 'block'; // Ensure visible
-                    scanLine.style.display = 'none';
-                    addLog('Waiting for Dual-Key input...', 'warning');
-                }, 1500);
+                    stage2.classList.add('fade-in');
+                    setStatus('');
+                    document.getElementById('otpA').focus();
+                }, 500);
 
             } catch (error) {
-                setTimeout(() => {
-                    addLog('ACCESS DENIED: ' + error.message, 'error');
-                    initBtn.disabled = false;
-                    scanLine.style.display = 'none';
-                }, 1500);
+                setStatus(error.message || 'Login failed.', 'error');
+            } finally {
+                setLoading(initBtn, false);
             }
         });
 
         verifyBtn.addEventListener('click', async () => {
-            const codeA = document.getElementById('otpA').value;
-            const codeB = document.getElementById('otpB').value;
-            const email = document.getElementById('email').value;
+            const codeA = document.getElementById('otpA').value.trim();
+            const codeB = document.getElementById('otpB').value.trim();
+            const email = document.getElementById('email').value.trim();
 
             if (!codeA || !codeB) {
-                addLog('Missing Security Keys', 'error');
+                setStatus('Please enter both security codes.', 'error');
                 return;
             }
 
-            verifyBtn.disabled = true;
-            addLog('Verifying Keys against Ledger...');
+            setLoading(verifyBtn, true);
+            setStatus('Verifying credentials...');
 
             try {
                 const result = await fortress.verifyAndSession(email, codeA, codeB);
-                addLog('Identity Confirmed. Trust Established.', 'success');
-                addLog(`Welcome, ${result.user.email}`, 'success');
-
+                setStatus('Login successful! Redirecting...', 'success');
                 setTimeout(() => {
-                    window.location.href = 'index.html'; // Redirect to main app
+                    window.location.href = 'index.html';
                 }, 1000);
-
             } catch (error) {
-                addLog('VERIFICATION FAILED: ' + error.message, 'error');
-                verifyBtn.disabled = false;
+                setStatus(error.message || 'Verification failed.', 'error');
+                setLoading(verifyBtn, false);
             }
         });
 
-        // Initialize logs
-        setTimeout(() => addLog('Hardware Monitor Active'), 500);
-        setTimeout(() => addLog('Network Secured (TLS 1.3)'), 800);
+        backBtn.addEventListener('click', () => {
+            stage2.classList.add('hidden');
+            stage1.classList.remove('hidden');
+            stage1.classList.add('fade-in');
+            setStatus('');
+        });
+
+        // Basic prevent default for context menu if we still want some security feel without being annoying
+        // document.addEventListener('contextmenu', e => e.preventDefault());
     </script>
 </body>
 
