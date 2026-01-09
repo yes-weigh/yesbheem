@@ -48,6 +48,38 @@
 </head>
 
 <body>
+    <!-- Initial Loading Overlay to prevent FOUC -->
+    <div id="initial-loader"
+        style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #050505; z-index: 10000; display: flex; align-items: center; justify-content: center; color: white; font-family: sans-serif;">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="3"
+                stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+            </svg>
+            <span
+                style="font-size: 0.9rem; opacity: 0.7; animation: pulse 1.5s ease-in-out infinite;">Authenticating...</span>
+        </div>
+        <style>
+            @keyframes spin {
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+
+            @keyframes pulse {
+
+                0%,
+                100% {
+                    opacity: 0.5;
+                }
+
+                50% {
+                    opacity: 1;
+                }
+            }
+        </style>
+    </div>
+
     <a href="#main-content" class="skip-link">Skip to main content</a>
     <!-- Fixed Title Bar -->
     <header class="title-bar">

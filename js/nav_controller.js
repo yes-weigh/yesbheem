@@ -146,9 +146,20 @@ class NavigationController {
                     if (signOutBtn) signOutBtn.style.display = 'none';
                     if (divider) divider.style.display = 'none';
                 }
+                // Hide initial loader once checks are done
+                const loader = document.getElementById('initial-loader');
+                if (loader) {
+                    // Slight fade out effect
+                    loader.style.transition = 'opacity 0.5s';
+                    loader.style.opacity = '0';
+                    setTimeout(() => loader.remove(), 500);
+                }
             });
         } catch (e) {
             console.error('Error in checkAccess:', e);
+            // Ensure loader is removed even if error occurs
+            const loader = document.getElementById('initial-loader');
+            if (loader) loader.remove();
         }
     }
 
