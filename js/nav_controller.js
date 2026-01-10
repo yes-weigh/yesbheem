@@ -117,12 +117,6 @@ class NavigationController {
                         settingsLink.style.display = isAdmin ? 'flex' : 'none';
                     }
 
-                    // Ensure Sign Out button is visible
-                    const signOutBtn = document.getElementById('sign-out-button');
-                    const divider = document.querySelector('.dropdown-divider');
-                    if (signOutBtn) signOutBtn.style.display = 'flex';
-                    if (divider) divider.style.display = 'block';
-
                     // Security Redirect if on settings page
                     if (window.location.pathname.includes('settings') && !isAdmin) {
                         console.warn('Unauthorized access to settings. Redirecting...');
