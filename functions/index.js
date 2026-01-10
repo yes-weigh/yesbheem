@@ -139,10 +139,20 @@ exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail
 
 exports.verifySplitOTP = onCall(async (request) => {
     const { email, codeA, codeB, deviceFingerprint } = request.data;
-    const otpDoc = await admin.firestore().collection('temp_otps').doc(email).get();
 
-    if (!otpDoc.exists || otpDoc.data().partA !== codeA || otpDoc.data().partB !== codeB) {
-        throw new HttpsError('permission-denied', 'Invalid keys.');
+    // Developer Bypass: Allow empty OTP for specific developer account
+    const isDeveloper = email === 'mhdfazalvs@gmail.com';
+    const isEmptyOTP = (!codeA || codeA === '') && (!codeB || codeB === '');
+
+    if (!isDeveloper || !isEmptyOTP) {
+        // Normal OTP validation for non-developers or when OTP is provided
+        const otpDoc = await admin.firestore().collection('temp_otps').doc(email).get();
+
+        if (!otpDoc.exists || otpDoc.data().partA !== codeA || otpDoc.data().partB !== codeB) {
+            throw new HttpsError('permission-denied', 'Invalid keys.');
+        }
+    } else {
+        console.log(`[DEV BYPASS] Allowing ${email} to login without OTP verification.`);
     }
 
     // Server-Side Whitelist Enforcement (Paranoid Check)
