@@ -141,18 +141,15 @@ class NavigationController {
                     }
 
                 } else {
-                    // Not logged in - hide settings by default
-                    if (settingsLink) settingsLink.style.display = 'none';
-                    if (userNameEl) userNameEl.textContent = 'Guest';
-                    if (userAvatarEl) userAvatarEl.innerText = 'G';
+                    // Not logged in - Strict Redirect
+                    console.warn('User not authenticated. Redirecting to login...');
 
-                    // Hide Sign Out for Guest
-                    const signOutBtn = document.getElementById('sign-out-button');
-                    const divider = document.querySelector('.dropdown-divider');
-                    if (signOutBtn) signOutBtn.style.display = 'none';
-                    if (divider) divider.style.display = 'none';
+                    // Do NOT remove the loader. 
+                    // Redirect immediately.
+                    window.location.href = 'login.html';
+                    return;
                 }
-                // Hide initial loader once checks are done
+                // Hide initial loader ONLY if authenticated
                 const loader = document.getElementById('initial-loader');
                 if (loader) {
                     // Slight fade out effect
@@ -163,9 +160,9 @@ class NavigationController {
             });
         } catch (e) {
             console.error('Error in checkAccess:', e);
-            // Ensure loader is removed even if error occurs
-            const loader = document.getElementById('initial-loader');
-            if (loader) loader.remove();
+            // In case of error (e.g. auth service down), we might want to redirect too
+            // But for now, let's just log it. The loader might stay endlessly, which is better than leaking UI.
+            window.location.href = 'login.html';
         }
     }
 
