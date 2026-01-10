@@ -74,7 +74,7 @@ class NavigationController {
             const { getAuth, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
 
             // Resolve path dynamically to handle GitHub Pages subdirectories or root domains
-            const basePath = window.appConfig ? window.appConfig.getBasePath() : '/';
+            const basePath = (window.appConfig && window.appConfig.getBasePath()) || '/';
             const configPath = `${basePath}js/services/firebase_config.js`.replace('//', '/'); // prevent double slash
             const { app } = await import(configPath);
             const auth = getAuth(app);
@@ -205,7 +205,7 @@ class NavigationController {
                     // Dynamic import for Firebase Auth since this is a non-module script
                     const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
 
-                    const basePath = window.appConfig ? window.appConfig.getBasePath() : '/';
+                    const basePath = (window.appConfig && window.appConfig.getBasePath()) || '/';
                     const configPath = `${basePath}js/services/firebase_config.js`.replace('//', '/');
                     const { app } = await import(configPath);
                     const auth = getAuth(app);
