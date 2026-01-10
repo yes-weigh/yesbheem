@@ -37,6 +37,31 @@
     </div>
 </div>
 
+<!-- Instance Setup Modal -->
+<div id="setup-modal" class="modal-overlay hidden">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h2>Add New Instance</h2>
+            <button class="close-modal" id="close-setup-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Instance Name</label>
+                <input type="text" id="new-instance-name" class="form-input" placeholder="e.g., Sales Team A">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Key Account Manager</label>
+                <select id="new-instance-kam" class="form-select">
+                    <option value="">Select KAM...</option>
+                </select>
+            </div>
+            <div class="setup-actions">
+                <button id="btn-create-session" class="primary-btn">Next: Scan QR</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     .instance-grid {
         display: grid;
@@ -131,11 +156,112 @@
         padding: 2rem;
     }
 
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-container {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-radius: 16px;
+        width: 100%;
+        max-width: 480px;
+        padding: 24px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
     .modal-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1rem;
+        margin-bottom: 24px;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        color: var(--text-main);
+    }
+
+    .close-modal {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        line-height: 1;
+    }
+
+    .close-modal:hover {
+        background: var(--bg-hover);
+        color: var(--text-main);
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    .form-input,
+    .form-select {
+        width: 100%;
+        padding: 10px 12px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-light);
+        border-radius: 8px;
+        color: var(--text-main);
+        font-size: 0.95rem;
+        transition: border-color 0.2s;
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+
+    .setup-actions {
+        margin-top: 24px;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .qr-display-area {
+        min-height: 250px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background: var(--bg-main);
+        border-radius: 8px;
+        margin-top: 16px;
+    }
+
+    .qr-display-area img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
     }
 
     .hidden {

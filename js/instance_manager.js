@@ -1,14 +1,26 @@
+import { db } from './services/firebase_config.js';
+import { collection, doc, getDoc, setDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
 class InstanceManager {
     constructor() {
         this.VERSION = 'v' + Date.now().toString().slice(-4);
         console.log(`InstanceManager ${this.VERSION}: Initializing...`);
         this.apiBase = window.appConfig.apiUrl + '/api/auth';
-        this.container = document.getElementById('instance-list');
-        this.modal = document.getElementById('qr-modal');
-        this.qrContainer = document.getElementById('qr-container');
-        this.pollInterval = null;
 
-        if (!this.container || !this.modal) {
+        // UI Elements
+        this.container = document.getElementById('instance-list');
+        this.qrModal = document.getElementById('qr-modal');
+        this.setupModal = document.getElementById('setup-modal');
+        this.qrContainer = document.getElementById('qr-container');
+
+        // Setup Inputs
+        this.nameInput = document.getElementById('new-instance-name');
+        this.kamSelect = document.getElementById('new-instance-kam');
+
+        this.pollInterval = null;
+        this.pendingSessionId = null; // Store ID during setup process
+
+        if (!this.container || !this.qrModal || !this.setupModal) {
             console.error(`InstanceManager ${this.VERSION}: Critical elements not found`);
             return;
         }
@@ -18,98 +30,246 @@ class InstanceManager {
 
     async init() {
         console.log(`InstanceManager ${this.VERSION}: Calling init...`);
-        // Setup listeners immediately so the button works even if network is slow
         this.setupEventListeners();
-
+        await this.loadKAMs();
         this.renderLoading();
-        // Don't await this, let it load in background
         this.fetchInstances();
     }
 
     setupEventListeners() {
+        // "Add Instance" Button -> Open Setup Modal
         const addBtn = document.getElementById('btn-add-instance');
-        console.log(`InstanceManager ${this.VERSION}: Add Button found?`, !!addBtn);
-
         if (addBtn) {
-            addBtn.onclick = (e) => { // Use onclick to prevent multiple bindings accumulation
-                e.preventDefault(); // Prevent any default behavior
-                console.log(`InstanceManager ${this.VERSION}: Add Instance Clicked`);
-                this.createNewSession();
+            addBtn.onclick = (e) => {
+                e.preventDefault();
+                this.openSetupModal();
             };
         }
 
-        // Close Modal
-        document.querySelector('.close-modal').addEventListener('click', () => {
-            this.closeModal();
-        });
+        // "Next: Scan QR" Button -> Create Session & Show QR
+        const createBtn = document.getElementById('btn-create-session');
+        if (createBtn) {
+            createBtn.onclick = (e) => {
+                e.preventDefault();
+                this.handleCreateSessionClick();
+            };
+        }
 
-        // Close modal on outside click
-        this.modal.addEventListener('click', (e) => {
-            if (e.target === this.modal) this.closeModal();
+        // Close Setup Modal
+        const closeSetupBtn = document.getElementById('close-setup-modal');
+        if (closeSetupBtn) {
+            closeSetupBtn.onclick = () => this.closeSetupModal();
+        }
+
+        // Close QR Modal
+        const closeQrBtn = document.querySelector('.close-modal');
+        if (closeQrBtn) {
+            closeQrBtn.onclick = () => this.closeQrModal();
+        }
+
+        // Close modals on overlay click
+        this.qrModal.addEventListener('click', (e) => {
+            if (e.target === this.qrModal) this.closeQrModal();
         });
+        this.setupModal.addEventListener('click', (e) => {
+            if (e.target === this.setupModal) this.closeSetupModal();
+        });
+    }
+
+    async loadKAMs() {
+        try {
+            const docRef = doc(db, "settings", "general");
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const kams = data.key_accounts || [];
+
+                this.kamSelect.innerHTML = '<option value="">Select KAM...</option>';
+                kams.forEach(kam => {
+                    const option = document.createElement('option');
+                    option.value = kam;
+                    option.textContent = kam;
+                    this.kamSelect.appendChild(option);
+                });
+            }
+        } catch (e) {
+            console.error("Error loading KAMs:", e);
+        }
     }
 
     async fetchInstances() {
         try {
-            const response = await fetch(`${this.apiBase}/sessions`);
-            const data = await response.json();
+            // 1. Fetch live sessions from Backend
+            const backendPromise = fetch(`${this.apiBase}/sessions`).then(r => r.json());
 
-            if (data.success) {
-                // The API returns an object or array of sessions
-                // We need to map it to our UI format
-                // Assuming data.sessions is an array of IDs or objects
+            // 2. Fetch metadata from Firestore
+            const firestorePromise = getDocs(collection(db, "whatsapp_instances"));
 
-                // If the backend returns just IDs, we might need to fetch status for each or defaults
-                const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+            const [backendData, firestoreSnap] = await Promise.all([backendPromise, firestorePromise]);
 
-                // For now, shape it. If backend only sends strings, map object.
-                const formattedSessions = sessions.map(s => {
-                    return typeof s === 'string' ? { id: s, status: 'unknown' } : s;
+            const liveSessions = (backendData.success && Array.isArray(backendData.sessions)) ? backendData.sessions : [];
+            const metaDocs = [];
+            firestoreSnap.forEach(doc => metaDocs.push(doc.data()));
+
+            // 3. Merge Data
+            // We want to show all instances that are in Firestore.
+            // If they are in backend, we show status. If not, they are "Disconnected".
+            // Also show "Unmanaged" sessions if they exist in backend but not Firestore.
+
+            const merged = [];
+
+            // A. Map Firestore instances
+            metaDocs.forEach(meta => {
+                const live = liveSessions.find(s => (s.id || s) === meta.sessionId);
+                merged.push({
+                    sessionId: meta.sessionId,
+                    name: meta.name || 'Unnamed Instance',
+                    kam: meta.kam || 'Unassigned',
+                    phoneNumber: live?.phoneNumber || live?.id?.split(':')[0] || 'Unknown', // Fallback extraction
+                    connected: live ? (live.connected ?? false) : false,
+                    isManaged: true
                 });
+            });
 
-                this.renderList(formattedSessions);
-            } else {
-                throw new Error(data.message);
-            }
+            // B. Find orphans (Backend only)
+            liveSessions.forEach(live => {
+                const id = live.id || live;
+                if (!metaDocs.find(m => m.sessionId === id)) {
+                    merged.push({
+                        sessionId: id,
+                        name: 'Unmanaged Instance',
+                        kam: '-',
+                        phoneNumber: live.phoneNumber || id.split(':')[0] || 'Unknown',
+                        connected: live.connected ?? false,
+                        isManaged: false
+                    });
+                }
+            });
+
+            this.renderList(merged);
+
         } catch (error) {
             console.error('Error fetching instances:', error);
             this.container.innerHTML = '<div class="error-state"><p>Failed to load instances. Is the server running?</p></div>';
         }
     }
 
-    async createNewSession() {
-        console.log(`InstanceManager ${this.VERSION}: Creating new session...`);
-        const sessionId = 'session_' + Math.floor(Math.random() * 10000);
-        this.showModal();
+    renderList(instances) {
+        if (instances.length === 0) {
+            this.container.innerHTML = '<div class="empty-state"><p class="text-muted">No instances found. Add one to get started.</p></div>';
+            return;
+        }
+
+        this.container.innerHTML = instances.map(inst => `
+            <div class="instance-card">
+                <div class="instance-info">
+                    <div class="instance-icon">
+                        ${inst.connected ? '✅' : '🔴'}
+                    </div>
+                    <div>
+                        <h3>${inst.name}</h3>
+                        <p class="text-muted" style="margin-bottom:4px;">${inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : 'Not Connected'}</p>
+                         ${inst.isManaged ? `<span style="font-size:0.8rem; background:#f1f5f9; padding:2px 8px; border-radius:4px; color:#64748b;">KAM: ${inst.kam}</span>` : ''}
+                    </div>
+                </div>
+                
+                <div class="instance-status ${inst.connected ? 'connected' : 'disconnected'}" style="margin-top:1rem;">
+                    ${inst.connected ? 'Active' : 'Offline/Disconnected'}
+                </div>
+
+                <div class="instance-actions">
+                    <button class="btn-icon delete-btn" data-id="${inst.sessionId}" title="Delete Instance">🗑️</button>
+                    ${!inst.connected ? `<button class="btn-secondary reconnect-btn" data-id="${inst.sessionId}">Reconnect</button>` : ''}
+                </div>
+            </div>
+        `).join('');
+
+        // Re-attach listeners
+        this.container.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.deleteInstance(e.currentTarget.dataset.id));
+        });
+
+        this.container.querySelectorAll('.reconnect-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.reconnectInstance(e.currentTarget.dataset.id));
+        });
+    }
+
+    /* --- SETUP FLOW --- */
+
+    openSetupModal() {
+        this.nameInput.value = '';
+        this.kamSelect.value = '';
+        this.showElement(this.setupModal);
+    }
+
+    closeSetupModal() {
+        this.hideElement(this.setupModal);
+    }
+
+    async handleCreateSessionClick() {
+        const name = this.nameInput.value.trim();
+        const kam = this.kamSelect.value;
+
+        if (!name) { alert('Please enter an Instance Name'); return; }
+        if (!kam) { alert('Please select a Key Account Manager'); return; }
+
+        this.closeSetupModal();
+
+        // Generate ID
+        const sessionId = 'session_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        this.pendingSessionId = sessionId;
+
+        // Save to Firestore First
+        try {
+            await setDoc(doc(db, "whatsapp_instances", sessionId), {
+                sessionId,
+                name,
+                kam,
+                createdAt: new Date(),
+                createdBy: 'admin' // TODO: Get actual user
+            });
+
+            // Proceed to QR
+            this.requestNewQR(sessionId);
+
+        } catch (e) {
+            console.error("Error creating instance doc:", e);
+            alert("Failed to create instance record.");
+        }
+    }
+
+    /* --- QR & CONNECTION --- */
+
+    async requestNewQR(sessionId) {
+        this.showElement(this.qrModal);
         this.renderQRSpinner();
 
         try {
-            console.log(`InstanceManager ${this.VERSION}: Requesting QR...`);
             const response = await fetch(`${this.apiBase}/qr`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sessionId })
             });
             const data = await response.json();
-            console.log(`InstanceManager ${this.VERSION}: QR Response`, data);
 
-            if (data.success && data.message === 'Already connected') {
-                alert('Session ID collision or already connected.');
-                this.closeModal();
-                this.fetchInstances();
-                return;
-            }
-
-            if (data.qrCode) {
-                this.renderQR(data.qrCode);
-                this.startPolling(sessionId);
+            if (data.success) {
+                if (data.message === 'Already connected') {
+                    alert('This session is already connected!');
+                    this.closeQrModal();
+                    this.fetchInstances();
+                } else if (data.qrCode) {
+                    this.renderQR(data.qrCode);
+                    this.startPolling(sessionId);
+                } else {
+                    this.qrContainer.innerHTML = `<div class="error-state"><p>${data.message}</p></div>`;
+                }
             } else {
-                this.qrContainer.innerHTML = `<div class="error-state"><p>${data.message}</p></div>`;
+                throw new Error(data.message);
             }
 
         } catch (e) {
             console.error(e);
-            this.qrContainer.innerHTML = '<div class="error-state"><p>Failed to generate QR.</p></div>';
+            this.qrContainer.innerHTML = '<div class="error-state"><p>Failed to generate QR Code. Check backend.</p></div>';
         }
     }
 
@@ -117,122 +277,97 @@ class InstanceManager {
         if (this.pollInterval) clearInterval(this.pollInterval);
 
         this.pollInterval = setInterval(async () => {
+            // Only poll if modal is open to save resources
+            if (this.qrModal.classList.contains('hidden')) {
+                clearInterval(this.pollInterval);
+                return;
+            }
+
             try {
                 const response = await fetch(`${this.apiBase}/status?sessionId=${sessionId}`);
                 const data = await response.json();
 
                 if (data.connected) {
                     clearInterval(this.pollInterval);
-                    this.closeModal();
-                    alert('Device Connected Successfully! 🎉');
-                    this.fetchInstances();
+                    this.closeQrModal();
+
+                    // Show success toast or alert
+                    import('./utils/toast.js').then(m => m.Toast.success ? m.Toast.success('Connected Successfully!') : alert('Connected!'));
+
+                    // Wait a moment for backend to populate phone number if needed
+                    setTimeout(() => this.fetchInstances(), 1000);
                 }
             } catch (e) {
-                console.error('Polling error', e);
+                console.warn('Polling error', e);
             }
-        }, 3000); // Check every 3 seconds
+        }, 2000);
+    }
+
+    /* --- ACTIONS --- */
+
+    async reconnectInstance(sessionId) {
+        if (!confirm('Generating a new QR code will disconnect any active session for this instance. Continue?')) {
+            return;
+        }
+        this.requestNewQR(sessionId);
+    }
+
+    async deleteInstance(sessionId) {
+        if (!confirm(`Are you sure you want to delete instance ${sessionId}? This cannot be undone.`)) return;
+
+        try {
+            // 1. Delete from Backend
+            await fetch(`${this.apiBase}/session/${sessionId}`, { method: 'DELETE' }); // Best effort
+
+            // 2. Delete from Firestore
+            await deleteDoc(doc(db, "whatsapp_instances", sessionId));
+
+            this.fetchInstances(); // Refresh
+
+        } catch (e) {
+            console.error(e);
+            alert('Error deleting instance');
+        }
+    }
+
+    /* --- HELPERS --- */
+
+    showElement(el) {
+        el.classList.remove('hidden');
+        el.classList.add('active');
+        el.style.display = 'flex';
+    }
+
+    hideElement(el) {
+        el.classList.add('hidden');
+        el.classList.remove('active');
+        el.style.display = 'none';
+        if (el === this.qrContainer) this.qrContainer.innerHTML = '';
+        if (el === this.qrModal) {
+            if (this.pollInterval) clearInterval(this.pollInterval);
+        }
+    }
+
+    closeQrModal() {
+        this.hideElement(this.qrModal);
     }
 
     renderLoading() {
         this.container.innerHTML = '<div class="page-loader"><div class="spinner"></div></div>';
     }
 
-    renderList(sessions) {
-        if (sessions.length === 0) {
-            this.container.innerHTML = '<div class="empty-state"><p class="text-muted">No active instances. Click "Add Instance" to connect.</p></div>';
-            return;
-        }
-
-        this.container.innerHTML = sessions.map(session => `
-            <div class="instance-card">
-                <div class="instance-info">
-                    <div class="instance-icon">📱</div>
-                    <div>
-                        <h3>${session.id || session}</h3>
-                        <p class="text-muted">${session.connected ? 'Connected' : 'Scanner Ready'}</p>
-                    </div>
-                </div>
-                <div class="instance-status ${session.connected ? 'connected' : 'disconnected'}">
-                    ${session.connected ? 'Active' : 'Offline'}
-                </div>
-                <div class="instance-actions">
-                    <button class="btn-icon delete-btn" data-id="${session.id || session}">🗑️</button>
-                    ${!session.connected ? `<button class="btn-secondary reconnect-btn" data-id="${session.id || session}">Reconnect</button>` : ''}
-                </div>
-            </div>
-        `).join('');
-
-        // Re-attach listeners
-        document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const id = e.currentTarget.dataset.id;
-                this.deleteInstance(id);
-            });
-        });
-
-        document.querySelectorAll('.reconnect-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                // Re-use createNewSession logic but with existing ID?
-                // For now, simplify.
-                alert('To reconnect, please delete and create a new session.');
-            });
-        });
-    }
-
-    showModal() {
-        console.log(`InstanceManager ${this.VERSION}: Showing Modal. Current classes:`, this.modal.classList.toString());
-        this.modal.classList.remove('hidden');
-        this.modal.classList.add('active'); // Required by global CSS in settings/discussions
-        // Force display just in case
-        this.modal.style.display = 'flex';
-        console.log(`InstanceManager ${this.VERSION}: Modal classes after remove:`, this.modal.classList.toString());
-    }
-
-    closeModal() {
-        this.modal.classList.add('hidden');
-        this.modal.classList.remove('active');
-        this.modal.style.display = ''; // Clear inline style
-        this.qrContainer.innerHTML = '';
-        if (this.pollInterval) clearInterval(this.pollInterval);
-    }
-
     renderQRSpinner() {
-        this.qrContainer.innerHTML = '<div class="spinner"></div><p style="margin-top:1rem">Generating QR Code...</p>';
+        this.qrContainer.innerHTML = '<div class="spinner"></div><p style="margin-top:1rem">Contacting WhatsApp...</p>';
     }
 
     renderQR(qrCode) {
-        // Check if the QR code is already a data URI (base64 image)
         const isDataUri = qrCode.startsWith('data:image');
-
-        let qrUrl;
-        if (isDataUri) {
-            qrUrl = qrCode;
-        } else {
-            // Use public API to render QR code image from the string
-            qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrCode)}`;
-        }
+        const qrUrl = isDataUri ? qrCode : `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrCode)}`;
 
         this.qrContainer.innerHTML = `
-            <img src="${qrUrl}" alt="Scan me" style="border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
-            <p style="margin-top:1rem; font-size: 0.9rem" class="text-muted">Scan with WhatsApp</p>
+            <img src="${qrUrl}" alt="Scan me" style="width:250px; height:250px; border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+            <p style="margin-top:1rem; font-size: 0.9rem" class="text-muted">Scan with WhatsApp on your phone</p>
         `;
-    }
-
-    async deleteInstance(id) {
-        if (confirm(`Are you sure you want to disconnect ${id}?`)) {
-            try {
-                const response = await fetch(`${this.apiBase}/session/${id}`, { method: 'DELETE' });
-                const data = await response.json();
-                if (data.success) {
-                    this.fetchInstances(); // Refresh list
-                } else {
-                    alert('Failed to delete: ' + data.message);
-                }
-            } catch (e) {
-                console.error(e);
-                alert('Error deleting session');
-            }
-        }
     }
 }
 
