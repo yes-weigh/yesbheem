@@ -120,7 +120,7 @@ exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail
         });
 
         await transporter.sendMail({
-            from: `"Noreply Security" <${smtpEmail.value()}>`,
+            from: `"Noreply YESGATC" <${smtpEmail.value()}>`,
             to: email,
             subject: 'Your Login Verification Code (Part B)',
             text: `Your verification code Part B is: ${codeB}\n\nThis code expires in 5 minutes.\nPlease enter this along with Part A (sent to WhatsApp) to complete your login.\n\n\nthis is an automated mail , do not reply\nBest regards,\n\nIT Team\n\nInterweighing Pvt Ltd`
