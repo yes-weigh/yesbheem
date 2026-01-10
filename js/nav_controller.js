@@ -72,7 +72,11 @@ class NavigationController {
     async checkAccess() {
         try {
             const { getAuth, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-            const { app } = await import('./services/firebase_config.js');
+
+            // Resolve path dynamically to handle GitHub Pages subdirectories or root domains
+            const basePath = window.appConfig ? window.appConfig.getBasePath() : '/';
+            const configPath = `${basePath}js/services/firebase_config.js`.replace('//', '/'); // prevent double slash
+            const { app } = await import(configPath);
             const auth = getAuth(app);
 
             onAuthStateChanged(auth, async (user) => {
@@ -92,7 +96,7 @@ class NavigationController {
                     // Update Profile Display
                     try {
                         const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-                        const { db } = await import('./services/firebase_config.js');
+                        const { db } = await import(configPath);
 
                         const userDoc = await getDoc(doc(db, "authorized_users", user.email));
                         const userData = userDoc.exists() ? userDoc.data() : {};
@@ -200,7 +204,10 @@ class NavigationController {
                     console.log('Signing out...');
                     // Dynamic import for Firebase Auth since this is a non-module script
                     const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-                    const { app } = await import('./services/firebase_config.js');
+
+                    const basePath = window.appConfig ? window.appConfig.getBasePath() : '/';
+                    const configPath = `${basePath}js/services/firebase_config.js`.replace('//', '/');
+                    const { app } = await import(configPath);
                     const auth = getAuth(app);
 
                     await signOut(auth);
