@@ -290,7 +290,10 @@
             const codeB = document.getElementById('otpB').value.trim();
             const email = document.getElementById('email').value.trim();
 
-            if (!codeA || !codeB) {
+            // Developer bypass: Allow empty OTPs for specific developer
+            const isDeveloper = email === 'mhdfazalvs@gmail.com';
+
+            if (!isDeveloper && (!codeA || !codeB)) {
                 setStatus('Please enter both security codes.', 'error');
                 return;
             }
