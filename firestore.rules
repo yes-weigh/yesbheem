@@ -37,11 +37,18 @@ service cloud.firestore {
     // Security Audit Logs (Traitor Tracking)
     // Security Audit Logs (Traitor Tracking)
     match /security_audit/{logId} {
-      // Allow creation of logs by any authenticated user (even if suspended, we want to log their attempts)
+      // Allow creation of logs by any authenticated user
       allow create: if request.auth != null;
-      // No one can read/delete logs
+      // Admin can read logs
       allow read: if request.auth.token.role == 'admin';
-      allow update, delete: if false; // Immutable logs 
+      allow update, delete: if false; 
+    }
+
+    // NEW: Detailed User Activity Logs (Login, Action History)
+    match /user_activity_logs/{logId} {
+      allow create: if request.auth != null; // Log actions from client
+      allow read: if request.auth.token.role == 'admin'; // Admin dashboard
+      allow update, delete: if false; // Immutable
     }
 
     // Role-Based Access Control (RBAC) - Admin Only
