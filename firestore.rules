@@ -28,8 +28,8 @@ service cloud.firestore {
 
     // Users Profile
     match /users/{userId} {
-      // User can read their own profile if active
-      allow read: if isActiveUser() && request.auth.uid == userId;
+      // User can read their own profile; Admin can read all (for Security Dashboard)
+      allow read: if (isActiveUser() && request.auth.uid == userId) || request.auth.token.role == 'admin';
       // Only Admin can write (to kill sessions/manage locks)
       allow write: if request.auth.token.role == 'admin'; 
     }
