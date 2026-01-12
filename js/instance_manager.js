@@ -169,7 +169,7 @@ class InstanceManager {
                     <div>
                         <h3>${inst.name}</h3>
                         <p class="text-muted" style="margin-bottom:4px;">${inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : 'Not Connected'}</p>
-                         ${inst.isManaged ? `<span style="font-size:0.8rem; background:#f1f5f9; padding:2px 8px; border-radius:4px; color:#64748b;">KAM: ${inst.kam}</span>` : ''}
+                         ${inst.isManaged ? `<span style="font-size:0.8rem; background:#f1f5f9; padding:2px 8px; border-radius:4px; color:#64748b;">KAM: ${inst.kam}</span>` : '<span style="font-size:0.8rem; background:#fee2e2; padding:2px 8px; border-radius:4px; color:#ef4444;">Unmanaged</span>'}
                     </div>
                 </div>
                 
@@ -179,7 +179,8 @@ class InstanceManager {
 
                 <div class="instance-actions">
                     <button class="btn-icon delete-btn" data-id="${inst.sessionId}" title="Delete Instance">🗑️</button>
-                    ${!inst.connected ? `<button class="btn-secondary reconnect-btn" data-id="${inst.sessionId}">Reconnect</button>` : ''}
+                    ${!inst.isManaged ? `<button class="btn-secondary manage-btn" data-id="${inst.sessionId}" style="margin-right:8px;">Manage</button>` : ''}
+                    ${!inst.connected && inst.isManaged ? `<button class="btn-secondary reconnect-btn" data-id="${inst.sessionId}">Reconnect</button>` : ''}
                 </div>
             </div>
         `).join('');
@@ -192,18 +193,36 @@ class InstanceManager {
         this.container.querySelectorAll('.reconnect-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.reconnectInstance(e.currentTarget.dataset.id));
         });
+
+        this.container.querySelectorAll('.manage-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.openSetupModal(e.currentTarget.dataset.id));
+        });
     }
 
     /* --- SETUP FLOW --- */
 
-    openSetupModal() {
+    openSetupModal(existingSessionId = null) {
         this.nameInput.value = '';
         this.kamSelect.value = '';
+        this.claimingSessionId = existingSessionId; // Store content
+
+        const title = this.setupModal.querySelector('h2');
+        const btn = document.getElementById('btn-create-session');
+
+        if (this.claimingSessionId) {
+            title.textContent = 'Manage Existing Instance';
+            btn.textContent = 'Save & Claim';
+        } else {
+            title.textContent = 'Add New Instance';
+            btn.textContent = 'Next: Scan QR';
+        }
+
         this.showElement(this.setupModal);
     }
 
     closeSetupModal() {
         this.hideElement(this.setupModal);
+        this.claimingSessionId = null;
     }
 
     async handleCreateSessionClick() {
@@ -215,9 +234,10 @@ class InstanceManager {
 
         this.closeSetupModal();
 
-        // Generate ID
-        const sessionId = 'session_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        // Determine ID: Use existing if claiming, else generate new
+        const sessionId = this.claimingSessionId || ('session_' + Date.now() + '_' + Math.floor(Math.random() * 1000));
         this.pendingSessionId = sessionId;
+        const isClaiming = !!this.claimingSessionId;
 
         // Save to Firestore First
         try {
@@ -226,15 +246,22 @@ class InstanceManager {
                 name,
                 kam,
                 createdAt: new Date(),
-                createdBy: 'admin' // TODO: Get actual user
-            });
+                createdBy: 'admin', // TODO: Get actual user
+                updatedAt: new Date()
+            }, { merge: true }); // Merge is safer for claiming
 
-            // Proceed to QR
-            this.requestNewQR(sessionId);
+            if (isClaiming) {
+                // If claiming, we don't need QR. Just refresh.
+                import('./utils/toast.js').then(m => m.Toast.success ? m.Toast.success('Instance Claimed Successfully!') : alert('Instance Claimed!'));
+                this.fetchInstances();
+            } else {
+                // Proceed to QR for new sessions
+                this.requestNewQR(sessionId);
+            }
 
         } catch (e) {
-            console.error("Error creating instance doc:", e);
-            alert("Failed to create instance record.");
+            console.error("Error creating/claiming instance doc:", e);
+            alert("Failed to save instance record.");
         }
     }
 
