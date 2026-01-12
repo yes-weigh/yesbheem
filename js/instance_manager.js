@@ -162,26 +162,24 @@ class InstanceManager {
 
         this.container.innerHTML = instances.map(inst => `
             <div class="instance-card">
-                <div class="instance-info">
-                    <div class="instance-icon">
-                        ${inst.connected ? '✅' : '🔴'}
-                    </div>
-                    <div>
-                        <h3>${inst.name}</h3>
-                        <p class="text-muted" style="margin-bottom:4px;">${inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : 'Not Connected'}</p>
-                         ${inst.isManaged ? `<span style="font-size:0.8rem; background:#f1f5f9; padding:2px 8px; border-radius:4px; color:#64748b;">KAM: ${inst.kam}</span>` : '<span style="font-size:0.8rem; background:#fee2e2; padding:2px 8px; border-radius:4px; color:#ef4444;">Unmanaged</span>'}
-                    </div>
+                <div class="instance-header">
+                    <div class="instance-name" title="${inst.name}">${inst.name}</div>
+                    <div class="instance-status-dot ${inst.connected ? 'connected' : 'disconnected'}" title="${inst.connected ? 'Connected' : 'Disconnected'}"></div>
                 </div>
-                
-                <div class="instance-status ${inst.connected ? 'connected' : 'disconnected'}" style="margin-top:1rem;">
-                    ${inst.connected ? 'Active' : 'Offline/Disconnected'}
+
+                <div class="instance-details">
+                    <div>${inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : 'No Number'}</div>
+                    ${inst.isManaged
+                ? `<div class="instance-kam-pill">👤 ${inst.kam}</div>`
+                : `<div class="managed-badge">Unmanaged</div>`
+            }
                 </div>
 
                 <div class="instance-actions">
-                    <button class="btn-icon delete-btn" data-id="${inst.sessionId}" title="Delete Permanently">🗑️</button>
-                    ${!inst.isManaged ? `<button class="btn-secondary manage-btn" data-id="${inst.sessionId}" style="margin-right:8px;">Manage</button>` : ''}
-                    ${inst.isManaged ? `<button class="btn-secondary unlink-btn" data-id="${inst.sessionId}" style="margin-right:8px;" title="Unlink Metadata">🔗 Unlink</button>` : ''}
-                    ${!inst.connected && inst.isManaged ? `<button class="btn-secondary reconnect-btn" data-id="${inst.sessionId}">Reconnect</button>` : ''}
+                    <button class="btn-icon delete-btn" data-id="${inst.sessionId}" title="Delete Permanently" style="font-size:0.9rem; padding:4px;">🗑️</button>
+                    ${!inst.isManaged ? `<button class="btn-secondary manage-btn" data-id="${inst.sessionId}" style="padding:4px 8px; font-size:0.8rem;">Manage</button>` : ''}
+                    ${inst.isManaged ? `<button class="btn-secondary unlink-btn" data-id="${inst.sessionId}" style="padding:4px 8px; font-size:0.8rem;" title="Unlink Metadata">🔗 Unlink</button>` : ''}
+                    ${!inst.connected && inst.isManaged ? `<button class="btn-secondary reconnect-btn" data-id="${inst.sessionId}" style="padding:4px 8px; font-size:0.8rem;">Reconnect</button>` : ''}
                 </div>
             </div>
         `).join('');
