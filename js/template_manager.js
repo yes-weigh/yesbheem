@@ -104,25 +104,53 @@ class TemplateManager {
 
     renderButtonInputs() {
         if (this.buttons.length === 0) {
-            this.buttonsList.innerHTML = '<p class="text-xs text-muted italic">No buttons added.</p>';
+            this.buttonsList.innerHTML = `
+                <div class="text-center p-8 border border-dashed border-gray-700 rounded-lg bg-gray-900/30">
+                    <p class="text-sm text-gray-400 mb-2">No interactive buttons added yet.</p>
+                    <button type="button" class="secondary-btn small mx-auto" onclick="document.getElementById('btn-add-button').click()">+ Add First Button</button>
+                </div>`;
             return;
         }
 
-        this.buttonsList.innerHTML = this.buttons.map((btn, index) => `
-            <div class="button-item">
-                <select class="form-select w-auto text-xs py-1" onchange="window.tmplMgr.updateButton(${index}, 'type', this.value)">
-                    <option value="reply" ${btn.type === 'reply' ? 'selected' : ''}>Reply</option>
-                    <option value="url" ${btn.type === 'url' ? 'selected' : ''}>Link</option>
-                    <option value="copy" ${btn.type === 'copy' ? 'selected' : ''}>Copy</option>
-                    <option value="call" ${btn.type === 'call' ? 'selected' : ''}>Call</option>
-                </select>
-                <input type="text" class="form-input text-xs py-1 flex-1" placeholder="Button Text" value="${btn.text}" oninput="window.tmplMgr.updateButton(${index}, 'text', this.value)">
-                ${btn.type !== 'reply' ?
-                `<input type="text" class="form-input text-xs py-1 flex-1" placeholder="Value (URL/Phone)" value="${btn.value || ''}" oninput="window.tmplMgr.updateButton(${index}, 'value', this.value)">`
-                : ''}
-                <button type="button" class="text-red-500 hover:text-red-700 px-2" onclick="window.tmplMgr.removeButton(${index})">&times;</button>
+        this.buttonsList.innerHTML = this.buttons.map((btn, index) => {
+            const isReply = btn.type === 'reply';
+            let valuePlaceholder = 'Value';
+            if (btn.type === 'url') valuePlaceholder = 'https://example.com';
+            if (btn.type === 'call') valuePlaceholder = '+919876543210';
+            if (btn.type === 'copy') valuePlaceholder = 'Promo Code / Text';
+
+            return `
+            <div class="button-item type-${btn.type}">
+                <div class="form-group mb-0">
+                    <label class="text-[10px] uppercase text-gray-500 font-bold mb-1 block">Action Type</label>
+                    <select class="form-select w-full text-xs py-2" onchange="window.tmplMgr.updateButton(${index}, 'type', this.value)">
+                        <option value="reply" ${btn.type === 'reply' ? 'selected' : ''}>Quick Reply</option>
+                        <option value="url" ${btn.type === 'url' ? 'selected' : ''}>Open Website</option>
+                        <option value="copy" ${btn.type === 'copy' ? 'selected' : ''}>Copy Text</option>
+                        <option value="call" ${btn.type === 'call' ? 'selected' : ''}>Phone Call</option>
+                    </select>
+                </div>
+                
+                <div class="form-group mb-0">
+                    <label class="text-[10px] uppercase text-gray-500 font-bold mb-1 block">Button Label</label>
+                    <input type="text" class="form-input text-xs py-2 w-full" placeholder="e.g. Visit Website" value="${btn.text}" oninput="window.tmplMgr.updateButton(${index}, 'text', this.value)">
+                </div>
+
+                ${!isReply ? `
+                <div class="form-group mb-0">
+                    <label class="text-[10px] uppercase text-gray-500 font-bold mb-1 block">Action Value</label>
+                    <input type="text" class="form-input text-xs py-2 w-full" placeholder="${valuePlaceholder}" value="${btn.value || ''}" oninput="window.tmplMgr.updateButton(${index}, 'value', this.value)">
+                </div>
+                ` : ''}
+
+                <div class="flex items-end h-full pb-1">
+                    <button type="button" class="text-gray-400 hover:text-red-500 transition-colors p-2" onclick="window.tmplMgr.removeButton(${index})" title="Remove Button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    </button>
+                </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     /* --- INTERACTIONS --- */
