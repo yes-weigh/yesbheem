@@ -378,15 +378,22 @@ class UIRenderer {
             `;
         };
 
-        // Categories Widget (Clickable)
+        // Categories Widget (Scrollable Chips)
         const cats = aggregated.categories || [];
-        const catText = Array.isArray(cats) ? cats.join(', ') : (cats || '');
+        let categoriesHtml = '';
+
+        if (Array.isArray(cats) && cats.length > 0) {
+            categoriesHtml = cats.map(c => `<span class="category-chip">${c}</span>`).join('');
+        } else {
+            categoriesHtml = '<span style="opacity:0.3; font-size: 0.8rem; padding: 4px;">No categories...</span>';
+        }
+
         const categoriesWidget = `
-            <div class="floating-group" onclick="window.dealerManager.editDealerCategories('${aggregated._internalId || aggregated.id || aggregated.cust_id}', '${dealerName.replace(/'/g, "\\'")}', this)" style="cursor: pointer;">
-                <div class="floating-input readonly" style="display:flex; align-items:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
-                    ${catText || '<span style="opacity:0.3">No categories...</span>'}
+            <div class="floating-group" style="cursor: pointer;" onclick="window.dealerManager.editDealerCategories('${aggregated._internalId || aggregated.id || aggregated.cust_id}', '${dealerName.replace(/'/g, "\\'")}', this)">
+                <div class="floating-input categories-container">
+                    ${categoriesHtml}
                 </div>
-                <label class="floating-label" style="top: 2px; font-size: 0.65rem; color: var(--color-info);">Categories</label>
+                <label class="floating-label" style="top: -8px; font-size: 0.65rem; color: var(--color-info); background: var(--modal-bg-gradient); padding: 0 4px;">Categories</label>
                 <div style="position:absolute; right:10px; top:12px; opacity:0.5; pointer-events:none;">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
                 </div>
@@ -599,6 +606,26 @@ class UIRenderer {
                     font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
                     color: var(--modal-label-color); margin: 0 0 16px 0; font-weight: 700;
                     border-bottom: 1px dashed var(--modal-table-border); padding-bottom: 4px;
+                }
+
+                /* Categories Chips */
+                .categories-container {
+                    display: flex; flex-wrap: wrap; gap: 6px; 
+                    padding: 12px 10px;
+                    overflow-y: auto; align-content: flex-start;
+                    height: auto !important; min-height: 48px; max-height: 120px;
+                }
+                .categories-container::-webkit-scrollbar { width: 4px; }
+                .categories-container::-webkit-scrollbar-track { background: transparent; }
+                .categories-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+                .category-chip {
+                    display: inline-flex; align-items: center;
+                    padding: 2px 8px; border-radius: 12px;
+                    background: rgba(59, 130, 246, 0.15); 
+                    color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.2);
+                    font-size: 0.75rem; white-space: nowrap;
+                    font-weight: 500;
                 }
 
                 /* Floating Labels */

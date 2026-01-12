@@ -1818,12 +1818,12 @@ if (!window.DealerManager) {
 
                     // Update Modal UI instantly
                     if (element) {
-                        const displayDiv = element.querySelector('.floating-input');
+                        const displayDiv = element.querySelector('.categories-container') || element.querySelector('.floating-input');
                         if (displayDiv) {
                             if (selectedItems.length > 0) {
-                                displayDiv.innerHTML = selectedItems.join(', ');
+                                displayDiv.innerHTML = selectedItems.map(c => `<span class="category-chip">${c}</span>`).join('');
                             } else {
-                                displayDiv.innerHTML = '<span style="opacity:0.3">No categories...</span>';
+                                displayDiv.innerHTML = '<span style="opacity:0.3; font-size: 0.8rem; padding: 4px;">No categories...</span>';
                             }
                         }
                     }
