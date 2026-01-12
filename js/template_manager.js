@@ -351,9 +351,15 @@ class TemplateManager {
         const statusBox = document.getElementById('status-message');
         const btn = document.getElementById('btn-send');
         const sessionId = this.sessionSelect.value;
-        const to = document.getElementById('phone-input').value;
+        let to = document.getElementById('phone-input').value;
 
-        if (!sessionId || !to) { alert('Please select a device and enter a phone number'); return; }
+        // 1. Validate Session & Phone
+        if (!sessionId) { alert('Please select a device.'); return; }
+        if (!to) { alert('Please enter a phone number.'); return; }
+
+        // Sanitize Check
+        to = to.replace(/[^0-9]/g, ''); // Remove spaces, dashes, plus
+        if (to.length < 10) { alert('Invalid Phone Number. Please check.'); return; }
 
         statusBox.classList.add('hidden');
         btn.disabled = true;
