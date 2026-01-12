@@ -316,7 +316,7 @@ class TemplateManager {
 
         // Construct Content Object based on Type
         if (this.messageType === 'text') {
-            return { message: bodyText }; // Simple Text Endpoint Structure
+            return { text: bodyText }; // Backend expects 'text', not 'message'
         }
 
         // Interactive/Media Structure
@@ -361,11 +361,11 @@ class TemplateManager {
 
         try {
             const payload = await this.preparePayload();
-            let endpoint = '/messages/send';
+            let endpoint = '/messages/text'; // Corrected endpoint
             let body = { sessionId, to, ...payload };
 
             if (this.messageType !== 'text') {
-                endpoint = '/messages/send-interactive';
+                endpoint = '/messages/interactive'; // Corrected endpoint
                 // preparePayload returns { content: ... } for interactive
                 // body should be { sessionId, to, content: ... }
             }
