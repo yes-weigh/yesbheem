@@ -178,8 +178,9 @@ class InstanceManager {
                 </div>
 
                 <div class="instance-actions">
-                    <button class="btn-icon delete-btn" data-id="${inst.sessionId}" title="Delete Instance">🗑️</button>
+                    <button class="btn-icon delete-btn" data-id="${inst.sessionId}" title="Delete Permanently">🗑️</button>
                     ${!inst.isManaged ? `<button class="btn-secondary manage-btn" data-id="${inst.sessionId}" style="margin-right:8px;">Manage</button>` : ''}
+                    ${inst.isManaged ? `<button class="btn-secondary unlink-btn" data-id="${inst.sessionId}" style="margin-right:8px;" title="Unlink Metadata">🔗 Unlink</button>` : ''}
                     ${!inst.connected && inst.isManaged ? `<button class="btn-secondary reconnect-btn" data-id="${inst.sessionId}">Reconnect</button>` : ''}
                 </div>
             </div>
@@ -197,6 +198,27 @@ class InstanceManager {
         this.container.querySelectorAll('.manage-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.openSetupModal(e.currentTarget.dataset.id));
         });
+
+        this.container.querySelectorAll('.unlink-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.unmanageInstance(e.currentTarget.dataset.id));
+        });
+    }
+
+    /* --- ACTIONS --- */
+
+    async unmanageInstance(sessionId) {
+        if (!confirm(`Are you sure you want to Unlink this instance? \n\nThis will remove the Name and KAM association, but keep the WhatsApp connection active.`)) return;
+
+        try {
+            // Delete ONLY from Firestore
+            await deleteDoc(doc(db, "whatsapp_instances", sessionId));
+
+            import('./utils/toast.js').then(m => m.Toast.success ? m.Toast.success('Instance Unlinked') : console.log('Instance Unlinked'));
+            this.fetchInstances(); // Refresh list to show as Unmanaged
+        } catch (e) {
+            console.error(e);
+            alert('Error unlinking instance');
+        }
     }
 
     /* --- SETUP FLOW --- */
