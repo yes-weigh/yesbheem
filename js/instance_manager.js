@@ -232,12 +232,13 @@ class InstanceManager {
         if (!name) { alert('Please enter an Instance Name'); return; }
         if (!kam) { alert('Please select a Key Account Manager'); return; }
 
+        // Capture state BEFORE closing modal (which clears it)
+        const sessionId = this.claimingSessionId || ('session_' + Date.now() + '_' + Math.floor(Math.random() * 1000));
+        const isClaiming = !!this.claimingSessionId;
+
         this.closeSetupModal();
 
-        // Determine ID: Use existing if claiming, else generate new
-        const sessionId = this.claimingSessionId || ('session_' + Date.now() + '_' + Math.floor(Math.random() * 1000));
         this.pendingSessionId = sessionId;
-        const isClaiming = !!this.claimingSessionId;
 
         // Save to Firestore First
         try {
