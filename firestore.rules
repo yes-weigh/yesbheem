@@ -90,6 +90,11 @@ service cloud.firestore {
       allow write: if isActiveUser() && isTrustedDevice();
     }
 
+    // WhatsApp Instances Metadata
+    match /whatsapp_instances/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
     // Report Data (Actual CSV content stored in separate collection)
     match /reports_data/{docId} {
       allow read: if request.auth != null;
