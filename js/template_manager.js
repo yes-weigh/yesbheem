@@ -194,6 +194,48 @@ class TemplateManager {
 
         // Expose helper to window for dynamic HTML calls
         window.tmplMgr = this;
+
+        // Media Preview Listeners
+        const fileInput = document.getElementById('media-file-input');
+        const urlInput = document.getElementById('media-url-input');
+
+        fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        urlInput.addEventListener('input', (e) => this.handleUrlInput(e));
+    }
+
+    handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Immediate Local Preview
+        const objectUrl = URL.createObjectURL(file);
+        this.renderPreview(objectUrl, file.type.startsWith('video') ? 'video' : 'image');
+    }
+
+    handleUrlInput(e) {
+        const url = e.target.value;
+        const type = document.getElementById('media-type-select').value;
+        if (url.length > 10) {
+            this.renderPreview(url, type);
+        }
+    }
+
+    renderPreview(url, type) {
+        const container = document.getElementById('media-preview-container');
+        const img = document.getElementById('media-preview-image');
+        const vid = document.getElementById('media-preview-video');
+
+        container.classList.remove('hidden');
+
+        if (type === 'video') {
+            img.classList.add('hidden');
+            vid.src = url;
+            vid.classList.remove('hidden');
+        } else {
+            vid.classList.add('hidden');
+            img.src = url;
+            img.classList.remove('hidden');
+        }
     }
 
     setMessageType(type) {
@@ -210,6 +252,12 @@ class TemplateManager {
         document.getElementById('footer-section').classList.toggle('hidden', !showButtons);
 
         document.getElementById('body-label').textContent = showMedia ? 'Caption' : 'Message Body';
+    }
+
+    clearPreview() {
+        document.getElementById('media-preview-container').classList.add('hidden');
+        document.getElementById('media-preview-image').src = '';
+        document.getElementById('media-preview-video').src = '';
     }
 
     setMediaSource(source) {
@@ -252,6 +300,8 @@ class TemplateManager {
         if (this.sessions.length > 0) {
             this.sessionSelect.value = this.sessions[0].id;
         }
+
+        this.clearPreview();
     }
 
     loadTemplate(id) {
@@ -273,10 +323,14 @@ class TemplateManager {
 
         // Media
         if (content.image || content.video) {
-            document.getElementById('media-type-select').value = content.image ? 'image' : 'video';
+            const type = content.image ? 'image' : 'video';
+            document.getElementById('media-type-select').value = type;
             const url = (content.image || content.video).url;
             document.getElementById('media-url-input').value = url;
             this.setMediaSource('url'); // Always valid for loaded templates
+            this.renderPreview(url, type);
+        } else {
+            this.clearPreview();
         }
 
         // Buttons
@@ -333,7 +387,12 @@ class TemplateManager {
                 const res = await fetch(`${this.apiBase}/messages/upload`, { method: 'POST', body: formData });
                 const data = await res.json();
                 if (data.success) {
-                    mediaUrl = data.path; // Or data.url depending on backend
+                    mediaUrl = data.url; // Use 'url' as returned by standard firebaseService (was 'path' in some versions, check backend!)
+                    // UPDATE DOM to prevent re-upload and show specific URL
+                    document.getElementById('media-url-input').value = mediaUrl;
+
+                    // Switch mode so "Save" uses this URL naturally
+                    this.setMediaSource('url');
                 } else {
                     throw new Error('File upload failed');
                 }
