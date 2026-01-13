@@ -493,33 +493,99 @@ class TemplateManager {
     }
 
     async handleSave() {
-        const name = document.getElementById('save-template-name').value;
-        if (!name) return;
+        // Get Name from Inline Input
+        const nameInput = document.getElementById('template-name-input');
+        const name = nameInput.value.trim();
+
+        if (!name) {
+            alert('Please enter a Template Name at the top of the editor.');
+            nameInput.focus();
+            nameInput.classList.add('ring-2', 'ring-red-500');
+            setTimeout(() => nameInput.classList.remove('ring-2', 'ring-red-500'), 2000);
+            return;
+        }
 
         try {
-            const payload = await this.preparePayload(); // Get content
-            const body = {
-                name,
+            const payload = await this.preparePayload();
+            // Payload structure from preparePayload: { content: { ... } } or { text: ... } 
+
+            // Normalize content for backend
+            let contentObj;
+            if (this.messageType === 'text') {
+                contentObj = { text: payload.text };
+            } else {
+                contentObj = payload.content;
+            }
+
+            const templateData = {
+                name: name,
                 type: this.messageType,
-                content: payload.content || (payload.message ? { text: payload.message } : {}) // Normalize text type
+                content: contentObj
             };
 
-            const res = await fetch(`${this.apiBase}/templates`, {
-                method: 'POST',
+            let method, url;
+            if (this.currentTemplateId) {
+                // UPDATE
+                method = 'PUT';
+                url = `${this.apiBase}/templates/${this.currentTemplateId}`;
+            } else {
+                // CREATE
+                method = 'POST';
+                url = `${this.apiBase}/templates`;
+            }
+
+            const res = await fetch(url, {
+                method: method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: JSON.stringify(templateData)
             });
 
-            if (res.ok) {
-                document.getElementById('save-modal').classList.add('hidden');
-                document.getElementById('save-template-name').value = '';
-                this.loadTemplates();
-                alert('Template Saved!');
+            const data = await res.json();
+            if (data.success) {
+                alert(this.currentTemplateId ? 'Template updated successfully!' : 'Template saved successfully!');
+
+                // Refresh list
+                await this.loadTemplates();
+
+                // If created new, select it. If updated, keep current.
+                const newId = data.data.id || this.currentTemplateId;
+                if (newId) {
+                    // Update internal ID if it was a create
+                    if (!this.currentTemplateId) this.loadTemplate(newId);
+                } else {
+                    this.resetForm();
+                }
             } else {
-                throw new Error('Save failed');
+                throw new Error(data.message || 'Failed to save template');
             }
-        } catch (e) {
-            alert('Error saving template: ' + e.message);
+        } catch (error) {
+            console.error('Save Error:', error);
+            alert('Error saving template: ' + error.message);
+        }
+    }
+
+    async handleDelete() {
+        if (!this.currentTemplateId) return;
+
+        if (!confirm('Are you sure you want to delete this template? This cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`${this.apiBase}/templates/${this.currentTemplateId}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                await this.loadTemplates();
+                this.resetForm();
+            } else {
+                throw new Error(data.message || 'Failed to delete');
+            }
+        } catch (error) {
+            console.error('Delete Error:', error);
+            alert('Error deleting template: ' + error.message);
         }
     }
 }

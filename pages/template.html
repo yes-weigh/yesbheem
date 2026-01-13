@@ -20,14 +20,26 @@
             <!-- Main Editor -->
             <div class="template-editor">
                 <div class="editor-header">
-                    <div class="header-info">
-                        <h2 id="editor-title">Compose Message</h2>
-                        <span id="active-template-badge" class="badge hidden"></span>
-                    </div>
-                    <div class="header-actions">
-                        <button id="btn-save-template" class="secondary-btn">
-                            💾 Save as Template
-                        </button>
+                    <div class="header-info w-full">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2
+                                class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
+                                Template Editor
+                            </h2>
+                            <button id="btn-delete-template" class="icon-btn text-red-400 hover:text-red-300 hidden"
+                                title="Delete Template">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+
+                        <!-- Inline Template Name Input -->
+                        <div class="relative group w-full">
+                            <input type="text" id="template-name-input"
+                                class="w-full bg-gray-900/50 border border-gray-700 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 transition-all"
+                                placeholder="Template Name (e.g. Welcome Message)">
+                            <!-- Hidden ID for updates -->
+                            <input type="hidden" id="template-id-hidden">
+                        </div>
                     </div>
                 </div>
 
@@ -119,10 +131,17 @@
                         <!-- Status & Action -->
                         <div id="status-message" class="status-box hidden"></div>
 
-                        <div class="form-actions">
-                            <button type="submit" id="btn-send" class="primary-btn w-full justify-center text-lg py-3">
-                                🚀 Send Message
-                            </button>
+                        <!-- Form Actions -->
+                        <div class="mt-6 pt-4 border-t border-gray-800 flex justify-between items-center"
+                            id="footer-section">
+                            <div class="flex gap-3">
+                                <button type="button" id="btn-save-template" class="secondary-btn">
+                                    <i class="fas fa-save"></i> <span id="save-btn-text">Save Template</span>
+                                </button>
+                                <button type="button" id="btn-send-message" class="primary-btn">
+                                    <i class="fas fa-paper-plane"></i> Send Message
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -130,25 +149,7 @@
         </div>
     </div>
 </div>
-
-<!-- Save Template Modal -->
-<div id="save-modal" class="modal-overlay hidden">
-    <div class="modal-container">
-        <div class="modal-header">
-            <h2>Save Template</h2>
-            <button class="close-modal" id="close-save-modal">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div class="form-group">
-                <label class="form-label">Template Name</label>
-                <input type="text" id="save-template-name" class="form-input" placeholder="e.g. Welcome Message">
-            </div>
-            <div class="setup-actions">
-                <button id="btn-confirm-save" class="primary-btn">Save</button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Modal Removed -->
 
 <style>
     /* Layout */
@@ -583,4 +584,4 @@
     }
 </style>
 
-<script type="module" src="js/template_manager.js?v=3"></script>
+<script type="module" src="js/template_manager.js?v=5"></script>
