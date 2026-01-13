@@ -62,6 +62,31 @@
     </div>
 </div>
 
+<!-- Edit Instance Modal -->
+<div id="edit-modal" class="modal-overlay hidden">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h2>Edit Instance</h2>
+            <button class="close-modal" id="close-edit-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Instance Name</label>
+                <input type="text" id="edit-instance-name" class="form-input" placeholder="e.g., Sales Team A">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Key Account Manager</label>
+                <select id="edit-instance-kam" class="form-select">
+                    <option value="">Select KAM...</option>
+                </select>
+            </div>
+            <div class="setup-actions">
+                <button id="btn-save-edit" class="primary-btn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     .instance-grid {
         display: grid;
@@ -274,6 +299,81 @@
         display: flex;
         justify-content: flex-end;
     }
+
+    /* Dropdown Menu Styles */
+    .instance-menu {
+        position: relative;
+    }
+
+    .menu-trigger {
+        background: transparent;
+        border: 1px solid var(--border-light);
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 1.2rem;
+        transition: all 0.2s;
+        color: var(--text-main);
+    }
+
+    .menu-trigger:hover {
+        background: var(--bg-hover);
+        border-color: var(--primary);
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        right: 0;
+        top: 100%;
+        margin-top: 4px;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        min-width: 140px;
+        z-index: 100;
+        display: none;
+    }
+
+    .dropdown-menu.show {
+        display: block;
+    }
+
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: background 0.2s;
+        border: none;
+        background: transparent;
+        width: 100%;
+        text-align: left;
+        font-size: 0.9rem;
+        color: var(--text-main);
+    }
+
+    .dropdown-item:hover {
+        background: var(--bg-hover);
+    }
+
+    .dropdown-item:first-child {
+        border-radius: 8px 8px 0 0;
+    }
+
+    .dropdown-item:last-child {
+        border-radius: 0 0 8px 8px;
+    }
+
+    .dropdown-item.danger {
+        color: #ef4444;
+    }
+
+    .dropdown-item.danger:hover {
+        background: #fee2e2;
+    }
+
 
     .qr-display-area {
         min-height: 250px;
