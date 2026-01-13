@@ -287,9 +287,20 @@ class TemplateManager {
     }
 
     resetForm() {
-        this.activeTemplateId = null;
-        document.getElementById('editor-title').textContent = 'Compose Message';
-        document.getElementById('active-template-badge').classList.add('hidden');
+        this.currentTemplateId = null;
+
+        // Reset New UI Elements
+        const nameInput = document.getElementById('template-name-input');
+        if (nameInput) nameInput.value = '';
+
+        const idInput = document.getElementById('template-id-hidden');
+        if (idInput) idInput.value = '';
+
+        const saveBtnText = document.getElementById('save-btn-text');
+        if (saveBtnText) saveBtnText.textContent = 'Save Template';
+
+        const deleteBtn = document.getElementById('btn-delete-template');
+        if (deleteBtn) deleteBtn.classList.add('hidden');
 
         this.setMessageType('text');
         this.setMediaSource('url');
@@ -298,7 +309,6 @@ class TemplateManager {
 
         // Clear inputs
         this.form.reset();
-        // Reset specific hidden inputs that form.reset() might miss if not carefully managed
         document.getElementById('media-type-select').value = 'image';
 
         // Use default session if available
@@ -313,11 +323,20 @@ class TemplateManager {
         const t = this.templates.find(tmpl => tmpl.id === id);
         if (!t) return;
 
-        this.activeTemplateId = id;
-        document.getElementById('editor-title').textContent = 'Edit Template';
-        const badge = document.getElementById('active-template-badge');
-        badge.textContent = t.name;
-        badge.classList.remove('hidden');
+        this.currentTemplateId = id;
+
+        // Update New UI Elements
+        const nameInput = document.getElementById('template-name-input');
+        if (nameInput) nameInput.value = t.name;
+
+        const idInput = document.getElementById('template-id-hidden');
+        if (idInput) idInput.value = t.id;
+
+        const saveBtnText = document.getElementById('save-btn-text');
+        if (saveBtnText) saveBtnText.textContent = 'Update Template';
+
+        const deleteBtn = document.getElementById('btn-delete-template');
+        if (deleteBtn) deleteBtn.classList.remove('hidden');
 
         // Apply content
         this.setMessageType(t.type);
@@ -332,7 +351,7 @@ class TemplateManager {
             document.getElementById('media-type-select').value = type;
             const url = (content.image || content.video).url;
             document.getElementById('media-url-input').value = url;
-            this.setMediaSource('url'); // Always valid for loaded templates
+            this.setMediaSource('url');
             this.renderPreview(url, type);
         } else {
             this.clearPreview();
