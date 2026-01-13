@@ -180,17 +180,22 @@ class TemplateManager {
         // New Template (Reset)
         document.getElementById('btn-new-template').addEventListener('click', () => this.resetForm());
 
-        // Save Modal
-        document.getElementById('btn-save-template').addEventListener('click', () => {
-            document.getElementById('save-modal').classList.remove('hidden');
-        });
-        document.getElementById('close-save-modal').addEventListener('click', () => {
-            document.getElementById('save-modal').classList.add('hidden');
-        });
-        document.getElementById('btn-confirm-save').addEventListener('click', () => this.handleSave());
+        // Save Action (Direct)
+        document.getElementById('btn-save-template').addEventListener('click', () => this.handleSave());
+
+        // Delete Action
+        const deleteBtn = document.getElementById('btn-delete-template');
+        if (deleteBtn) deleteBtn.addEventListener('click', () => this.handleDelete());
 
         // Form Submit
-        this.form.addEventListener('submit', (e) => this.handleSend(e));
+        this.form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleSend();
+        });
+
+        // Send Button
+        const sendBtn = document.getElementById('btn-send-message');
+        if (sendBtn) sendBtn.addEventListener('click', () => this.handleSend());
 
         // Expose helper to window for dynamic HTML calls
         window.tmplMgr = this;
