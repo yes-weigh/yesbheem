@@ -205,56 +205,30 @@ class InstanceManager {
                 </div>
 
                 <div class="instance-actions">
-                    <div class="instance-menu">
-                        <button class="menu-trigger" data-id="${inst.sessionId}">⋮</button>
-                        <div class="dropdown-menu" data-id="${inst.sessionId}">
-                            <button class="dropdown-item edit-btn" data-id="${inst.sessionId}">
-                                <span>✏️</span> Edit
-                            </button>
-                            ${inst.connected
-                ? `<button class="dropdown-item logout-btn" data-id="${inst.sessionId}">
-                                    <span>🚪</span> Logout
-                                   </button>`
-                : `<button class="dropdown-item showqr-btn" data-id="${inst.sessionId}">
-                                    <span>📱</span> Show QR
-                                   </button>`
+                    <button class="action-btn edit-btn" data-id="${inst.sessionId}" title="Edit Instance">
+                        <span class="btn-icon">✏️</span>
+                        <span class="btn-text">Edit</span>
+                    </button>
+                    ${inst.connected
+                ? `<button class="action-btn logout-btn" data-id="${inst.sessionId}" title="Logout">
+                            <span class="btn-icon">🚪</span>
+                            <span class="btn-text">Logout</span>
+                           </button>`
+                : `<button class="action-btn showqr-btn" data-id="${inst.sessionId}" title="Show QR Code">
+                            <span class="btn-icon">📱</span>
+                            <span class="btn-text">Show QR</span>
+                           </button>`
             }
-                            <button class="dropdown-item danger delete-btn" data-id="${inst.sessionId}">
-                                <span>🗑️</span> Delete
-                            </button>
-                        </div>
-                    </div>
+                    <button class="action-btn danger delete-btn" data-id="${inst.sessionId}" title="Delete Instance">
+                        <span class="btn-icon">🗑️</span>
+                        <span class="btn-text">Delete</span>
+                    </button>
                 </div>
             </div>
         `).join('');
 
         // Attach event listeners
-        this.attachDropdownListeners();
         this.attachActionListeners();
-    }
-
-    attachDropdownListeners() {
-        // Toggle dropdown menus
-        this.container.querySelectorAll('.menu-trigger').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const menu = btn.nextElementSibling;
-
-                // Close other menus
-                this.container.querySelectorAll('.dropdown-menu').forEach(m => {
-                    if (m !== menu) m.classList.remove('show');
-                });
-
-                menu.classList.toggle('show');
-            });
-        });
-
-        // Close dropdowns when clicking outside
-        document.addEventListener('click', () => {
-            this.container.querySelectorAll('.dropdown-menu').forEach(m => {
-                m.classList.remove('show');
-            });
-        });
     }
 
     attachActionListeners() {

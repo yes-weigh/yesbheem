@@ -183,6 +183,46 @@
         gap: 8px;
     }
 
+    /* Action Button Styles */
+    .action-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        background: transparent;
+        border: 1px solid var(--border-light);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        color: var(--text-main);
+        transition: all 0.2s;
+        flex: 1;
+        justify-content: center;
+    }
+
+    .action-btn:hover {
+        background: var(--bg-hover);
+        border-color: var(--primary);
+        transform: translateY(-1px);
+    }
+
+    .action-btn.danger {
+        color: #ef4444;
+    }
+
+    .action-btn.danger:hover {
+        background: #fee2e2;
+        border-color: #ef4444;
+    }
+
+    .action-btn .btn-icon {
+        font-size: 1rem;
+    }
+
+    .action-btn .btn-text {
+        font-weight: 500;
+    }
+
     .primary-btn {
         background: var(--primary);
         color: white;
