@@ -564,20 +564,26 @@ class InstanceManager {
     }
 
     async deleteInstance(sessionId) {
-        if (!confirm(`Are you sure you want to delete instance ${sessionId}? This cannot be undone.`)) return;
+        if (!confirm('⚠️ PERMANENT DELETE\n\nThis will delete:\n• Instance metadata\n• WhatsApp session\n• All associated data\n\nThis action cannot be undone. Continue?')) return;
 
         try {
-            // 1. Delete from Backend
-            await fetch(`${this.apiBase}/session/${sessionId}`, { method: 'DELETE' }); // Best effort
-
-            // 2. Delete from Firestore
+            // 1. Delete from Firestore
             await deleteDoc(doc(db, "whatsapp_instances", sessionId));
 
-            this.fetchInstances(); // Refresh
+            // 2. Delete from backend (session + data)
+            const response = await fetch(`${this.apiBase}/delete/${sessionId}`, {
+                method: 'DELETE'
+            });
 
+            if (!response.ok) {
+                throw new Error('Backend deletion failed');
+            }
+
+            import('./utils/toast.js').then(m => m.Toast.success('Instance deleted permanently'));
+            this.fetchInstances();
         } catch (e) {
-            console.error(e);
-            alert('Error deleting instance');
+            console.error('Error deleting instance:', e);
+            alert('Failed to delete instance completely. Some data may remain.');
         }
     }
 
