@@ -90,7 +90,7 @@
 <style>
     .instance-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
         gap: 1rem;
         padding: 0.5rem 0;
     }
@@ -104,6 +104,7 @@
         flex-direction: column;
         gap: 0.5rem;
         transition: all 0.2s;
+        min-width: 320px;
     }
 
     .instance-card:hover {
@@ -175,12 +176,13 @@
 
     .instance-actions {
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
         align-items: center;
-        margin-top: 0.5rem;
-        padding-top: 0.5rem;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
         border-top: 1px solid var(--border-light);
-        gap: 8px;
+        gap: 6px;
+        flex-wrap: nowrap;
     }
 
     /* Action Button Styles */
@@ -188,16 +190,18 @@
         display: flex;
         align-items: center;
         gap: 4px;
-        padding: 6px 12px;
+        padding: 8px 10px;
         background: transparent;
         border: 1px solid var(--border-light);
         border-radius: 6px;
         cursor: pointer;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         color: var(--text-main);
         transition: all 0.2s;
         flex: 1;
         justify-content: center;
+        white-space: nowrap;
+        min-width: 0;
     }
 
     .action-btn:hover {
@@ -217,10 +221,13 @@
 
     .action-btn .btn-icon {
         font-size: 1rem;
+        flex-shrink: 0;
     }
 
     .action-btn .btn-text {
         font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .primary-btn {
