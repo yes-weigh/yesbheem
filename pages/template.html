@@ -513,8 +513,7 @@
         align-items: center;
         justify-content: center;
         z-index: 1000;
-        opacity: 0;
-        animation: fadeIn 0.2s forwards;
+        /* Removed opacity: 0 and animation to prevent visibility issues */
     }
 
     .modal-overlay.hidden {
@@ -528,10 +527,10 @@
         width: 400px;
         max-width: 90%;
         box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        transform: scale(0.95);
-        animation: scaleIn 0.2s forwards;
+        /* Removed transform/animation */
     }
 
+    /* Animation classes if needed in future, but simplified for now */
     @keyframes fadeIn {
         to {
             opacity: 1;
