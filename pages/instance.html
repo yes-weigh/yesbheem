@@ -610,6 +610,16 @@
         justify-content: center;
         transition: all 0.2s;
         color: var(--text-main);
+        opacity: 1 !important;
+        /* Override settings.css rules */
+    }
+
+    /* specific overrides for classes shared with settings.css */
+    .table-btn.edit-btn,
+    .table-btn.delete-btn {
+        opacity: 1 !important;
+        margin-right: 0;
+        /* settings.css might add margin */
     }
 
     .table-btn:hover {
@@ -1301,4 +1311,4 @@
     }
 </style>
 
-<script type="module" src="js/instance_manager.js?v=17"></script>
+<script type="module" src="js/instance_manager.js?v=18"></script>
