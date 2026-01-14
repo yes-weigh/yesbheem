@@ -218,7 +218,7 @@ class InstanceManager {
                     ${inst.connected
                 ? `<button class="action-btn logout-btn" data-id="${inst.sessionId}" title="Logout">
                             <span class="btn-icon">🚪</span>
-                            <span class="btn-text">Logout</span>
+                            <span class="btn-text">Disconnect</span>
                            </button>`
                 : `<button class="action-btn showqr-btn" data-id="${inst.sessionId}" title="Show QR Code">
                             <span class="btn-icon">📱</span>
@@ -360,22 +360,22 @@ class InstanceManager {
     /* --- LOGOUT METHOD --- */
 
     async logoutInstance(sessionId) {
-        if (!confirm('Are you sure you want to logout this instance?\n\nThis will disconnect the WhatsApp session.')) return;
+        if (!confirm('Disconnect this WhatsApp session?\n\nYou can reconnect later by scanning the QR code.')) return;
 
         try {
-            const response = await fetch(`${this.apiBase}/logout/${sessionId}`, {
+            const response = await fetch(`${this.apiBase}/disconnect/${sessionId}`, {
                 method: 'POST'
             });
 
             if (response.ok) {
-                import('./utils/toast.js').then(m => m.Toast.success('Instance logged out'));
+                import('./utils/toast.js').then(m => m.Toast.success('Instance disconnected successfully'));
                 this.fetchInstances();
             } else {
-                throw new Error('Logout failed');
+                throw new Error('Disconnect failed');
             }
         } catch (e) {
-            console.error('Error logging out:', e);
-            alert('Failed to logout instance');
+            console.error('Error disconnecting:', e);
+            alert('Failed to disconnect instance');
         }
     }
 
