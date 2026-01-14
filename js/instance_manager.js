@@ -391,7 +391,7 @@ class InstanceManager {
             const data = await response.json();
 
             if (data.qr) {
-                this.displayQR(data.qr);
+                this.renderQR(data.qr);
                 this.startPolling(sessionId);
             } else {
                 this.qrContainer.innerHTML = '<p class="text-muted">QR code not available. Instance may already be connected.</p>';
