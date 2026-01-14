@@ -27,8 +27,72 @@
             </div>
         </div>
 
+        <!-- Dashboard Stats Cards -->
+        <div class="stats-dashboard">
+            <div class="stat-card stat-total">
+                <div class="stat-number" id="stat-total">0</div>
+                <div class="stat-label">TOTAL</div>
+            </div>
+            <div class="stat-card stat-connected">
+                <div class="stat-number" id="stat-connected">0</div>
+                <div class="stat-label">CONNECTED</div>
+            </div>
+            <div class="stat-card stat-disconnected">
+                <div class="stat-number" id="stat-disconnected">0</div>
+                <div class="stat-label">DISCONNECTED</div>
+            </div>
+            <div class="stat-card stat-unmanaged">
+                <div class="stat-number" id="stat-unmanaged">0</div>
+                <div class="stat-label">UNMANAGED</div>
+            </div>
+        </div>
+
+        <!-- Controls Bar: Search, Filters, View Toggle -->
+        <div class="controls-bar">
+            <input type="text" id="search-instances" class="search-input" placeholder="🔍 Search instances...">
+
+            <select id="filter-kam" class="filter-select">
+                <option value="">All KAMs</option>
+            </select>
+
+            <select id="filter-status" class="filter-select">
+                <option value="">All Status</option>
+                <option value="connected">Connected</option>
+                <option value="disconnected">Disconnected</option>
+            </select>
+        </div>
+
+        <!-- Bulk Actions Bar (hidden by default) -->
+        <div class="bulk-actions" id="bulk-actions" style="display: none;">
+            <div class="bulk-info">
+                <span id="bulk-count">0</span> selected
+            </div>
+            <button id="btn-bulk-disconnect" class="bulk-btn">Disconnect Selected</button>
+            <button id="btn-bulk-delete" class="bulk-btn bulk-btn-danger">Delete Selected</button>
+            <button id="btn-bulk-clear" class="bulk-btn-secondary">Clear Selection</button>
+        </div>
+
         <div id="instance-list" class="instance-grid">
             <!-- Instances will be loaded here -->
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="pagination-controls" id="pagination-controls">
+            <div class="pagination-info">
+                Showing <span id="page-start">0</span>-<span id="page-end">0</span>
+                of <span id="page-total">0</span>
+            </div>
+
+            <div class="pagination-buttons">
+                <button id="btn-prev-page" class="pagination-btn" disabled>Prev</button>
+                <span id="page-indicator">Page 1 of 1</span>
+                <button id="btn-next-page" class="pagination-btn" disabled>Next</button>
+            </div>
+
+            <div class="pagination-actions">
+                <button id="btn-view-all" class="action-btn-secondary">View All</button>
+                <button id="btn-export-csv" class="action-btn-secondary">Export CSV</button>
+            </div>
         </div>
     </div>
 </div>
@@ -100,6 +164,402 @@
 </div>
 
 <style>
+    /* === DASHBOARD STATS CARDS === */
+    .stats-dashboard {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-left: 3px solid var(--primary);
+        border-radius: 8px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .stat-card.stat-total {
+        border-left-color: #3b82f6;
+        /* Blue */
+    }
+
+    .stat-card.stat-connected {
+        border-left-color: #10b981;
+        /* Green */
+    }
+
+    .stat-card.stat-disconnected {
+        border-left-color: #ef4444;
+        /* Red */
+    }
+
+    .stat-card.stat-unmanaged {
+        border-left-color: #f59e0b;
+        /* Orange */
+    }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--text-main);
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    /* === CONTROLS BAR === */
+    .controls-bar {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .search-input {
+        flex: 1;
+        min-width: 250px;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        color: var(--text-main);
+        font-size: 0.95rem;
+    }
+
+    .search-input::placeholder {
+        color: var(--text-muted);
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+
+    .filter-select {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        color: var(--text-main);
+        font-size: 0.95rem;
+        min-width: 150px;
+        cursor: pointer;
+    }
+
+    .filter-select:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+
+    /* === BULK ACTIONS BAR === */
+    .bulk-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .bulk-info {
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .bulk-btn,
+    .bulk-btn-secondary {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid var(--border-light);
+    }
+
+    .bulk-btn {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .bulk-btn:hover {
+        opacity: 0.9;
+    }
+
+    .bulk-btn-danger {
+        background: #ef4444;
+        border-color: #ef4444;
+    }
+
+    .bulk-btn-secondary {
+        background: transparent;
+        color: var(--text-main);
+    }
+
+    .bulk-btn-secondary:hover {
+        background: var(--bg-hover);
+    }
+
+    /* === PAGINATION CONTROLS === */
+    .pagination-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-radius: 8px;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .pagination-info {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .pagination-info span {
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .pagination-buttons {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .pagination-btn {
+        padding: 0.5rem 1rem;
+        background: var(--bg-main);
+        border: 1px solid var(--border-light);
+        border-radius: 6px;
+        color: var(--text-main);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+        background: var(--bg-hover);
+        border-color: var(--primary);
+    }
+
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    #page-indicator {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .pagination-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .action-btn-secondary {
+        padding: 0.5rem 1rem;
+        background: transparent;
+        border: 1px solid var(--border-light);
+        border-radius: 6px;
+        color: var(--text-main);
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .action-btn-secondary:hover {
+        background: var(--bg-hover);
+        border-color: var(--primary);
+    }
+
+    /* === TABLE STYLING (for List View) === */
+    .instance-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        background: var(--bg-panel);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .instance-table thead {
+        background: var(--bg-main);
+    }
+
+    .instance-table th {
+        padding: 1rem;
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid var(--border-light);
+    }
+
+    .instance-table th.sortable {
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+    }
+
+    .instance-table th.sortable:hover {
+        color: var(--text-main);
+    }
+
+    .instance-table th.sortable .sort-icon {
+        margin-left: 0.5rem;
+        opacity: 0.5;
+    }
+
+    .instance-table th.sortable .sort-icon::after {
+        content: '↕';
+    }
+
+    .instance-table th.sorted-asc .sort-icon {
+        opacity: 1;
+    }
+
+    .instance-table th.sorted-asc .sort-icon::after {
+        content: '↑';
+    }
+
+    .instance-table th.sorted-desc .sort-icon {
+        opacity: 1;
+    }
+
+    .instance-table th.sorted-desc .sort-icon::after {
+        content: '↓';
+    }
+
+    .instance-table tbody tr {
+        border-bottom: 1px solid var(--border-light);
+        transition: background 0.2s;
+    }
+
+    .instance-table tbody tr:nth-child(even) {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .instance-table tbody tr:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .instance-table td {
+        padding: 1rem;
+        color: var(--text-main);
+    }
+
+    .col-checkbox {
+        width: 40px;
+        text-align: center;
+    }
+
+    .col-serial {
+        width: 50px;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .col-profile {
+        width: 50px;
+    }
+
+    .table-dp {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .table-dp-placeholder {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--bg-main);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    .kam-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: #3b82f6;
+        color: white;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .unmanaged-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: rgba(245, 158, 11, 0.2);
+        color: #f59e0b;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .status-connected {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+    }
+
+    .status-disconnected {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+    }
+
+    .table-btn {
+        background: transparent;
+        border: 1px solid var(--border-light);
+        padding: 0.4rem 0.6rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+        margin-right: 0.25rem;
+    }
+
+    .table-btn:hover {
+        background: var(--bg-hover);
+        border-color: var(--primary);
+    }
+
+    .table-btn.delete-btn:hover {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: #ef4444;
+    }
+
     /* View Mode Toggle */
     .view-mode-toggle {
         display: flex;
@@ -773,4 +1233,4 @@
     }
 </style>
 
-<script type="module" src="js/instance_manager.js?v=12"></script>
+<script type="module" src="js/instance_manager.js?v=13"></script>

@@ -29,6 +29,21 @@ class InstanceManager {
         // View mode state
         this.viewMode = localStorage.getItem('instanceViewMode') || 'list';
         this.instances = []; // Cache instances for re-rendering
+        this.filteredInstances = []; // After search/filter
+
+        // Search & Filter state
+        this.searchQuery = '';
+        this.filterKAM = '';
+        this.filterStatus = '';
+
+        // Sorting state
+        this.sortKey = '';
+        this.sortDirection = 'asc';
+
+        // Pagination state
+        this.currentPage = 1;
+        this.pageSize = 10;
+        this.viewAll = false;
 
         if (!this.container || !this.qrModal || !this.setupModal || !this.editModal) {
             console.error(`InstanceManager ${this.VERSION}: Critical elements not found`);
@@ -42,8 +57,12 @@ class InstanceManager {
         console.log(`InstanceManager ${this.VERSION}: Calling init...`);
         this.setupEventListeners();
         this.setupViewToggle(); // Setup view mode toggle
+        this.setupFilters(); // Setup search and filters
+        this.setupPagination(); // Setup pagination controls
+        this.setupBulkActions(); // Setup bulk action buttons
         this.applyViewMode(); // Apply saved view mode
         await this.loadKAMs();
+        this.populateKAMFilter(); // Populate KAM dropdown
         this.renderLoading();
         this.fetchInstances();
     }
@@ -183,7 +202,9 @@ class InstanceManager {
                 }
             });
 
-            this.renderList(merged);
+            // Store instances and apply filters/pagination
+            this.instances = merged;
+            this.applyFiltersAndRender();
 
         } catch (error) {
             console.error('Error fetching instances:', error);
@@ -260,30 +281,94 @@ class InstanceManager {
     }
 
     renderListView(instances) {
-        // Compact table-like list view
-        this.container.innerHTML = instances.map(inst => `
-            <div class="instance-row">
-                <div class="row-dp">
-                    ${inst.profilePictureUrl
-                ? `<img src="${inst.profilePictureUrl}" class="row-dp-img" alt="DP" onerror="this.style.display='none'">`
-                : '<div class="row-dp-placeholder">👤</div>'}
-                </div>
-                <div class="row-name">${inst.name}</div>
-                <div class="row-phone">${inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : 'No Number'}</div>
-                <div class="row-whatsapp">${inst.whatsappName ? `📱 ${inst.whatsappName}` : '-'}</div>
-                <div class="row-kam">${inst.isManaged ? `👤 ${inst.kam}` : 'Unmanaged'}</div>
-                <div class="row-status">
-                    <div class="status-dot ${inst.connected ? 'connected' : 'disconnected'}"></div>
-                </div>
-                <div class="row-actions">
-                    <button class="row-btn edit-btn" data-id="${inst.sessionId}" title="Edit">✏️</button>
-                    ${inst.connected
-                ? `<button class="row-btn logout-btn" data-id="${inst.sessionId}" title="Disconnect">🚪</button>`
-                : `<button class="row-btn showqr-btn" data-id="${inst.sessionId}" title="Show QR">📱</button>`}
-                    <button class="row-btn delete-btn" data-id="${inst.sessionId}" title="Delete">🗑️</button>
-                </div>
-            </div>
-        `).join('');
+        // Professional table view
+        const tableHTML = `
+            <table class="instance-table">
+                <thead>
+                    <tr>
+                        <th class="col-checkbox">
+                            <input type="checkbox" id="select-all">
+                        </th>
+                        <th class="col-serial">#</th>
+                        <th class="col-profile"></th>
+                        <th class="sortable" data-sort="name">
+                            NAME<span class="sort-icon"></span>
+                        </th>
+                        <th class="sortable" data-sort="phoneNumber">
+                            PHONE<span class="sort-icon"></span>
+                        </th>
+                        <th class="sortable" data-sort="whatsappName">
+                            WHATSAPP<span class="sort-icon"></span>
+                        </th>
+                        <th class="sortable" data-sort="kam">
+                            KAM<span class="sort-icon"></span>
+                        </th>
+                        <th class="sortable" data-sort="status">
+                            STATUS<span class="sort-icon"></span>
+                        </th>
+                        <th>ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${instances.map((inst, index) => `
+                        <tr data-id="${inst.sessionId}">
+                            <td class="col-checkbox">
+                                <input type="checkbox" class="row-checkbox" value="${inst.sessionId}">
+                            </td>
+                            <td class="col-serial">${index + 1}</td>
+                            <td class="col-profile">
+                                ${inst.profilePictureUrl
+                ? `<img src="${inst.profilePictureUrl}" class="table-dp" alt="DP" onerror="this.style.display='none'">`
+                : '<div class="table-dp-placeholder">👤</div>'}
+                            </td>
+                            <td>${inst.name}</td>
+                            <td>${inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : 'No Number'}</td>
+                            <td>${inst.whatsappName || '-'}</td>
+                            <td>
+                                ${inst.isManaged
+                ? `<span class="kam-badge">${inst.kam}</span>`
+                : '<span class="unmanaged-badge">Unmanaged</span>'}
+                            </td>
+                            <td>
+                                <span class="status-badge ${inst.connected ? 'status-connected' : 'status-disconnected'}">
+                                    ${inst.connected ? 'Connected' : 'Disconnected'}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="table-btn edit-btn" data-id="${inst.sessionId}" title="Edit">✏️</button>
+                                ${inst.connected
+                ? `<button class="table-btn logout-btn" data-id="${inst.sessionId}" title="Disconnect">🚪</button>`
+                : `<button class="table-btn showqr-btn" data-id="${inst.sessionId}" title="Show QR">📱</button>`}
+                                <button class="table-btn delete-btn" data-id="${inst.sessionId}" title="Delete">🗑️</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+
+        this.container.innerHTML = tableHTML;
+
+        // Setup sorting after table is rendered
+        this.setupSorting();
+
+        // Setup select-all checkbox
+        const selectAll = document.getElementById('select-all');
+        if (selectAll) {
+            selectAll.addEventListener('change', (e) => {
+                document.querySelectorAll('.row-checkbox').forEach(cb => {
+                    cb.checked = e.target.checked;
+                });
+                this.updateBulkActionsUI();
+            });
+        }
+
+        // Setup individual checkboxes
+        document.querySelectorAll('.row-checkbox').forEach(cb => {
+            cb.addEventListener('change', () => {
+                this.updateBulkActionsUI();
+            });
+        });
     }
 
     renderDetailedView(instances) {
@@ -750,6 +835,288 @@ class InstanceManager {
                 this.switchView(view);
             });
         });
+    }
+
+    /* === STATS, SEARCH, FILTER, SORT, PAGINATION === */
+
+    updateStats(instances) {
+        const total = instances.length;
+        const connected = instances.filter(i => i.connected).length;
+        const disconnected = total - connected;
+        const unmanaged = instances.filter(i => !i.isManaged).length;
+
+        document.getElementById('stat-total').textContent = total;
+        document.getElementById('stat-connected').textContent = connected;
+        document.getElementById('stat-disconnected').textContent = disconnected;
+        document.getElementById('stat-unmanaged').textContent = unmanaged;
+    }
+
+    setupFilters() {
+        // Search
+        const searchInput = document.getElementById('search-instances');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.searchQuery = e.target.value.toLowerCase();
+                this.currentPage = 1; // Reset to first page
+                this.applyFiltersAndRender();
+            });
+        }
+
+        // KAM filter
+        const kamFilter = document.getElementById('filter-kam');
+        if (kamFilter) {
+            kamFilter.addEventListener('change', (e) => {
+                this.filterKAM = e.target.value;
+                this.currentPage = 1;
+                this.applyFiltersAndRender();
+            });
+        }
+
+        // Status filter
+        const statusFilter = document.getElementById('filter-status');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', (e) => {
+                this.filterStatus = e.target.value;
+                this.currentPage = 1;
+                this.applyFiltersAndRender();
+            });
+        }
+    }
+
+    populateKAMFilter() {
+        const kamFilter = document.getElementById('filter-kam');
+        if (!kamFilter || !this.kams) return;
+
+        // Clear existing options except "All KAMs"
+        kamFilter.innerHTML = '<option value="">All KAMs</option>';
+
+        // Add KAM options
+        this.kams.forEach(kam => {
+            const option = document.createElement('option');
+            option.value = kam;
+            option.textContent = kam;
+            kamFilter.appendChild(option);
+        });
+    }
+
+    applyFiltersAndRender() {
+        let filtered = [...this.instances];
+
+        // Apply search
+        if (this.searchQuery) {
+            filtered = filtered.filter(inst =>
+                inst.name.toLowerCase().includes(this.searchQuery) ||
+                inst.phoneNumber.includes(this.searchQuery) ||
+                (inst.whatsappName && inst.whatsappName.toLowerCase().includes(this.searchQuery))
+            );
+        }
+
+        // Apply KAM filter
+        if (this.filterKAM) {
+            filtered = filtered.filter(inst => inst.kam === this.filterKAM);
+        }
+
+        // Apply status filter
+        if (this.filterStatus === 'connected') {
+            filtered = filtered.filter(inst => inst.connected);
+        } else if (this.filterStatus === 'disconnected') {
+            filtered = filtered.filter(inst => !inst.connected);
+        }
+
+        // Apply sorting
+        filtered = this.sortInstances(filtered);
+
+        // Store filtered results
+        this.filteredInstances = filtered;
+
+        // Apply pagination
+        const paginated = this.paginateInstances(filtered);
+
+        // Render
+        this.renderList(paginated);
+
+        // Update stats with filtered data
+        this.updateStats(filtered);
+
+        // Update pagination UI
+        this.updatePaginationUI(filtered.length);
+    }
+
+    sortInstances(instances) {
+        if (!this.sortKey) return instances;
+
+        return [...instances].sort((a, b) => {
+            let aVal = a[this.sortKey];
+            let bVal = b[this.sortKey];
+
+            // Handle special cases
+            if (this.sortKey === 'status') {
+                aVal = a.connected ? 1 : 0;
+                bVal = b.connected ? 1 : 0;
+            }
+
+            // String comparison
+            if (typeof aVal === 'string') {
+                aVal = aVal.toLowerCase();
+                bVal = (bVal || '').toLowerCase();
+            }
+
+            const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+            return this.sortDirection === 'asc' ? comparison : -comparison;
+        });
+    }
+
+    setupSorting() {
+        // This will be called after table is rendered
+        document.querySelectorAll('.sortable').forEach(header => {
+            header.addEventListener('click', () => {
+                const sortKey = header.dataset.sort;
+
+                // Toggle sort direction
+                if (this.sortKey === sortKey) {
+                    this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    this.sortKey = sortKey;
+                    this.sortDirection = 'asc';
+                }
+
+                // Update UI
+                document.querySelectorAll('.sortable').forEach(h => {
+                    h.classList.remove('sorted-asc', 'sorted-desc');
+                });
+                header.classList.add(`sorted-${this.sortDirection}`);
+
+                // Re-render
+                this.applyFiltersAndRender();
+            });
+        });
+    }
+
+    paginateInstances(instances) {
+        if (this.viewAll) return instances;
+
+        const start = (this.currentPage - 1) * this.pageSize;
+        const end = start + this.pageSize;
+        return instances.slice(start, end);
+    }
+
+    updatePaginationUI(totalInstances) {
+        const totalPages = Math.ceil(totalInstances / this.pageSize) || 1;
+        const start = totalInstances === 0 ? 0 : (this.currentPage - 1) * this.pageSize + 1;
+        const end = Math.min(this.currentPage * this.pageSize, totalInstances);
+
+        document.getElementById('page-start').textContent = start;
+        document.getElementById('page-end').textContent = end;
+        document.getElementById('page-total').textContent = totalInstances;
+        document.getElementById('page-indicator').textContent = `Page ${this.currentPage} of ${totalPages}`;
+
+        const prevBtn = document.getElementById('btn-prev-page');
+        const nextBtn = document.getElementById('btn-next-page');
+
+        if (prevBtn) prevBtn.disabled = this.currentPage === 1;
+        if (nextBtn) nextBtn.disabled = this.currentPage === totalPages;
+    }
+
+    setupPagination() {
+        const prevBtn = document.getElementById('btn-prev-page');
+        const nextBtn = document.getElementById('btn-next-page');
+        const viewAllBtn = document.getElementById('btn-view-all');
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (this.currentPage > 1) {
+                    this.currentPage--;
+                    this.applyFiltersAndRender();
+                }
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                const totalPages = Math.ceil(this.filteredInstances.length / this.pageSize);
+                if (this.currentPage < totalPages) {
+                    this.currentPage++;
+                    this.applyFiltersAndRender();
+                }
+            });
+        }
+
+        if (viewAllBtn) {
+            viewAllBtn.addEventListener('click', () => {
+                this.viewAll = !this.viewAll;
+                viewAllBtn.textContent = this.viewAll ? 'Paginate' : 'View All';
+                this.applyFiltersAndRender();
+            });
+        }
+    }
+
+    setupBulkActions() {
+        const bulkDisconnectBtn = document.getElementById('btn-bulk-disconnect');
+        const bulkDeleteBtn = document.getElementById('btn-bulk-delete');
+        const bulkClearBtn = document.getElementById('btn-bulk-clear');
+
+        if (bulkDisconnectBtn) {
+            bulkDisconnectBtn.addEventListener('click', () => this.bulkDisconnect());
+        }
+
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.addEventListener('click', () => this.bulkDelete());
+        }
+
+        if (bulkClearBtn) {
+            bulkClearBtn.addEventListener('click', () => {
+                document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+                const selectAll = document.getElementById('select-all');
+                if (selectAll) selectAll.checked = false;
+                this.updateBulkActionsUI();
+            });
+        }
+    }
+
+    updateBulkActionsUI() {
+        const selected = this.getSelectedInstances();
+        const bulkActions = document.getElementById('bulk-actions');
+        const bulkCount = document.getElementById('bulk-count');
+
+        if (bulkActions && bulkCount) {
+            if (selected.length > 0) {
+                bulkActions.style.display = 'flex';
+                bulkCount.textContent = selected.length;
+            } else {
+                bulkActions.style.display = 'none';
+            }
+        }
+    }
+
+    getSelectedInstances() {
+        const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+        return Array.from(checkboxes).map(cb => cb.value);
+    }
+
+    async bulkDisconnect() {
+        const selected = this.getSelectedInstances();
+        if (selected.length === 0) return;
+
+        if (!confirm(`Disconnect ${selected.length} instance(s)?`)) return;
+
+        for (const sessionId of selected) {
+            await this.logoutInstance(sessionId);
+        }
+
+        await this.fetchInstances();
+    }
+
+    async bulkDelete() {
+        const selected = this.getSelectedInstances();
+        if (selected.length === 0) return;
+
+        if (!confirm(`Delete ${selected.length} instance(s)? This cannot be undone.`)) return;
+
+        for (const sessionId of selected) {
+            await this.deleteInstance(sessionId);
+        }
+
+        await this.fetchInstances();
     }
 }
 
