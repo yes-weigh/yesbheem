@@ -114,18 +114,41 @@
 
     .instance-header {
         display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 4px;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .instance-dp {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--border-light);
+        flex-shrink: 0;
+    }
+
+    .instance-dp-placeholder {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--bg-main);
+        border: 2px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
     }
 
     .instance-name {
-        font-weight: 600;
         font-size: 1rem;
+        font-weight: 600;
         color: var(--text-main);
-        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
     }
 
     .instance-status-dot {

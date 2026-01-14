@@ -154,6 +154,7 @@ class InstanceManager {
                     sessionId: meta.sessionId,
                     name: meta.name || 'Unnamed Instance',
                     whatsappName: meta.whatsappName || live?.name, // WhatsApp account name
+                    profilePictureUrl: meta.profilePictureUrl, // WhatsApp profile picture
                     kam: meta.kam || 'Unassigned',
                     phoneNumber: live?.phoneNumber || live?.id?.split(':')[0] || 'Unknown', // Fallback extraction
                     connected: live ? (live.connected ?? false) : false,
@@ -193,6 +194,9 @@ class InstanceManager {
         this.container.innerHTML = instances.map(inst => `
             <div class="instance-card">
                 <div class="instance-header">
+                    ${inst.profilePictureUrl
+                ? `<img src="${inst.profilePictureUrl}" class="instance-dp" alt="Profile" onerror="this.style.display='none'">`
+                : '<div class="instance-dp-placeholder">👤</div>'}
                     <div class="instance-name" title="${inst.name}">${inst.name}</div>
                     <div class="instance-status-dot ${inst.connected ? 'connected' : 'disconnected'}" title="${inst.connected ? 'Connected' : 'Disconnected'}"></div>
                 </div>
