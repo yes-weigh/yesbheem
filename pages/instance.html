@@ -7,6 +7,18 @@
                     <p class="subtitle">Connect and manage your WhatsApp Accounts</p>
                 </div>
                 <div class="page-actions">
+                    <!-- View Mode Toggle -->
+                    <div class="view-mode-toggle">
+                        <button class="view-btn active" data-view="list" title="List View">
+                            <span class="view-icon">☰</span>
+                        </button>
+                        <button class="view-btn" data-view="card" title="Card View">
+                            <span class="view-icon">▦</span>
+                        </button>
+                        <button class="view-btn" data-view="detailed" title="Detailed View">
+                            <span class="view-icon">▥</span>
+                        </button>
+                    </div>
                     <button id="btn-add-instance" class="primary-btn">
                         <span class="btn-icon">+</span>
                         Add Instance
@@ -88,6 +100,70 @@
 </div>
 
 <style>
+    /* View Mode Toggle */
+    .view-mode-toggle {
+        display: flex;
+        gap: 4px;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-radius: 6px;
+        padding: 4px;
+        margin-right: 12px;
+    }
+
+    .view-btn {
+        background: transparent;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--text-muted);
+        transition: all 0.2s;
+        font-size: 16px;
+    }
+
+    .view-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text-main);
+    }
+
+    .view-btn.active {
+        background: var(--primary);
+        color: white;
+    }
+
+    .view-icon {
+        display: block;
+        line-height: 1;
+    }
+
+    /* Container base styles */
+    .instance-container {
+        padding: 0.5rem 0;
+    }
+
+    /* === CARD VIEW (Default/Current) === */
+    .instance-container.card-view {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+    }
+
+    /* === LIST VIEW (Compact) === */
+    .instance-container.list-view {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+
+    /* === DETAILED VIEW (Rich Info) === */
+    .instance-container.detailed-view {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+        gap: 1.5rem;
+    }
+
+    /* Legacy grid class for backwards compatibility */
     .instance-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -289,6 +365,226 @@
         padding: 2rem;
     }
 
+    /* === LIST VIEW STYLES === */
+    .instance-row {
+        display: grid;
+        grid-template-columns: 40px 1fr 150px 150px 120px 60px 140px;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-light);
+        transition: background 0.2s;
+    }
+
+    .instance-row:nth-child(even) {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .instance-row:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .row-dp {
+        width: 32px;
+        height: 32px;
+    }
+
+    .row-dp-img {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .row-dp-placeholder {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--bg-main);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    .row-name {
+        font-weight: 500;
+        color: var(--text-main);
+    }
+
+    .row-phone,
+    .row-whatsapp,
+    .row-kam {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .row-status {
+        display: flex;
+        justify-content: center;
+    }
+
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+
+    .status-dot.connected {
+        background: #10b981;
+    }
+
+    .status-dot.disconnected {
+        background: #ef4444;
+    }
+
+    .row-actions {
+        display: flex;
+        gap: 6px;
+        justify-content: flex-end;
+    }
+
+    .row-btn {
+        background: transparent;
+        border: 1px solid var(--border-light);
+        padding: 6px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .row-btn:hover {
+        background: var(--bg-hover);
+        border-color: var(--primary);
+    }
+
+    .row-btn.delete-btn:hover {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: #ef4444;
+    }
+
+    /* === DETAILED VIEW STYLES === */
+    .instance-card-detailed {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .detailed-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .detailed-dp {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--border-light);
+    }
+
+    .detailed-dp-placeholder {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: var(--bg-main);
+        border: 2px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+    }
+
+    .detailed-info {
+        flex: 1;
+    }
+
+    .detailed-name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-main);
+        margin-bottom: 4px;
+    }
+
+    .detailed-phone {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+    }
+
+    .detailed-status-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .detailed-status-dot.connected {
+        background: #10b981;
+    }
+
+    .detailed-status-dot.disconnected {
+        background: #ef4444;
+    }
+
+    .detailed-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+        background: var(--bg-main);
+        border-radius: 8px;
+    }
+
+    .meta-item {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+
+    .meta-label {
+        font-weight: 500;
+        color: var(--text-main);
+    }
+
+    .detailed-actions {
+        display: flex;
+        gap: 8px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border-light);
+    }
+
+    .action-btn-detailed {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 16px;
+        background: transparent;
+        border: 1px solid var(--border-light);
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--text-main);
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .action-btn-detailed:hover {
+        background: var(--bg-hover);
+        border-color: var(--primary);
+    }
+
+    .action-btn-detailed.danger:hover {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: #ef4444;
+        color: #ef4444;
+    }
+
     /* Modal Styles */
     .modal-overlay {
         position: fixed;
@@ -477,4 +773,4 @@
     }
 </style>
 
-<script type="module" src="js/instance_manager.js?v=11"></script>
+<script type="module" src="js/instance_manager.js?v=12"></script>

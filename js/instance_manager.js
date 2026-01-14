@@ -26,6 +26,10 @@ class InstanceManager {
         this.pendingSessionId = null; // Store ID during setup process
         this.editingSessionId = null; // Store ID during edit
 
+        // View mode state
+        this.viewMode = localStorage.getItem('instanceViewMode') || 'list';
+        this.instances = []; // Cache instances for re-rendering
+
         if (!this.container || !this.qrModal || !this.setupModal || !this.editModal) {
             console.error(`InstanceManager ${this.VERSION}: Critical elements not found`);
             return;
@@ -37,6 +41,8 @@ class InstanceManager {
     async init() {
         console.log(`InstanceManager ${this.VERSION}: Calling init...`);
         this.setupEventListeners();
+        this.setupViewToggle(); // Setup view mode toggle
+        this.applyViewMode(); // Apply saved view mode
         await this.loadKAMs();
         this.renderLoading();
         this.fetchInstances();
@@ -186,10 +192,29 @@ class InstanceManager {
     }
 
     renderList(instances) {
+        // Cache instances for view switching
+        this.instances = instances;
+
         if (instances.length === 0) {
             this.container.innerHTML = '<div class="empty-state"><p class="text-muted">No instances found. Add one to get started.</p></div>';
             return;
         }
+
+        // Route to appropriate view renderer
+        if (this.viewMode === 'list') {
+            this.renderListView(instances);
+        } else if (this.viewMode === 'detailed') {
+            this.renderDetailedView(instances);
+        } else {
+            // Default to card view
+            this.renderCardView(instances);
+        }
+
+        // Attach event listeners
+        this.attachActionListeners();
+    }
+
+    renderCardView(instances) {
 
         this.container.innerHTML = instances.map(inst => `
             <div class="instance-card">
@@ -232,9 +257,71 @@ class InstanceManager {
                 </div>
             </div>
         `).join('');
+    }
 
-        // Attach event listeners
-        this.attachActionListeners();
+    renderListView(instances) {
+        // Compact table-like list view
+        this.container.innerHTML = instances.map(inst => `
+            <div class="instance-row">
+                <div class="row-dp">
+                    ${inst.profilePictureUrl
+                ? `<img src="${inst.profilePictureUrl}" class="row-dp-img" alt="DP" onerror="this.style.display='none'">`
+                : '<div class="row-dp-placeholder">👤</div>'}
+                </div>
+                <div class="row-name">${inst.name}</div>
+                <div class="row-phone">${inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : 'No Number'}</div>
+                <div class="row-whatsapp">${inst.whatsappName ? `📱 ${inst.whatsappName}` : '-'}</div>
+                <div class="row-kam">${inst.isManaged ? `👤 ${inst.kam}` : 'Unmanaged'}</div>
+                <div class="row-status">
+                    <div class="status-dot ${inst.connected ? 'connected' : 'disconnected'}"></div>
+                </div>
+                <div class="row-actions">
+                    <button class="row-btn edit-btn" data-id="${inst.sessionId}" title="Edit">✏️</button>
+                    ${inst.connected
+                ? `<button class="row-btn logout-btn" data-id="${inst.sessionId}" title="Disconnect">🚪</button>`
+                : `<button class="row-btn showqr-btn" data-id="${inst.sessionId}" title="Show QR">📱</button>`}
+                    <button class="row-btn delete-btn" data-id="${inst.sessionId}" title="Delete">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    renderDetailedView(instances) {
+        // Detailed cards with rich information
+        this.container.innerHTML = instances.map(inst => `
+            <div class="instance-card-detailed">
+                <div class="detailed-header">
+                    ${inst.profilePictureUrl
+                ? `<img src="${inst.profilePictureUrl}" class="detailed-dp" alt="Profile" onerror="this.style.display='none'">`
+                : '<div class="detailed-dp-placeholder">👤</div>'}
+                    <div class="detailed-info">
+                        <div class="detailed-name">${inst.name}</div>
+                        <div class="detailed-phone">${inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : 'No Number'}</div>
+                    </div>
+                    <div class="detailed-status-dot ${inst.connected ? 'connected' : 'disconnected'}"></div>
+                </div>
+                <div class="detailed-meta">
+                    ${inst.whatsappName ? `<div class="meta-item"><span class="meta-label">WhatsApp:</span> 📱 ${inst.whatsappName}</div>` : ''}
+                    ${inst.isManaged ? `<div class="meta-item"><span class="meta-label">KAM:</span> 👤 ${inst.kam}</div>` : '<div class="meta-item">Unmanaged</div>'}
+                    <div class="meta-item"><span class="meta-label">Status:</span> ${inst.connected ? '🟢 Connected' : '🔴 Disconnected'}</div>
+                </div>
+                <div class="detailed-actions">
+                    <button class="action-btn-detailed edit-btn" data-id="${inst.sessionId}">
+                        <span class="btn-icon">✏️</span> Edit
+                    </button>
+                    ${inst.connected
+                ? `<button class="action-btn-detailed logout-btn" data-id="${inst.sessionId}">
+                            <span class="btn-icon">🚪</span> Disconnect
+                           </button>`
+                : `<button class="action-btn-detailed showqr-btn" data-id="${inst.sessionId}">
+                            <span class="btn-icon">📱</span> Show QR
+                           </button>`}
+                    <button class="action-btn-detailed danger delete-btn" data-id="${inst.sessionId}">
+                        <span class="btn-icon">🗑️</span> Delete
+                    </button>
+                </div>
+            </div>
+        `).join('');
     }
 
     attachActionListeners() {
@@ -631,6 +718,38 @@ class InstanceManager {
             <img src="${qrUrl}" alt="Scan me" style="width:250px; height:250px; border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
             <p style="margin-top:1rem; font-size: 0.9rem" class="text-muted">Scan with WhatsApp on your phone</p>
         `;
+    }
+
+    /* === VIEW MODE METHODS === */
+
+    applyViewMode() {
+        // Update container class
+        this.container.className = `instance-container ${this.viewMode}-view`;
+
+        // Update active button
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === this.viewMode);
+        });
+    }
+
+    switchView(mode) {
+        this.viewMode = mode;
+        localStorage.setItem('instanceViewMode', mode);
+        this.applyViewMode();
+
+        // Re-render with cached instances
+        if (this.instances.length > 0) {
+            this.renderList(this.instances);
+        }
+    }
+
+    setupViewToggle() {
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const view = e.currentTarget.dataset.view;
+                this.switchView(view);
+            });
+        });
     }
 }
 
