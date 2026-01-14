@@ -530,6 +530,18 @@
         width: 50px;
     }
 
+    .col-actions {
+        width: 140px;
+        /* Fixed width for actions column */
+        text-align: right;
+    }
+
+    .table-actions-wrapper {
+        display: flex;
+        gap: 6px;
+        justify-content: flex-end;
+    }
+
     .table-dp {
         width: 32px;
         height: 32px;
@@ -587,19 +599,28 @@
     }
 
     .table-btn {
-        background: transparent;
+        background: rgba(255, 255, 255, 0.05);
         border: 1px solid var(--border-light);
-        padding: 0.4rem 0.6rem;
-        border-radius: 4px;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
         cursor: pointer;
-        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         transition: all 0.2s;
-        margin-right: 0.25rem;
+        color: var(--text-main);
     }
 
     .table-btn:hover {
         background: var(--bg-hover);
         border-color: var(--primary);
+        transform: translateY(-1px);
+    }
+
+    .table-btn .btn-icon {
+        font-size: 1.1rem;
+        line-height: 1;
     }
 
     .table-btn.delete-btn:hover {
@@ -1280,4 +1301,4 @@
     }
 </style>
 
-<script type="module" src="js/instance_manager.js?v=15"></script>
+<script type="module" src="js/instance_manager.js?v=16"></script>

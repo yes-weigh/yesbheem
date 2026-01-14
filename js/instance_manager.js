@@ -306,7 +306,7 @@ class InstanceManager {
                         <th class="sortable" data-sort="status">
                             STATUS<span class="sort-icon"></span>
                         </th>
-                        <th>ACTIONS</th>
+                        <th class="col-actions">ACTIONS</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -334,12 +334,22 @@ class InstanceManager {
                                     ${inst.connected ? 'Connected' : 'Disconnected'}
                                 </span>
                             </td>
-                            <td>
-                                <button class="table-btn edit-btn" data-id="${inst.sessionId}" title="Edit">✏️</button>
-                                ${inst.connected
-                ? `<button class="table-btn logout-btn" data-id="${inst.sessionId}" title="Disconnect">🚪</button>`
-                : `<button class="table-btn showqr-btn" data-id="${inst.sessionId}" title="Show QR">📱</button>`}
-                                <button class="table-btn delete-btn" data-id="${inst.sessionId}" title="Delete">🗑️</button>
+                            <td class="col-actions">
+                                <div class="table-actions-wrapper">
+                                    <button class="table-btn edit-btn" data-id="${inst.sessionId}" title="Edit">
+                                        <span class="btn-icon">✏️</span>
+                                    </button>
+                                    ${inst.connected
+                ? `<button class="table-btn logout-btn" data-id="${inst.sessionId}" title="Disconnect">
+                                            <span class="btn-icon">🚪</span>
+                                           </button>`
+                : `<button class="table-btn showqr-btn" data-id="${inst.sessionId}" title="Show QR">
+                                            <span class="btn-icon">📱</span>
+                                           </button>`}
+                                    <button class="table-btn delete-btn" data-id="${inst.sessionId}" title="Delete">
+                                        <span class="btn-icon">🗑️</span>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     `).join('')}
@@ -391,18 +401,18 @@ class InstanceManager {
                     <div class="meta-item"><span class="meta-label">Status:</span> ${inst.connected ? '🟢 Connected' : '🔴 Disconnected'}</div>
                 </div>
                 <div class="detailed-actions">
-                    <button class="action-btn-detailed edit-btn" data-id="${inst.sessionId}">
-                        <span class="btn-icon">✏️</span> Edit
+                    <button class="action-btn edit-btn" data-id="${inst.sessionId}">
+                        <span class="btn-icon">✏️</span> <span class="btn-text">Edit</span>
                     </button>
                     ${inst.connected
-                ? `<button class="action-btn-detailed logout-btn" data-id="${inst.sessionId}">
-                            <span class="btn-icon">🚪</span> Disconnect
+                ? `<button class="action-btn logout-btn" data-id="${inst.sessionId}">
+                            <span class="btn-icon">🚪</span> <span class="btn-text">Disconnect</span>
                            </button>`
-                : `<button class="action-btn-detailed showqr-btn" data-id="${inst.sessionId}">
-                            <span class="btn-icon">📱</span> Show QR
+                : `<button class="action-btn showqr-btn" data-id="${inst.sessionId}">
+                            <span class="btn-icon">📱</span> <span class="btn-text">Show QR</span>
                            </button>`}
-                    <button class="action-btn-detailed danger delete-btn" data-id="${inst.sessionId}">
-                        <span class="btn-icon">🗑️</span> Delete
+                    <button class="action-btn danger delete-btn" data-id="${inst.sessionId}">
+                        <span class="btn-icon">🗑️</span> <span class="btn-text">Delete</span>
                     </button>
                 </div>
             </div>
