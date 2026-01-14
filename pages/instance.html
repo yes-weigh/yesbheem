@@ -20,7 +20,7 @@
             </div>
         </div>
 
-        <!-- Unified Controls Bar: Add Instance | Search+Filters | View Toggle -->>
+        <!-- Unified Controls Bar: Add Instance | Search+Filters | View Toggle -->
         <div class="unified-controls-bar">
             <!-- Left: Add Instance Button -->
             <div class="controls-left">
@@ -163,61 +163,99 @@
 </div>
 
 <style>
-    /* === DASHBOARD STATS CARDS === */
+    /* === DASHBOARD STATS CARDS (DEALER STYLE) === */
     .stats-dashboard {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin-bottom: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
     }
 
     .stat-card {
-        background: var(--bg-panel);
-        border: 1px solid var(--border-light);
-        border-left: 3px solid var(--primary);
-        border-radius: 8px;
-        padding: 1.5rem;
+        background: #0f1523;
+        /* Darker background like dealer page */
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
         display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
+        align-items: center;
+        justify-content: space-between;
+        position: relative;
+        overflow: hidden;
+        min-height: 90px;
+    }
+
+    /* The "Pill" accent on the left */
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 6px;
+        height: 50%;
+        border-radius: 0 4px 4px 0;
+        box-shadow: 0 0 10px currentColor;
+        /* Glowing effect */
     }
 
     .stat-card.stat-total {
-        border-left-color: #3b82f6;
-        /* Blue */
+        color: #3b82f6;
     }
 
+    /* Blue */
     .stat-card.stat-connected {
-        border-left-color: #10b981;
-        /* Green */
+        color: #10b981;
     }
 
+    /* Green */
     .stat-card.stat-disconnected {
-        border-left-color: #ef4444;
-        /* Red */
+        color: #ef4444;
     }
 
+    /* Red */
     .stat-card.stat-unmanaged {
-        border-left-color: #f59e0b;
-        /* Orange */
+        color: #f59e0b;
+    }
+
+    /* Orange */
+
+    .stat-card.stat-total::before {
+        background-color: #3b82f6;
+    }
+
+    .stat-card.stat-connected::before {
+        background-color: #10b981;
+    }
+
+    .stat-card.stat-disconnected::before {
+        background-color: #ef4444;
+    }
+
+    .stat-card.stat-unmanaged::before {
+        background-color: #f59e0b;
     }
 
     .stat-number {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: var(--text-main);
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: #ffffff;
         line-height: 1;
+        margin-left: 0.5rem;
+        /* Space from the accent */
     }
 
     .stat-label {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--text-muted);
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #64748b;
+        /* Muted slate color */
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.1em;
+        text-align: right;
     }
 
-    /* === UNIFIED CONTROLS BAR === */
+    /* === UNIFIED CONTROLS BAR (DEALER STYLE) === */
     .unified-controls-bar {
         display: flex;
         justify-content: space-between;
@@ -225,6 +263,7 @@
         gap: 1rem;
         margin-bottom: 1.5rem;
         flex-wrap: wrap;
+        background: transparent;
     }
 
     .controls-left {
@@ -242,40 +281,29 @@
         flex-shrink: 0;
     }
 
-    .search-input {
-        flex: 1;
-        min-width: 200px;
-        background: var(--bg-panel);
-        border: 1px solid var(--border-light);
+    .search-input,
+    .filter-select {
+        background: #0f1523;
+        /* Darker background */
+        border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 6px;
-        padding: 0.75rem 1rem;
-        color: var(--text-main);
-        font-size: 0.95rem;
+        color: #e2e8f0;
+        font-size: 0.9rem;
+        padding: 0.6rem 1rem;
+        transition: all 0.2s;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     }
 
     .search-input::placeholder {
-        color: var(--text-muted);
+        color: #475569;
     }
 
-    .search-input:focus {
-        outline: none;
-        border-color: var(--primary);
-    }
-
-    .filter-select {
-        background: var(--bg-panel);
-        border: 1px solid var(--border-light);
-        border-radius: 6px;
-        padding: 0.75rem 1rem;
-        color: var(--text-main);
-        font-size: 0.95rem;
-        min-width: 150px;
-        cursor: pointer;
-    }
-
+    .search-input:focus,
     .filter-select:focus {
         outline: none;
-        border-color: var(--primary);
+        border-color: #3b82f6;
+        background: #1e293b;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
     }
 
     /* === BULK ACTIONS BAR === */
@@ -406,17 +434,20 @@
     }
 
     /* === TABLE STYLING (for List View) === */
+    /* === TABLE STYLING (for List View) === */
     .instance-table {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
-        background: var(--bg-panel);
+        background: transparent;
+        /* Transparent to let page bg show, or specific panel color */
         border-radius: 8px;
         overflow: hidden;
     }
 
     .instance-table thead {
-        background: var(--bg-main);
+        background: #0f1523;
+        /* Dark header like dealer page */
     }
 
     .instance-table th {
@@ -424,10 +455,11 @@
         text-align: left;
         font-size: 0.75rem;
         font-weight: 600;
-        color: var(--text-muted);
+        color: #94a3b8;
+        /* Lighter text for contrast */
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        border-bottom: 2px solid var(--border-light);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .instance-table th.sortable {
@@ -1248,4 +1280,4 @@
     }
 </style>
 
-<script type="module" src="js/instance_manager.js?v=14"></script>
+<script type="module" src="js/instance_manager.js?v=15"></script>
