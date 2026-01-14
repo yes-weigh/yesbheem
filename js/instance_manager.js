@@ -153,6 +153,7 @@ class InstanceManager {
                 merged.push({
                     sessionId: meta.sessionId,
                     name: meta.name || 'Unnamed Instance',
+                    whatsappName: meta.whatsappName || live?.name, // WhatsApp account name
                     kam: meta.kam || 'Unassigned',
                     phoneNumber: live?.phoneNumber || live?.id?.split(':')[0] || 'Unknown', // Fallback extraction
                     connected: live ? (live.connected ?? false) : false,
@@ -198,6 +199,7 @@ class InstanceManager {
 
                 <div class="instance-details">
                     <div>${inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : 'No Number'}</div>
+                    ${inst.whatsappName ? `<div class="whatsapp-name">📱 ${inst.whatsappName}</div>` : ''}
                     ${inst.isManaged
                 ? `<div class="instance-kam-pill">👤 ${inst.kam}</div>`
                 : `<div class="managed-badge">Unmanaged</div>`
