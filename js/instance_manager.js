@@ -153,8 +153,8 @@ class InstanceManager {
                 merged.push({
                     sessionId: meta.sessionId,
                     name: meta.name || 'Unnamed Instance',
-                    whatsappName: meta.whatsappName || live?.name, // WhatsApp account name
-                    profilePictureUrl: meta.profilePictureUrl, // WhatsApp profile picture
+                    whatsappName: meta.whatsappName || live?.whatsappName, // Use live.whatsappName from backend
+                    profilePictureUrl: meta.profilePictureUrl || live?.profilePictureUrl, // Use live.profilePictureUrl from backend
                     kam: meta.kam || 'Unassigned',
                     phoneNumber: live?.phoneNumber || live?.id?.split(':')[0] || 'Unknown', // Fallback extraction
                     connected: live ? (live.connected ?? false) : false,
