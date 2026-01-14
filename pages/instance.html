@@ -1,32 +1,5 @@
 <div class="page-container" id="instance-page">
     <div class="page-content">
-        <div class="page-header-simple">
-            <div class="page-title-bar">
-                <div class="page-title-content">
-                    <h1>Instance Management</h1>
-                    <p class="subtitle">Connect and manage your WhatsApp Accounts</p>
-                </div>
-                <div class="page-actions">
-                    <!-- View Mode Toggle -->
-                    <div class="view-mode-toggle">
-                        <button class="view-btn active" data-view="list" title="List View">
-                            <span class="view-icon">☰</span>
-                        </button>
-                        <button class="view-btn" data-view="card" title="Card View">
-                            <span class="view-icon">▦</span>
-                        </button>
-                        <button class="view-btn" data-view="detailed" title="Detailed View">
-                            <span class="view-icon">▥</span>
-                        </button>
-                    </div>
-                    <button id="btn-add-instance" class="primary-btn">
-                        <span class="btn-icon">+</span>
-                        Add Instance
-                    </button>
-                </div>
-            </div>
-        </div>
-
         <!-- Dashboard Stats Cards -->
         <div class="stats-dashboard">
             <div class="stat-card stat-total">
@@ -47,19 +20,45 @@
             </div>
         </div>
 
-        <!-- Controls Bar: Search, Filters, View Toggle -->
-        <div class="controls-bar">
-            <input type="text" id="search-instances" class="search-input" placeholder="🔍 Search instances...">
+        <!-- Unified Controls Bar: Add Instance | Search+Filters | View Toggle -->>
+        <div class="unified-controls-bar">
+            <!-- Left: Add Instance Button -->
+            <div class="controls-left">
+                <button id="btn-add-instance" class="primary-btn">
+                    <span class="btn-icon">+</span>
+                    Add Instance
+                </button>
+            </div>
 
-            <select id="filter-kam" class="filter-select">
-                <option value="">All KAMs</option>
-            </select>
+            <!-- Middle: Search and Filters -->
+            <div class="controls-middle">
+                <input type="text" id="search-instances" class="search-input" placeholder="🔍 Search instances...">
 
-            <select id="filter-status" class="filter-select">
-                <option value="">All Status</option>
-                <option value="connected">Connected</option>
-                <option value="disconnected">Disconnected</option>
-            </select>
+                <select id="filter-kam" class="filter-select">
+                    <option value="">All KAMs</option>
+                </select>
+
+                <select id="filter-status" class="filter-select">
+                    <option value="">All Status</option>
+                    <option value="connected">Connected</option>
+                    <option value="disconnected">Disconnected</option>
+                </select>
+            </div>
+
+            <!-- Right: View Mode Toggle -->
+            <div class="controls-right">
+                <div class="view-mode-toggle">
+                    <button class="view-btn active" data-view="list" title="List View">
+                        <span class="view-icon">☰</span>
+                    </button>
+                    <button class="view-btn" data-view="card" title="Card View">
+                        <span class="view-icon">▦</span>
+                    </button>
+                    <button class="view-btn" data-view="detailed" title="Detailed View">
+                        <span class="view-icon">▥</span>
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Bulk Actions Bar (hidden by default) -->
@@ -218,18 +217,34 @@
         letter-spacing: 0.05em;
     }
 
-    /* === CONTROLS BAR === */
-    .controls-bar {
+    /* === UNIFIED CONTROLS BAR === */
+    .unified-controls-bar {
         display: flex;
+        justify-content: space-between;
+        align-items: center;
         gap: 1rem;
         margin-bottom: 1.5rem;
         flex-wrap: wrap;
-        align-items: center;
+    }
+
+    .controls-left {
+        flex-shrink: 0;
+    }
+
+    .controls-middle {
+        display: flex;
+        gap: 1rem;
+        flex: 1;
+        min-width: 400px;
+    }
+
+    .controls-right {
+        flex-shrink: 0;
     }
 
     .search-input {
         flex: 1;
-        min-width: 250px;
+        min-width: 200px;
         background: var(--bg-panel);
         border: 1px solid var(--border-light);
         border-radius: 6px;
@@ -1233,4 +1248,4 @@
     }
 </style>
 
-<script type="module" src="js/instance_manager.js?v=13"></script>
+<script type="module" src="js/instance_manager.js?v=14"></script>
