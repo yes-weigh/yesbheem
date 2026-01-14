@@ -262,9 +262,9 @@ class InstanceManager {
                         <span class="btn-text">Edit</span>
                     </button>
                     ${inst.connected
-                ? `<button class="action-btn logout-btn" data-id="${inst.sessionId}" title="Disconnect">
+                ? `<button class="action-btn logout-btn" data-id="${inst.sessionId}" title="Logout">
                             <span class="btn-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></span>
-                            <span class="btn-text">Disconnect</span>
+                            <span class="btn-text">Logout</span>
                            </button>`
                 : `<button class="action-btn showqr-btn" data-id="${inst.sessionId}" title="Show QR">
                             <span class="btn-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></span>
@@ -340,7 +340,7 @@ class InstanceManager {
                                         <span class="btn-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></span>
                                     </button>
                                     ${inst.connected
-                ? `<button class="table-btn logout-btn" data-id="${inst.sessionId}" title="Disconnect">
+                ? `<button class="table-btn logout-btn" data-id="${inst.sessionId}" title="Logout">
                                             <span class="btn-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></span>
                                            </button>`
                 : `<button class="table-btn showqr-btn" data-id="${inst.sessionId}" title="Show QR">
@@ -408,7 +408,7 @@ class InstanceManager {
                     ${inst.connected
                 ? `<button class="action-btn logout-btn" data-id="${inst.sessionId}">
                             <span class="btn-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></span>
-                            <span class="btn-text">Disconnect</span>
+                            <span class="btn-text">Logout</span>
                            </button>`
                 : `<button class="action-btn showqr-btn" data-id="${inst.sessionId}">
                             <span class="btn-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></span>
