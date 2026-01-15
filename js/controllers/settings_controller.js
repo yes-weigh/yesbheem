@@ -911,19 +911,19 @@ export class SettingsController {
             if (groupsCount) groupsCount.innerText = `${this.instanceGroups.length} items`;
             if (deactivatedCount) deactivatedCount.innerText = `${this.deactivatedDealers.length} items`;
         }
-
-        escapeHtml(unsafe) {
-            if (!unsafe) return '';
-            return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-
     }
+    escapeHtml(unsafe) {
+        if (!unsafe) return '';
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+
+}
 
 // Attach to window for global access (needed for inline onclicks)
 window.SettingsController = SettingsController;
