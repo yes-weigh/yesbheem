@@ -18,16 +18,14 @@ class InstanceManager {
         // Setup Inputs
         this.nameInput = document.getElementById('new-instance-name');
         this.kamSelect = document.getElementById('new-instance-kam');
+        this.groupsContainer = document.getElementById('new-instance-groups-container');
+
 
         // Edit Inputs
         this.editNameInput = document.getElementById('edit-instance-name');
-        this.editNameInput = document.getElementById('edit-instance-name');
         this.editKamSelect = document.getElementById('edit-instance-kam');
-        this.editGroupsSelect = document.getElementById('edit-instance-groups');
+        this.editGroupsContainer = document.getElementById('edit-instance-groups-container');
 
-        // Setup Inputs
-        this.kamSelect = document.getElementById('new-instance-kam'); // Ensure this matches constructor
-        this.groupsSelect = document.getElementById('new-instance-groups');
 
         this.pollInterval = null;
         this.pendingSessionId = null; // Store ID during setup process
@@ -41,7 +39,6 @@ class InstanceManager {
         // Search & Filter state
         this.searchQuery = '';
         this.filterKAM = '';
-        this.searchQuery = '';
         this.filterKAM = 'all';
         this.filterGroup = '';
         this.filterStatus = '';
@@ -161,18 +158,7 @@ class InstanceManager {
                     }
                 });
 
-                // Populate setup/edit Group selects
-                [this.groupsSelect, this.editGroupsSelect].forEach(select => {
-                    if (select) {
-                        select.innerHTML = '';
-                        groups.forEach(group => {
-                            const option = document.createElement('option');
-                            option.value = group;
-                            option.textContent = group;
-                            select.appendChild(option);
-                        });
-                    }
-                });
+                this.availableGroups = groups || []; // Store for chip rendering
 
                 // Populate Group Filter Dropdown
                 const filterGroupSelect = document.getElementById('filter-group');
@@ -556,9 +542,7 @@ class InstanceManager {
 
                 // Select groups
                 const groups = data.groups || [];
-                Array.from(this.editGroupsSelect.options).forEach(opt => {
-                    opt.selected = groups.includes(opt.value);
-                });
+                this.renderGroupSelector(this.editGroupsContainer, groups);
 
             } else {
                 // If no metadata exists, try to get from backend
@@ -569,7 +553,7 @@ class InstanceManager {
                 if (session) {
                     this.editNameInput.value = session.sessionId;
                     this.editKamSelect.value = '';
-                    Array.from(this.editGroupsSelect.options).forEach(opt => opt.selected = false);
+                    this.renderGroupSelector(this.editGroupsContainer, []);
                 }
             }
         } catch (e) {
@@ -582,7 +566,7 @@ class InstanceManager {
     async saveEdit() {
         const name = this.editNameInput.value.trim();
         const kam = this.editKamSelect.value;
-        const groups = Array.from(this.editGroupsSelect.selectedOptions).map(opt => opt.value);
+        const groups = this.getSelectedGroups(this.editGroupsContainer);
 
         if (!name) {
             alert('Please enter an instance name');
@@ -618,7 +602,7 @@ class InstanceManager {
         this.editingSessionId = null;
         this.editNameInput.value = '';
         this.editKamSelect.value = '';
-        if (this.editGroupsSelect) this.editGroupsSelect.selectedIndex = -1;
+        if (this.editGroupsContainer) this.editGroupsContainer.innerHTML = '';
     }
 
     /* --- LOGOUT METHOD --- */
@@ -692,12 +676,38 @@ class InstanceManager {
         }
     }
 
+    /* --- GROUP CHIP SELECTOR HELPERS --- */
+    renderGroupSelector(container, selectedGroups = []) {
+        if (!container) return;
+        container.innerHTML = '';
+        const groups = this.availableGroups || [];
+        groups.forEach(group => {
+            const chip = document.createElement('div');
+            chip.className = 'group-chip-selector' + (selectedGroups.includes(group) ? ' selected' : '');
+            chip.textContent = group;
+            chip.onclick = () => {
+                chip.classList.toggle('selected');
+            };
+            container.appendChild(chip);
+        });
+    }
+
+    getSelectedGroups(container) {
+        if (!container) return [];
+        return Array.from(container.querySelectorAll('.group-chip-selector.selected')).map(el => el.textContent);
+    }
+
+    getGroupsFromSelect(isEdit = false) {
+        // Deprecated helper kept for safety, but new logic uses getSelectedGroups
+        return [];
+    }
+
     /* --- SETUP FLOW --- */
 
     openSetupModal(existingSessionId = null) {
         this.nameInput.value = '';
         this.kamSelect.value = '';
-        if (this.groupsSelect) Array.from(this.groupsSelect.options).forEach(opt => opt.selected = false);
+        this.renderGroupSelector(this.groupsContainer, []);
         this.claimingSessionId = existingSessionId; // Store content
 
         const title = this.setupModal.querySelector('h2');
@@ -722,7 +732,7 @@ class InstanceManager {
     async handleCreateSessionClick() {
         const name = this.nameInput.value.trim();
         const kam = this.kamSelect.value;
-        const groups = this.groupsSelect ? Array.from(this.groupsSelect.selectedOptions).map(opt => opt.value) : [];
+        const groups = this.getSelectedGroups(this.groupsContainer);
 
         if (!name) { alert('Please enter an Instance Name'); return; }
         if (!kam) { alert('Please select a Key Account Manager'); return; }
@@ -836,6 +846,8 @@ class InstanceManager {
         this.requestNewQR(sessionId);
     }
 
+    /* --- HELPERS --- */
+
     async deleteInstance(sessionId) {
         if (!confirm('⚠️ PERMANENT DELETE\n\nThis will delete:\n• Instance metadata\n• WhatsApp session\n• All associated data\n\nThis action cannot be undone. Continue?')) return;
 
@@ -859,8 +871,6 @@ class InstanceManager {
             alert('Failed to delete instance completely. Some data may remain.');
         }
     }
-
-    /* --- HELPERS --- */
 
     showElement(el) {
         el.classList.remove('hidden');
