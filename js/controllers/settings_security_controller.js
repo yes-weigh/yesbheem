@@ -3,13 +3,24 @@ import { SecurityDashboardView } from './security_dashboard_view.js';
 
 export class SettingsSecurityController {
     constructor() {
+        console.log("SettingsSecurityController: Initializing...");
         // Legacy properties might be removed later
-        this.dashboard = new SecurityDashboardView();
-        window.securityDashboard = this.dashboard; // Expose for HTML onclicks
+        try {
+            this.dashboard = new SecurityDashboardView();
+            window.securityDashboard = this.dashboard; // Expose for HTML onclicks
+            console.log("SettingsSecurityController: Dashboard View Linked.");
+        } catch (e) {
+            console.error("SettingsSecurityController: Failed to init dashboard view", e);
+        }
     }
 
     openDashboard() {
-        this.dashboard.mount();
+        console.log("SettingsSecurityController: Opening Dashboard...");
+        if (this.dashboard) {
+            this.dashboard.mount();
+        } else {
+            console.error("SettingsSecurityController: Dashboard view instance missing.");
+        }
     }
 
     async loadData() {
