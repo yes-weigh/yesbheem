@@ -935,8 +935,12 @@ class InstanceManager {
         }
 
         // Apply KAM filter
-        if (this.filterKAM) {
-            filtered = filtered.filter(inst => inst.kam === this.filterKAM);
+        if (this.filterKAM && this.filterKAM !== 'all') {
+            if (this.filterKAM === 'not_assigned') {
+                filtered = filtered.filter(inst => !inst.kam || inst.kam === 'Unassigned' || inst.kam === '-' || inst.kam === 'Not Assigned');
+            } else {
+                filtered = filtered.filter(inst => inst.kam === this.filterKAM);
+            }
         }
 
         // Apply status filter
