@@ -214,7 +214,7 @@ class InstanceManager {
 
     renderList(instances) {
         // Cache instances for view switching
-        this.instances = instances;
+
 
         if (instances.length === 0) {
             this.container.innerHTML = '<div class="empty-state"><p class="text-muted">No instances found. Add one to get started.</p></div>';
@@ -837,8 +837,8 @@ class InstanceManager {
         this.applyViewMode();
 
         // Re-render with cached instances
-        if (this.instances.length > 0) {
-            this.renderList(this.instances);
+        if (this.filteredInstances) {
+            this.renderList(this.filteredInstances);
         }
     }
 
