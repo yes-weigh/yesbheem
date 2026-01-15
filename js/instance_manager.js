@@ -1,5 +1,6 @@
 import { db } from './services/firebase_config.js';
 import { collection, doc, getDoc, setDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { KAMSelector } from './components/kam-selector.js';
 
 class InstanceManager {
     constructor() {
@@ -132,8 +133,10 @@ class InstanceManager {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 const kams = data.key_accounts || [];
+                this.kams = kams; // Store for filter
+                this.kamImages = data.key_account_images || {}; // Store images
 
-                // Populate both setup and edit KAM selects
+                // Populate both setup and edit KAM selects (Modals still use native select)
                 [this.kamSelect, this.editKamSelect].forEach(select => {
                     if (select) {
                         select.innerHTML = '<option value="">Select KAM...</option>';
@@ -876,7 +879,8 @@ class InstanceManager {
             });
         }
 
-        // KAM filter
+        // KAM filter - Now handled by KAMSelector component in populateKAMFilter
+        /* 
         const kamFilter = document.getElementById('filter-kam');
         if (kamFilter) {
             kamFilter.addEventListener('change', (e) => {
@@ -885,6 +889,7 @@ class InstanceManager {
                 this.applyFiltersAndRender();
             });
         }
+        */
 
         // Status filter
         const statusFilter = document.getElementById('filter-status');
@@ -898,19 +903,23 @@ class InstanceManager {
     }
 
     populateKAMFilter() {
-        const kamFilter = document.getElementById('filter-kam');
-        if (!kamFilter || !this.kams) return;
+        if (!this.kams) return;
 
-        // Clear existing options except "All KAMs"
-        kamFilter.innerHTML = '<option value="">All KAMs</option>';
+        // Initialize Custom KAM Selector
+        if (!this.kamSelector) {
+            this.kamSelector = new KAMSelector({
+                containerId: 'kam-selector-container',
+                getKAMImage: (kam) => this.kamImages ? this.kamImages[kam] : null,
+                onChange: (val) => {
+                    this.filterKAM = val;
+                    this.currentPage = 1;
+                    this.applyFiltersAndRender();
+                }
+            });
+        }
 
-        // Add KAM options
-        this.kams.forEach(kam => {
-            const option = document.createElement('option');
-            option.value = kam;
-            option.textContent = kam;
-            kamFilter.appendChild(option);
-        });
+        this.kamSelector.setKAMs(this.kams);
+        this.kamSelector.setValue(this.filterKAM);
     }
 
     applyFiltersAndRender() {

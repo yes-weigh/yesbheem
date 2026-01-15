@@ -34,9 +34,9 @@
             <div class="controls-middle">
                 <input type="text" id="search-instances" class="search-input" placeholder="🔍 Search instances...">
 
-                <select id="filter-kam" class="filter-select">
-                    <option value="">All KAMs</option>
-                </select>
+                <div class="filter-wrapper" id="kam-selector-container" style="min-width: 160px; position: relative;">
+                    <!-- Custom KAM Selector will be injected here -->
+                </div>
 
                 <select id="filter-status" class="filter-select">
                     <option value="">All Status</option>
@@ -1311,4 +1311,4 @@
     }
 </style>
 
-<script type="module" src="js/instance_manager.js?v=20"></script>
+<script type="module" src="js/instance_manager.js?v=21"></script>
