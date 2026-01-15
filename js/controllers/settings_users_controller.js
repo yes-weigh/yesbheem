@@ -23,6 +23,12 @@ export class SettingsUsersController {
             querySnapshot.forEach((doc) => {
                 this.users.push({ email: doc.id, ...doc.data() });
             });
+            // Sort: Admins first, then by email
+            this.users.sort((a, b) => {
+                if (a.role === 'admin' && b.role !== 'admin') return -1;
+                if (a.role !== 'admin' && b.role === 'admin') return 1;
+                return a.email.localeCompare(b.email);
+            });
             this.render();
             this.updateCount();
         } catch (error) {
@@ -49,31 +55,31 @@ export class SettingsUsersController {
         }
 
         list.innerHTML = this.users.map(user => `
-            <div class="list-item user-item" style="padding: 12px 16px; margin-bottom: 8px; border-radius: 12px; border: 1px solid var(--border-color);">
-                <div class="user-info" style="display: flex; align-items: center; gap: 16px; flex: 1;">
+            <div class="list-item user-item" style="padding: 8px 12px; margin-bottom: 4px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.02);">
+                <div class="user-info" style="display: flex; align-items: center; gap: 12px; flex: 1;">
                     ${this.renderAvatar(user)}
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <span class="user-email" style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">${this.escapeHtml(user.displayName || user.email)}</span>
-                        <div style="display: flex; gap: 10px; align-items: center; font-size: 0.8rem; color: var(--text-secondary);">
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <span class="user-email" style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary); line-height: 1.2;">${this.escapeHtml(user.displayName || user.email)}</span>
+                        <div style="display: flex; gap: 8px; align-items: center; font-size: 0.75rem; color: var(--text-secondary);">
                             <span>${this.escapeHtml(user.email)}</span>
-                            <span style="opacity: 0.5;">•</span>
+                            <span style="opacity: 0.4;">|</span>
                             <span>${this.escapeHtml(user.phone)}</span>
                         </div>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <span class="user-role badge ${user.role === 'admin' ? 'badge-admin' : 'badge-user'}">
-                        ${this.escapeHtml(user.role || 'user')}
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="user-role badge ${user.role === 'admin' ? 'badge-admin' : 'badge-user'}" style="font-size: 0.7rem; padding: 2px 8px;">
+                        ${this.escapeHtml(user.role || 'user').toUpperCase()}
                     </span>
-                    <div class="actions" style="display: flex; gap: 8px;">
-                         <button class="edit-btn" onclick="window.settingsUsersController.openEditUserModal('${this.escapeHtml(user.email)}')" title="Edit User">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <div class="actions" style="display: flex; gap: 4px;">
+                         <button class="edit-btn" onclick="window.settingsUsersController.openEditUserModal('${this.escapeHtml(user.email)}')" title="Edit User" style="padding: 4px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                             </svg>
                         </button>
-                        <button class="delete-btn" onclick="window.settingsUsersController.handleDeleteUser('${this.escapeHtml(user.email)}')" title="Revoke Access">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <button class="delete-btn" onclick="window.settingsUsersController.handleDeleteUser('${this.escapeHtml(user.email)}')" title="Revoke Access" style="padding: 4px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18"></line>
                                 <line x1="6" y1="6" x2="18" y2="18"></line>
                             </svg>
@@ -86,10 +92,10 @@ export class SettingsUsersController {
 
     renderAvatar(user) {
         if (user.photoURL) {
-            return `<img src="${this.escapeHtml(user.photoURL)}" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">`;
+            return `<img src="${this.escapeHtml(user.photoURL)}" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-color);">`;
         }
         const initial = (user.displayName || user.email).charAt(0).toUpperCase();
-        return `<div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), #7C3AED); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: bold; border: 2px solid rgba(255,255,255,0.1); box-shadow: 0 2px 5px rgba(0,0,0,0.2);">${initial}</div>`;
+        return `<div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), #7C3AED); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 2px 4px rgba(0,0,0,0.15);">${initial}</div>`;
     }
 
     async handleAddUser(email, phone, role) {
@@ -181,35 +187,35 @@ export class SettingsUsersController {
 
     openManageModal() {
         const modalHtml = `
-            <div class="modal" onclick="event.stopPropagation()" style="width: 800px; max-width: 95vw;">
+            <div class="modal" onclick="event.stopPropagation()" style="width: 1000px; max-width: 95vw; height: auto; max-height: 90vh; display: flex; flex-direction: column;">
                 <div class="modal-header">
                     <h3>Manage Authorized Users</h3>
                     <button class="close-modal-btn" onclick="document.getElementById('users-modal-overlay').remove()">&times;</button>
                 </div>
-                <div class="modal-body">
-                    <div class="add-user-form" style="margin-bottom: 24px; padding: 20px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 12px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                            <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-primary); font-weight: 600;">Add New User</h4>
+                <div class="modal-body" style="overflow-y: auto; flex: 1;">
+                    <div class="add-user-form" style="margin-bottom: 24px; padding: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h4 style="margin: 0; font-size: 0.9rem; color: var(--text-primary); font-weight: 600;">Add New User</h4>
                         </div>
-                        <div style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
-                            <div style="flex: 2; min-width: 200px; display: flex; flex-direction: column; gap: 6px;">
+                        <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                            <div style="flex: 2; min-width: 200px; display: flex; flex-direction: column; gap: 4px;">
                                 <label style="font-size: 0.75rem; color: var(--text-secondary); margin-left: 4px;">Email</label>
-                                <input type="email" id="new-user-email" class="modern-input" placeholder="user@example.com" style="background: rgba(0,0,0,0.3); border-color: var(--border-color);">
+                                <input type="email" id="new-user-email" class="modern-input" placeholder="user@example.com" style="background: rgba(0,0,0,0.3); border-color: var(--border-color); padding: 8px 12px;">
                             </div>
-                            <div style="flex: 1.5; min-width: 160px; display: flex; flex-direction: column; gap: 6px;">
+                            <div style="flex: 1.5; min-width: 160px; display: flex; flex-direction: column; gap: 4px;">
                                 <label style="font-size: 0.75rem; color: var(--text-secondary); margin-left: 4px;">Phone</label>
-                                <input type="text" id="new-user-phone" class="modern-input" placeholder="91XXXXXXXXXX" style="background: rgba(0,0,0,0.3); border-color: var(--border-color);">
+                                <input type="text" id="new-user-phone" class="modern-input" placeholder="91XXXXXXXXXX" style="background: rgba(0,0,0,0.3); border-color: var(--border-color); padding: 8px 12px;">
                             </div>
-                            <div style="flex: 1; min-width: 120px; display: flex; flex-direction: column; gap: 6px;">
+                            <div style="flex: 1; min-width: 120px; display: flex; flex-direction: column; gap: 4px;">
                                 <label style="font-size: 0.75rem; color: var(--text-secondary); margin-left: 4px;">Role</label>
-                                <select id="new-user-role" class="modern-input" style="background: rgba(0,0,0,0.3); border-color: var(--border-color);">
+                                <select id="new-user-role" class="modern-input" style="background: rgba(0,0,0,0.3); border-color: var(--border-color); padding: 8px 12px;">
                                     <option value="user">User</option>
                                     <option value="admin">Admin</option>
                                 </select>
                             </div>
-                            <div style="flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px;">
-                                <button id="add-user-btn" class="add-btn" style="width: 42px; height: 42px;" title="Authorize User">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <div style="flex: 0 0 auto; display: flex; flex-direction: column; gap: 4px;">
+                                <button id="add-user-btn" class="add-btn" style="width: 38px; height: 38px;" title="Authorize User">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <line x1="12" y1="5" x2="12" y2="19"></line>
                                         <line x1="5" y1="12" x2="19" y2="12"></line>
                                     </svg>
@@ -218,7 +224,7 @@ export class SettingsUsersController {
                         </div>
                     </div>
                     <div id="users-loading-spinner" style="display:none; text-align:center; padding:10px;">Loading...</div>
-                    <div class="data-list" id="authorized-users-list" style="padding-right: 8px;"></div>
+                    <div class="data-list" id="authorized-users-list" style="padding-right: 4px; display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 10px;"></div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn-cancel" onclick="document.getElementById('users-modal-overlay').remove()">Close</button>
