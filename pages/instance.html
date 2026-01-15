@@ -136,10 +136,11 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Instance Groups</label>
-                <select id="new-instance-groups" class="form-select" multiple size="3">
+                <div id="new-instance-groups-container" class="chips-input-container">
                     <!-- Groups populated by JS -->
-                </select>
-                <small class="text-muted" style="display:block; margin-top:4px;">Hold Ctrl to select multiple</small>
+                </div>
+                <div class="help-text" style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Click to
+                    toggle selection</div>
             </div>
             <div class="setup-actions">
                 <button id="btn-create-session" class="primary-btn">Next: Scan QR</button>
@@ -168,10 +169,11 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Instance Groups</label>
-                <select id="edit-instance-groups" class="form-select" multiple size="3">
+                <div id="edit-instance-groups-container" class="chips-input-container">
                     <!-- Groups populated by JS -->
-                </select>
-                <small class="text-muted" style="display:block; margin-top:4px;">Hold Ctrl to select multiple</small>
+                </div>
+                <div class="help-text" style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Click to
+                    toggle selection</div>
             </div>
         </div>
         <div class="setup-actions">
@@ -1356,6 +1358,51 @@
 
     .hidden {
         display: none !important;
+    }
+
+    /* === CHIP SELECTOR STYLES === */
+    .chips-input-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px;
+        border: 1px solid var(--border-light);
+        border-radius: 8px;
+        background: var(--bg-input);
+        min-height: 48px;
+        align-content: flex-start;
+    }
+
+    .group-chip-selector {
+        padding: 6px 14px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-light);
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        user-select: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .group-chip-selector:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--text-muted);
+        transform: translateY(-1px);
+    }
+
+    .group-chip-selector.selected {
+        background: rgba(59, 130, 246, 0.15);
+        border-color: #3b82f6;
+        color: #60a5fa;
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+    }
+
+    .group-chip-selector.selected:hover {
+        background: rgba(59, 130, 246, 0.25);
     }
 </style>
 

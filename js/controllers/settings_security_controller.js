@@ -1,17 +1,15 @@
 import { db } from '../services/firebase_config.js';
-import { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, deleteField, arrayRemove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { Toast } from '../utils/toast.js';
+import { SecurityDashboardView } from './security_dashboard_view.js';
 
 export class SettingsSecurityController {
     constructor() {
-        this.activeSessions = [];
-        this.auditLogs = [];
-        this.isLoading = false;
+        // Legacy properties might be removed later
+        this.dashboard = new SecurityDashboardView();
+        window.securityDashboard = this.dashboard; // Expose for HTML onclicks
     }
 
-    async openDashboard() {
-        this.renderModal();
-        await this.loadData();
+    openDashboard() {
+        this.dashboard.mount();
     }
 
     async loadData() {
