@@ -518,10 +518,12 @@ class InstanceManager {
             return;
         }
 
+        /*
         if (!kam) {
             alert('Please select a KAM');
             return;
         }
+        */
 
         try {
             await setDoc(doc(db, "whatsapp_instances", this.editingSessionId), {
