@@ -560,111 +560,111 @@ export class SettingsController {
 
         if (listName === 'keyAccounts') firestoreField = 'key_accounts';
         else if (listName === 'dealerStages') firestoreField = 'dealer_stages';
-        else if (listName === 'dealerStages') firestoreField = 'dealer_stages';
+
         else if (listName === 'dealerCategories') firestoreField = 'dealer_categories';
-    } else if(listName === 'instanceGroups') {
-    firestoreField = 'instance_groups';
-}
+        else if (listName === 'instanceGroups') {
+            firestoreField = 'instance_groups';
+        }
 
-if (!firestoreField) {
-    console.error(`Unknown list name: ${listName}`);
-    return;
-}
+        if (!firestoreField) {
+            console.error(`Unknown list name: ${listName}`);
+            return;
+        }
 
-try {
-    if (action === 'add') {
-        await updateDoc(docRef, {
-            [firestoreField]: arrayUnion(value)
-        });
-    } else {
-        await updateDoc(docRef, {
-            [firestoreField]: arrayRemove(value)
-        });
-    }
-} catch (error) {
-    console.error(`Error saving ${listName}:`, error);
-    // Revert optimistic update (simplified)
-    alert("Failed to save changes. Please refresh.");
-}
+        try {
+            if (action === 'add') {
+                await updateDoc(docRef, {
+                    [firestoreField]: arrayUnion(value)
+                });
+            } else {
+                await updateDoc(docRef, {
+                    [firestoreField]: arrayRemove(value)
+                });
+            }
+        } catch (error) {
+            console.error(`Error saving ${listName}:`, error);
+            // Revert optimistic update (simplified)
+            alert("Failed to save changes. Please refresh.");
+        }
     }
 
     /**
      * Restore Deactivated Dealer
      */
     async restoreDeactivatedDealer(name) {
-    if (!confirm(`Are you sure you want to restore "${name}"?`)) return;
+        if (!confirm(`Are you sure you want to restore "${name}"?`)) return;
 
-    try {
-        // Use DataLayer to handle logic and cache invalidation
-        if (window.dataManager && window.dataManager.dataLayer) {
-            await window.dataManager.dataLayer.reactivateDealers([name]);
-        } else {
-            throw new Error("DataLayer not initialized");
+        try {
+            // Use DataLayer to handle logic and cache invalidation
+            if (window.dataManager && window.dataManager.dataLayer) {
+                await window.dataManager.dataLayer.reactivateDealers([name]);
+            } else {
+                throw new Error("DataLayer not initialized");
+            }
+
+            // Update local view
+            this.deactivatedDealers = this.deactivatedDealers.filter(item => item !== name);
+            this.renderDeactivatedDealers();
+            this.updateBadges();
+
+            // Notify user
+            import('../utils/toast.js').then(module => {
+                module.Toast.success(`Restored "${name}"`);
+            }).catch(() => { });
+
+        } catch (error) {
+            console.error("Error restoring dealer:", error);
+            alert("Failed to restore dealer.");
+        }
+    }
+
+    openManageModal(type) {
+        let title = '';
+        let listId = '';
+        let inputId = '';
+        let btnId = '';
+        let renderMethod = '';
+        let placeholder = '';
+
+        if (type === 'keyAccounts') {
+            title = 'Manage Key Account Managers';
+            listId = 'key-accounts-list';
+            inputId = 'add-kam-input';
+            btnId = 'add-kam-btn';
+            renderMethod = 'renderKeyAccounts';
+            placeholder = 'Enter name...';
+        } else if (type === 'dealerStages') {
+            title = 'Manage Dealer Stages';
+            listId = 'dealer-stages-list';
+            inputId = 'add-stage-input';
+            btnId = 'add-stage-btn';
+            renderMethod = 'renderDealerStages';
+            placeholder = 'Enter stage name...';
+        } else if (type === 'dealerCategories') {
+            title = 'Manage Dealer Categories';
+            listId = 'dealer-categories-list';
+            inputId = 'add-category-input';
+            btnId = 'add-category-btn';
+            renderMethod = 'renderDealerCategories';
+            placeholder = 'Enter category name...';
+        } else if (type === 'deactivatedDealers') {
+            title = 'Deactivated Dealers';
+            listId = 'deactivated-dealers-list';
+            inputId = 'search-deactivated-input';
+            renderMethod = 'renderDeactivatedDealers';
+            placeholder = 'Search deactivated dealers...';
+            renderMethod = 'renderDeactivatedDealers';
+            placeholder = 'Search deactivated dealers...';
+        } else if (type === 'instanceGroups') {
+            title = 'Manage Instance Groups';
+            listId = 'instance-groups-list';
+            inputId = 'add-group-input';
+            btnId = 'add-group-btn';
+            renderMethod = 'renderInstanceGroups';
+            placeholder = 'Enter group name...';
         }
 
-        // Update local view
-        this.deactivatedDealers = this.deactivatedDealers.filter(item => item !== name);
-        this.renderDeactivatedDealers();
-        this.updateBadges();
-
-        // Notify user
-        import('../utils/toast.js').then(module => {
-            module.Toast.success(`Restored "${name}"`);
-        }).catch(() => { });
-
-    } catch (error) {
-        console.error("Error restoring dealer:", error);
-        alert("Failed to restore dealer.");
-    }
-}
-
-openManageModal(type) {
-    let title = '';
-    let listId = '';
-    let inputId = '';
-    let btnId = '';
-    let renderMethod = '';
-    let placeholder = '';
-
-    if (type === 'keyAccounts') {
-        title = 'Manage Key Account Managers';
-        listId = 'key-accounts-list';
-        inputId = 'add-kam-input';
-        btnId = 'add-kam-btn';
-        renderMethod = 'renderKeyAccounts';
-        placeholder = 'Enter name...';
-    } else if (type === 'dealerStages') {
-        title = 'Manage Dealer Stages';
-        listId = 'dealer-stages-list';
-        inputId = 'add-stage-input';
-        btnId = 'add-stage-btn';
-        renderMethod = 'renderDealerStages';
-        placeholder = 'Enter stage name...';
-    } else if (type === 'dealerCategories') {
-        title = 'Manage Dealer Categories';
-        listId = 'dealer-categories-list';
-        inputId = 'add-category-input';
-        btnId = 'add-category-btn';
-        renderMethod = 'renderDealerCategories';
-        placeholder = 'Enter category name...';
-    } else if (type === 'deactivatedDealers') {
-        title = 'Deactivated Dealers';
-        listId = 'deactivated-dealers-list';
-        inputId = 'search-deactivated-input';
-        renderMethod = 'renderDeactivatedDealers';
-        placeholder = 'Search deactivated dealers...';
-        renderMethod = 'renderDeactivatedDealers';
-        placeholder = 'Search deactivated dealers...';
-    } else if (type === 'instanceGroups') {
-        title = 'Manage Instance Groups';
-        listId = 'instance-groups-list';
-        inputId = 'add-group-input';
-        btnId = 'add-group-btn';
-        renderMethod = 'renderInstanceGroups';
-        placeholder = 'Enter group name...';
-    }
-
-    const modalHtml = `
+        const modalHtml = `
             <div class="modal" onclick="event.stopPropagation()">
                 <div class="modal-header">
                     <h3>${title}</h3>
@@ -687,68 +687,68 @@ openManageModal(type) {
             </div>
         `;
 
-    const overlay = document.createElement('div');
-    overlay.id = 'manage-modal-overlay';
-    overlay.className = 'modal-overlay active';
-    overlay.innerHTML = modalHtml;
-    overlay.onclick = () => overlay.remove();
-    document.body.appendChild(overlay);
+        const overlay = document.createElement('div');
+        overlay.id = 'manage-modal-overlay';
+        overlay.className = 'modal-overlay active';
+        overlay.innerHTML = modalHtml;
+        overlay.onclick = () => overlay.remove();
+        document.body.appendChild(overlay);
 
-    // Bind Elements to Class Instances
-    if (type === 'keyAccounts') {
-        this.keyAccountsList = document.getElementById(listId);
-        this.addKeyAccountInput = document.getElementById(inputId);
-        document.getElementById(btnId).onclick = () => this.handleAddItem('keyAccounts', this.addKeyAccountInput);
-        this.addKeyAccountInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('keyAccounts', this.addKeyAccountInput); };
-    } else if (type === 'dealerStages') {
-        this.dealerStagesList = document.getElementById(listId);
-        this.addDealerStageInput = document.getElementById(inputId);
-        document.getElementById(btnId).onclick = () => this.handleAddItem('dealerStages', this.addDealerStageInput);
-        this.addDealerStageInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('dealerStages', this.addDealerStageInput); };
-    } else if (type === 'dealerCategories') {
-        this.dealerCategoriesList = document.getElementById(listId);
-        this.addCategoryInput = document.getElementById(inputId);
-        document.getElementById(btnId).onclick = () => this.handleAddItem('dealerCategories', this.addCategoryInput);
-        this.addCategoryInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('dealerCategories', this.addCategoryInput); };
-    } else if (type === 'deactivatedDealers') {
-        this.deactivatedList = document.getElementById(listId);
-        const searchInput = document.getElementById(inputId);
-        searchInput.onkeyup = () => this.filterDeactivatedList(searchInput.value);
-    } else if (type === 'instanceGroups') {
-        this.instanceGroupsList = document.getElementById(listId);
-        this.addGroupInput = document.getElementById(inputId);
-        document.getElementById(btnId).onclick = () => this.handleAddItem('instanceGroups', this.addGroupInput);
-        this.addGroupInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('instanceGroups', this.addGroupInput); };
+        // Bind Elements to Class Instances
+        if (type === 'keyAccounts') {
+            this.keyAccountsList = document.getElementById(listId);
+            this.addKeyAccountInput = document.getElementById(inputId);
+            document.getElementById(btnId).onclick = () => this.handleAddItem('keyAccounts', this.addKeyAccountInput);
+            this.addKeyAccountInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('keyAccounts', this.addKeyAccountInput); };
+        } else if (type === 'dealerStages') {
+            this.dealerStagesList = document.getElementById(listId);
+            this.addDealerStageInput = document.getElementById(inputId);
+            document.getElementById(btnId).onclick = () => this.handleAddItem('dealerStages', this.addDealerStageInput);
+            this.addDealerStageInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('dealerStages', this.addDealerStageInput); };
+        } else if (type === 'dealerCategories') {
+            this.dealerCategoriesList = document.getElementById(listId);
+            this.addCategoryInput = document.getElementById(inputId);
+            document.getElementById(btnId).onclick = () => this.handleAddItem('dealerCategories', this.addCategoryInput);
+            this.addCategoryInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('dealerCategories', this.addCategoryInput); };
+        } else if (type === 'deactivatedDealers') {
+            this.deactivatedList = document.getElementById(listId);
+            const searchInput = document.getElementById(inputId);
+            searchInput.onkeyup = () => this.filterDeactivatedList(searchInput.value);
+        } else if (type === 'instanceGroups') {
+            this.instanceGroupsList = document.getElementById(listId);
+            this.addGroupInput = document.getElementById(inputId);
+            document.getElementById(btnId).onclick = () => this.handleAddItem('instanceGroups', this.addGroupInput);
+            this.addGroupInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('instanceGroups', this.addGroupInput); };
+        }
+
+        // Initial Render
+        this[renderMethod]();
+
+        // Focus Input
+        if (type === 'deactivatedDealers') document.getElementById(inputId)?.focus();
+        else document.getElementById(inputId)?.focus();
     }
 
-    // Initial Render
-    this[renderMethod]();
+    filterDeactivatedList(query) {
+        const lowerQuery = query.toLowerCase();
+        this.renderDeactivatedDealers(lowerQuery);
+    }
 
-    // Focus Input
-    if (type === 'deactivatedDealers') document.getElementById(inputId)?.focus();
-    else document.getElementById(inputId)?.focus();
-}
+    renderAll() {
+        this.renderKeyAccounts();
+        this.renderDealerStages();
+        this.renderDealerCategories();
+        this.renderDealerStages();
+        this.renderDealerCategories();
+        this.renderDeactivatedDealers();
+        this.renderInstanceGroups();
+    }
 
-filterDeactivatedList(query) {
-    const lowerQuery = query.toLowerCase();
-    this.renderDeactivatedDealers(lowerQuery);
-}
-
-renderAll() {
-    this.renderKeyAccounts();
-    this.renderDealerStages();
-    this.renderDealerCategories();
-    this.renderDealerStages();
-    this.renderDealerCategories();
-    this.renderDeactivatedDealers();
-    this.renderInstanceGroups();
-}
-
-renderDealerCategories() {
-    if (!this.dealerCategoriesList) return;
-    this.dealerCategoriesList.innerHTML = this.dealerCategories.map(cat => {
-        const hasImage = this.categoryImages && this.categoryImages[cat];
-        return `
+    renderDealerCategories() {
+        if (!this.dealerCategoriesList) return;
+        this.dealerCategoriesList.innerHTML = this.dealerCategories.map(cat => {
+            const hasImage = this.categoryImages && this.categoryImages[cat];
+            return `
             <div class="list-item">
                 <div style="display:flex; align-items:center; gap:10px;">
                     ${hasImage ? `<img src="${this.escapeHtml(this.categoryImages[cat])}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">` : ''}
@@ -775,13 +775,13 @@ renderDealerCategories() {
                 </div>
             </div>
         `}).join('');
-}
+    }
 
-renderKeyAccounts() {
-    if (!this.keyAccountsList) return;
-    this.keyAccountsList.innerHTML = this.keyAccounts.map(name => {
-        const hasImage = this.keyAccountImages && this.keyAccountImages[name];
-        return `
+    renderKeyAccounts() {
+        if (!this.keyAccountsList) return;
+        this.keyAccountsList.innerHTML = this.keyAccounts.map(name => {
+            const hasImage = this.keyAccountImages && this.keyAccountImages[name];
+            return `
             <div class="list-item">
                 <div style="display:flex; align-items:center; gap:10px;">
                     ${hasImage ? `<img src="${this.escapeHtml(this.keyAccountImages[name])}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">` : ''}
@@ -808,13 +808,13 @@ renderKeyAccounts() {
                 </div>
             </div>
         `}).join('');
-}
+    }
 
-renderDealerStages() {
-    if (!this.dealerStagesList) return;
-    this.dealerStagesList.innerHTML = this.dealerStages.map(stage => {
-        const hasImage = this.stageImages && this.stageImages[stage];
-        return `
+    renderDealerStages() {
+        if (!this.dealerStagesList) return;
+        this.dealerStagesList.innerHTML = this.dealerStages.map(stage => {
+            const hasImage = this.stageImages && this.stageImages[stage];
+            return `
             <div class="list-item">
                 <div style="display:flex; align-items:center; gap:10px;">
                     ${hasImage ? `<img src="${this.escapeHtml(this.stageImages[stage])}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">` : ''}
@@ -841,11 +841,11 @@ renderDealerStages() {
                 </div>
             </div>
         `}).join('');
-}
+    }
 
-renderInstanceGroups() {
-    if (!this.instanceGroupsList) return;
-    this.instanceGroupsList.innerHTML = this.instanceGroups.map(group => `
+    renderInstanceGroups() {
+        if (!this.instanceGroupsList) return;
+        this.instanceGroupsList.innerHTML = this.instanceGroups.map(group => `
             <div class="list-item">
                 <span class="item-text">${this.escapeHtml(group)}</span>
                 <div class="actions">
@@ -861,21 +861,21 @@ renderInstanceGroups() {
                 </div>
             </div>
         `).join('');
-}
-
-renderDeactivatedDealers(filterData = '') {
-    if (!this.deactivatedList) return;
-
-    const list = filterData
-        ? this.deactivatedDealers.filter(d => d.toLowerCase().includes(filterData))
-        : this.deactivatedDealers;
-
-    if (list.length === 0) {
-        this.deactivatedList.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 0.8rem; text-align: center;">No deactivated dealers found</div>';
-        return;
     }
 
-    this.deactivatedList.innerHTML = list.map(name => `
+    renderDeactivatedDealers(filterData = '') {
+        if (!this.deactivatedList) return;
+
+        const list = filterData
+            ? this.deactivatedDealers.filter(d => d.toLowerCase().includes(filterData))
+            : this.deactivatedDealers;
+
+        if (list.length === 0) {
+            this.deactivatedList.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 0.8rem; text-align: center;">No deactivated dealers found</div>';
+            return;
+        }
+
+        this.deactivatedList.innerHTML = list.map(name => `
             <div class="list-item">
                 <span class="item-text" style="color: #f87171;">${this.escapeHtml(name)}</span>
                 <button class="delete-btn" title="Restore Dealer" onclick="window.settingsController.restoreDeactivatedDealer('${this.escapeHtml(name)}')">
@@ -886,48 +886,48 @@ renderDeactivatedDealers(filterData = '') {
                 </button>
             </div>
         `).join('');
-}
-
-setLoading(loading) {
-    this.isLoading = loading;
-    // Optional: show/hide generic loader
-}
-
-updateBadges() {
-    // Update Key Accounts badge
-    const kamBadge = document.getElementById('kam-count');
-    if (kamBadge) {
-        const count = this.keyAccounts.length;
-        kamBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
     }
 
-    // Update Dealer Stages badge
-    const stagesBadge = document.getElementById('stages-count');
-    if (stagesBadge) {
-        const count = this.dealerStages.length;
-        stagesBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
-        const kamCount = document.getElementById('kam-count');
-        const stagesCount = document.getElementById('stages-count');
-        const categoriesCount = document.getElementById('categories-count');
-        const deactivatedCount = document.getElementById('deactivated-count');
-        const groupsCount = document.getElementById('groups-count');
-
-        if (kamCount) kamCount.innerText = `${this.keyAccounts.length} items`;
-        if (stagesCount) stagesCount.innerText = `${this.dealerStages.length} items`;
-        if (categoriesCount) categoriesCount.innerText = `${this.dealerCategories.length} items`;
-        if (groupsCount) groupsCount.innerText = `${this.instanceGroups.length} items`;
-        if (deactivatedCount) deactivatedCount.innerText = `${this.deactivatedDealers.length} items`;
+    setLoading(loading) {
+        this.isLoading = loading;
+        // Optional: show/hide generic loader
     }
-}
-escapeHtml(unsafe) {
-    if (!unsafe) return '';
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
+
+    updateBadges() {
+        // Update Key Accounts badge
+        const kamBadge = document.getElementById('kam-count');
+        if (kamBadge) {
+            const count = this.keyAccounts.length;
+            kamBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+        }
+
+        // Update Dealer Stages badge
+        const stagesBadge = document.getElementById('stages-count');
+        if (stagesBadge) {
+            const count = this.dealerStages.length;
+            stagesBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+            const kamCount = document.getElementById('kam-count');
+            const stagesCount = document.getElementById('stages-count');
+            const categoriesCount = document.getElementById('categories-count');
+            const deactivatedCount = document.getElementById('deactivated-count');
+            const groupsCount = document.getElementById('groups-count');
+
+            if (kamCount) kamCount.innerText = `${this.keyAccounts.length} items`;
+            if (stagesCount) stagesCount.innerText = `${this.dealerStages.length} items`;
+            if (categoriesCount) categoriesCount.innerText = `${this.dealerCategories.length} items`;
+            if (groupsCount) groupsCount.innerText = `${this.instanceGroups.length} items`;
+            if (deactivatedCount) deactivatedCount.innerText = `${this.deactivatedDealers.length} items`;
+        }
+    }
+    escapeHtml(unsafe) {
+        if (!unsafe) return '';
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
 
 
 }
