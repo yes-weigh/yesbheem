@@ -11,6 +11,7 @@ export class SettingsController {
         this.keyAccounts = [];
         this.dealerStages = [];
         this.dealerCategories = [];
+        this.instanceGroups = [];
         this.isLoading = false;
 
         // DOM Elements
@@ -18,6 +19,7 @@ export class SettingsController {
         this.addKeyAccountInput = null;
         this.addDealerStageInput = null;
         this.addCategoryInput = null;
+        this.addGroupInput = null;
 
         this.init();
     }
@@ -59,7 +61,10 @@ export class SettingsController {
                 const data = docSnap.data();
                 this.keyAccounts = data.key_accounts || [];
                 this.dealerStages = data.dealer_stages || [];
+                this.keyAccounts = data.key_accounts || [];
+                this.dealerStages = data.dealer_stages || [];
                 this.dealerCategories = data.dealer_categories || [];
+                this.instanceGroups = data.instance_groups || [];
                 this.keyAccounts = data.key_accounts || [];
                 this.dealerStages = data.dealer_stages || [];
                 this.dealerCategories = data.dealer_categories || [];
@@ -72,11 +77,15 @@ export class SettingsController {
                 this.keyAccounts = [];
                 this.dealerStages = ['Contacted', 'Interested', 'Negotiation', 'Closed'];
                 this.dealerCategories = [];
+                this.instanceGroups = [];
                 this.keyAccountImages = {}; // Map: Name -> URL
                 await setDoc(docRef, {
                     key_accounts: this.keyAccounts,
                     dealer_stages: this.dealerStages,
+                    key_accounts: this.keyAccounts,
+                    dealer_stages: this.dealerStages,
                     dealer_categories: this.dealerCategories,
+                    instance_groups: this.instanceGroups,
                     key_accounts: this.keyAccounts,
                     dealer_stages: this.dealerStages,
                     dealer_categories: this.dealerCategories,
@@ -352,6 +361,16 @@ export class SettingsController {
             this.dealerCategories.push(value);
             this.renderDealerCategories();
             this.updateBadges();
+            this.updateBadges();
+            await this.persistItem(listName, value, 'add');
+        } else if (listName === 'instanceGroups') {
+            if (this.instanceGroups.includes(value)) {
+                alert('This group already exists!');
+                return;
+            }
+            this.instanceGroups.push(value);
+            this.renderInstanceGroups();
+            this.updateBadges();
             await this.persistItem(listName, value, 'add');
         }
 
@@ -381,6 +400,10 @@ export class SettingsController {
         } else if (listName === 'dealerCategories') {
             this.dealerCategories = this.dealerCategories.filter(item => item !== value);
             this.renderDealerCategories();
+            await this.persistItem(listName, value, 'remove');
+        } else if (listName === 'instanceGroups') {
+            this.instanceGroups = this.instanceGroups.filter(item => item !== value);
+            this.renderInstanceGroups();
             await this.persistItem(listName, value, 'remove');
         }
 
@@ -427,24 +450,36 @@ export class SettingsController {
                     await this.persistRename(listName, oldValue, trimmedValue);
                     fieldName = 'categories';
                 }
+                await this.persistRename(listName, oldValue, trimmedValue);
+                fieldName = 'categories';
             }
-
-            // Cascade Rename to DataManager
-            if (window.dataManager && fieldName) {
-                await window.dataManager.bulkUpdateMetadata(fieldName, oldValue, trimmedValue);
+        } else if (listName === 'instanceGroups') {
+            if (this.instanceGroups.includes(trimmedValue)) { alert('Group already exists'); return; }
+            const idx = this.instanceGroups.indexOf(oldValue);
+            if (idx !== -1) {
+                this.instanceGroups[idx] = trimmedValue;
+                this.renderInstanceGroups();
+                await this.persistRename(listName, oldValue, trimmedValue);
+                // No cascade for now, or implement if needed
             }
-        });
-    }
+        }
 
-    showRenameModal(title, currentValue, onSave) {
-        // Remove existing if any
-        const existing = document.getElementById('rename-modal');
-        if (existing) existing.remove();
+        // Cascade Rename to DataManager
+        if (window.dataManager && fieldName) {
+            await window.dataManager.bulkUpdateMetadata(fieldName, oldValue, trimmedValue);
+        }
+    });
+}
 
-        // Create Modal
-        const modal = document.createElement('div');
-        modal.id = 'rename-modal';
-        modal.style.cssText = `
+showRenameModal(title, currentValue, onSave) {
+    // Remove existing if any
+    const existing = document.getElementById('rename-modal');
+    if (existing) existing.remove();
+
+    // Create Modal
+    const modal = document.createElement('div');
+    modal.id = 'rename-modal';
+    modal.style.cssText = `
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.6);
@@ -457,7 +492,7 @@ export class SettingsController {
             transition: opacity 0.2s;
         `;
 
-        modal.innerHTML = `
+    modal.innerHTML = `
             <div style="background: var(--bg-panel, #1e293b); padding: 24px; border-radius: 12px; width: 400px; max-width: 90%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid var(--border-light, rgba(255,255,255,0.1)); transform: scale(0.95); transition: transform 0.2s;">
                 <h3 style="margin: 0 0 16px 0; font-size: 1.1rem; color: var(--text-main, #f8fafc);">${title}</h3>
                 <input type="text" id="rename-input" value="${this.escapeHtml(currentValue)}" style="width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-light, rgba(255,255,255,0.1)); background: var(--bg-input, #0f172a); color: var(--text-main, #f8fafc); margin-bottom: 20px; font-size: 1rem; outline: none;">
@@ -468,153 +503,164 @@ export class SettingsController {
             </div>
         `;
 
-        document.body.appendChild(modal);
+    document.body.appendChild(modal);
 
-        // Animate in
-        requestAnimationFrame(() => {
-            modal.style.opacity = '1';
-            const content = modal.firstElementChild;
-            content.style.transform = 'scale(1)';
-        });
+    // Animate in
+    requestAnimationFrame(() => {
+        modal.style.opacity = '1';
+        const content = modal.firstElementChild;
+        content.style.transform = 'scale(1)';
+    });
 
-        const input = modal.querySelector('#rename-input');
-        const cancelBtn = modal.querySelector('#rename-cancel');
-        const saveBtn = modal.querySelector('#rename-save');
+    const input = modal.querySelector('#rename-input');
+    const cancelBtn = modal.querySelector('#rename-cancel');
+    const saveBtn = modal.querySelector('#rename-save');
 
-        input.focus();
-        input.select();
+    input.focus();
+    input.select();
 
-        const close = () => {
-            modal.style.opacity = '0';
-            modal.firstElementChild.style.transform = 'scale(0.95)';
-            setTimeout(() => modal.remove(), 200);
-        };
+    const close = () => {
+        modal.style.opacity = '0';
+        modal.firstElementChild.style.transform = 'scale(0.95)';
+        setTimeout(() => modal.remove(), 200);
+    };
 
-        const save = () => {
-            const val = input.value;
-            onSave(val);
-            close();
-        };
+    const save = () => {
+        const val = input.value;
+        onSave(val);
+        close();
+    };
 
-        cancelBtn.onclick = close;
-        saveBtn.onclick = save;
+    cancelBtn.onclick = close;
+    saveBtn.onclick = save;
 
-        input.onkeydown = (e) => {
-            if (e.key === 'Enter') save();
-            if (e.key === 'Escape') close();
-        };
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter') save();
+        if (e.key === 'Escape') close();
+    };
 
-        modal.onclick = (e) => {
-            if (e.target === modal) close();
-        };
-    }
+    modal.onclick = (e) => {
+        if (e.target === modal) close();
+    };
+}
 
     async persistRename(listName, oldValue, newValue) {
-        // Firestore Arrays don't support simple replace. We must Remove Old and Add New.
-        // Warning: This changes order if arrayUnion is used.
-        // If order matters, we might need to read-modify-write the whole array.
-        // For now, let's just do remove+add, assuming default alphabetic sort or irrelevant order.
+    // Firestore Arrays don't support simple replace. We must Remove Old and Add New.
+    // Warning: This changes order if arrayUnion is used.
+    // If order matters, we might need to read-modify-write the whole array.
+    // For now, let's just do remove+add, assuming default alphabetic sort or irrelevant order.
 
-        await this.persistItem(listName, oldValue, 'remove');
-        await this.persistItem(listName, newValue, 'add');
-    }
+    await this.persistItem(listName, oldValue, 'remove');
+    await this.persistItem(listName, newValue, 'add');
+}
 
     /**
      * Write changes to Firestore
      */
     async persistItem(listName, value, action) {
-        const docRef = doc(db, "settings", "general");
-        let firestoreField;
+    const docRef = doc(db, "settings", "general");
+    let firestoreField;
 
-        if (listName === 'keyAccounts') firestoreField = 'key_accounts';
-        else if (listName === 'dealerStages') firestoreField = 'dealer_stages';
-        else if (listName === 'dealerCategories') firestoreField = 'dealer_categories';
+    if (listName === 'keyAccounts') firestoreField = 'key_accounts';
+    else if (listName === 'dealerStages') firestoreField = 'dealer_stages';
+    else if (listName === 'dealerStages') firestoreField = 'dealer_stages';
+    else if (listName === 'dealerCategories') firestoreField = 'dealer_categories';
+    else if (listName === 'instanceGroups') firestoreField = 'instance_groups';
 
-        try {
-            if (action === 'add') {
-                await updateDoc(docRef, {
-                    [firestoreField]: arrayUnion(value)
-                });
-            } else {
-                await updateDoc(docRef, {
-                    [firestoreField]: arrayRemove(value)
-                });
-            }
-        } catch (error) {
-            console.error(`Error saving ${listName}:`, error);
-            // Revert optimistic update (simplified)
-            alert("Failed to save changes. Please refresh.");
+    try {
+        if (action === 'add') {
+            await updateDoc(docRef, {
+                [firestoreField]: arrayUnion(value)
+            });
+        } else {
+            await updateDoc(docRef, {
+                [firestoreField]: arrayRemove(value)
+            });
         }
+    } catch (error) {
+        console.error(`Error saving ${listName}:`, error);
+        // Revert optimistic update (simplified)
+        alert("Failed to save changes. Please refresh.");
     }
+}
 
     /**
      * Restore Deactivated Dealer
      */
     async restoreDeactivatedDealer(name) {
-        if (!confirm(`Are you sure you want to restore "${name}"?`)) return;
+    if (!confirm(`Are you sure you want to restore "${name}"?`)) return;
 
-        try {
-            // Use DataLayer to handle logic and cache invalidation
-            if (window.dataManager && window.dataManager.dataLayer) {
-                await window.dataManager.dataLayer.reactivateDealers([name]);
-            } else {
-                throw new Error("DataLayer not initialized");
-            }
-
-            // Update local view
-            this.deactivatedDealers = this.deactivatedDealers.filter(item => item !== name);
-            this.renderDeactivatedDealers();
-            this.updateBadges();
-
-            // Notify user
-            import('../utils/toast.js').then(module => {
-                module.Toast.success(`Restored "${name}"`);
-            }).catch(() => { });
-
-        } catch (error) {
-            console.error("Error restoring dealer:", error);
-            alert("Failed to restore dealer.");
+    try {
+        // Use DataLayer to handle logic and cache invalidation
+        if (window.dataManager && window.dataManager.dataLayer) {
+            await window.dataManager.dataLayer.reactivateDealers([name]);
+        } else {
+            throw new Error("DataLayer not initialized");
         }
+
+        // Update local view
+        this.deactivatedDealers = this.deactivatedDealers.filter(item => item !== name);
+        this.renderDeactivatedDealers();
+        this.updateBadges();
+
+        // Notify user
+        import('../utils/toast.js').then(module => {
+            module.Toast.success(`Restored "${name}"`);
+        }).catch(() => { });
+
+    } catch (error) {
+        console.error("Error restoring dealer:", error);
+        alert("Failed to restore dealer.");
+    }
+}
+
+openManageModal(type) {
+    let title = '';
+    let listId = '';
+    let inputId = '';
+    let btnId = '';
+    let renderMethod = '';
+    let placeholder = '';
+
+    if (type === 'keyAccounts') {
+        title = 'Manage Key Account Managers';
+        listId = 'key-accounts-list';
+        inputId = 'add-kam-input';
+        btnId = 'add-kam-btn';
+        renderMethod = 'renderKeyAccounts';
+        placeholder = 'Enter name...';
+    } else if (type === 'dealerStages') {
+        title = 'Manage Dealer Stages';
+        listId = 'dealer-stages-list';
+        inputId = 'add-stage-input';
+        btnId = 'add-stage-btn';
+        renderMethod = 'renderDealerStages';
+        placeholder = 'Enter stage name...';
+    } else if (type === 'dealerCategories') {
+        title = 'Manage Dealer Categories';
+        listId = 'dealer-categories-list';
+        inputId = 'add-category-input';
+        btnId = 'add-category-btn';
+        renderMethod = 'renderDealerCategories';
+        placeholder = 'Enter category name...';
+    } else if (type === 'deactivatedDealers') {
+        title = 'Deactivated Dealers';
+        listId = 'deactivated-dealers-list';
+        inputId = 'search-deactivated-input';
+        renderMethod = 'renderDeactivatedDealers';
+        placeholder = 'Search deactivated dealers...';
+        renderMethod = 'renderDeactivatedDealers';
+        placeholder = 'Search deactivated dealers...';
+    } else if (type === 'instanceGroups') {
+        title = 'Manage Instance Groups';
+        listId = 'instance-groups-list';
+        inputId = 'add-group-input';
+        btnId = 'add-group-btn';
+        renderMethod = 'renderInstanceGroups';
+        placeholder = 'Enter group name...';
     }
 
-    openManageModal(type) {
-        let title = '';
-        let listId = '';
-        let inputId = '';
-        let btnId = '';
-        let renderMethod = '';
-        let placeholder = '';
-
-        if (type === 'keyAccounts') {
-            title = 'Manage Key Account Managers';
-            listId = 'key-accounts-list';
-            inputId = 'add-kam-input';
-            btnId = 'add-kam-btn';
-            renderMethod = 'renderKeyAccounts';
-            placeholder = 'Enter name...';
-        } else if (type === 'dealerStages') {
-            title = 'Manage Dealer Stages';
-            listId = 'dealer-stages-list';
-            inputId = 'add-stage-input';
-            btnId = 'add-stage-btn';
-            renderMethod = 'renderDealerStages';
-            placeholder = 'Enter stage name...';
-        } else if (type === 'dealerCategories') {
-            title = 'Manage Dealer Categories';
-            listId = 'dealer-categories-list';
-            inputId = 'add-category-input';
-            btnId = 'add-category-btn';
-            renderMethod = 'renderDealerCategories';
-            placeholder = 'Enter category name...';
-        } else if (type === 'deactivatedDealers') {
-            title = 'Deactivated Dealers';
-            listId = 'deactivated-dealers-list';
-            inputId = 'search-deactivated-input';
-            renderMethod = 'renderDeactivatedDealers';
-            placeholder = 'Search deactivated dealers...';
-        }
-
-        const modalHtml = `
+    const modalHtml = `
             <div class="modal" onclick="event.stopPropagation()">
                 <div class="modal-header">
                     <h3>${title}</h3>
@@ -637,60 +683,68 @@ export class SettingsController {
             </div>
         `;
 
-        const overlay = document.createElement('div');
-        overlay.id = 'manage-modal-overlay';
-        overlay.className = 'modal-overlay active';
-        overlay.innerHTML = modalHtml;
-        overlay.onclick = () => overlay.remove();
-        document.body.appendChild(overlay);
+    const overlay = document.createElement('div');
+    overlay.id = 'manage-modal-overlay';
+    overlay.className = 'modal-overlay active';
+    overlay.innerHTML = modalHtml;
+    overlay.onclick = () => overlay.remove();
+    document.body.appendChild(overlay);
 
-        // Bind Elements to Class Instances
-        if (type === 'keyAccounts') {
-            this.keyAccountsList = document.getElementById(listId);
-            this.addKeyAccountInput = document.getElementById(inputId);
-            document.getElementById(btnId).onclick = () => this.handleAddItem('keyAccounts', this.addKeyAccountInput);
-            this.addKeyAccountInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('keyAccounts', this.addKeyAccountInput); };
-        } else if (type === 'dealerStages') {
-            this.dealerStagesList = document.getElementById(listId);
-            this.addDealerStageInput = document.getElementById(inputId);
-            document.getElementById(btnId).onclick = () => this.handleAddItem('dealerStages', this.addDealerStageInput);
-            this.addDealerStageInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('dealerStages', this.addDealerStageInput); };
-        } else if (type === 'dealerCategories') {
-            this.dealerCategoriesList = document.getElementById(listId);
-            this.addCategoryInput = document.getElementById(inputId);
-            document.getElementById(btnId).onclick = () => this.handleAddItem('dealerCategories', this.addCategoryInput);
-            this.addCategoryInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('dealerCategories', this.addCategoryInput); };
-        } else if (type === 'deactivatedDealers') {
-            this.deactivatedList = document.getElementById(listId);
-            const searchInput = document.getElementById(inputId);
-            searchInput.onkeyup = () => this.filterDeactivatedList(searchInput.value);
-        }
-
-        // Initial Render
-        this[renderMethod]();
-
-        // Focus Input
-        if (type === 'deactivatedDealers') document.getElementById(inputId)?.focus();
-        else document.getElementById(inputId)?.focus();
+    // Bind Elements to Class Instances
+    if (type === 'keyAccounts') {
+        this.keyAccountsList = document.getElementById(listId);
+        this.addKeyAccountInput = document.getElementById(inputId);
+        document.getElementById(btnId).onclick = () => this.handleAddItem('keyAccounts', this.addKeyAccountInput);
+        this.addKeyAccountInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('keyAccounts', this.addKeyAccountInput); };
+    } else if (type === 'dealerStages') {
+        this.dealerStagesList = document.getElementById(listId);
+        this.addDealerStageInput = document.getElementById(inputId);
+        document.getElementById(btnId).onclick = () => this.handleAddItem('dealerStages', this.addDealerStageInput);
+        this.addDealerStageInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('dealerStages', this.addDealerStageInput); };
+    } else if (type === 'dealerCategories') {
+        this.dealerCategoriesList = document.getElementById(listId);
+        this.addCategoryInput = document.getElementById(inputId);
+        document.getElementById(btnId).onclick = () => this.handleAddItem('dealerCategories', this.addCategoryInput);
+        this.addCategoryInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('dealerCategories', this.addCategoryInput); };
+    } else if (type === 'deactivatedDealers') {
+        this.deactivatedList = document.getElementById(listId);
+        const searchInput = document.getElementById(inputId);
+        searchInput.onkeyup = () => this.filterDeactivatedList(searchInput.value);
+    } else if (type === 'instanceGroups') {
+        this.instanceGroupsList = document.getElementById(listId);
+        this.addGroupInput = document.getElementById(inputId);
+        document.getElementById(btnId).onclick = () => this.handleAddItem('instanceGroups', this.addGroupInput);
+        this.addGroupInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('instanceGroups', this.addGroupInput); };
     }
 
-    filterDeactivatedList(query) {
-        const lowerQuery = query.toLowerCase();
-        this.renderDeactivatedDealers(lowerQuery);
-    }
+    // Initial Render
+    this[renderMethod]();
 
-    renderAll() {
-        this.renderKeyAccounts();
-        this.renderDealerStages();
-        this.renderDealerCategories();
-        this.renderDeactivatedDealers();
-    }
+    // Focus Input
+    if (type === 'deactivatedDealers') document.getElementById(inputId)?.focus();
+    else document.getElementById(inputId)?.focus();
+}
 
-    renderDealerCategories() {
-        if (!this.dealerCategoriesList) return;
-        this.dealerCategoriesList.innerHTML = this.dealerCategories.map(cat => {
-            const hasImage = this.categoryImages && this.categoryImages[cat];
-            return `
+filterDeactivatedList(query) {
+    const lowerQuery = query.toLowerCase();
+    this.renderDeactivatedDealers(lowerQuery);
+}
+
+renderAll() {
+    this.renderKeyAccounts();
+    this.renderDealerStages();
+    this.renderDealerCategories();
+    this.renderDealerStages();
+    this.renderDealerCategories();
+    this.renderDeactivatedDealers();
+    this.renderInstanceGroups();
+}
+
+renderDealerCategories() {
+    if (!this.dealerCategoriesList) return;
+    this.dealerCategoriesList.innerHTML = this.dealerCategories.map(cat => {
+        const hasImage = this.categoryImages && this.categoryImages[cat];
+        return `
             <div class="list-item">
                 <div style="display:flex; align-items:center; gap:10px;">
                     ${hasImage ? `<img src="${this.escapeHtml(this.categoryImages[cat])}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">` : ''}
@@ -717,13 +771,13 @@ export class SettingsController {
                 </div>
             </div>
         `}).join('');
-    }
+}
 
-    renderKeyAccounts() {
-        if (!this.keyAccountsList) return;
-        this.keyAccountsList.innerHTML = this.keyAccounts.map(name => {
-            const hasImage = this.keyAccountImages && this.keyAccountImages[name];
-            return `
+renderKeyAccounts() {
+    if (!this.keyAccountsList) return;
+    this.keyAccountsList.innerHTML = this.keyAccounts.map(name => {
+        const hasImage = this.keyAccountImages && this.keyAccountImages[name];
+        return `
             <div class="list-item">
                 <div style="display:flex; align-items:center; gap:10px;">
                     ${hasImage ? `<img src="${this.escapeHtml(this.keyAccountImages[name])}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">` : ''}
@@ -750,13 +804,13 @@ export class SettingsController {
                 </div>
             </div>
         `}).join('');
-    }
+}
 
-    renderDealerStages() {
-        if (!this.dealerStagesList) return;
-        this.dealerStagesList.innerHTML = this.dealerStages.map(stage => {
-            const hasImage = this.stageImages && this.stageImages[stage];
-            return `
+renderDealerStages() {
+    if (!this.dealerStagesList) return;
+    this.dealerStagesList.innerHTML = this.dealerStages.map(stage => {
+        const hasImage = this.stageImages && this.stageImages[stage];
+        return `
             <div class="list-item">
                 <div style="display:flex; align-items:center; gap:10px;">
                     ${hasImage ? `<img src="${this.escapeHtml(this.stageImages[stage])}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">` : ''}
@@ -783,21 +837,41 @@ export class SettingsController {
                 </div>
             </div>
         `}).join('');
+}
+
+renderInstanceGroups() {
+    if (!this.instanceGroupsList) return;
+    this.instanceGroupsList.innerHTML = this.instanceGroups.map(group => `
+            <div class="list-item">
+                <span class="item-text">${this.escapeHtml(group)}</span>
+                <div class="actions">
+                    <button class="edit-btn" onclick="window.settingsController.handleRenameItem('instanceGroups', '${this.escapeHtml(group)}')" title="Rename">
+                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                    </button>
+                    <button class="delete-btn" onclick="window.settingsController.handleRemoveItem('instanceGroups', '${this.escapeHtml(group)}')" title="Delete">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+}
+
+renderDeactivatedDealers(filterData = '') {
+    if (!this.deactivatedList) return;
+
+    const list = filterData
+        ? this.deactivatedDealers.filter(d => d.toLowerCase().includes(filterData))
+        : this.deactivatedDealers;
+
+    if (list.length === 0) {
+        this.deactivatedList.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 0.8rem; text-align: center;">No deactivated dealers found</div>';
+        return;
     }
 
-    renderDeactivatedDealers(filterData = '') {
-        if (!this.deactivatedList) return;
-
-        const list = filterData
-            ? this.deactivatedDealers.filter(d => d.toLowerCase().includes(filterData))
-            : this.deactivatedDealers;
-
-        if (list.length === 0) {
-            this.deactivatedList.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 0.8rem; text-align: center;">No deactivated dealers found</div>';
-            return;
-        }
-
-        this.deactivatedList.innerHTML = list.map(name => `
+    this.deactivatedList.innerHTML = list.map(name => `
             <div class="list-item">
                 <span class="item-text" style="color: #f87171;">${this.escapeHtml(name)}</span>
                 <button class="delete-btn" title="Restore Dealer" onclick="window.settingsController.restoreDeactivatedDealer('${this.escapeHtml(name)}')">
@@ -808,34 +882,37 @@ export class SettingsController {
                 </button>
             </div>
         `).join('');
+}
+
+setLoading(loading) {
+    this.isLoading = loading;
+    // Optional: show/hide generic loader
+}
+
+updateBadges() {
+    // Update Key Accounts badge
+    const kamBadge = document.getElementById('kam-count');
+    if (kamBadge) {
+        const count = this.keyAccounts.length;
+        kamBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
     }
 
-    setLoading(loading) {
-        this.isLoading = loading;
-        // Optional: show/hide generic loader
-    }
+    // Update Dealer Stages badge
+    const stagesBadge = document.getElementById('stages-count');
+    if (stagesBadge) {
+        const count = this.dealerStages.length;
+        stagesBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+        const kamCount = document.getElementById('kam-count');
+        const stagesCount = document.getElementById('stages-count');
+        const categoriesCount = document.getElementById('categories-count');
+        const deactivatedCount = document.getElementById('deactivated-count');
+        const groupsCount = document.getElementById('groups-count');
 
-    updateBadges() {
-        // Update Key Accounts badge
-        const kamBadge = document.getElementById('kam-count');
-        if (kamBadge) {
-            const count = this.keyAccounts.length;
-            kamBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
-        }
-
-        // Update Dealer Stages badge
-        const stagesBadge = document.getElementById('stages-count');
-        if (stagesBadge) {
-            const count = this.dealerStages.length;
-            stagesBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
-        }
-
-        // Update Deactivated Dealers badge
-        const deactivatedBadge = document.getElementById('deactivated-count');
-        if (deactivatedBadge) {
-            const count = this.deactivatedDealers ? this.deactivatedDealers.length : 0;
-            deactivatedBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
-        }
+        if (kamCount) kamCount.innerText = `${this.keyAccounts.length} items`;
+        if (stagesCount) stagesCount.innerText = `${this.dealerStages.length} items`;
+        if (categoriesCount) categoriesCount.innerText = `${this.dealerCategories.length} items`;
+        if (groupsCount) groupsCount.innerText = `${this.instanceGroups.length} items`;
+        if (deactivatedCount) deactivatedCount.innerText = `${this.deactivatedDealers.length} items`;
     }
 
     escapeHtml(unsafe) {
