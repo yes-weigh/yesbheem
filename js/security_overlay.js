@@ -1,7 +1,9 @@
 import { app } from './services/firebase_config.js';
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const auth = getAuth(app);
+const db = getFirestore(app);
 
 class SecurityOverlay {
     constructor() {
@@ -9,6 +11,7 @@ class SecurityOverlay {
         this.ip = '0.0.0.0';
         this.user = null;
         this.overlay = null;
+        this.heartbeatInterval = null;
 
         this.init();
     }
@@ -48,6 +51,7 @@ class SecurityOverlay {
 
                     this.createOverlay();
                     this.startWatchdog();
+                    this.startHeartbeat(); // Start session heartbeat
                 } catch (e) {
                     console.error("[SecurityOverlay] Token verification error:", e);
                     this.terminate("Auth Verification Failed");
@@ -122,6 +126,23 @@ class SecurityOverlay {
         }, 60000);
     }
 
+    startHeartbeat() {
+        // Update session heartbeat every 30 seconds
+        this.heartbeatInterval = setInterval(async () => {
+            if (!this.user || !this.fingerprint) return;
+
+            try {
+                const userRef = doc(db, 'users', this.user.uid);
+                await updateDoc(userRef, {
+                    [`activeSessions.${this.fingerprint}.lastActiveAt`]: serverTimestamp()
+                });
+                console.log('[SecurityOverlay] Session heartbeat updated');
+            } catch (error) {
+                console.error('[SecurityOverlay] Heartbeat update failed:', error);
+            }
+        }, 30000); // Every 30 seconds
+    }
+
     hardenUI() {
         // Disable Right Click
         document.addEventListener('contextmenu', e => e.preventDefault());
@@ -142,6 +163,13 @@ class SecurityOverlay {
 
     terminate(reason) {
         console.error("TERMINATING SESSION:", reason);
+
+        // Clear heartbeat interval
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+
         signOut(auth).then(() => {
             // Create a scary violation screen
             document.body.innerHTML = `
