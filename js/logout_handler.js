@@ -35,6 +35,13 @@ export class LogoutHandler {
         }
 
         try {
+            // CRITICAL: Stop the heartbeat FIRST to prevent session recreation
+            if (window.securityOverlay && window.securityOverlay.heartbeatInterval) {
+                clearInterval(window.securityOverlay.heartbeatInterval);
+                window.securityOverlay.heartbeatInterval = null;
+                console.log('[LogoutHandler] ✅ Heartbeat stopped');
+            }
+
             // Call server-side logout function
             const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js");
             const functions = getFunctions(app);
@@ -62,6 +69,12 @@ export class LogoutHandler {
 
             // Even if cleanup fails, force logout for security
             try {
+                // Stop heartbeat
+                if (window.securityOverlay && window.securityOverlay.heartbeatInterval) {
+                    clearInterval(window.securityOverlay.heartbeatInterval);
+                    window.securityOverlay.heartbeatInterval = null;
+                }
+
                 await signOut(auth);
             } catch (signOutError) {
                 console.error('[LogoutHandler] Force signOut also failed:', signOutError);
