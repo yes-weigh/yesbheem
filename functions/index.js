@@ -1,4 +1,6 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onUserDeleted } = require("firebase-functions/v2/identity");
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const axios = require('axios');
@@ -299,4 +301,105 @@ exports.verifySplitOTP = onCall(async (request) => {
     });
 
     return { token: customToken };
+});
+
+// ============================================================================
+// SESSION CLEANUP FUNCTIONS
+// ============================================================================
+
+/**
+ * Cleanup sessions when a user is deleted from Firebase Auth
+ * Triggered automatically by Firebase when admin.auth().deleteUser() is called
+ */
+exports.cleanupUserSessions = onUserDeleted(async (event) => {
+    const { uid } = event.data;
+
+    console.log(`[cleanupUserSessions] Cleaning up sessions for deleted user: ${uid}`);
+
+    try {
+        // Delete user document and all associated data
+        await admin.firestore().collection('users').doc(uid).delete();
+        console.log(`[cleanupUserSessions] Deleted user document for ${uid}`);
+
+        // Log the cleanup event
+        await admin.firestore().collection('user_activity_logs').add({
+            uid: uid,
+            action: 'USER_DELETED',
+            reason: 'Account deleted - all sessions cleaned up',
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        console.log(`[cleanupUserSessions] Cleanup completed for ${uid}`);
+    } catch (error) {
+        console.error(`[cleanupUserSessions] Cleanup failed for ${uid}:`, error);
+        // Don't throw - this is a best-effort cleanup
+    }
+});
+
+/**
+ * Scheduled function to clean up stale sessions
+ * Runs daily at 2:00 AM UTC
+ * Removes sessions that haven't been active for more than 24 hours
+ */
+exports.cleanupStaleSessions = onSchedule("0 2 * * *", async (event) => {
+    console.log('[cleanupStaleSessions] Starting stale session cleanup...');
+
+    const db = admin.firestore();
+    const usersSnapshot = await db.collection('users').get();
+
+    let cleanedCount = 0;
+    let userCount = 0;
+    const batch = db.batch();
+    const now = Date.now();
+    const staleThreshold = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+    usersSnapshot.forEach(doc => {
+        const data = doc.data();
+        const updates = {};
+
+        // Find all activeSessions.* keys
+        Object.keys(data).forEach(key => {
+            if (key.startsWith('activeSessions.')) {
+                const sessionData = data[key];
+
+                // Check if session has lastActiveAt timestamp
+                if (sessionData && sessionData.lastActiveAt) {
+                    const lastActive = sessionData.lastActiveAt.toMillis();
+                    const inactiveTime = now - lastActive;
+
+                    // If inactive for more than 24 hours, mark for deletion
+                    if (inactiveTime > staleThreshold) {
+                        updates[key] = admin.firestore.FieldValue.delete();
+                        cleanedCount++;
+                        console.log(`[cleanupStaleSessions] Marking stale session for deletion: ${key} (inactive for ${Math.round(inactiveTime / 3600000)} hours)`);
+                    }
+                }
+            }
+        });
+
+        // If we found stale sessions, add to batch
+        if (Object.keys(updates).length > 0) {
+            batch.update(doc.ref, updates);
+            userCount++;
+        }
+    });
+
+    // Commit all deletions
+    if (cleanedCount > 0) {
+        await batch.commit();
+        console.log(`[cleanupStaleSessions] ✅ Cleaned up ${cleanedCount} stale sessions from ${userCount} users`);
+
+        // Log the cleanup event
+        await db.collection('user_activity_logs').add({
+            action: 'STALE_SESSION_CLEANUP',
+            sessionsRemoved: cleanedCount,
+            usersAffected: userCount,
+            threshold: '24 hours',
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+    } else {
+        console.log('[cleanupStaleSessions] No stale sessions found');
+    }
+
+    return { cleanedCount, userCount };
 });

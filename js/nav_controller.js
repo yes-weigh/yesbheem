@@ -199,20 +199,47 @@ class NavigationController {
             signOutBtn.addEventListener('click', async () => {
                 try {
                     console.log('Signing out...');
-                    // Dynamic import for Firebase Auth since this is a non-module script
-                    const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
 
+                    // Dynamic import for LogoutHandler
                     const basePath = (window.appConfig && window.appConfig.getBasePath()) || '/';
-                    const configPath = `${basePath}js/services/firebase_config.js`.replace('//', '/');
-                    const { app } = await import(configPath);
-                    const auth = getAuth(app);
+                    const logoutHandlerPath = `${basePath}js/logout_handler.js`.replace('//', '/');
+                    const { LogoutHandler } = await import(logoutHandlerPath);
 
-                    await signOut(auth);
-                    console.log('Signed out successfully');
-                    window.location.href = 'login.html';
+                    // Get fingerprint from security overlay or re-generate
+                    let fingerprint = null;
+                    if (window.securityOverlay && window.securityOverlay.fingerprint) {
+                        fingerprint = window.securityOverlay.fingerprint;
+                    } else {
+                        // Re-generate fingerprint if not available
+                        try {
+                            const fpPromise = import('https://openfpcdn.io/fingerprintjs/v4')
+                                .then(FingerprintJS => FingerprintJS.load());
+                            const fp = await fpPromise;
+                            const result = await fp.get();
+                            fingerprint = result.visitorId;
+                        } catch (fpError) {
+                            console.warn('Could not generate fingerprint:', fpError);
+                        }
+                    }
+
+                    // Perform logout with proper cleanup
+                    await LogoutHandler.performLogout(fingerprint, 'User clicked Sign Out');
                 } catch (error) {
                     console.error('Sign out failed:', error);
-                    alert('Sign out failed: ' + error.message);
+
+                    // Fallback to basic sign out if LogoutHandler fails
+                    try {
+                        const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+                        const basePath = (window.appConfig && window.appConfig.getBasePath()) || '/';
+                        const configPath = `${basePath}js/services/firebase_config.js`.replace('//', '/');
+                        const { app } = await import(configPath);
+                        const auth = getAuth(app);
+                        await signOut(auth);
+                        window.location.href = 'login.html';
+                    } catch (fallbackError) {
+                        console.error('Fallback sign out also failed:', fallbackError);
+                        alert('Sign out failed: ' + error.message);
+                    }
                 }
             });
         }

@@ -1,6 +1,7 @@
 import { app } from './services/firebase_config.js';
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, doc, updateDoc, serverTimestamp, deleteField } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { LogoutHandler } from './logout_handler.js';
 
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -38,6 +39,10 @@ class SecurityOverlay {
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 this.user = user;
+
+                // Store user UID for cleanup in case of browser data clearing
+                localStorage.setItem('lastUserUid', user.uid);
+
                 // Verify Token Claims
                 try {
                     const tokenResult = await user.getIdTokenResult();
@@ -58,6 +63,23 @@ class SecurityOverlay {
                     return;
                 }
             } else {
+                // User logged out or cleared browser data
+                console.log('[SecurityOverlay] User logged out or session cleared');
+
+                // Attempt to clean up session if we have fingerprint and last user UID
+                if (this.fingerprint) {
+                    const lastUserUid = localStorage.getItem('lastUserUid');
+                    if (lastUserUid) {
+                        console.log('[SecurityOverlay] Attempting to cleanup session for cleared browser data');
+                        try {
+                            await LogoutHandler.cleanupSessionOnly(lastUserUid, this.fingerprint);
+                        } catch (error) {
+                            console.log('[SecurityOverlay] Cleanup failed (expected if already logged out):', error);
+                        }
+                        localStorage.removeItem('lastUserUid');
+                    }
+                }
+
                 // Redirect to Fortress Login if not authenticated
                 window.location.href = 'login.html';
             }
@@ -170,22 +192,29 @@ class SecurityOverlay {
             this.heartbeatInterval = null;
         }
 
-        signOut(auth).then(() => {
-            // Create a scary violation screen
+        // Use LogoutHandler for proper cleanup
+        LogoutHandler.performLogout(this.fingerprint, `Security Violation: ${reason}`).then(() => {
+            // Show violation screen before redirect
             document.body.innerHTML = `
                 <div style="background:black; color:red; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; font-family:monospace; text-align:center;">
                     <h1 style="font-size:3rem;">SECURITY VIOLATION</h1>
                     <p>${reason}</p>
                     <p>Referencing Incident ID: ${Date.now()}-${Math.floor(Math.random() * 1000)}</p>
                     <p>Your IP (${this.ip}) has been logged.</p>
+                    <p style="margin-top: 20px; font-size: 0.9rem;">Redirecting to login...</p>
                 </div>
             `;
+            // Note: LogoutHandler will redirect, but we set a backup timeout
             setTimeout(() => {
                 window.location.href = 'login.html';
             }, 3000);
+        }).catch((error) => {
+            console.error('[SecurityOverlay] Terminate failed:', error);
+            // Force redirect even if cleanup fails
+            window.location.href = 'login.html';
         });
     }
 }
 
-// Initialize
-new SecurityOverlay();
+// Initialize and expose globally for access by nav_controller
+window.securityOverlay = new SecurityOverlay();
