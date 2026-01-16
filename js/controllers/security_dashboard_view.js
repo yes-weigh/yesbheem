@@ -440,10 +440,16 @@ export class SecurityDashboardView {
         const q = collection(db, "users");
 
         this.unsubscribe = onSnapshot(q, (snapshot) => {
+            console.log('[SecurityDashboard] ========== SNAPSHOT UPDATE ==========');
+            console.log('[SecurityDashboard] Total user documents:', snapshot.size);
+
             this.activeSessions = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
                 data.uid = doc.id;
+
+                console.log(`[SecurityDashboard] Processing user: ${data.email || data.uid}`);
+                console.log(`[SecurityDashboard] Raw data keys:`, Object.keys(data).filter(k => k.startsWith('activeSessions')));
 
                 // Convert flat keys to nested object structure
                 // Firestore stores as: "activeSessions.fingerprint": {...}
@@ -453,8 +459,11 @@ export class SecurityDashboardView {
                     if (key.startsWith('activeSessions.')) {
                         const fingerprint = key.replace('activeSessions.', '');
                         activeSessions[fingerprint] = data[key];
+                        console.log(`[SecurityDashboard]   Found session: ${fingerprint.substring(0, 8)}...`);
                     }
                 });
+
+                console.log(`[SecurityDashboard] Total sessions for this user: ${Object.keys(activeSessions).length}`);
 
                 // CLIENT-SIDE FILTER
                 if (Object.keys(activeSessions).length > 0) {
@@ -462,6 +471,12 @@ export class SecurityDashboardView {
                     this.activeSessions.push(data);
                 }
             });
+
+            console.log('[SecurityDashboard] Total active users:', this.activeSessions.length);
+            console.log('[SecurityDashboard] Total sessions across all users:',
+                this.activeSessions.reduce((sum, u) => sum + Object.keys(u.activeSessions).length, 0));
+            console.log('[SecurityDashboard] ========================================');
+
             this.updateUI();
         });
     }
