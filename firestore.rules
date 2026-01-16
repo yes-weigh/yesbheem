@@ -30,7 +30,11 @@ service cloud.firestore {
     match /users/{userId} {
       // User can read their own profile; Admin can read all (for Security Dashboard)
       allow read: if (isActiveUser() && request.auth.uid == userId) || request.auth.token.role == 'admin';
-      // Only Admin can write (to kill sessions/manage locks)
+      
+      // Allow users to update their own document (for logout session cleanup)
+      allow update: if request.auth.uid == userId;
+      
+      // Admin can do everything (create, update, delete)
       allow write: if request.auth.token.role == 'admin'; 
     }
 
