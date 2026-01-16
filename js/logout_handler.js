@@ -26,6 +26,13 @@ export class LogoutHandler {
         }
 
         console.log(`[LogoutHandler] Starting logout for ${user.email}, reason: ${reason}`);
+        console.log(`[LogoutHandler] Fingerprint provided: ${fingerprint}`);
+
+        // If no fingerprint provided, try to get it from localStorage
+        if (!fingerprint) {
+            fingerprint = localStorage.getItem('deviceFingerprint');
+            console.log(`[LogoutHandler] Retrieved fingerprint from localStorage: ${fingerprint}`);
+        }
 
         try {
             // 1. Log LOGOUT event to activity logs
@@ -48,16 +55,17 @@ export class LogoutHandler {
             if (fingerprint) {
                 try {
                     const userRef = doc(db, 'users', user.uid);
+                    console.log(`[LogoutHandler] Attempting to delete session: activeSessions.${fingerprint}`);
                     await updateDoc(userRef, {
                         [`activeSessions.${fingerprint}`]: deleteField()
                     });
-                    console.log('[LogoutHandler] Firestore session cleaned up');
+                    console.log('[LogoutHandler] ✅ Firestore session cleaned up successfully');
                 } catch (cleanupError) {
-                    console.error('[LogoutHandler] Failed to cleanup Firestore session:', cleanupError);
+                    console.error('[LogoutHandler] ❌ Failed to cleanup Firestore session:', cleanupError);
                     // Continue with logout even if cleanup fails
                 }
             } else {
-                console.warn('[LogoutHandler] No fingerprint provided, skipping Firestore cleanup');
+                console.warn('[LogoutHandler] ⚠️ No fingerprint available, cannot cleanup Firestore session');
             }
 
             // 3. Sign out from Firebase Auth
@@ -66,8 +74,11 @@ export class LogoutHandler {
 
             // 4. Clear any stored user data
             localStorage.removeItem('lastUserUid');
+            localStorage.removeItem('deviceFingerprint');
+            console.log('[LogoutHandler] Cleared localStorage data');
 
             // 5. Redirect to login
+            console.log('[LogoutHandler] Redirecting to login page...');
             window.location.href = 'login.html';
 
         } catch (error) {

@@ -25,6 +25,10 @@ class SecurityOverlay {
         const result = await fp.get();
         this.fingerprint = result.visitorId;
 
+        // Store fingerprint in localStorage as backup for logout
+        localStorage.setItem('deviceFingerprint', this.fingerprint);
+        console.log('[SecurityOverlay] Fingerprint initialized and stored:', this.fingerprint);
+
         // 2. Fetch IP
         try {
             const res = await fetch('https://api.ipify.org?format=json');

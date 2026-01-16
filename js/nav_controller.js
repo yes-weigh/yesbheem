@@ -207,21 +207,33 @@ class NavigationController {
 
                     // Get fingerprint from security overlay or re-generate
                     let fingerprint = null;
+
+                    // Try 1: Get from security overlay
                     if (window.securityOverlay && window.securityOverlay.fingerprint) {
                         fingerprint = window.securityOverlay.fingerprint;
-                    } else {
-                        // Re-generate fingerprint if not available
+                        console.log('[SignOut] Got fingerprint from securityOverlay:', fingerprint);
+                    }
+                    // Try 2: Get from localStorage
+                    else if (localStorage.getItem('deviceFingerprint')) {
+                        fingerprint = localStorage.getItem('deviceFingerprint');
+                        console.log('[SignOut] Got fingerprint from localStorage:', fingerprint);
+                    }
+                    // Try 3: Re-generate fingerprint if not available
+                    else {
+                        console.warn('[SignOut] Fingerprint not found, attempting to re-generate...');
                         try {
                             const fpPromise = import('https://openfpcdn.io/fingerprintjs/v4')
                                 .then(FingerprintJS => FingerprintJS.load());
                             const fp = await fpPromise;
                             const result = await fp.get();
                             fingerprint = result.visitorId;
+                            console.log('[SignOut] Re-generated fingerprint:', fingerprint);
                         } catch (fpError) {
-                            console.warn('Could not generate fingerprint:', fpError);
+                            console.error('[SignOut] Could not generate fingerprint:', fpError);
                         }
                     }
 
+                    console.log('[SignOut] Final fingerprint for logout:', fingerprint);
                     // Perform logout with proper cleanup
                     await LogoutHandler.performLogout(fingerprint, 'User clicked Sign Out');
                 } catch (error) {
