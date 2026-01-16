@@ -458,8 +458,13 @@ export class SecurityDashboardView {
                 Object.keys(data).forEach(key => {
                     if (key.startsWith('activeSessions.')) {
                         const fingerprint = key.replace('activeSessions.', '');
-                        activeSessions[fingerprint] = data[key];
-                        console.log(`[SecurityDashboard]   Found session: ${fingerprint.substring(0, 8)}...`);
+                        // Skip null sessions (deleted sessions)
+                        if (data[key] !== null && data[key] !== undefined) {
+                            activeSessions[fingerprint] = data[key];
+                            console.log(`[SecurityDashboard]   Found session: ${fingerprint.substring(0, 8)}...`);
+                        } else {
+                            console.log(`[SecurityDashboard]   Skipping null session: ${fingerprint.substring(0, 8)}...`);
+                        }
                     }
                 });
 
