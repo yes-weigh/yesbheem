@@ -270,6 +270,7 @@ exports.verifySplitOTP = onCall(async (request) => {
         lastLogin: admin.firestore.FieldValue.serverTimestamp(),
         active: true,
         email: email, // Store email for Admin Dashboard visibility
+        role: userRole, // Store role for Security Dashboard badge display
         // Update the active session for this specific fingerprint
         [`activeSessions.${deviceFingerprint}`]: sessionInfo
     };

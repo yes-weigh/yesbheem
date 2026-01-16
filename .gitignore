@@ -8,3 +8,7 @@ node_modules/
 .idea/
 .firebase/hosting..cache
 .firebase/hosting..cache
+
+# Sensitive credentials - never commit these!
+serviceAccountKey.json
+*serviceAccountKey*.json

@@ -508,7 +508,7 @@ export class SecurityDashboardView {
                                 <div style="font-size:0.75rem; color:#64748b; font-family:monospace">${ip}</div>
                             </div>
                             <div class="row-actions">
-                                <button class="kill-btn" onclick="window.securityDashboard.killSession('${user.uid}', '${fingerprint}', '${user.role}')">
+                                <button class="kill-btn" onclick="window.securityDashboard.killSession('${user.uid}', '${fingerprint}', '${user.role || 'user'}')">
                                     Terminating Protocol
                                 </button>
                             </div>
@@ -577,23 +577,31 @@ export class SecurityDashboardView {
         if (!confirm('CONFIRM TERMINATION: Force logout this device?')) return;
 
         try {
+            console.log(`[Security Dashboard] Terminating session: uid=${uid}, fingerprint=${fingerprint}, role=${role}`);
+
             const userRef = doc(db, 'users', uid);
             const updatePayload = {
                 [`activeSessions.${fingerprint}`]: deleteField()
             };
 
+            // Clean up authorized devices based on role
             if (role === 'admin') {
                 updatePayload['authorizedDevices'] = arrayRemove(fingerprint);
             } else {
+                // For regular users, clear the single authorized device
                 updatePayload['authorizedDevice'] = deleteField();
             }
 
             await updateDoc(userRef, updatePayload);
+            console.log('[Security Dashboard] Session terminated successfully');
             Toast.success("Target Neutralized.");
-            // Subscription will auto-update UI
+
+            // Force UI refresh by manually triggering updateUI
+            // The onSnapshot should handle this, but we'll force it just in case
+            setTimeout(() => this.updateUI(), 500);
         } catch (error) {
-            console.error(error);
-            alert("Termination Failed: " + error.message);
+            console.error('[Security Dashboard] Termination failed:', error);
+            alert(`Termination Failed: ${error.message}`);
         }
     }
 
