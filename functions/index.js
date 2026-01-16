@@ -303,6 +303,58 @@ exports.verifySplitOTP = onCall(async (request) => {
 });
 
 // ============================================================================
+// LOGOUT FUNCTION
+// ============================================================================
+
+/**
+ * Server-side logout function
+ * Handles session cleanup and audit logging
+ */
+exports.performLogout = onCall(async (request) => {
+    const { fingerprint, reason } = request.data;
+
+    // Must be authenticated
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'User must be authenticated to logout');
+    }
+
+    const uid = request.auth.uid;
+    const email = request.auth.token.email;
+
+    console.log(`[performLogout] Processing logout for ${email}, fingerprint: ${fingerprint}`);
+
+    try {
+        const db = admin.firestore();
+
+        // 1. Log LOGOUT event
+        await db.collection('user_activity_logs').add({
+            uid: uid,
+            email: email,
+            action: 'LOGOUT',
+            reason: reason || 'User initiated logout',
+            deviceFingerprint: fingerprint || 'unknown',
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+        console.log(`[performLogout] LOGOUT event logged for ${email}`);
+
+        // 2. Clean up Firestore session
+        if (fingerprint) {
+            const userRef = db.collection('users').doc(uid);
+            await userRef.update({
+                [`activeSessions.${fingerprint}`]: admin.firestore.FieldValue.delete()
+            });
+            console.log(`[performLogout] Session ${fingerprint} deleted for ${email}`);
+        }
+
+        return { success: true, message: 'Logout successful' };
+
+    } catch (error) {
+        console.error(`[performLogout] Error during logout:`, error);
+        throw new HttpsError('internal', `Logout failed: ${error.message}`);
+    }
+});
+
+// ============================================================================
 // SESSION CLEANUP FUNCTION
 // ============================================================================
 

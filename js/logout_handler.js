@@ -35,49 +35,25 @@ export class LogoutHandler {
         }
 
         try {
-            // 1. Log LOGOUT event to activity logs
-            try {
-                await addDoc(collection(db, 'user_activity_logs'), {
-                    uid: user.uid,
-                    email: user.email,
-                    action: 'LOGOUT',
-                    reason: reason,
-                    deviceFingerprint: fingerprint || 'unknown',
-                    timestamp: serverTimestamp()
-                });
-                console.log('[LogoutHandler] LOGOUT event logged');
-            } catch (logError) {
-                console.error('[LogoutHandler] Failed to log LOGOUT event:', logError);
-                // Continue with logout even if logging fails
-            }
+            // Call server-side logout function
+            const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js");
+            const functions = getFunctions(app);
+            const performLogoutFn = httpsCallable(functions, 'performLogout');
 
-            // 2. Clean up Firestore session
-            if (fingerprint) {
-                try {
-                    const userRef = doc(db, 'users', user.uid);
-                    console.log(`[LogoutHandler] Attempting to delete session: activeSessions.${fingerprint}`);
-                    await updateDoc(userRef, {
-                        [`activeSessions.${fingerprint}`]: deleteField()
-                    });
-                    console.log('[LogoutHandler] ✅ Firestore session cleaned up successfully');
-                } catch (cleanupError) {
-                    console.error('[LogoutHandler] ❌ Failed to cleanup Firestore session:', cleanupError);
-                    // Continue with logout even if cleanup fails
-                }
-            } else {
-                console.warn('[LogoutHandler] ⚠️ No fingerprint available, cannot cleanup Firestore session');
-            }
+            console.log('[LogoutHandler] Calling server-side logout function...');
+            await performLogoutFn({ fingerprint, reason });
+            console.log('[LogoutHandler] ✅ Server-side logout successful');
 
-            // 3. Sign out from Firebase Auth
+            // Sign out from Firebase Auth
             await signOut(auth);
             console.log('[LogoutHandler] Firebase Auth signOut successful');
 
-            // 4. Clear any stored user data
+            // Clear any stored user data
             localStorage.removeItem('lastUserUid');
             localStorage.removeItem('deviceFingerprint');
             console.log('[LogoutHandler] Cleared localStorage data');
 
-            // 5. Redirect to login
+            // Redirect to login
             console.log('[LogoutHandler] Redirecting to login page...');
             window.location.href = 'login.html';
 
