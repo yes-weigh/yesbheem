@@ -76,21 +76,24 @@ class TemplateManager {
         this.templateList.innerHTML = this.templates.map(t => `
         <div class="template-item ${this.activeTemplateId === t.id ? 'active' : ''}"
             data-id="${t.id}"
-            style="padding: 1rem; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); margin-bottom: 0.5rem; transition: all 0.2s;">
-
-            <div class="flex justify-between items-start mb-2">
-                <h4 class="font-bold text-white text-base">${t.name}</h4>
-                <span style="font-size:0.7rem; background:rgba(99,102,241,0.2); color:#a5b4fc; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
-                    ${t.type.replace('_', ' ').toUpperCase()}
+            style="padding: 1rem; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); margin-bottom: 0.5rem; transition: all 0.2s; position: relative; overflow: hidden;">
+            
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                 <h4 style="font-size: 0.9rem; font-weight: 700; color: white; margin: 0;">${t.name}</h4>
+                 <span style="font-size:0.65rem; background:rgba(99,102,241,0.2); color:#a5b4fc; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">
+                    ${t.type.replace('_', ' ')}
                 </span>
             </div>
 
-            <p class="text-sm text-gray-400 truncate mb-3">
-                ${(t.content.text || t.content.caption || 'Media/Interactive content').substring(0, 50)}...
+            <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${(t.content.text || t.content.caption || 'Media/Interactive content')}
             </p>
 
-            <div class="flex justify-end">
-                <button class="template-delete text-red-400 hover:text-red-300 p-2 rounded hover:bg-red-500/10 transition-colors" data-id="${t.id}" title="Delete">
+            <div style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.5rem;">
+                <button class="template-delete" data-id="${t.id}" title="Delete"
+                    style="background: transparent; border: none; color: #ef4444; padding: 4px; cursor: pointer; opacity: 0.7; transition: all 0.2s; display: flex; align-items: center; justify-content: center;"
+                    onmouseover="this.style.opacity='1'; this.style.transform='scale(1.1)'"
+                    onmouseout="this.style.opacity='0.7'; this.style.transform='scale(1)'">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
@@ -550,7 +553,7 @@ class TemplateManager {
                 // body should be { sessionId, to, content: ... }
             }
 
-            const res = await fetch(`${this.apiBase}${endpoint} `, {
+            const res = await fetch(`${this.apiBase}${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
@@ -609,7 +612,7 @@ class TemplateManager {
             if (this.currentTemplateId) {
                 // UPDATE
                 method = 'PUT';
-                url = `${this.apiBase} /templates/${this.currentTemplateId} `;
+                url = `${this.apiBase}/templates/${this.currentTemplateId}`;
             } else {
                 // CREATE
                 method = 'POST';
