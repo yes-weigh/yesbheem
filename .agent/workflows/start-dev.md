@@ -12,7 +12,14 @@ Follow these steps to start working on the Kerala map project after a reboot:
 
 ## Start Development Server
 
-### Option 1: Python HTTP Server (Recommended)
+### Option 1: Custom Node Server (Best for App)
+This server handles SPA routing (reloading pages won't give 404) and correct MIME types.
+```bash
+cd d:\kerala
+node server.js
+```
+
+### Option 2: Python HTTP Server (Backup)
 ```bash
 cd d:\kerala
 python -m http.server 8000

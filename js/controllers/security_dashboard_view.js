@@ -345,6 +345,9 @@ export class SecurityDashboardView {
                                 <div class="session-feed">
                                     <div class="feed-header">
                                         <h3>Active Sessions</h3>
+                                        <button id="terminate-all-btn" class="filter-btn" style="margin-left: auto; margin-right: 15px; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 0.8rem; padding: 4px 12px; height: 30px;">
+                                            ⚠️ Terminate All Others
+                                        </button>
                                         <span class="live-indicator">● LIVE</span>
                                     </div>
                                     <div id="sec-session-list" class="session-list-container">
@@ -404,8 +407,92 @@ export class SecurityDashboardView {
 
         // Filter buttons
         document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.onclick = () => this.setFilter(btn.dataset.filter);
+            if (btn.id === 'terminate-all-btn') {
+                btn.onclick = () => this.terminateAllOtherSessions();
+            } else {
+                btn.onclick = () => this.setFilter(btn.dataset.filter);
+            }
         });
+    }
+
+    async terminateAllOtherSessions() {
+        if (!this.activeSessions) return;
+
+        let targetCount = 0;
+        const currentFingerprint = window.securityOverlay && window.securityOverlay.fingerprint;
+        const targets = [];
+
+        // Identify targets
+        this.activeSessions.forEach(userDoc => {
+            if (!userDoc.activeSessions) return;
+
+            Object.keys(userDoc.activeSessions).forEach(fingerprint => {
+                // Skip my own session
+                if (fingerprint === currentFingerprint) return;
+
+                targets.push({
+                    uid: userDoc.uid,
+                    fingerprint: fingerprint,
+                    role: userDoc.role || 'user'
+                });
+            });
+        });
+
+        if (targets.length === 0) {
+            alert("No other active sessions found.");
+            return;
+        }
+
+        if (!confirm(`WARNING: This will terminate ${targets.length} other active session(s) across all users.\n\nAre you sure you want to proceed?`)) {
+            return;
+        }
+
+        console.log(`[SecurityDashboard] Bulk terminating ${targets.length} sessions...`);
+        let successCount = 0;
+
+        for (const target of targets) {
+            try {
+                // We use killSession logic but bypass the individual confirm dialog by calling the core logic directly
+                // Actually, killSession has a confirm at the top. We should refactor or just copy the logic.
+                // Refactoring is cleaner. Let's create a internal helper or just replicate logic since it's short.
+                // Wait, I can't easily refactor killSession without changing more code. 
+                // I'll call a modified version of the logic here.
+
+                const userRef = doc(db, 'users', target.uid);
+
+                // 1. Delete nested session
+                const updatePayload = {
+                    [`activeSessions.${target.fingerprint}`]: deleteField()
+                };
+                await updateDoc(userRef, updatePayload);
+
+                // 2. Delete ghost session
+                try {
+                    await updateDoc(userRef, new FieldPath(`activeSessions.${target.fingerprint}`), deleteField());
+                } catch (e) { }
+
+                // 3. Clean auth devices
+                if (target.role === 'admin') {
+                    // For admin, we might need to be careful not to create a race condition if updating same doc multiple times
+                    // But await ensures sequential.
+                    await updateDoc(userRef, {
+                        ['authorizedDevices']: arrayRemove(target.fingerprint)
+                    });
+                } else {
+                    await updateDoc(userRef, {
+                        ['authorizedDevice']: deleteField()
+                    });
+                }
+
+                successCount++;
+                console.log(`[SecurityDashboard] Terminated ${target.fingerprint}`);
+
+            } catch (error) {
+                console.error(`[SecurityDashboard] Failed to terminate ${target.fingerprint}:`, error);
+            }
+        }
+
+        alert(`Successfully terminated ${successCount} sessions.`);
     }
 
     switchTab(tabName) {
@@ -600,9 +687,24 @@ export class SecurityDashboardView {
             console.log(`[Security Dashboard] Terminating session: uid=${uid}, fingerprint=${fingerprint}, role=${role}`);
 
             const userRef = doc(db, 'users', uid);
+
+
+            // 1. Delete nested session (standard)
             const updatePayload = {
                 [`activeSessions.${fingerprint}`]: deleteField()
             };
+
+            await updateDoc(userRef, updatePayload);
+
+            // 2. Try to delete "flat" ghost session if it exists (using FieldPath)
+            // This is separate to avoid key conflicts or method signature issues
+            try {
+                // We use variadic updateDoc form: ref, fieldPath, value
+                await updateDoc(userRef, new FieldPath(`activeSessions.${fingerprint}`), deleteField());
+            } catch (e) {
+                // Ignore if it doesn't exist or fails, main deletion handled above
+                // console.log('Flat key deletion skipped or not needed');
+            }
 
             // Clean up authorized devices based on role
             if (role === 'admin') {

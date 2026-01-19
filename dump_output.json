@@ -1,0 +1,33 @@
+{
+  "role": "admin",
+  "active": true,
+  "email": "mhdfazalvs@gmail.com",
+  "lastLogin": {
+    "_seconds": 1768802299,
+    "_nanoseconds": 287000000
+  },
+  "authorizedDevices": [
+    "dummy_session_1768801501007",
+    "e5dd0715052be0b3d8c3f691eba626d3"
+  ],
+  "activeSessions": {
+    "dummy_session_1768801501007": {
+      "ip": "127.0.0.1",
+      "userAgent": "Dummy Test Device",
+      "location": "Test Lab",
+      "deviceType": "desktop",
+      "os": "TestOS",
+      "browser": "TestBrowser",
+      "lastActiveAt": {
+        "_seconds": 1768801503,
+        "_nanoseconds": 885000000
+      }
+    },
+    "e5dd0715052be0b3d8c3f691eba626d3": {
+      "lastActiveAt": {
+        "_seconds": 1768802649,
+        "_nanoseconds": 640000000
+      }
+    }
+  }
+}
