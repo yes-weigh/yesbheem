@@ -1,5 +1,5 @@
 import { db } from '../services/firebase_config.js';
-import { collection, onSnapshot, query, doc, updateDoc, deleteField, arrayRemove, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { collection, onSnapshot, query, doc, updateDoc, deleteField, arrayRemove, orderBy, limit, FieldPath } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { Toast } from '../utils/toast.js';
 
 export class SecurityDashboardView {
