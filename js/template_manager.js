@@ -525,7 +525,7 @@ class TemplateManager {
         const statusBox = document.getElementById('status-message');
         const btn = document.getElementById('btn-send-message');
         const sessionId = this.sessionSelect.value;
-        let to = document.getElementById('phone-input').value;
+        let to = document.getElementById('phone-number').value;
 
         // 1. Validate Session & Phone
         if (!sessionId) { alert('Please select a device.'); return; }
