@@ -116,10 +116,10 @@ class TemplateManager {
     renderButtonInputs() {
         if (this.buttons.length === 0) {
             this.buttonsList.innerHTML = `
-            < div class="text-center p-8 border border-dashed border-gray-700 rounded-lg bg-gray-900/30" >
+            <div class="text-center p-8 border border-dashed border-gray-700 rounded-lg bg-gray-900/30">
                     <p class="text-sm text-gray-400 mb-2">No interactive buttons added yet.</p>
                     <button type="button" class="secondary-btn small mx-auto" onclick="document.getElementById('btn-add-button').click()">+ Add First Button</button>
-                </div > `;
+                </div>`;
             return;
         }
 
@@ -131,19 +131,21 @@ class TemplateManager {
             if (btn.type === 'copy') valuePlaceholder = 'Promo Code / Text';
 
             return `
-            < div class="button-item type-${btn.type}" style = "background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 1rem;" >
-                <div class="flex justify-between items-center mb-3">
-                    <h5 class="text-sm font-bold text-gray-400 uppercase tracking-wide">Button ${index + 1}</h5>
-                    <button type="button" class="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2 rounded transition-colors" 
+            <div class="button-item type-${btn.type}" style="background: rgba(255, 255, 255, 0.03); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 1rem;">
+                <div class="flex justify-between items-center mb-3" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h5 style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Button ${index + 1}</h5>
+                    <button type="button" style="color: #ef4444; background: rgba(239, 68, 68, 0.1); padding: 0.4rem 0.8rem; border-radius: 6px; border: none; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.2s;" 
+                            onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'"
+                            onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'"
                             onclick="window.tmplMgr.removeButton(${index})">
-                        <span class="text-sm font-bold">REMOVE</span>
+                        REMOVE
                     </button>
                 </div>
 
-                <div class="grid grid-cols-1 gap-4">
+                <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
                     <div class="form-group">
-                        <label class="form-label text-xs">Action Type</label>
-                        <select class="form-select bg-slate-800 border-slate-700 text-white p-3 rounded-lg w-full" 
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Action Type</label>
+                        <select class="modern-input" style="width: 100%; background: #0f172a; border: 1px solid var(--border); padding: 0.75rem; border-radius: 8px; color: white;"
                                 onchange="window.tmplMgr.updateButton(${index}, 'type', this.value)">
                             <option value="reply" ${btn.type === 'reply' ? 'selected' : ''}>Quick Reply (Text Only)</option>
                             <option value="url" ${btn.type === 'url' ? 'selected' : ''}>Open Website (Link)</option>
@@ -153,23 +155,22 @@ class TemplateManager {
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label text-xs">Button Label (on WhatsApp)</label>
-                        <input type="text" class="form-input bg-slate-800 border-slate-700 text-white p-3 rounded-lg w-full" 
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Button Label (on WhatsApp)</label>
+                        <input type="text" class="modern-input" style="width: 100%; background: #0f172a; border: 1px solid var(--border); padding: 0.75rem; border-radius: 8px; color: white;"
                                placeholder="e.g. Visit Website" value="${btn.text}" 
                                oninput="window.tmplMgr.updateButton(${index}, 'text', this.value)">
                     </div>
 
                     ${!isReply ? `
                     <div class="form-group">
-                        <label class="form-label text-xs">Action Value</label>
-                        <input type="text" class="form-input bg-slate-800 border-slate-700 text-white p-3 rounded-lg w-full" 
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Action Value</label>
+                        <input type="text" class="modern-input" style="width: 100%; background: #0f172a; border: 1px solid var(--border); padding: 0.75rem; border-radius: 8px; color: white;"
                                placeholder="${valuePlaceholder}" value="${btn.value || ''}" 
                                oninput="window.tmplMgr.updateButton(${index}, 'value', this.value)">
                     </div>
                     ` : ''}
                 </div>
-            </div >
-            `;
+            </div>`;
         }).join('');
     }
 
@@ -207,11 +208,13 @@ class TemplateManager {
         const deleteBtn = document.getElementById('btn-delete-template');
         if (deleteBtn) deleteBtn.addEventListener('click', () => this.handleDelete());
 
-        // Form Submit
-        this.form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleSend(e);
-        });
+        // Form Submit Listener removed as we use direct button actions
+        if (this.form) {
+            this.form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleSend(e);
+            });
+        }
 
         // Send Button
         const sendBtn = document.getElementById('btn-send-message');
@@ -263,20 +266,26 @@ class TemplateManager {
         }
     }
 
-    setMessageType(type) {
+    setTemplateType(type) {
         this.messageType = type;
 
         // UI Updates
-        this.typeButtons.forEach(b => b.classList.toggle('active', b.dataset.type === type));
+        this.typeButtons.forEach(b => b.classList.toggle('active', b.id === `type-${type}`));
 
         const showMedia = type.includes('media');
         const showButtons = type.includes('button');
 
-        document.getElementById('media-section').classList.toggle('hidden', !showMedia);
-        document.getElementById('buttons-section').classList.toggle('hidden', !showButtons);
-        document.getElementById('footer-section').classList.toggle('hidden', !showButtons);
+        const mediaSection = document.getElementById('media-section');
+        const buttonsSection = document.getElementById('buttons-section');
+        const footerSection = document.getElementById('footer-section');
 
-        document.getElementById('body-label').textContent = showMedia ? 'Caption' : 'Message Body';
+        if (mediaSection) mediaSection.classList.toggle('hidden', !showMedia);
+        if (buttonsSection) buttonsSection.classList.toggle('hidden', !showButtons);
+        if (footerSection) footerSection.classList.toggle('hidden', !showButtons);
+
+        // Update Label
+        /* const bodyLabel = document.getElementById('body-label');
+           if(bodyLabel) bodyLabel.textContent = showMedia ? 'Caption' : 'Message Body'; */
     }
 
     clearPreview() {
@@ -291,7 +300,7 @@ class TemplateManager {
 
         const isFile = source === 'file';
         document.getElementById('media-url-input').classList.toggle('hidden', isFile);
-        document.getElementById('media-file-label').classList.toggle('hidden', !isFile);
+        document.getElementById('media-file-input').classList.toggle('hidden', !isFile);
     }
 
     /* --- LOGIC --- */
@@ -359,7 +368,7 @@ class TemplateManager {
         if (deleteBtn) deleteBtn.classList.remove('hidden');
 
         // Apply content
-        this.setMessageType(t.type);
+        this.setTemplateType(t.type);
         const content = t.content;
 
         document.getElementById('message-body').value = content.text || content.caption || '';
@@ -411,6 +420,40 @@ class TemplateManager {
             this.renderTemplateList();
         } catch (e) {
             alert('Failed to delete template');
+        }
+    }
+
+    resetForm() {
+        this.currentTemplateId = null;
+        this.activeTemplateId = null;
+        this.renderTemplateList();
+
+        const nameInput = document.getElementById('template-name-input');
+        if (nameInput) nameInput.value = '';
+
+        document.getElementById('template-id-display').textContent = 'NEW';
+
+        // Reset Logic
+        this.setTemplateType('text');
+
+        document.getElementById('message-body').value = '';
+        document.getElementById('footer-input').value = '';
+
+        // Media Reset
+        this.setMediaSource('url');
+        document.getElementById('media-url-input').value = '';
+        const fileInput = document.getElementById('media-file-input');
+        if (fileInput) fileInput.value = '';
+        this.clearPreview();
+
+        // Buttons Reset
+        this.buttons = [];
+        this.renderButtonInputs();
+
+        const deleteBtn = document.getElementById('btn-delete-template');
+        if (deleteBtn) {
+            deleteBtn.style.opacity = '0';
+            deleteBtn.style.pointerEvents = 'none';
         }
     }
 
