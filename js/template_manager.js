@@ -74,18 +74,29 @@ class TemplateManager {
         }
 
         this.templateList.innerHTML = this.templates.map(t => `
-            <div class="template-item ${this.activeTemplateId === t.id ? 'active' : ''}" data-id="${t.id}">
-                <div class="flex justify-between items-start">
-                    <h4 class="font-medium text-sm text-main">${t.name}</h4>
-                    <span class="badge" style="font-size:0.65rem; background:#f1f5f9; color:#64748b;">
-                        ${t.type.replace('_', ' ').toUpperCase()}
-                    </span>
-                </div>
-                <p class="text-xs text-muted mt-1 truncate">
-                    ${(t.content.text || t.content.caption || 'Media/Interactive content').substring(0, 50)}...
-                </p>
-                <button class="btn-icon template-delete" data-id="${t.id}">&times;</button>
+        <div class="template-item ${this.activeTemplateId === t.id ? 'active' : ''}"
+            data-id="${t.id}"
+            style="padding: 1rem; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); margin-bottom: 0.5rem; transition: all 0.2s;">
+
+            <div class="flex justify-between items-start mb-2">
+                <h4 class="font-bold text-white text-base">${t.name}</h4>
+                <span style="font-size:0.7rem; background:rgba(99,102,241,0.2); color:#a5b4fc; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
+                    ${t.type.replace('_', ' ').toUpperCase()}
+                </span>
             </div>
+
+            <p class="text-sm text-gray-400 truncate mb-3">
+                ${(t.content.text || t.content.caption || 'Media/Interactive content').substring(0, 50)}...
+            </p>
+
+            <div class="flex justify-end">
+                <button class="template-delete text-red-400 hover:text-red-300 p-2 rounded hover:bg-red-500/10 transition-colors" data-id="${t.id}" title="Delete">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+            </div>
+        </div>
         `).join('');
 
         // Re-attach listeners
@@ -105,10 +116,10 @@ class TemplateManager {
     renderButtonInputs() {
         if (this.buttons.length === 0) {
             this.buttonsList.innerHTML = `
-                <div class="text-center p-8 border border-dashed border-gray-700 rounded-lg bg-gray-900/30">
+            < div class="text-center p-8 border border-dashed border-gray-700 rounded-lg bg-gray-900/30" >
                     <p class="text-sm text-gray-400 mb-2">No interactive buttons added yet.</p>
                     <button type="button" class="secondary-btn small mx-auto" onclick="document.getElementById('btn-add-button').click()">+ Add First Button</button>
-                </div>`;
+                </div > `;
             return;
         }
 
@@ -120,35 +131,44 @@ class TemplateManager {
             if (btn.type === 'copy') valuePlaceholder = 'Promo Code / Text';
 
             return `
-            <div class="button-item type-${btn.type}">
-                <div class="form-group mb-0">
-                    <label class="text-[10px] uppercase text-gray-500 font-bold mb-1 block">Action Type</label>
-                    <select class="form-select w-full text-xs py-2" onchange="window.tmplMgr.updateButton(${index}, 'type', this.value)">
-                        <option value="reply" ${btn.type === 'reply' ? 'selected' : ''}>Quick Reply</option>
-                        <option value="url" ${btn.type === 'url' ? 'selected' : ''}>Open Website</option>
-                        <option value="copy" ${btn.type === 'copy' ? 'selected' : ''}>Copy Text</option>
-                        <option value="call" ${btn.type === 'call' ? 'selected' : ''}>Phone Call</option>
-                    </select>
-                </div>
-                
-                <div class="form-group mb-0">
-                    <label class="text-[10px] uppercase text-gray-500 font-bold mb-1 block">Button Label</label>
-                    <input type="text" class="form-input text-xs py-2 w-full" placeholder="e.g. Visit Website" value="${btn.text}" oninput="window.tmplMgr.updateButton(${index}, 'text', this.value)">
-                </div>
-
-                ${!isReply ? `
-                <div class="form-group mb-0">
-                    <label class="text-[10px] uppercase text-gray-500 font-bold mb-1 block">Action Value</label>
-                    <input type="text" class="form-input text-xs py-2 w-full" placeholder="${valuePlaceholder}" value="${btn.value || ''}" oninput="window.tmplMgr.updateButton(${index}, 'value', this.value)">
-                </div>
-                ` : ''}
-
-                <div class="flex items-end h-full pb-1">
-                    <button type="button" class="text-gray-400 hover:text-red-500 transition-colors p-2" onclick="window.tmplMgr.removeButton(${index})" title="Remove Button">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            < div class="button-item type-${btn.type}" style = "background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 1rem;" >
+                <div class="flex justify-between items-center mb-3">
+                    <h5 class="text-sm font-bold text-gray-400 uppercase tracking-wide">Button ${index + 1}</h5>
+                    <button type="button" class="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2 rounded transition-colors" 
+                            onclick="window.tmplMgr.removeButton(${index})">
+                        <span class="text-sm font-bold">REMOVE</span>
                     </button>
                 </div>
-            </div>
+
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="form-group">
+                        <label class="form-label text-xs">Action Type</label>
+                        <select class="form-select bg-slate-800 border-slate-700 text-white p-3 rounded-lg w-full" 
+                                onchange="window.tmplMgr.updateButton(${index}, 'type', this.value)">
+                            <option value="reply" ${btn.type === 'reply' ? 'selected' : ''}>Quick Reply (Text Only)</option>
+                            <option value="url" ${btn.type === 'url' ? 'selected' : ''}>Open Website (Link)</option>
+                            <option value="copy" ${btn.type === 'copy' ? 'selected' : ''}>Copy Offer/Code</option>
+                            <option value="call" ${btn.type === 'call' ? 'selected' : ''}>Phone Call</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label text-xs">Button Label (on WhatsApp)</label>
+                        <input type="text" class="form-input bg-slate-800 border-slate-700 text-white p-3 rounded-lg w-full" 
+                               placeholder="e.g. Visit Website" value="${btn.text}" 
+                               oninput="window.tmplMgr.updateButton(${index}, 'text', this.value)">
+                    </div>
+
+                    ${!isReply ? `
+                    <div class="form-group">
+                        <label class="form-label text-xs">Action Value</label>
+                        <input type="text" class="form-input bg-slate-800 border-slate-700 text-white p-3 rounded-lg w-full" 
+                               placeholder="${valuePlaceholder}" value="${btn.value || ''}" 
+                               oninput="window.tmplMgr.updateButton(${index}, 'value', this.value)">
+                    </div>
+                    ` : ''}
+                </div>
+            </div >
             `;
         }).join('');
     }
@@ -190,12 +210,12 @@ class TemplateManager {
         // Form Submit
         this.form.addEventListener('submit', (e) => {
             e.preventDefault();
-            this.handleSend();
+            this.handleSend(e);
         });
 
         // Send Button
         const sendBtn = document.getElementById('btn-send-message');
-        if (sendBtn) sendBtn.addEventListener('click', () => this.handleSend());
+        if (sendBtn) sendBtn.addEventListener('click', (e) => this.handleSend(e));
 
         // Expose helper to window for dynamic HTML calls
         window.tmplMgr = this;
@@ -385,7 +405,7 @@ class TemplateManager {
         if (!confirm('Delete this template?')) return;
 
         try {
-            await fetch(`${this.apiBase}/templates/${id}`, { method: 'DELETE' });
+            await fetch(`${this.apiBase} /templates/${id} `, { method: 'DELETE' });
             this.templates = this.templates.filter(t => t.id !== id);
             if (this.activeTemplateId === id) this.resetForm();
             this.renderTemplateList();
@@ -408,7 +428,7 @@ class TemplateManager {
             if (fileInput.files.length > 0) {
                 const formData = new FormData();
                 formData.append('file', fileInput.files[0]);
-                const res = await fetch(`${this.apiBase}/messages/upload`, { method: 'POST', body: formData });
+                const res = await fetch(`${this.apiBase} /messages/upload`, { method: 'POST', body: formData });
                 const data = await res.json();
                 if (data.success) {
                     mediaUrl = data.url; // Use 'url' as returned by standard firebaseService (was 'path' in some versions, check backend!)
@@ -458,9 +478,9 @@ class TemplateManager {
     }
 
     async handleSend(e) {
-        e.preventDefault();
+        if (e) e.preventDefault();
         const statusBox = document.getElementById('status-message');
-        const btn = document.getElementById('btn-send');
+        const btn = document.getElementById('btn-send-message');
         const sessionId = this.sessionSelect.value;
         let to = document.getElementById('phone-input').value;
 
@@ -487,7 +507,7 @@ class TemplateManager {
                 // body should be { sessionId, to, content: ... }
             }
 
-            const res = await fetch(`${this.apiBase}${endpoint}`, {
+            const res = await fetch(`${this.apiBase}${endpoint} `, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
@@ -546,7 +566,7 @@ class TemplateManager {
             if (this.currentTemplateId) {
                 // UPDATE
                 method = 'PUT';
-                url = `${this.apiBase}/templates/${this.currentTemplateId}`;
+                url = `${this.apiBase} /templates/${this.currentTemplateId} `;
             } else {
                 // CREATE
                 method = 'POST';
