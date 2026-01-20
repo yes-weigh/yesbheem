@@ -3,49 +3,21 @@ import FormatUtils from '../utils/format-utils.js';
 class DashboardController {
     constructor() {
         this.lastReceivedStats = null;
+        this.initialized = false;
         this.init();
         this.setupEventListeners();
     }
 
     async init() {
-        // Show skeleton
+        // Show skeleton initially
         const skeleton = document.getElementById('dashboard-skeleton');
         const stats = document.getElementById('dashboard-stats');
 
         if (skeleton) skeleton.style.display = ''; // Use CSS default (grid)
         if (stats) stats.style.display = 'none';
 
-        // Wait for DataManager to be available
-        if (typeof DataManager === 'undefined') {
-            console.warn('DataManager not loaded yet, retrying...');
-            setTimeout(() => this.init(), 100);
-            return;
-        }
-
-        const dm = new DataManager();
-        console.log('Initializing Dashboard Logic');
-
-        // Display Last Updated Date from Storage
-        try {
-            const lastUpdate = await dm.getLastStorageUpdate();
-            console.log('Last Update Time Fetched:', lastUpdate);
-
-            if (lastUpdate) {
-                const dateStr = new Date(lastUpdate).toLocaleDateString([], {
-                    year: 'numeric', month: 'short', day: 'numeric',
-                    hour: '2-digit', minute: '2-digit'
-                });
-                const dateEl = document.getElementById('last-updated-text');
-                if (dateEl) {
-                    dateEl.textContent = `(Updated: ${dateStr})`;
-                    console.log('UI Updated with date:', dateStr);
-                } else {
-                    console.error('Date Element #last-updated-text not found!');
-                }
-            }
-        } catch (e) {
-            console.warn('Could not fetch last update time:', e);
-        }
+        this.initialized = true;
+        console.log('Dashboard Controller initialized, waiting for stats from iframe...');
     }
 
     normalizeName(name) {

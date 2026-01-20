@@ -125,6 +125,16 @@
     opacity: 1;
 }
 
+/* Delete button visibility on hover */
+.template-item:hover .template-delete-btn {
+    opacity: 1 !important;
+}
+
+.template-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    transform: scale(1.1);
+}
+
 .cta-button {
     width: 100%;
     padding: 0.85rem;
@@ -209,15 +219,15 @@
     color: rgba(255, 255, 255, 0.2);
 }
 
-/* --- EDITOR GRID --- */
+/* --- EDITOR GRID (SINGLE COLUMN) --- */
 .editor-layout-grid {
-    display: grid;
-    grid-template-columns: 380px 1fr;
-    gap: 3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
     padding: 2.5rem;
     height: 100%;
     overflow-y: auto;
-    align-items: start;
 }
 
 @media (max-width: 1024px) {
@@ -230,14 +240,8 @@
     }
 
     .editor-layout-grid {
-        grid-template-columns: 1fr;
         padding: 1.5rem;
-        gap: 2rem;
-    }
-
-    .editor-side-col {
-        order: -1;
-        margin-bottom: 0;
+        gap: 1.5rem;
     }
 }
 
@@ -259,6 +263,8 @@
     flex-direction: column;
     min-height: 500px;
     max-height: calc(100vh - 160px);
+    width: 100%;
+    max-width: 600px;
     border: 8px solid #1e293b;
     box-shadow:
         0 0 0 1px rgba(255, 255, 255, 0.05),
@@ -407,7 +413,7 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    max-width: 800px;
+    width: 100%;
 }
 
 /* Glass Card Container */
@@ -705,23 +711,169 @@
         transform: translateY(0);
     }
 }
+
 /* --- SECTION INSETS --- */
 .section-inset {
     background: rgba(0, 0, 0, 0.2);
     border-bottom: 1px solid var(--glass-border);
     padding: 1.5rem;
 }
-.section-inset.border-top { border-top: 1px solid var(--glass-border); border-bottom: none; }
+
+.section-inset.border-top {
+    border-top: 1px solid var(--glass-border);
+    border-bottom: none;
+}
 
 .btn-glass {
     background: rgba(255, 255, 255, 0.05);
     color: #cbd5e1;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
 .btn-glass:hover {
     background: rgba(255, 255, 255, 0.1);
     color: white;
     border-color: rgba(255, 255, 255, 0.3);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+/* --- INLINE EDITING --- */
+.editable-preview {
+    outline: none;
+    transition: all 0.2s;
+    min-width: 100px;
+}
+
+.editable-preview:focus {
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 2px var(--primary-glow);
+    border-radius: 4px;
+}
+
+/* Placeholder for Text Content */
+.editable-preview[id="wa-text-preview"]:empty::before {
+    content: attr(data-placeholder);
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    pointer-events: none;
+    display: block;
+}
+
+/* Placeholder for Footer */
+.editable-preview[id="wa-footer-preview"]:empty::before {
+    content: attr(data-placeholder);
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    pointer-events: none;
+}
+
+/* Ensure empty footer is visible when editing/placeholder mode */
+.editable-preview[id="wa-footer-preview"]:empty {
+    display: block;
+    min-height: 1.2em;
+}
+
+/* Cursor style */
+.cursor-text {
+    cursor: text;
+}
+
+/* --- INLINE MEDIA CONTROLS --- */
+.wa-media-controls {
+    padding: 12px;
+    background: rgba(15, 23, 42, 0.8);
+    border-radius: 12px;
+    margin-top: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.wa-media-placeholder {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wa-media-placeholder:hover {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+/* --- INLINE BUTTON EDITING --- */
+.wa-button-add {
+    margin-top: 6px;
+    max-width: 90%;
+}
+
+.wa-button-edit-form {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 12px;
+    margin-top: 6px;
+    max-width: 90%;
+}
+
+/* Rendered button with icons */
+.wa-button-rendered {
+    background: #202c33;
+    color: #53bdeb;
+    padding: 12px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    transition: background 0.2s;
+    position: relative;
+}
+
+.wa-button-rendered:hover {
+    background: #2a3942;
+}
+
+.wa-button-rendered:first-child {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.wa-button-rendered:last-child {
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+.wa-button-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.wa-button-icons {
+    display: flex;
+    gap: 8px;
+    opacity: 0.6;
+}
+
+.wa-button-icon {
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.wa-button-icon:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.wa-button-icon.edit:hover {
+    color: #60a5fa;
+}
+
+.wa-button-icon.delete:hover {
+    color: #ef4444;
+}

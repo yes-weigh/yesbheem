@@ -26,13 +26,23 @@ class TemplateRenderer {
         list.innerHTML = templates.map(t => {
             const isActive = activeId === t.id;
             return `
-            <div class="template-item ${isActive ? 'active' : ''}"
-                 onclick="window.tmplMgr.loadTemplate('${t.id}')">
-                <div class="font-bold text-sm text-white truncate">${this.escapeHtml(t.name)}</div>
-                <div class="text-xs text-muted mt-1 flex justify-between" style="opacity:0.7">
-                    <span class="uppercase">${t.type}</span>
-                    <span>${t.id.substring(0, 4)}</span>
+            <div class="template-item ${isActive ? 'active' : ''}" style="position: relative; display: flex; align-items: center; gap: 0.5rem;">
+                <div style="flex: 1; cursor: pointer;" onclick="window.tmplMgr.loadTemplate('${t.id}')">
+                    <div class="font-bold text-sm text-white truncate">${this.escapeHtml(t.name)}</div>
+                    <div class="text-xs text-muted mt-1 flex justify-between" style="opacity:0.7">
+                        <span class="uppercase">${t.type}</span>
+                        <span>${t.id.substring(0, 4)}</span>
+                    </div>
                 </div>
+                <button 
+                    onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" 
+                    class="template-delete-btn"
+                    title="Delete template"
+                    style="opacity: 0; transition: all 0.2s; background: rgba(239, 68, 68, 0.1); border: none; border-radius: 8px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    <svg width="14" height="14" fill="none" stroke="#ef4444" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                </button>
             </div>`;
         }).join('');
     }
@@ -168,8 +178,9 @@ class TemplateRenderer {
 
         // 2. Text
         const textView = document.getElementById('wa-text-preview');
-        if (textView) {
-            let formatted = (text || 'Type a message...')
+        // Only render text if explicitly provided (avoids overwriting inline edits)
+        if (textView && typeof text !== 'undefined') {
+            let formatted = (text || '')
                 .replace(/\*(.*?)\*/g, '<span class="wa-bold">$1</span>')
                 .replace(/_(.*?)_/g, '<span class="wa-italic">$1</span>')
                 .replace(/~(.*?)~/g, '<span class="wa-strike">$1</span>')
@@ -180,11 +191,14 @@ class TemplateRenderer {
         // 3. Footer
         const footerView = document.getElementById('wa-footer-preview');
         if (footerView) {
-            if (footer) {
-                footerView.textContent = footer;
-                footerView.classList.remove('hidden');
-            } else {
-                footerView.classList.add('hidden');
+            // Only render footer if explicitly provided
+            if (typeof footer !== 'undefined') {
+                if (footer) {
+                    footerView.textContent = footer;
+                    footerView.classList.remove('hidden');
+                } else {
+                    footerView.classList.add('hidden');
+                }
             }
         }
 

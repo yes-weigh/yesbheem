@@ -105,6 +105,15 @@ service cloud.firestore {
       allow write: if isActiveUser() && isTrustedDevice();
     }
 
+    // Task Management Rules
+    match /task_boards/{boardId} {
+      allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
+    }
+    
+    match /project_tasks/{taskId} {
+      allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
+    }
+
     // Broad fallback for other collections (Be careful here, usually better to start with specific)
     // For now, let's enforce Active + Trusted for anything else the app might use
     // match /{path=**}/documents {

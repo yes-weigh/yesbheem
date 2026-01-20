@@ -58,7 +58,6 @@ class TemplateManager {
         this.activeTemplateId = id;
 
         // Update UI Inputs
-        document.getElementById('template-id-display').textContent = id;
         document.getElementById('template-name-input').value = template.name;
 
         // Delete Button Logic
@@ -71,9 +70,19 @@ class TemplateManager {
 
         // Parse Content
         const content = template.content || {};
-        document.getElementById('message-body').value = content.text || content.caption || '';
-        document.getElementById('footer-input').value = content.footer || '';
-        document.getElementById('footer-input-container').classList.toggle('hidden', !content.footer);
+
+        // Populate Preview Directly (Inline Editing)
+        const textPreview = document.getElementById('wa-text-preview');
+        const footerPreview = document.getElementById('wa-footer-preview');
+
+        if (textPreview) textPreview.innerText = content.text || content.caption || '';
+        if (footerPreview) {
+            footerPreview.innerText = content.footer || '';
+            footerPreview.classList.toggle('hidden', !content.footer && this.activeTemplateId !== 'NEW'); // Show if new or has content
+            if (!content.footer) footerPreview.classList.remove('hidden'); // Always show for editing if desired, or handle via focus
+        }
+
+        // document.getElementById('footer-input-container').classList.toggle('hidden', !content.footer); // Removed container
 
         // Media
         let mediaUrl = '';
@@ -83,7 +92,11 @@ class TemplateManager {
 
         document.getElementById('media-url-input').value = mediaUrl;
         document.getElementById('media-type-select').value = mediaType;
-        document.getElementById('media-input-section').classList.toggle('hidden', !!mediaUrl === false);
+        // Show inline media controls if media exists
+        const mediaControls = document.getElementById('wa-media-controls');
+        if (mediaControls && mediaUrl) {
+            mediaControls.classList.remove('hidden');
+        }
 
         // Buttons
         this.buttons = [];
@@ -97,9 +110,9 @@ class TemplateManager {
                 if (b.name === 'cta_copy') { type = 'copy'; val = params.copy_code; }
                 return { type, text: params.display_text, value: val };
             });
-            document.getElementById('buttons-input-section').classList.remove('hidden');
         }
 
+        this.renderButtonsInline();
         this.updateUI();
         this.renderer.renderTemplateList(this.templates, this.activeTemplateId); // Update active state
         this.focusSection('text');
@@ -123,9 +136,11 @@ class TemplateManager {
 
     updateUI() {
         this.renderer.renderButtons(this.buttons);
+
+        // Only render Media in Live Preview (Text/Footer are inline managed)
         this.renderer.renderLivePreview({
-            text: document.getElementById('message-body').value,
-            footer: document.getElementById('footer-input').value,
+            // text: ..., // Managed inline
+            // footer: ..., // Managed inline
             mediaUrl: document.getElementById('media-url-input').value,
             mediaType: document.getElementById('media-type-select').value,
             buttons: this.buttons
@@ -139,16 +154,13 @@ class TemplateManager {
         this.currentSection = section; // Track state
 
         const els = {
-            text: document.getElementById('text-input-section'),
-            media: document.getElementById('media-input-section'),
+            // text: document.getElementById('text-input-section'), // Removed
+            // media: document.getElementById('media-input-section'), // Removed - now inline
             buttons: document.getElementById('buttons-input-section'),
-            footer: document.getElementById('footer-input-container')
+            // footer: document.getElementById('footer-input-container') // Removed
         };
         const tabs = {
-            text: document.getElementById('btn-trigger-text'),
-            media: document.getElementById('btn-trigger-media'),
-            buttons: document.getElementById('btn-trigger-buttons'),
-            footer: document.getElementById('btn-trigger-footer')
+            buttons: document.getElementById('btn-trigger-buttons')
         };
 
         // Hide all inputs
@@ -158,6 +170,15 @@ class TemplateManager {
         // Show active input
         if (els[section]) els[section].classList.remove('hidden');
         if (tabs[section]) tabs[section].classList.add('active');
+
+        // Focus Inline Elements if applicable
+        if (section === 'text') {
+            document.getElementById('wa-text-preview').focus();
+        } else if (section === 'footer') {
+            const footerEl = document.getElementById('wa-footer-preview');
+            footerEl.classList.remove('hidden');
+            footerEl.focus();
+        }
 
         // Update preview placeholders
         this.updatePreviewPlaceholders();
@@ -186,19 +207,170 @@ class TemplateManager {
         }
     }
 
-    /* --- BUTTON MANAGEMENT --- */
+    /* --- BUTTON MANAGEMENT (INLINE) --- */
 
-    addButton() {
-        if (this.buttons.length < 3) {
-            this.buttons.push({ type: 'reply', text: 'Reply' });
-            this.updateUI();
+    addButtonInline() {
+        if (this.buttons.length >= 3) {
+            alert('Maximum 3 buttons allowed');
+            return;
         }
+
+        // Show edit form
+        this.editingButtonIndex = this.buttons.length; // New button
+        this.showButtonEditForm();
+    }
+
+    showButtonEditForm(button = null) {
+        const form = document.getElementById('wa-button-edit-form');
+        const addBtn = document.getElementById('wa-button-add');
+
+        // Populate form
+        document.getElementById('btn-type-input').value = button ? button.type : 'reply';
+        document.getElementById('btn-text-input').value = button ? button.text : '';
+        document.getElementById('btn-value-input').value = button ? button.value || '' : '';
+
+        // Show/hide value input based on type
+        this.updateButtonValueInput(button ? button.type : 'reply');
+
+        // Show form, hide add button
+        form.classList.remove('hidden');
+        if (addBtn) addBtn.classList.add('hidden');
+    }
+
+    hideButtonEditForm() {
+        const form = document.getElementById('wa-button-edit-form');
+        const addBtn = document.getElementById('wa-button-add');
+
+        form.classList.add('hidden');
+        if (addBtn && this.buttons.length < 3) addBtn.classList.remove('hidden');
+
+        this.editingButtonIndex = null;
+    }
+
+    updateButtonValueInput(type) {
+        const valueInput = document.getElementById('btn-value-input');
+        if (type === 'reply') {
+            valueInput.classList.add('hidden');
+        } else {
+            valueInput.classList.remove('hidden');
+            if (type === 'url') valueInput.placeholder = 'https://example.com';
+            else if (type === 'call') valueInput.placeholder = '+919876543210';
+            else if (type === 'copy') valueInput.placeholder = 'Promo Code';
+        }
+    }
+
+    confirmButton() {
+        const type = document.getElementById('btn-type-input').value;
+        const text = document.getElementById('btn-text-input').value;
+        const value = document.getElementById('btn-value-input').value;
+
+        if (!text) {
+            alert('Button label is required');
+            return;
+        }
+
+        if (type !== 'reply' && !value) {
+            alert('Value is required for this button type');
+            return;
+        }
+
+        const buttonData = { type, text, value: type === 'reply' ? '' : value };
+
+        if (this.editingButtonIndex !== null && this.editingButtonIndex < this.buttons.length) {
+            // Edit existing
+            this.buttons[this.editingButtonIndex] = buttonData;
+        } else {
+            // Add new
+            this.buttons.push(buttonData);
+        }
+
+        this.hideButtonEditForm();
+        this.renderButtonsInline();
+    }
+
+    editButtonInline(index) {
+        this.editingButtonIndex = index;
+        this.showButtonEditForm(this.buttons[index]);
     }
 
     removeButton(index) {
         this.buttons.splice(index, 1);
-        this.updateUI();
+        this.renderButtonsInline();
     }
+
+    renderButtonsInline() {
+        const container = document.getElementById('wa-buttons-preview');
+        const addBtn = document.getElementById('wa-button-add');
+
+        container.innerHTML = '';
+
+        this.buttons.forEach((btn, index) => {
+            const btnEl = document.createElement('div');
+            btnEl.className = 'wa-button-rendered';
+
+            let icon = '';
+            if (btn.type === 'url') icon = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>';
+            if (btn.type === 'call') icon = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>';
+            if (btn.type === 'reply') icon = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>';
+            if (btn.type === 'copy') icon = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>';
+
+            btnEl.innerHTML = `
+                <div class="wa-button-content">
+                    <span>${icon}</span>
+                    <span>${this.escapeHtml(btn.text) || 'Button'}</span>
+                </div>
+                <div class="wa-button-icons">
+                    <div class="wa-button-icon edit" data-index="${index}">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                    </div>
+                    <div class="wa-button-icon delete" data-index="${index}">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </div>
+                </div>
+            `;
+
+            container.appendChild(btnEl);
+        });
+
+        // Add event listeners to edit/delete icons
+        container.querySelectorAll('.wa-button-icon.edit').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.editButtonInline(parseInt(el.dataset.index));
+            });
+        });
+
+        container.querySelectorAll('.wa-button-icon.delete').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm('Delete this button?')) {
+                    this.removeButton(parseInt(el.dataset.index));
+                }
+            });
+        });
+
+        // Show/hide add button
+        if (addBtn) {
+            if (this.buttons.length >= 3) {
+                addBtn.classList.add('hidden');
+            } else {
+                addBtn.classList.remove('hidden');
+            }
+        }
+    }
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+
 
     updateButton(index, key, value) {
         this.buttons[index][key] = value;
@@ -207,9 +379,10 @@ class TemplateManager {
             this.updateUI();
         } else {
             // For text/value updates, only update the PREVIEW
+            // For text/value updates, only update the PREVIEW (Media/Buttons part)
             this.renderer.renderLivePreview({
-                text: document.getElementById('message-body').value,
-                footer: document.getElementById('footer-input').value,
+                // text: document.getElementById('message-body').value,
+                // footer: document.getElementById('footer-input').value,
                 mediaUrl: document.getElementById('media-url-input').value,
                 mediaType: document.getElementById('media-type-select').value,
                 buttons: this.buttons
@@ -222,20 +395,28 @@ class TemplateManager {
     /* --- EVENTS --- */
 
     setupEventListeners() {
-        // Inputs -> Live Preview
-        ['message-body', 'footer-input', 'media-url-input', 'media-type-select'].forEach(id => {
+        // Inputs -> Live Preview (Media/Buttons only now)
+        ['media-url-input', 'media-type-select'].forEach(id => {
             document.getElementById(id).addEventListener('input', () => this.updateUI());
         });
 
-        // Auto-resize Textarea
-        const ta = document.getElementById('message-body');
-        const resizeTa = () => {
-            ta.style.height = 'auto';
-            ta.style.height = (ta.scrollHeight) + 'px';
-        };
-        ta.addEventListener('input', resizeTa);
-        // Initial resize/resize on load
-        new ResizeObserver(resizeTa).observe(ta);
+        // Media Placeholder Click - Toggle Inline Controls
+        const mediaPlaceholder = document.getElementById('wa-media-placeholder');
+        const mediaControls = document.getElementById('wa-media-controls');
+        if (mediaPlaceholder && mediaControls) {
+            mediaPlaceholder.addEventListener('click', () => {
+                mediaControls.classList.toggle('hidden');
+                if (!mediaControls.classList.contains('hidden')) {
+                    // Focus the URL input when opening
+                    document.getElementById('media-url-input').focus();
+                }
+            });
+        }
+
+        // Inline Text Listeners (Optional: logic if distinct actions needed on input)
+        // document.getElementById('wa-text-preview').addEventListener('input', () => { ... });
+
+        // Auto-resize Textarea (Removed)
 
         // Media File -> Upload -> URL
         const fileInput = document.getElementById('media-file-input');
@@ -249,19 +430,21 @@ class TemplateManager {
             }
         });
 
-        // Media Toggle Source
-        document.querySelectorAll('.toggle-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                const src = e.target.dataset.source;
-                document.getElementById('media-url-input').classList.toggle('hidden', src === 'file');
-                document.getElementById('media-file-input').classList.toggle('hidden', src !== 'file');
-            });
-        });
+        // Inline Button Controls
+        const addButtonBtn = document.getElementById('wa-button-add');
+        if (addButtonBtn) {
+            addButtonBtn.querySelector('button').addEventListener('click', () => this.addButtonInline());
+        }
 
-        // Buttons
-        document.getElementById('btn-add-button').addEventListener('click', () => this.addButton());
+        const confirmBtn = document.getElementById('btn-confirm');
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', () => this.confirmButton());
+        }
+
+        const btnTypeInput = document.getElementById('btn-type-input');
+        if (btnTypeInput) {
+            btnTypeInput.addEventListener('change', (e) => this.updateButtonValueInput(e.target.value));
+        }
 
         // Actions
         document.getElementById('btn-new-template').addEventListener('click', () => this.resetForm());
@@ -324,8 +507,8 @@ class TemplateManager {
     }
 
     preparePayload() {
-        const bodyText = document.getElementById('message-body').value;
-        const footerText = document.getElementById('footer-input').value;
+        const bodyText = document.getElementById('wa-text-preview').innerText;
+        const footerText = document.getElementById('wa-footer-preview').innerText;
         const mediaUrl = document.getElementById('media-url-input').value;
         const mediaType = document.getElementById('media-type-select').value;
 
@@ -363,12 +546,20 @@ class TemplateManager {
 
     resetForm() {
         this.activeTemplateId = null;
-        document.getElementById('template-id-display').textContent = 'NEW';
         document.getElementById('template-name-input').value = '';
-        document.getElementById('message-body').value = '';
-        document.getElementById('footer-input').value = '';
+
+        const textPreview = document.getElementById('wa-text-preview');
+        if (textPreview) textPreview.innerText = '';
+
+        const footerPreview = document.getElementById('wa-footer-preview');
+        if (footerPreview) {
+            footerPreview.innerText = '';
+            footerPreview.classList.add('hidden');
+        }
+
         document.getElementById('media-url-input').value = '';
         this.buttons = [];
+        this.renderButtonsInline();
         this.updateUI(); // Resets view
         this.focusSection('text'); // Resets focus to text (hides other placeholders)
     }
