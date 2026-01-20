@@ -1,403 +1,211 @@
 <div class="template-grid-container" id="template-page">
-    <style>
-        /* Scoped Reset */
-        #template-page {
-            --primary: #6366f1;
-            --primary-hover: #4f46e5;
-            --bg-dark: #0f172a;
-            --bg-panel: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border: rgba(255, 255, 255, 0.1);
-            --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            --glass: rgba(30, 41, 59, 0.7);
-            --radius: 12px;
-        }
+    <link rel="stylesheet" href="/css/template.css">
 
-        .hidden {
-            display: none !important;
-        }
-
-        /* --- GRID LAYOUT --- */
-        .template-grid-container {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            /* Sidebar | Main */
-            height: 100%;
-            /* Fills the #page-content container */
-            width: 100%;
-            overflow: hidden;
-            /* No outer scroll */
-            background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent 60%);
-            font-family: 'Inter', system-ui, sans-serif;
-            color: var(--text-main);
-        }
-
-        /* --- SIDEBAR --- */
-        .template-sidebar {
-            background: var(--bg-panel);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            padding: 1.5rem;
-            gap: 1.5rem;
-            height: 100%;
-            overflow: hidden;
-            z-index: 10;
-        }
-
-        .cta-button {
-            width: 100%;
-            padding: 1rem;
-            background: var(--gradient-primary);
-            border: none;
-            border-radius: var(--radius);
-            color: white;
-            font-weight: 700;
-            font-size: 1rem;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-
-        .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(99, 102, 241, 0.5);
-        }
-
-        .sidebar-title {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
-
-        .sidebar-list {
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            padding-right: 4px;
-        }
-
-        /* Custom Scrollbar */
-        .sidebar-list::-webkit-scrollbar,
-        .editor-scroll-area::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .sidebar-list::-webkit-scrollbar-thumb,
-        .editor-scroll-area::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-        }
-
-        /* --- MAIN AREA --- */
-        .template-main {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .editor-header {
-            padding: 1.5rem 2rem;
-            border-bottom: 1px solid var(--border);
-            background: rgba(15, 23, 42, 0.5);
-            backdrop-filter: blur(10px);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-shrink: 0;
-        }
-
-        .header-title-input {
-            background: transparent;
-            border: none;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: white;
-            width: 100%;
-            outline: none;
-        }
-
-        .header-title-input::placeholder {
-            color: rgba(255, 255, 255, 0.3);
-        }
-
-        /* --- SCROLLABLE EDITOR CONTENT --- */
-        .editor-scroll-area {
-            flex: 1;
-            /* Takes remaining height */
-            overflow-y: auto;
-            /* SCROLL HAPPENS HERE */
-            padding: 2rem;
-        }
-
-        .editor-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-weight: 600;
-        }
-
-        .input-pill-group {
-            display: flex;
-            background: #0f172a;
-            padding: 4px;
-            border-radius: 8px;
-            gap: 4px;
-        }
-
-        .pill-btn {
-            flex: 1;
-            padding: 0.75rem;
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .pill-btn.active {
-            background: var(--bg-panel);
-            color: white;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-        }
-
-        .modern-input,
-        .modern-textarea {
-            width: 100%;
-            background: #0f172a;
-            border: 1px solid var(--border);
-            padding: 1rem;
-            border-radius: 8px;
-            color: white;
-            font-family: inherit;
-            transition: border-color 0.2s;
-        }
-
-        .modern-input:focus,
-        .modern-textarea:focus {
-            border-color: var(--primary);
-            outline: none;
-        }
-
-        /* Button Builder Styles */
-        .btn-add-dashed {
-            width: 100%;
-            padding: 1rem;
-            border: 2px dashed var(--border);
-            background: transparent;
-            color: var(--text-muted);
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .btn-add-dashed:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-            background: rgba(99, 102, 241, 0.05);
-        }
-
-        .action-button-large {
-            padding: 1rem 2rem;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        .btn-primary {
-            background: var(--gradient-primary);
-            color: white;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-        }
-
-        .btn-primary:active {
-            transform: scale(0.98);
-        }
-
-        .media-preview-box {
-            height: 200px;
-            background: #000;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            margin-top: 1rem;
-            border: 1px dashed var(--border);
-        }
-
-        .media-contain {
-            max-height: 100%;
-            max-width: 100%;
-            object-fit: contain;
-        }
-
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .template-grid-container {
-                grid-template-columns: 1fr;
-            }
-
-            .template-sidebar {
-                display: none;
-                /* Hide sidebar on mobile for now or make toggleable */
-            }
-        }
-    </style>
-
-    <!-- Sidebar -->
+    <!-- SIDEBAR -->
     <aside class="template-sidebar">
         <div>
             <button id="btn-new-template" class="cta-button">
                 <span>+ New Message</span>
             </button>
         </div>
-
-        <div>
-            <div class="sidebar-title">Saved Templates</div>
-            <div class="sidebar-list" id="template-list">
-                <!-- Template Items Injected Here -->
-            </div>
+        <div class="sidebar-title" style="margin-top: 1rem;">Saved Templates</div>
+        <div class="sidebar-list" id="template-list">
+            <!-- Filled by JS -->
         </div>
     </aside>
 
-    <!-- Main Content -->
+    <!-- MAIN CONTENT -->
     <main class="template-main">
-        <!-- Header -->
-        <header class="editor-header">
-            <div style="flex: 1;">
-                <input type="text" id="template-name-input" class="header-title-input" placeholder="Template Name">
-                <div class="sidebar-title" style="margin-top: 4px;">ID: <span id="template-id-display">NEW</span></div>
+        <!-- HEADER -->
+        <header class="composer-header">
+            <div class="header-group" style="flex: 0 0 220px;">
+                <label class="header-label">From Device</label>
+                <select id="session-select" class="minimal-input" style="cursor: pointer;">
+                    <option value="">Loading...</option>
+                </select>
             </div>
-            <button id="btn-delete-template" class="btn-icon" style="color: #ef4444; opacity: 0; pointer-events: none;">
-                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                    </path>
-                </svg>
-            </button>
+            <div class="header-group"
+                style="flex: 0 0 200px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 1.5rem;">
+                <label class="header-label">Receiver</label>
+                <input type="text" id="phone-number" class="minimal-input" placeholder="e.g. 919876543210">
+            </div>
+            <div class="header-group"
+                style="flex: 1; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 1.5rem;">
+                <label class="header-label">Template Name</label>
+                <input type="text" id="template-name-input" class="minimal-input" placeholder="My New Template">
+            </div>
+            <div class="header-group" style="text-align: right;">
+                <label class="header-label">ID</label>
+                <span id="template-id-display" style="font-size: 0.8rem; font-weight: 700; color: #a5b4fc;">NEW</span>
+            </div>
         </header>
 
-        <!-- Scrollable Body -->
-        <div class="editor-scroll-area">
+        <!-- TWO COLUMN LAYOUT -->
+        <div class="editor-layout-grid">
 
-            <!-- Configuration Card (Device & Receiver) -->
-            <div class="editor-card" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div>
-                    <label class="form-label">Select Device</label>
-                    <select id="session-select" class="modern-input" style="cursor: pointer;">
-                        <option value="">Loading devices...</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="form-label">Receiver Phone</label>
-                    <input type="text" id="phone-number" class="modern-input" placeholder="e.g. 919876543210">
-                </div>
-            </div>
+            <!-- LEFT: LIVE PREVIEW -->
+            <div class="editor-side-col">
+                <div style="position: sticky; top: 0;">
+                    <h5 class="text-muted text-xs font-bold uppercase mb-4 text-center"
+                        style="font-size: 0.7rem; letter-spacing: 1px;">Live Preview (Click to Edit)</h5>
 
-            <!-- Type Selector -->
-            <div class="editor-card">
-                <div class="input-pill-group">
-                    <button class="pill-btn active" id="type-text"
-                        onclick="window.tmplMgr.setTemplateType('text')">Text</button>
-                    <button class="pill-btn" id="type-text_media"
-                        onclick="window.tmplMgr.setTemplateType('text_media')">Text + Media</button>
-                    <button class="pill-btn" id="type-buttons"
-                        onclick="window.tmplMgr.setTemplateType('buttons')">Buttons</button>
-                    <button class="pill-btn" id="type-buttons_media"
-                        onclick="window.tmplMgr.setTemplateType('buttons_media')">Buttons + Media</button>
-                </div>
-            </div>
+                    <div class="wa-preview-container">
+                        <div class="wa-header">
+                            <div class="wa-avatar"></div>
+                            <div style="flex:1;">
+                                <div style="font-size:14px; font-weight:600;">Business Name</div>
+                                <div style="font-size:11px; opacity:0.7;">Official Business Account</div>
+                            </div>
+                        </div>
+                        <div class="wa-body">
+                            <!-- BUBBLE -->
+                            <div class="wa-message-bubble">
+                                <!-- Media -->
+                                <div id="wa-media-preview" class="wa-media-container hidden cursor-pointer"
+                                    onclick="window.tmplMgr.focusSection('media')"></div>
+                                <div id="wa-media-placeholder"
+                                    class="wa-media-container dashed-border cursor-pointer hidden"
+                                    onclick="window.tmplMgr.focusSection('media')">
+                                    <div style="text-align:center; color:rgba(255,255,255,0.3);">
+                                        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                                            viewBox="0 0 24 24" style="margin: 0 auto 4px auto;">
+                                            <path
+                                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                                            </path>
+                                        </svg>
+                                        <span style="font-size:10px;">Add Media</span>
+                                    </div>
+                                </div>
 
-            <!-- Content Form -->
-            <div class="editor-card">
+                                <!-- Text -->
+                                <div class="wa-text-content cursor-pointer" id="wa-text-preview"
+                                    onclick="window.tmplMgr.focusSection('text')">...</div>
 
-                <!-- Media Section (Dynamic) -->
-                <div id="media-section" class="hidden" style="margin-bottom: 1.5rem;">
-                    <label class="form-label">Media Attachment</label>
-                    <div class="input-pill-group" style="margin-bottom: 1rem;">
-                        <button class="pill-btn toggle-btn active" data-source="url" id="media-toggle-url"
-                            onclick="window.tmplMgr.setMediaSource('url')">URL</button>
-                        <button class="pill-btn toggle-btn" data-source="file" id="media-toggle-upload"
-                            onclick="window.tmplMgr.setMediaSource('file')">Upload</button>
-                        <!-- Added Media Type Select -->
-                        <select id="media-type-select" class="modern-input"
-                            style="width: auto; padding: 0.5rem; margin-left: 4px; background: #0f172a;">
-                            <option value="image">Image</option>
-                            <option value="video">Video</option>
-                        </select>
+                                <!-- Footer -->
+                                <div class="wa-footer hidden cursor-pointer" id="wa-footer-preview"
+                                    onclick="window.tmplMgr.focusSection('footer')"></div>
+
+                                <div class="wa-time">Now</div>
+                            </div>
+
+                            <!-- BUTTONS -->
+                            <div id="wa-buttons-preview" class="wa-buttons-container cursor-pointer"
+                                onclick="window.tmplMgr.focusSection('buttons')"></div>
+                            <div id="wa-buttons-placeholder" class="wa-buttons-container cursor-pointer hidden"
+                                onclick="window.tmplMgr.focusSection('buttons')">
+                                <div
+                                    style="border:1px dashed rgba(255,255,255,0.2); padding:8px; border-radius:8px; text-align:center;">
+                                    <span style="font-size:11px; color:rgba(255,255,255,0.4);">+ Add Buttons</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <input type="text" id="media-url-input" class="modern-input"
-                        placeholder="https://example.com/image.jpg">
-                    <input type="file" id="media-file-input" class="modern-input hidden">
+                    <div style="text-align:center; margin-top:1rem;">
+                        <button id="btn-delete-template"
+                            style="color: #ef4444; font-size:0.8rem; background:none; border:none; text-decoration:underline; cursor:pointer; opacity:0; pointer-events:none;">Delete
+                            Template</button>
+                    </div>
+                </div>
+            </div>
 
-                    <div id="media-preview-container" class="media-preview-box hidden">
-                        <img id="media-preview-image" src="" class="media-contain hidden">
-                        <video id="media-preview-video" src="" class="media-contain hidden" controls></video>
+            <!-- RIGHT: EDITOR -->
+            <div class="editor-main-col">
+                <div class="editor-card">
+                    <!-- Composer Body -->
+                    <div class="composer-body">
+                        <!-- Tab Bar -->
+                        <div class="action-bar">
+                            <button class="action-pill active" id="btn-trigger-text"
+                                onclick="window.tmplMgr.focusSection('text')">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24">
+                                    <path d="M4 6h16M4 12h16M4 18h7"></path>
+                                </svg>
+                                Message
+                            </button>
+                            <button class="action-pill" id="btn-trigger-media"
+                                onclick="window.tmplMgr.focusSection('media')">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24">
+                                    <path
+                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                                    </path>
+                                </svg>
+                                Media
+                            </button>
+                            <button class="action-pill" id="btn-trigger-buttons"
+                                onclick="window.tmplMgr.focusSection('buttons')">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24">
+                                    <path d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                                Buttons <span id="btn-count-badge"
+                                    style="background:rgba(255,255,255,0.1); padding:0 6px; border-radius:10px; font-size:0.7rem; margin-left:4px;">0</span>
+                            </button>
+                            <button class="action-pill" id="btn-trigger-footer"
+                                onclick="window.tmplMgr.focusSection('footer')">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24">
+                                    <path d="M4 6h16M4 12h16m-7 6h7"></path>
+                                </svg>
+                                Footer
+                            </button>
+                        </div>
+
+                        <!-- SECTIONS -->
+
+                        <!-- 1. TEXT SECTION -->
+                        <div id="text-input-section" class="input-section">
+                            <textarea id="message-body" class="message-textarea"
+                                placeholder="Type your WhatsApp message here... (Supports *bold*, _italic_, ~strike~)"></textarea>
+                        </div>
+
+                        <!-- 2. MEDIA SECTION -->
+                        <div id="media-input-section" class="input-section section-inset hidden">
+                            <div class="flex gap-2 mb-2" style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <button class="pill-btn toggle-btn active small" data-source="url">URL</button>
+                                <button class="pill-btn toggle-btn small" data-source="file">Upload</button>
+                                <select id="media-type-select" class="modern-input small" style="width: auto;">
+                                    <option value="image">Image</option>
+                                    <option value="video">Video</option>
+                                </select>
+                            </div>
+                            <input type="text" id="media-url-input" class="modern-input" placeholder="Media URL...">
+                            <input type="file" id="media-file-input" class="modern-input hidden">
+                            <div class="text-xs text-muted mt-2">Media will appear at the top of the message.</div>
+                        </div>
+
+                        <!-- 3. BUTTONS SECTION -->
+                        <div id="buttons-input-section" class="input-section section-inset hidden">
+                            <div id="buttons-list"></div>
+                            <button id="btn-add-button" class="btn-add-dashed w-full py-2 text-xs"
+                                style="width:100%; padding:8px;">+ Add Button</button>
+                        </div>
+
+                        <!-- 4. FOOTER SECTION -->
+                        <div id="footer-input-container" class="input-section section-inset border-top hidden">
+                            <label class="text-xs font-bold uppercase text-muted mb-1 block">Footer Text</label>
+                            <input type="text" id="footer-input" class="minimal-input"
+                                placeholder="Type footer text...">
+                        </div>
                     </div>
                 </div>
 
-                <div style="margin-bottom: 1.5rem;">
-                    <label class="form-label">Message Text</label>
-                    <textarea id="message-body" class="modern-textarea" rows="6"
-                        placeholder="Type your message here..."></textarea>
+                <!-- Submit Area -->
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <button id="btn-save-template" class="action-button-large btn-glass" style="flex:1;">Save
+                        Template</button>
+                    <button id="btn-send-message" class="action-button-large btn-primary" style="flex:2;">Send
+                        Message</button>
                 </div>
-
-                <div id="footer-section" class="hidden" style="margin-bottom: 1.5rem;">
-                    <label class="form-label">Footer Text</label>
-                    <input type="text" id="footer-input" class="modern-input" placeholder="Optional footer text">
-                </div>
+                <div id="status-message" class="text-sm font-bold hidden" style="color:#10b981; text-align:center;">
+                    Message Sent!</div>
             </div>
-
-            <!-- Interactive Buttons -->
-            <div id="buttons-section" class="editor-card hidden">
-                <label class="form-label">Interactive Buttons</label>
-                <div id="buttons-list" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1rem;">
-                    <!-- Buttons Rendered Here -->
-                </div>
-                <button id="btn-add-button" class="btn-add-dashed">+ Add Interactive Button</button>
-            </div>
-
-            <!-- Actions Footer -->
-            <div
-                style="display: flex; justify-content: flex-end; align-items: center; gap: 1rem; padding-bottom: 2rem;">
-                <span id="status-message" class="text-sm font-bold hidden" style="color: #10b981;">Message Sent!</span>
-                <button id="btn-save-template" class="action-button-large"
-                    style="background: #334155; color: white;">Save Template</button>
-                <button id="btn-send-message" class="action-button-large btn-primary">Send Message</button>
-            </div>
-
         </div>
     </main>
-
-    <!-- Module Connection -->
-    <script type="module" src="js/template_manager.js?v=8"></script>
 </div>
+
+<script src="/js/services/template_service.js"></script>
+<script src="/js/renderers/template_renderer.js"></script>
+<script src="/js/template_manager.js"></script>
