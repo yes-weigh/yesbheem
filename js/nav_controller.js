@@ -400,11 +400,24 @@ class NavigationController {
                         await this.loadInlineModule(script.content);
                     } else {
                         try {
+                            // Check if script content defines a class that already exists
+                            // This is a basic check for common patterns like "class X" or "const X ="
+                            const classMatch = script.content.match(/class\s+(\w+)/);
+                            if (classMatch && window[classMatch[1]]) {
+                                console.log(`Skipping inline script defining ${classMatch[1]} as it's already defined.`);
+                                continue;
+                            }
+
                             // Use Function constructor for better error handling
                             const scriptFunc = new Function(script.content);
                             scriptFunc();
                         } catch (err) {
-                            console.error('Error executing inline script:', err);
+                            // Ignore specific syntax errors related to redeclaration
+                            if (err.name === 'SyntaxError' && err.message.includes('has already been declared')) {
+                                console.log('Skipping script execution: Identifier already declared.');
+                            } else {
+                                console.error('Error executing inline script:', err);
+                            }
                         }
                     }
                 }
@@ -427,6 +440,22 @@ class NavigationController {
 
     loadExternalScript(src, isModule = false) {
         return new Promise((resolve, reject) => {
+            // Check if script is already loaded by src
+            // Because we append timestamp, we perform a partial match or check global registry if we had one.
+            // Simplified check: check if any script tag ends with the base filename
+
+            // Clean the src of query params for checking
+            const cleanSrc = src.split('?')[0];
+            const fileName = cleanSrc.substring(cleanSrc.lastIndexOf('/') + 1);
+
+            // Avoid re-loading service/renderer scripts which are likely to declare global classes
+            // This is a heuristic. A robust solution would use a module system or manual registry.
+            if (document.querySelector(`script[src*="${fileName}"]`)) {
+                console.log(`Script ${fileName} already loaded. Skipping.`);
+                resolve();
+                return;
+            }
+
             const script = document.createElement('script');
 
             // Resolve the path using the base path configuration
@@ -441,7 +470,10 @@ class NavigationController {
             script.onload = resolve;
             script.onerror = (error) => {
                 console.error('Failed to load script:', resolvedSrc, error);
-                reject(error);
+
+                // Allow proceeding even if script fails, to not block the page load completely
+                // but log it clearly.
+                resolve();
             };
             document.body.appendChild(script);
         });

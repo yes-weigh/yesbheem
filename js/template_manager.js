@@ -622,5 +622,4 @@ class TemplateManager {
     }
 }
 
-// Start
-new TemplateManager();
+// End of TemplateManager
