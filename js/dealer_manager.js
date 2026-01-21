@@ -8,6 +8,7 @@ import { DealerValidator } from './components/dealer-validator.js';
 import { TABLE_UI } from './config/constants.js';
 import { DealerService } from './services/dealer-service.js';
 import { DealerFilterService } from './services/dealer-filter-service.js';
+import { AudienceService } from './services/audience_service.js';
 import { CategorySelector } from './components/category-selector.js';
 import { StageSelector } from './components/stage-selector.js';
 import { KAMSelector } from './components/kam-selector.js';
@@ -29,6 +30,9 @@ if (!window.DealerManager) {
 
             // Initialize DealerFilterService
             this.filterService = new DealerFilterService();
+
+            // Initialize AudienceService
+            this.audienceService = new AudienceService();
 
             this.dataManager = window.dataManager;
 
@@ -1405,6 +1409,7 @@ if (!window.DealerManager) {
                 document.body.appendChild(panel);
             }
 
+
             // 2. Find Data
             const dealerData = this.dealers.find(d => d.customer_name === dealerName);
             if (!dealerData) {
@@ -1464,6 +1469,128 @@ if (!window.DealerManager) {
             } catch (e) {
                 console.error('Error rendering edit form:', e);
                 alert('Error showing edit form: ' + e.message);
+            }
+        }
+
+        /* --- AUDIENCE ACTIONS --- */
+
+        openAudienceModal() {
+            // Check if there is a selection or active filters
+            const count = this.selectedDealers.size;
+
+            // UI References
+            this.audienceModal = document.getElementById('save-audience-modal');
+            this.audienceNameInput = document.getElementById('audience-name-input');
+            this.audienceCountPreview = document.getElementById('audience-count-preview');
+
+            if (!this.audienceModal) return;
+
+            // Reset inputs
+            this.audienceNameInput.value = '';
+
+            const radio = document.querySelector('input[name="audienceType"][value="static"]');
+            if (radio) radio.checked = true;
+
+            // Update preview
+            this.updateAudiencePreview();
+
+            // Force visibility using the same brute-force approach as bulkAssignKAM
+            this.audienceModal.classList.add('active'); // Potentially required by global CSS
+            this.audienceModal.style.position = 'fixed';
+            this.audienceModal.style.top = '0';
+            this.audienceModal.style.left = '0';
+            this.audienceModal.style.width = '100vw';
+            this.audienceModal.style.height = '100vh';
+            this.audienceModal.style.zIndex = '99999';
+            this.audienceModal.style.display = 'flex';
+            this.audienceModal.style.visibility = 'visible';
+            this.audienceModal.style.opacity = '1';
+
+            if (this.audienceNameInput) this.audienceNameInput.focus();
+        }
+
+        closeAudienceModal() {
+            if (this.audienceModal) {
+                this.audienceModal.style.display = 'none';
+            }
+        }
+
+        toggleAudienceTypeDescription() {
+            this.updateAudiencePreview();
+        }
+
+        updateAudiencePreview() {
+            const typeRadio = document.querySelector('input[name="audienceType"]:checked');
+            if (!typeRadio) return;
+
+            const type = typeRadio.value;
+            const desc = document.getElementById('audience-type-desc');
+
+            if (!desc) return;
+
+            if (type === 'static') {
+                const count = this.selectedDealers.size > 0 ? this.selectedDealers.size : this.filteredDealers.length;
+                desc.innerHTML = `Save the <strong id="audience-count-preview">${count}</strong> currently visible/selected dealers as a fixed list. Future changes won't affect this list.`;
+            } else {
+                // Dynamic
+                const count = this.filteredDealers.length;
+                desc.innerHTML = `Save the current <strong>filter criteria</strong> (matches ${count} dealers). The list will automatically update as dealers match these criteria.`;
+            }
+        }
+
+        async confirmSaveAudience() {
+            const name = this.audienceNameInput.value.trim();
+            const type = document.querySelector('input[name="audienceType"]:checked').value;
+
+            if (!name) {
+                alert('Please enter an audience name');
+                return;
+            }
+
+            const payload = {
+                name: name,
+                source: type === 'static' ? 'static_list' : 'dealer_filter',
+                count: 0
+            };
+
+            if (type === 'static') {
+                // If specific checkboxes selected, use those. Else use all currently filtered.
+                let ids = Array.from(this.selectedDealers);
+                if (ids.length === 0) {
+                    // Fallback to all filtered
+                    ids = this.filteredDealers.map(d => d.id);
+                }
+
+                if (ids.length === 0) {
+                    alert('No dealers selected to save.');
+                    return;
+                }
+
+                payload.staticIds = ids;
+                payload.count = ids.length;
+            } else {
+                // Dynamic
+                payload.filterConfig = {
+                    search: this.searchQuery,
+                    stage: this.stageFilter,
+                    kam: this.kamFilter,
+                    state: this.stateFilter,
+                    district: this.districtFilter,
+                    categories: this.categoryFilter
+                };
+                payload.count = this.filteredDealers.length;
+            }
+
+            try {
+                // Show loading indicator?
+                await this.audienceService.createAudience(payload);
+
+                import('./utils/toast.js').then(m => m.Toast.success('Audience saved successfully!'));
+                this.closeAudienceModal();
+                this.clearSelection(); // Optional: clear selection after saving
+            } catch (error) {
+                console.error('Failed to save audience:', error);
+                alert('Failed to save audience. Please try again.');
             }
         }
 
@@ -2265,10 +2392,6 @@ if (!window.DealerManager) {
 // Global hook for the refresh hack
 // Always create or re-init
 if (window.DealerManager) {
-    if (!window.dealerManager) {
-        window.dealerManager = new window.DealerManager();
-    } else {
-        // Just init existing instance
-        window.dealerManager.init();
-    }
+    // Always create new instance to ensure code updates apply
+    window.dealerManager = new window.DealerManager();
 }

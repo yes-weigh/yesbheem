@@ -1,6 +1,275 @@
-<div class="campaign-container">
-    <div class="header-section">
-        <h1>Campaigns</h1>
-        <p>Campaign management coming soon.</p>
+<div class="page-container" id="campaign-page">
+    <style>
+        /* Scoped styles for campaign page */
+        .campaign-header {
+            padding: 20px 24px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .campaign-tabs {
+            display: flex;
+            gap: 20px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 8px 0;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .tab-btn.active {
+            color: var(--text-main);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -21px;
+            /* Align with header border */
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--accent-color);
+        }
+
+        .view-section {
+            display: none;
+            padding: 24px;
+            height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        /* Wizard Styling */
+        .wizard-step {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .step-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .step-number {
+            background: var(--accent-color);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
+        .selection-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .selection-card:hover {
+            border-color: var(--accent-color);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .selection-card.selected {
+            border-color: var(--accent-color);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        /* Dashboard Table */
+        .campaign-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .campaign-table th {
+            text-align: left;
+            padding: 12px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-light);
+            font-size: 0.85rem;
+        }
+
+        .campaign-table td {
+            padding: 16px 12px;
+            border-bottom: 1px solid var(--border-light);
+            color: var(--text-main);
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .status-completed {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .status-draft {
+            background: rgba(107, 114, 128, 0.2);
+            color: #9ca3af;
+        }
+    </style>
+
+    <div class="campaign-header">
+        <div class="campaign-tabs">
+            <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+            <button class="tab-btn" data-tab="new-campaign">New Campaign</button>
+        </div>
+        <div>
+            <button class="btn-primary" id="btn-refresh-campaigns">Refresh</button>
+        </div>
+    </div>
+
+    <!-- VIEW: Dashboard -->
+    <div id="view-dashboard" class="view-section active">
+        <div class="wizard-step" style="max-width: 100%; background: transparent; border: none; padding:0;">
+            <table class="campaign-table">
+                <thead>
+                    <tr>
+                        <th>Campaign Name</th>
+                        <th>Audience</th>
+                        <th>Status</th>
+                        <th>Progress</th>
+                        <th>Sent</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="campaign-list-body">
+                    <!-- Dynamic -->
+                </tbody>
+            </table>
+            <div id="custom-loader" style="display:none; text-align:center; padding: 20px; color: var(--text-muted);">
+                Loading campaigns...</div>
+        </div>
+    </div>
+
+    <!-- VIEW: New Campaign Wizard -->
+    <div id="view-new-campaign" class="view-section">
+
+        <div style="max-width: 800px; margin: 0 auto 20px;">
+            <input type="text" id="new-campaign-name" class="modern-input"
+                placeholder="Campaign Name (e.g. Diwali Sale 2026)"
+                style="width: 100%; font-size: 1.2rem; padding: 12px;">
+        </div>
+
+        <!-- Step 1: Audience -->
+        <div class="wizard-step">
+            <div class="step-header">
+                <div class="step-title"><span class="step-number">1</span> Select Audience</div>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <select id="campaign-audience-select" class="modern-input" style="width: 100%;">
+                    <option value="">Loading Audiences...</option>
+                </select>
+            </div>
+            <div id="selected-audience-info"
+                style="display:none; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 0.9rem; color: var(--text-muted);">
+                <!-- Dynamic Info -->
+            </div>
+            <div style="margin-top: 10px; text-align: right;">
+                <a href="#" onclick="window.location.hash='#dealer'; return false;"
+                    style="font-size: 0.8rem; color: var(--accent-color);">+ Create New Audience</a>
+            </div>
+        </div>
+
+        <!-- Step 2: Sender -->
+        <div class="wizard-step">
+            <div class="step-header">
+                <div class="step-title"><span class="step-number">2</span> Sender Configuration</div>
+            </div>
+            <div class="radio-group" style="display: flex; gap: 20px; margin-bottom: 15px;">
+                <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                    <input type="radio" name="senderType" value="single" checked> Single Instance
+                </label>
+                <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                    <input type="radio" name="senderType" value="group"> Instance Group
+                </label>
+            </div>
+
+            <select id="campaign-sender-select" class="modern-input" style="width: 100%;">
+                <option value="">Select Instance...</option>
+            </select>
+        </div>
+
+        <!-- Step 3: Template -->
+        <div class="wizard-step">
+            <div class="step-header">
+                <div class="step-title"><span class="step-number">3</span> Message Template</div>
+            </div>
+            <select id="campaign-template-select" class="modern-input" style="width: 100%; margin-bottom: 15px;">
+                <option value="">Select Template...</option>
+            </select>
+
+            <!-- Template Preview Container -->
+            <div id="campaign-template-preview"
+                style="background: #000; padding: 10px; border-radius: 8px; min-height: 100px; display: none;">
+                <!-- Rendered by TemplateRenderer -->
+            </div>
+        </div>
+
+        <!-- Action Bar -->
+        <div style="max-width: 800px; margin: 20px auto; text-align: right;">
+            <button id="btn-start-campaign" class="action-button-large btn-primary">🚀 Start Campaign</button>
+        </div>
+
     </div>
 </div>
+
+
+<!-- Load Logic -->
+<script src="js/services/template_service.js"></script>
+<script src="js/renderers/template_renderer.js"></script>
+<script type="module" src="js/campaign_manager.js"></script>
+<script>
+
+    // Cleanup any existing instance if re-navigating
+    if (window.campaignManager) {
+        // window.campaignManager.destroy(); // if we implement destroy
+    }
+    // Logic will auto-instantiate in the module file similar to others
+</script>

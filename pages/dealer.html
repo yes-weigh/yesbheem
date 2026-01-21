@@ -292,6 +292,8 @@
         <div class="bulk-actions-buttons">
             <button class="bulk-btn" onclick="event.stopPropagation(); window.dealerManager.bulkAssignKAM()">Assign
                 KAM</button>
+            <button class="bulk-btn" onclick="event.stopPropagation(); window.dealerManager.openAudienceModal()">Save as
+                Audience</button>
             <button class="bulk-btn" onclick="window.dealerManager.bulkExport()">Export</button>
             <button class="bulk-btn"
                 style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);"
@@ -322,6 +324,56 @@
             <button class="bulk-btn"
                 style="background: var(--accent-color); border-color: var(--accent-color); color: white;"
                 onclick="window.dealerManager.confirmBulkAssign()">Confirm Assignment</button>
+        </div>
+    </div>
+</div>
+
+<!-- Save Audience Modal -->
+<div id="save-audience-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-container" style="max-width: 450px;">
+        <div style="margin-bottom: 20px;">
+            <h3 style="margin-bottom: 8px; color: var(--text-main);">Save Audience Segment</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">
+                Create a reusable audience from your current selection.
+            </p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 6px;">Audience
+                Name</label>
+            <input type="text" id="audience-name-input" class="modern-input"
+                placeholder="e.g. Kerala High Value Dealers" style="width: 100%;">
+        </div>
+
+        <div style="margin-bottom: 24px;">
+            <label style="display: block; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 10px;">Audience
+                Type</label>
+
+            <div class="radio-group" style="display: flex; gap: 16px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);">
+                    <input type="radio" name="audienceType" value="static" checked
+                        onchange="window.dealerManager.toggleAudienceTypeDescription()">
+                    <span>Static List</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);">
+                    <input type="radio" name="audienceType" value="dynamic"
+                        onchange="window.dealerManager.toggleAudienceTypeDescription()">
+                    <span>Dynamic Filter</span>
+                </label>
+            </div>
+
+            <p id="audience-type-desc"
+                style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px;">
+                Save the <strong id="audience-count-preview">0</strong> currently selected dealers as a fixed list.
+                Future changes to dealer data won't affect who is in this list.
+            </p>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+            <button class="btn-secondary" onclick="window.dealerManager.closeAudienceModal()">Cancel</button>
+            <button class="bulk-btn"
+                style="background: var(--accent-color); border-color: var(--accent-color); color: white;"
+                onclick="window.dealerManager.confirmSaveAudience()">Save Audience</button>
         </div>
     </div>
 </div>
@@ -1074,5 +1126,81 @@
         transform: scale(1.2);
         z-index: 10;
         border-color: var(--accent-color);
+    }
+</style>
+
+<style>
+    /* Audience Modal Specific Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+        z-index: 100000;
+        /* Extremely High z-index to overlay everything */
+        display: none;
+        /* Hidden by default */
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        animation: fadeIn 0.2s forwards;
+    }
+
+    .modal-overlay[style*="display: flex"] {
+        opacity: 1;
+        /* Ensure opacity is 1 when displayed */
+    }
+
+    .modal-container {
+        /* Renamed from .modal-content to match HTML */
+        background: var(--modal-bg-gradient);
+        border: 1px solid var(--modal-border);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border-radius: 12px;
+        width: 500px;
+        max-width: 90%;
+        color: var(--text-main);
+        overflow: hidden;
+        transform: scale(0.95);
+        animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .modal-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--bg-secondary);
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .modal-footer {
+        padding: 16px 20px;
+        background: var(--bg-secondary);
+        border-top: 1px solid var(--border-light);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    @keyframes scaleUp {
+        to {
+            transform: scale(1);
+            opacity: 1;
+        }
     }
 </style>
