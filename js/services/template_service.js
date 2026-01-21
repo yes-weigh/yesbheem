@@ -46,7 +46,9 @@ class TemplateService {
         const payload = {
             name: templateData.name,
             type: templateData.type,
-            content: templateData.content
+            content: templateData.content,
+            language: templateData.language || null,
+            category: templateData.category || null
         };
 
         const res = await fetch(url, {

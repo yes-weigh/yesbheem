@@ -25,18 +25,65 @@ class TemplateManager {
     async init() {
         this.setupEventListeners();
         try {
-            const [sessions, templates] = await Promise.all([
+            const [sessions, templates, settings] = await Promise.all([
                 this.service.getSessions(),
-                this.service.getTemplates()
+                this.service.getTemplates(),
+                this.loadSettings()
             ]);
 
             this.renderSessions(sessions);
             this.templates = templates;
             this.renderer.renderTemplateList(this.templates, this.activeTemplateId);
 
+            // Populate language and category dropdowns
+            if (settings) {
+                this.settings = settings; // Store settings
+                this.populateLanguages(settings.template_languages || []);
+                this.populateCategories(settings.template_categories || []);
+            }
+
         } catch (e) {
             console.error('Init failed', e);
         }
+    }
+
+    async loadSettings() {
+        try {
+            const { db } = await import('./services/firebase_config.js');
+            const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+            const docRef = doc(db, 'settings', 'general');
+            const docSnap = await getDoc(docRef);
+            return docSnap.exists() ? docSnap.data() : null;
+        } catch (e) {
+            console.error('Failed to load settings:', e);
+            return null;
+        }
+    }
+
+    populateLanguages(languages) {
+        const select = document.getElementById('template-language-select');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Select Language</option>' +
+            languages.map(lang => `<option value="${this.escapeHtml(lang)}">${this.escapeHtml(lang)}</option>`).join('');
+    }
+
+    populateCategories(categories) {
+        const select = document.getElementById('template-category-select');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Select Category</option>' +
+            categories.map(cat => `<option value="${this.escapeHtml(cat)}">${this.escapeHtml(cat)}</option>`).join('');
+    }
+
+    escapeHtml(unsafe) {
+        if (!unsafe) return '';
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
     /* --- DATA & STATE --- */
@@ -59,6 +106,11 @@ class TemplateManager {
 
         // Update UI Inputs
         document.getElementById('template-name-input').value = template.name;
+
+        const languageSelect = document.getElementById('template-language-select');
+        const categorySelect = document.getElementById('template-category-select');
+        if (languageSelect) languageSelect.value = template.language || '';
+        if (categorySelect) categorySelect.value = template.category || '';
 
         // Delete Button Logic
         const delBtn = document.getElementById('btn-delete-template');
@@ -460,9 +512,14 @@ class TemplateManager {
 
         try {
             const payload = this.preparePayload();
+            const language = document.getElementById('template-language-select').value;
+            const category = document.getElementById('template-category-select').value;
+
             const res = await this.service.saveTemplate({
                 id: this.activeTemplateId,
                 name: name,
+                language: language || null,
+                category: category || null,
                 type: payload.type,
                 content: (payload.type === 'text' ? { text: payload.text } : payload.content)
             }, !!(this.activeTemplateId && this.activeTemplateId !== 'NEW'));

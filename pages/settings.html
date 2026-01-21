@@ -145,6 +145,50 @@
                         </div>
                     </div>
 
+                    <!-- Template Languages Card -->
+                    <div class="settings-card hover-card"
+                        onclick="window.settingsController.openManageModal('templateLanguages')">
+                        <div class="card-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+                            <div class="card-icon"
+                                style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                                    <path
+                                        d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div class="card-title">
+                                <h2>Template Languages</h2>
+                                <p>Manage WhatsApp template languages</p>
+                            </div>
+                            <div class="card-badge" id="languages-count">0 items</div>
+                        </div>
+                    </div>
+
+                    <!-- Template Categories Card -->
+                    <div class="settings-card hover-card"
+                        onclick="window.settingsController.openManageModal('templateCategories')">
+                        <div class="card-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+                            <div class="card-icon"
+                                style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path
+                                        d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div class="card-title">
+                                <h2>Template Categories</h2>
+                                <p>Manage template categories</p>
+                            </div>
+                            <div class="card-badge" id="template-categories-count">0 items</div>
+                        </div>
+                    </div>
+
                     <!-- Deactivated Dealers Card -->
                     <div class="settings-card hover-card"
                         onclick="window.settingsController.openManageModal('deactivatedDealers')">
