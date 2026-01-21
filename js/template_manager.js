@@ -15,15 +15,21 @@ class TemplateManager {
         this.activeTemplateId = null;
         this.buttons = [];
         this.currentSection = 'text'; // Track active section
+        this.viewMode = localStorage.getItem('templateViewMode') || 'list'; // Default to list
 
         // UI Refs
         this.sessionSelect = document.getElementById('session-select');
+        this.listContainer = document.getElementById('template-list-container');
+        this.editorContainer = document.getElementById('template-editor-container');
+        this.controlsBar = document.getElementById('template-controls');
 
         this.init();
     }
 
     async init() {
         this.setupEventListeners();
+        this.setupViewToggle();
+
         try {
             const [sessions, templates, settings] = await Promise.all([
                 this.service.getSessions(),
@@ -33,7 +39,8 @@ class TemplateManager {
 
             this.renderSessions(sessions);
             this.templates = templates;
-            this.renderer.renderTemplateList(this.templates, this.activeTemplateId);
+            // Initial Render: List View
+            this.renderList();
 
             // Populate language and category dropdowns
             if (settings) {
@@ -44,6 +51,234 @@ class TemplateManager {
 
         } catch (e) {
             console.error('Init failed', e);
+        }
+    }
+
+    /* --- VIEW & NAVIGATION --- */
+
+    setupViewToggle() {
+        const toggles = document.querySelectorAll('.view-btn');
+        toggles.forEach(btn => {
+            if (btn.dataset.view === this.viewMode) btn.classList.add('active');
+            else btn.classList.remove('active');
+
+            btn.addEventListener('click', () => {
+                this.viewMode = btn.dataset.view;
+                localStorage.setItem('templateViewMode', this.viewMode);
+
+                // Update buttons
+                toggles.forEach(b => b.classList.toggle('active', b.dataset.view === this.viewMode));
+
+                this.renderList();
+            });
+        });
+    }
+
+    showDashboard() {
+        this.activeTemplateId = null;
+        this.editorContainer.classList.add('hidden');
+        this.listContainer.classList.remove('hidden');
+        this.controlsBar.classList.remove('hidden'); // Show controls
+        this.renderList();
+    }
+
+    openEditor(id) {
+        this.activeTemplateId = id;
+        this.controlsBar.classList.add('hidden'); // Hide controls
+        this.listContainer.classList.add('hidden');
+        this.editorContainer.classList.remove('hidden');
+
+        if (id === 'NEW') {
+            this.resetForm();
+        } else {
+            this.loadTemplate(id);
+        }
+    }
+
+    /* --- RENDERING --- */
+
+    renderList() {
+        if (!this.listContainer) return;
+
+        const templates = this.filterTemplates(); // Implement filtering if needed, currently just returns all
+        // Create base classes if missing (safely)
+        this.listContainer.classList.add('template-list-container');
+        // Remove old view classes
+        this.listContainer.classList.remove('list-view', 'card-view', 'detailed-view');
+        // Add current view class
+        this.listContainer.classList.add(`${this.viewMode}-view`);
+
+        if (templates.length === 0) {
+            this.listContainer.innerHTML = '<div class="empty-state"><p class="text-muted">No templates found. Create a new one!</p></div>';
+            return;
+        }
+
+        if (this.viewMode === 'list') {
+            this.renderListView(templates);
+        } else if (this.viewMode === 'detailed') {
+            this.renderDetailedView(templates);
+        } else {
+            this.renderCardView(templates);
+        }
+    }
+
+
+
+    renderCardView(templates) {
+        this.listContainer.innerHTML = templates.map(t => `
+            <div class="template-card" onclick="window.tmplMgr.openEditor('${t.id}')">
+                <div class="template-card-header">
+                    <div class="template-card-title">${this.escapeHtml(t.name)}</div>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <div class="template-card-badges">
+                            ${t.language ? `<span class="badge badge-lang">${t.language}</span>` : ''}
+                            ${t.category ? `<span class="badge badge-cat">${t.category}</span>` : ''}
+                        </div>
+                         <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+                <div class="template-card-preview">
+                    ${this.getPreviewText(t)}
+                </div>
+                <div class="text-xs text-muted mt-2">
+                    <span class="uppercase">${t.type}</span> • ${t.id.substring(0, 4)}
+                </div>
+            </div>
+        `).join('');
+    }
+
+
+    renderListView(templates) {
+        const renderHeader = (field, label) => {
+            const isActiv = this.sortField === field;
+            const icon = isActiv ? (this.sortDirection === 'asc' ? '▲' : '▼') : '';
+            return `<th class="sortable-header" onclick="window.tmplMgr.handleSort('${field}')" style="cursor:pointer; user-select:none;">
+                ${label} <span style="font-size:0.8em; margin-left:4px;">${icon}</span>
+            </th>`;
+        };
+
+        this.listContainer.innerHTML = `
+            <table class="template-table">
+                <thead>
+                    <tr>
+                        ${renderHeader('name', 'Name')}
+                        ${renderHeader('category', 'Category')}
+                        ${renderHeader('language', 'Language')}
+                        ${renderHeader('type', 'Type')}
+                        <th>Preview</th>
+                        <th style="width: 50px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${templates.map(t => `
+                         <tr onclick="window.tmplMgr.openEditor('${t.id}')">
+                            <td class="font-bold">${this.escapeHtml(t.name)}</td>
+                            <td>${t.category ? `<span class="badge badge-cat">${t.category}</span>` : '-'}</td>
+                            <td>${t.language ? `<span class="badge badge-lang">${t.language}</span>` : '-'}</td>
+                            <td class="uppercase text-xs">${t.type}</td>
+                            <td class="text-muted text-sm" style="max-width: 300px;">
+                                <div class="text-truncate-2">${this.getPreviewText(t)}</div>
+                            </td>
+                            <td>
+                                <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
+                                    🗑️
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table >
+            `;
+    }
+
+    handleSort(field) {
+        if (this.sortField === field) {
+            this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sortField = field;
+            this.sortDirection = 'asc';
+        }
+        this.renderList();
+    }
+
+    filterTemplates() {
+        const searchText = document.getElementById('search-templates').value.toLowerCase();
+        const langFilter = document.getElementById('filter-language').value;
+        const catFilter = document.getElementById('filter-category').value;
+
+        let filtered = this.templates.filter(t => {
+            const matchesSearch = t.name.toLowerCase().includes(searchText) ||
+                t.id.toLowerCase().includes(searchText) ||
+                (t.content && t.content.text && t.content.text.toLowerCase().includes(searchText));
+
+            const matchesLang = !langFilter || t.language === langFilter;
+            const matchesCat = !catFilter || t.category === catFilter;
+
+            return matchesSearch && matchesLang && matchesCat;
+        });
+
+        // Sorting
+        if (this.sortField) {
+            filtered.sort((a, b) => {
+                const valA = String(a[this.sortField] || '').toLowerCase();
+                const valB = String(b[this.sortField] || '').toLowerCase();
+                if (valA < valB) return this.sortDirection === 'asc' ? -1 : 1;
+                if (valA > valB) return this.sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        return filtered;
+    }
+
+    renderDetailedView(templates) {
+        this.listContainer.innerHTML = templates.map(t => `
+            <div class="template-card" onclick="window.tmplMgr.openEditor('${t.id}')" style="flex-direction: row; gap: 2rem; align-items: start;">
+                 <div style="flex: 1;">
+                    <div style="display:flex; justify-content:space-between; align-items:start;">
+                        <div class="template-card-title" style="font-size: 1.25rem; margin-bottom: 0.5rem;">${this.escapeHtml(t.name)}</div>
+                         <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
+                            🗑️
+                        </button>
+                    </div>
+                    <div class="template-card-badges" style="margin-bottom: 1rem;">
+                        ${t.language ? `<span class="badge badge-lang">${t.language}</span>` : ''}
+                        ${t.category ? `<span class="badge badge-cat">${t.category}</span>` : ''}
+                        <span class="badge">${t.type}</span>
+                    </div>
+                    <div class="text-sm text-muted">ID: ${t.id}</div>
+                 </div>
+                 <div style="flex: 2;">
+                    <div class="template-card-preview" style="-webkit-line-clamp: 5;">
+                        ${this.getPreviewText(t)}
+                    </div>
+                 </div>
+            </div>
+            `).join('');
+    }
+
+    getPreviewText(t) {
+        if (t.content && t.content.text) return this.escapeHtml(t.content.text);
+        if (t.content && t.content.caption) return '📷 ' + this.escapeHtml(t.content.caption);
+        if (t.content && t.content.body) return this.escapeHtml(t.content.body); // WhatsApp API format sometimes
+        return 'No text content';
+    }
+
+    /* --- OLD METHODS ADAPTED --- */
+
+    renderSessions(sessions) {
+        if (!this.sessionSelect) return;
+
+        this.sessionSelect.innerHTML = sessions.map(s =>
+            `<option value="${s.id}">${s.id} (${s.platform || 'WA'})</option>`
+        ).join('');
+
+        if (sessions.length === 0) {
+            const opt = document.createElement('option');
+            opt.text = 'No active sessions';
+            this.sessionSelect.appendChild(opt);
         }
     }
 
@@ -93,7 +328,7 @@ class TemplateManager {
             this.sessionSelect.innerHTML = '<option value="">No connected devices</option>';
         } else {
             this.sessionSelect.innerHTML = sessions.map(s =>
-                `<option value="${s.id}">${s.name || 'Unnamed'} (${s.phoneNumber || 'Unknown'})</option>`
+                `< option value = "${s.id}" > ${s.name || 'Unnamed'} (${s.phoneNumber || 'Unknown'})</option > `
             ).join('');
         }
     }
@@ -176,12 +411,18 @@ class TemplateManager {
             await this.service.deleteTemplate(id);
             await this.refreshTemplates();
             this.resetForm();
+            this.showDashboard(); // Return to list after delete
         } catch (e) { alert('Failed to delete'); }
     }
 
     async refreshTemplates() {
         this.templates = await this.service.getTemplates();
-        this.renderer.renderTemplateList(this.templates, this.activeTemplateId);
+        if (this.activeTemplateId) {
+            // If editing, maybe just update internal state or do nothing?
+            // For now, if we are in editor, we don't strictly need to re-render the list immediately unless we go back.
+        } else {
+            this.renderList();
+        }
     }
 
     /* --- UI UPDATES --- */
@@ -197,6 +438,17 @@ class TemplateManager {
             mediaType: document.getElementById('media-type-select').value,
             buttons: this.buttons
         });
+
+        // Footer Visibility Logic: Show if buttons exist or footer has content
+        const footerEl = document.getElementById('wa-footer-preview');
+        if (footerEl) {
+            const hasContent = footerEl.innerText && footerEl.innerText.trim().length > 0;
+            if (this.buttons.length > 0 || hasContent) {
+                footerEl.classList.remove('hidden');
+            } else {
+                footerEl.classList.add('hidden');
+            }
+        }
 
         // After render, check if we need to show placeholders based on FOCUS
         this.updatePreviewPlaceholders();
@@ -338,6 +590,7 @@ class TemplateManager {
 
         this.hideButtonEditForm();
         this.renderButtonsInline();
+        this.updateUI();
     }
 
     editButtonInline(index) {
@@ -348,6 +601,7 @@ class TemplateManager {
     removeButton(index) {
         this.buttons.splice(index, 1);
         this.renderButtonsInline();
+        this.updateUI();
     }
 
     renderButtonsInline() {
@@ -371,19 +625,19 @@ class TemplateManager {
                     <span>${icon}</span>
                     <span>${this.escapeHtml(btn.text) || 'Button'}</span>
                 </div>
-                <div class="wa-button-icons">
-                    <div class="wa-button-icon edit" data-index="${index}">
-                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                    </div>
-                    <div class="wa-button-icon delete" data-index="${index}">
-                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                        </svg>
-                    </div>
+            <div class="wa-button-icons">
+                <div class="wa-button-icon edit" data-index="${index}">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
                 </div>
-            `;
+                <div class="wa-button-icon delete" data-index="${index}">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                </div>
+            </div>
+        `;
 
             container.appendChild(btnEl);
         });
@@ -430,7 +684,6 @@ class TemplateManager {
         if (key === 'type') {
             this.updateUI();
         } else {
-            // For text/value updates, only update the PREVIEW
             // For text/value updates, only update the PREVIEW (Media/Buttons part)
             this.renderer.renderLivePreview({
                 // text: document.getElementById('message-body').value,
@@ -439,14 +692,32 @@ class TemplateManager {
                 mediaType: document.getElementById('media-type-select').value,
                 buttons: this.buttons
             });
-            // Ensure placeholders state is consistent without re-rendering inputs
+            // Ensure placeholders state is consistent without re-rendering
             this.updatePreviewPlaceholders();
         }
     }
 
+
+
     /* --- EVENTS --- */
 
     setupEventListeners() {
+        // NAV: New Message
+        document.getElementById('btn-new-template').addEventListener('click', () => this.openEditor('NEW'));
+
+        // NAV: Back to List
+        const backBtn = document.getElementById('btn-back-to-list');
+        if (backBtn) backBtn.addEventListener('click', () => this.showDashboard());
+
+        // SEARCH & FILTERS
+        const searchInput = document.getElementById('search-templates');
+        const langSelect = document.getElementById('filter-language');
+        const catSelect = document.getElementById('filter-category');
+
+        if (searchInput) searchInput.addEventListener('input', () => this.renderList());
+        if (langSelect) langSelect.addEventListener('change', () => this.renderList());
+        if (catSelect) catSelect.addEventListener('change', () => this.renderList());
+
         // Inputs -> Live Preview (Media/Buttons only now)
         ['media-url-input', 'media-type-select'].forEach(id => {
             document.getElementById(id).addEventListener('input', () => this.updateUI());
@@ -499,7 +770,8 @@ class TemplateManager {
         }
 
         // Actions
-        document.getElementById('btn-new-template').addEventListener('click', () => this.resetForm());
+        // New Message button handled at top of method now
+
         document.getElementById('btn-save-template').addEventListener('click', () => this.handleSave());
         document.getElementById('btn-send-message').addEventListener('click', () => this.handleSend());
 
@@ -623,3 +895,4 @@ class TemplateManager {
 }
 
 // End of TemplateManager
+window.TemplateManager = TemplateManager;

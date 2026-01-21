@@ -1,26 +1,62 @@
 <div class="template-grid-container" id="template-page">
     <link rel="stylesheet" href="/css/template.css">
 
-    <!-- SIDEBAR -->
-    <aside class="template-sidebar">
-        <div>
-            <button id="btn-new-template" class="cta-button">
-                <span>+ New Message</span>
+    <!-- UNIFIED CONTROLS BAR -->
+    <div class="unified-controls-bar" id="template-controls">
+        <!-- Left: Add Button -->
+        <div class="controls-left">
+            <button id="btn-new-template" class="primary-btn">
+                <span class="btn-icon">+</span>
+                New Message
             </button>
         </div>
-        <div class="sidebar-title" style="margin-top: 1rem;">Saved Templates</div>
-        <div class="sidebar-list" id="template-list">
-            <!-- Filled by JS -->
+
+        <!-- Middle: Search and Filters -->
+        <div class="controls-middle">
+            <input type="text" id="search-templates" class="search-input" placeholder="🔍 Search templates...">
+
+            <select id="filter-language" class="filter-select">
+                <option value="">All Languages</option>
+            </select>
+
+            <select id="filter-category" class="filter-select">
+                <option value="">All Categories</option>
+            </select>
         </div>
-    </aside>
 
-    <!-- MAIN CONTENT -->
-    <main class="template-main">
+        <!-- Right: View Mode Toggle -->
+        <div class="controls-right">
+            <div class="view-mode-toggle">
+                <button class="view-btn active" data-view="card" title="Card View">
+                    <span class="view-icon">▦</span>
+                </button>
+                <button class="view-btn" data-view="list" title="List View">
+                    <span class="view-icon">☰</span>
+                </button>
+                <button class="view-btn" data-view="detailed" title="Detailed View">
+                    <span class="view-icon">▥</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
-        <!-- TWO COLUMN LAYOUT -->
+    <!-- LIST VIEW CONTAINER -->
+    <div id="template-list-container" class="template-list-container">
+        <!-- Rendered by JS -->
+    </div>
+
+    <!-- EDITOR CONTAINER (Hidden by default) -->
+    <div id="template-editor-container" class="hidden">
+        <div style="margin-bottom: 1rem;">
+            <button id="btn-back-to-list" class="action-btn-secondary">
+                ← Back to Templates
+            </button>
+        </div>
+
+        <!-- EDITOR GRID (SINGLE COLUMN) -->
         <div class="editor-layout-grid">
 
-            <!-- LEFT: LIVE PREVIEW -->
+            <!-- LIVE PREVIEW -->
             <div class="editor-side-col">
                 <div style="position: sticky; top: 0;">
 
@@ -176,13 +212,13 @@
                 </div>
             </div>
         </div>
-    </main>
+    </div>
 </div>
 
 <script src="/js/services/template_service.js"></script>
 <script src="/js/renderers/template_renderer.js"></script>
-<script src="/js/template_manager.js"></script>
+<script src="/js/template_manager.js?v=1003"></script>
 <script>
     // Instantiate Manager on every load
-    new TemplateManager();
+    window.tmplMgr = new TemplateManager();
 </script>
