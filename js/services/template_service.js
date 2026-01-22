@@ -184,6 +184,27 @@ class TemplateService {
         // 4. Save
         return await this.saveTemplate(newTemplate);
     }
+
+    async duplicateTemplate(templateId, newName) {
+        const templates = await this.getTemplates();
+        const original = templates.find(t => t.id === templateId);
+
+        if (!original) throw new Error('Original template not found');
+
+        let newContent = original.content;
+        if (typeof newContent === 'object' && newContent !== null) {
+            newContent = JSON.parse(JSON.stringify(newContent));
+        }
+
+        const newTemplate = {
+            ...original,
+            name: newName,
+            content: newContent,
+            id: undefined
+        };
+
+        return await this.saveTemplate(newTemplate);
+    }
 }
 
 window.TemplateService = TemplateService;

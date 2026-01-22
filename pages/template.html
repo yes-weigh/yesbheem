@@ -123,8 +123,16 @@
                 <div class="content-card"
                     style="width: 100%; background: var(--bg-panel); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
                     <div
-                        style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; font-weight: 700; margin-bottom: 0.5rem;">
-                        Message Body</div>
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <div
+                            style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; font-weight: 700;">
+                            Message Body
+                        </div>
+                        <button id="btn-translate-editor" class="text-xs pill-btn"
+                            style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 2px 8px;">
+                            🌍 Translate
+                        </button>
+                    </div>
                     <div class="wa-text-content cursor-text editable-preview" id="wa-text-preview"
                         contenteditable="true"
                         data-placeholder="Type your message here... (Supports *bold*, _italic_, ~strike~)"

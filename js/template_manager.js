@@ -131,8 +131,9 @@ class TemplateManager {
                     <div style="display:flex; justify-content:space-between; width:100%; align-items: center;">
                         <div class="template-card-title">${this.escapeHtml(t.name)}</div>
                         <div style="display:flex; gap:0.25rem;">
-                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.cloneToLanguage('${t.id}')" title="Clone to Language">
-                                🌐
+
+                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleDuplicate('${t.id}')" title="Duplicate">
+                                📄
                             </button>
                              <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
                                 🗑️
@@ -188,8 +189,9 @@ class TemplateManager {
                             </td>
                             <td>
                                 <div style="display:flex; gap:0.25rem;">
-                                     <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.cloneToLanguage('${t.id}')" title="Clone to Language">
-                                        🌐
+
+                                     <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleDuplicate('${t.id}')" title="Duplicate">
+                                        📄
                                     </button>
                                     <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
                                         🗑️
@@ -250,8 +252,9 @@ class TemplateManager {
                     <div style="display:flex; justify-content:space-between; align-items:start;">
                         <div class="template-card-title" style="font-size: 1.25rem; margin-bottom: 0.5rem;">${this.escapeHtml(t.name)}</div>
                         <div style="display:flex; gap:0.25rem;">
-                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.cloneToLanguage('${t.id}')" title="Clone to Language">
-                                🌐
+
+                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleDuplicate('${t.id}')" title="Duplicate">
+                                📄
                             </button>
                              <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
                                 🗑️
@@ -422,34 +425,25 @@ class TemplateManager {
         } catch (e) { alert('Failed to delete'); }
     }
 
-    async cloneToLanguage(id) {
-        // Simple language selection for now
-        const languages = [
-            'ta (Tamil)', 'kn (Kannada)', 'ml (Malayalam)',
-            'hi (Hindi)', 'te (Telugu)', 'mr (Marathi)',
-            'gu (Gujarati)', 'bn (Bengali)', 'pa (Punjabi)'
-        ];
 
-        const langCode = prompt(`Enter target language code:\n\n${languages.join('\n')}`, 'ta');
 
-        if (!langCode) return;
+    async handleDuplicate(id) {
+        const t = this.templates.find(temp => temp.id === id);
+        if (!t) return;
+
+        const newName = prompt('Enter name for the new template:', `Copy of ${t.name}`);
+        if (!newName) return;
 
         try {
-            // Show loading state (simple alert for now or status)
             const btn = document.activeElement;
-            const originalText = btn.innerHTML;
             if (btn) btn.innerHTML = '⏳';
 
-            await this.service.cloneTemplateToLanguage(id, langCode.trim().toLowerCase());
-
+            await this.service.duplicateTemplate(id, newName.trim());
             await this.refreshTemplates();
-            alert(`Template cloned to ${langCode} successfully!`);
-
+            alert('Template duplicated successfully!');
         } catch (e) {
             console.error(e);
-            alert('Failed to clone/translate: ' + e.message);
-        } finally {
-            // Restore button if needed (list re-renders anyway)
+            alert('Failed to duplicate: ' + e.message);
         }
     }
 
@@ -754,6 +748,12 @@ class TemplateManager {
         const backBtn = document.getElementById('btn-back-to-list');
         if (backBtn) backBtn.addEventListener('click', () => this.showDashboard());
 
+        // Translation Button
+        const translateBtn = document.getElementById('btn-translate-editor');
+        if (translateBtn) {
+            translateBtn.onclick = () => this.translateEditorContent();
+        }
+
         // SEARCH & FILTERS
         const searchInput = document.getElementById('search-templates');
         const langSelect = document.getElementById('filter-language');
@@ -942,6 +942,58 @@ class TemplateManager {
         this.renderButtonsInline();
         this.updateUI(); // Resets view
         this.focusSection('text'); // Resets focus to text (hides other placeholders)
+    }
+
+    async translateEditorContent() {
+        const editor = document.getElementById('wa-text-preview');
+
+        if (!editor) return;
+
+        const currentText = editor.innerText.trim();
+        if (!currentText) return alert('Please enter some text to translate.');
+
+        // Simple language selection
+        const languages = [
+            'ta (Tamil)', 'kn (Kannada)', 'ml (Malayalam)',
+            'hi (Hindi)', 'te (Telugu)', 'mr (Marathi)',
+            'gu (Gujarati)', 'bn (Bengali)', 'pa (Punjabi)'
+        ];
+
+        const langCode = prompt(`Translate to which language?\n(Enter code e.g. 'ta', 'hi')\n\n${languages.join('\n')}`, 'ta');
+        if (!langCode) return;
+
+        try {
+            // UI Feedback
+            const btn = document.getElementById('btn-translate-editor');
+            const originalBtnText = btn ? btn.innerText : '🌍 Translate';
+
+            if (btn) btn.innerText = '⏳ Translating...';
+            editor.style.opacity = '0.5';
+
+            // Call Service
+            const translatedText = await this.service.translateText(currentText, langCode.trim().toLowerCase());
+
+            // Update Editor
+            editor.innerText = translatedText;
+
+            // Update Language Dropdown if exists
+            const langSelect = document.getElementById('template-language-select');
+            if (langSelect) {
+                // Check if option exists, if not add it temp? Or just set value
+                // For now, just set value if it matches known options
+                langSelect.value = langCode.trim().toLowerCase();
+            }
+
+        } catch (e) {
+            console.error(e);
+            alert('Translation failed: ' + e.message);
+        } finally {
+            // Restore UI
+            if (document.getElementById('btn-translate-editor')) {
+                document.getElementById('btn-translate-editor').innerText = '🌍 Translate';
+            }
+            editor.style.opacity = '1';
+        }
     }
 }
 
