@@ -417,3 +417,46 @@ exports.cleanupStaleSessions = onSchedule("0 2 * * *", async (event) => {
 
     return { cleanedCount, userCount };
 });
+
+// ============================================================================
+// TRANSLATION FUNCTION
+// ============================================================================
+
+const { Translate } = require('@google-cloud/translate').v2;
+const translate = new Translate();
+
+/**
+ * Translates text using Google Cloud Translation API
+ * Input: { text: string, targetLanguage: string }
+ * Output: { translatedText: string }
+ */
+exports.translateText = onCall(async (request) => {
+    // 1. Authentication Check
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'User must be authenticated to use translation services.');
+    }
+
+    const { text, targetLanguage } = request.data;
+
+    // 2. Validation
+    if (!text || !targetLanguage) {
+        throw new HttpsError('invalid-argument', 'Text and targetLanguage are required.');
+    }
+
+    try {
+        // 3. Perform Translation
+        // Result is [translation, metadata]
+        let [translations] = await translate.translate(text, targetLanguage);
+
+        // Ensure we handle array or single string return based on input
+        translations = Array.isArray(translations) ? translations[0] : translations;
+
+        console.log(`[translateText] Translated "${text.substring(0, 20)}..." to ${targetLanguage} for ${request.auth.email}`);
+
+        return { translatedText: translations };
+
+    } catch (error) {
+        console.error('[translateText] Translation failed:', error);
+        throw new HttpsError('internal', `Translation failed: ${error.message}`);
+    }
+});

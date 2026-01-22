@@ -127,16 +127,21 @@ class TemplateManager {
     renderCardView(templates) {
         this.listContainer.innerHTML = templates.map(t => `
             <div class="template-card" onclick="window.tmplMgr.openEditor('${t.id}')">
-                <div class="template-card-header">
-                    <div class="template-card-title">${this.escapeHtml(t.name)}</div>
-                    <div style="display:flex; gap:0.5rem; align-items:center;">
-                        <div class="template-card-badges">
-                            ${t.language ? `<span class="badge badge-lang">${t.language}</span>` : ''}
-                            ${t.category ? `<span class="badge badge-cat">${t.category}</span>` : ''}
+                <div class="template-card-header" style="flex-direction: column; align-items: start; gap: 0.5rem;">
+                    <div style="display:flex; justify-content:space-between; width:100%; align-items: center;">
+                        <div class="template-card-title">${this.escapeHtml(t.name)}</div>
+                        <div style="display:flex; gap:0.25rem;">
+                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.cloneToLanguage('${t.id}')" title="Clone to Language">
+                                🌐
+                            </button>
+                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
+                                🗑️
+                            </button>
                         </div>
-                         <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
-                            🗑️
-                        </button>
+                    </div>
+                    <div class="template-card-badges">
+                        ${t.language ? `<span class="badge badge-lang">${t.language}</span>` : ''}
+                        ${t.category ? `<span class="badge badge-cat">${t.category}</span>` : ''}
                     </div>
                 </div>
                 <div class="template-card-preview">
@@ -182,9 +187,14 @@ class TemplateManager {
                                 <div class="text-truncate-2">${this.getPreviewText(t)}</div>
                             </td>
                             <td>
-                                <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
-                                    🗑️
-                                </button>
+                                <div style="display:flex; gap:0.25rem;">
+                                     <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.cloneToLanguage('${t.id}')" title="Clone to Language">
+                                        🌐
+                                    </button>
+                                    <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
+                                        🗑️
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     `).join('')}
@@ -239,9 +249,14 @@ class TemplateManager {
                  <div style="flex: 1;">
                     <div style="display:flex; justify-content:space-between; align-items:start;">
                         <div class="template-card-title" style="font-size: 1.25rem; margin-bottom: 0.5rem;">${this.escapeHtml(t.name)}</div>
-                         <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
-                            🗑️
-                        </button>
+                        <div style="display:flex; gap:0.25rem;">
+                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.cloneToLanguage('${t.id}')" title="Clone to Language">
+                                🌐
+                            </button>
+                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
+                                🗑️
+                            </button>
+                        </div>
                     </div>
                     <div class="template-card-badges" style="margin-bottom: 1rem;">
                         ${t.language ? `<span class="badge badge-lang">${t.language}</span>` : ''}
@@ -413,6 +428,37 @@ class TemplateManager {
             this.resetForm();
             this.showDashboard(); // Return to list after delete
         } catch (e) { alert('Failed to delete'); }
+    }
+
+    async cloneToLanguage(id) {
+        // Simple language selection for now
+        const languages = [
+            'ta (Tamil)', 'kn (Kannada)', 'ml (Malayalam)',
+            'hi (Hindi)', 'te (Telugu)', 'mr (Marathi)',
+            'gu (Gujarati)', 'bn (Bengali)', 'pa (Punjabi)'
+        ];
+
+        const langCode = prompt(`Enter target language code:\n\n${languages.join('\n')}`, 'ta');
+
+        if (!langCode) return;
+
+        try {
+            // Show loading state (simple alert for now or status)
+            const btn = document.activeElement;
+            const originalText = btn.innerHTML;
+            if (btn) btn.innerHTML = '⏳';
+
+            await this.service.cloneTemplateToLanguage(id, langCode.trim().toLowerCase());
+
+            await this.refreshTemplates();
+            alert(`Template cloned to ${langCode} successfully!`);
+
+        } catch (e) {
+            console.error(e);
+            alert('Failed to clone/translate: ' + e.message);
+        } finally {
+            // Restore button if needed (list re-renders anyway)
+        }
     }
 
     async refreshTemplates() {

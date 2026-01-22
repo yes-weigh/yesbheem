@@ -85,6 +85,82 @@ class TemplateService {
         });
         return await res.json();
     }
+
+    async translateText(text, targetLanguage) {
+        if (!window.firebaseContext || !window.firebaseContext.functions) {
+            throw new Error('Firebase Functions not initialized');
+        }
+        const { functions, httpsCallable } = window.firebaseContext;
+        const translateFunc = httpsCallable(functions, 'translateText');
+
+        try {
+            const result = await translateFunc({ text, targetLanguage });
+            return result.data.translatedText;
+        } catch (e) {
+            console.error('Translation failed:', e);
+            throw e;
+        }
+    }
+
+    async cloneTemplateToLanguage(templateId, targetLanguage) {
+        // 1. Get original template
+        // Since we don't have getTemplateById, we fetch all and find (or use existing loaded list if passed, but safer directly)
+        // Optimization: If the caller has the object, they can pass it. But let's assume ID for robustness.
+        const templates = await this.getTemplates();
+        const original = templates.find(t => t.id === templateId);
+
+        if (!original) throw new Error('Original template not found');
+
+        // 2. Translate text content
+        console.log('[cloneTemplateToLanguage] Original Content:', original.content);
+
+        let newContent = original.content;
+        // Deep copy to avoid mutating original in cache if we were using it there
+        if (typeof newContent === 'object' && newContent !== null) {
+            newContent = JSON.parse(JSON.stringify(newContent));
+        }
+
+        // HEURISTIC FIELD DETECTION
+        // 1. Standard text
+        if (typeof newContent === 'string') {
+            console.log('Translating string content...');
+            newContent = await this.translateText(newContent, targetLanguage);
+        }
+        // 2. Object with 'text'
+        else if (newContent.text) {
+            console.log('Translating content.text...');
+            newContent.text = await this.translateText(newContent.text, targetLanguage);
+        }
+        // 3. Object with 'body' (Common in some WA templates or interactive)
+        else if (newContent.body) {
+            if (typeof newContent.body === 'string') {
+                console.log('Translating content.body (string)...');
+                newContent.body = await this.translateText(newContent.body, targetLanguage);
+            } else if (newContent.body.text) {
+                console.log('Translating content.body.text...');
+                newContent.body.text = await this.translateText(newContent.body.text, targetLanguage);
+            }
+        }
+        // 4. Object with 'caption' (Media templates)
+        if (newContent.caption) {
+            console.log('Translating content.caption...');
+            newContent.caption = await this.translateText(newContent.caption, targetLanguage);
+        }
+
+        console.log('[cloneTemplateToLanguage] New Content:', newContent);
+
+        // 3. Create new template payload
+        const newTemplate = {
+            ...original,
+            name: `${original.name} - ${targetLanguage.toUpperCase()}`,
+            language: targetLanguage,
+            content: newContent,
+            id: undefined // Backend should generate ID
+        };
+
+        // 4. Save
+        return await this.saveTemplate(newTemplate);
+    }
 }
 
 window.TemplateService = TemplateService;
