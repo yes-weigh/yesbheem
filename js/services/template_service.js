@@ -5,12 +5,35 @@ class TemplateService {
 
     async getSessions() {
         try {
-            const res = await fetch(`${this.apiBase}/auth/sessions`);
-            const data = await res.json();
-            return (data.sessions || []).filter(s => s.connected);
+            // Ensure Firebase is ready
+            if (!window.firebaseContext) {
+                console.warn('Firebase context missing');
+                return [];
+            }
+            const { db } = window.firebaseContext;
+
+            // Dynamic imports for SDK functions
+            const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+
+            const snapshot = await getDocs(collection(db, 'whatsapp_instances'));
+            const sessions = [];
+
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                sessions.push({
+                    id: doc.id,
+                    name: data.name || 'Unnamed Instance',
+                    platform: 'WA',
+                    phoneNumber: data.phoneNumber || data.id?.split(':')[0] || 'Unknown',
+                    connected: true
+                });
+            });
+
+            return sessions;
+
         } catch (e) {
-            console.error('Service: Failed to load sessions', e);
-            throw e;
+            console.error('Service: Failed to load sessions from Firestore', e);
+            return [];
         }
     }
 

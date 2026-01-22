@@ -283,19 +283,9 @@ class TemplateManager {
 
     /* --- OLD METHODS ADAPTED --- */
 
-    renderSessions(sessions) {
-        if (!this.sessionSelect) return;
+    /* --- OLD METHODS ADAPTED --- */
 
-        this.sessionSelect.innerHTML = sessions.map(s =>
-            `<option value="${s.id}">${s.id} (${s.platform || 'WA'})</option>`
-        ).join('');
-
-        if (sessions.length === 0) {
-            const opt = document.createElement('option');
-            opt.text = 'No active sessions';
-            this.sessionSelect.appendChild(opt);
-        }
-    }
+    /* renderSessions moved to DATA section */
 
     async loadSettings() {
         try {
@@ -339,11 +329,13 @@ class TemplateManager {
     /* --- DATA & STATE --- */
 
     renderSessions(sessions) {
+        if (!this.sessionSelect) return;
+
         if (sessions.length === 0) {
             this.sessionSelect.innerHTML = '<option value="">No connected devices</option>';
         } else {
             this.sessionSelect.innerHTML = sessions.map(s =>
-                `< option value = "${s.id}" > ${s.name || 'Unnamed'} (${s.phoneNumber || 'Unknown'})</option > `
+                `<option value="${s.id}">${s.name || 'Device'} (${s.phoneNumber || 'Unknown'})</option>`
             ).join('');
         }
     }
