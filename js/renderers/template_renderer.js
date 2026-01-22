@@ -202,29 +202,15 @@ class TemplateRenderer {
             }
         }
 
-        // 4. Buttons
+        // 4. Buttons - HANDLED BY TemplateManager.renderButtonsInline() NOW
+        // The preview container is now the editing list.
+        /*
         const btnsView = document.getElementById('wa-buttons-preview');
         const btnsPlaceholder = document.getElementById('wa-buttons-placeholder');
         if (btnsView && btnsPlaceholder) {
-            btnsView.innerHTML = '';
-            if (buttons && buttons.length > 0) {
-                btnsPlaceholder.classList.add('hidden');
-                buttons.forEach(btn => {
-                    const btnEl = document.createElement('div');
-                    btnEl.className = 'wa-button';
-                    let icon = '';
-                    if (btn.type === 'url') icon = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>';
-                    if (btn.type === 'call') icon = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>';
-                    if (btn.type === 'reply') icon = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>';
-                    if (btn.type === 'copy') icon = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>';
-
-                    btnEl.innerHTML = `<span>${icon}</span> <span>${this.escapeHtml(btn.text) || 'Button'}</span>`;
-                    btnsView.appendChild(btnEl);
-                });
-            } else {
-                btnsPlaceholder.classList.add('hidden');
-            }
+            // ... (Removed to prevent overwriting the edit list)
         }
+        */
     }
 }
 

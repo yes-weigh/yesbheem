@@ -585,6 +585,13 @@ class TemplateManager {
         // Show form, hide add button
         form.classList.remove('hidden');
         if (addBtn) addBtn.classList.add('hidden');
+
+        // Toggle Delete Button
+        const deleteBtn = document.getElementById('btn-delete-button');
+        if (deleteBtn) {
+            if (button) deleteBtn.classList.remove('hidden');
+            else deleteBtn.classList.add('hidden');
+        }
     }
 
     hideButtonEditForm() {
@@ -769,16 +776,12 @@ class TemplateManager {
             document.getElementById(id).addEventListener('input', () => this.updateUI());
         });
 
-        // Media Placeholder Click - Toggle Inline Controls
+        // Media Placeholder Click - Focus URL Input (Controls are always visible now)
         const mediaPlaceholder = document.getElementById('wa-media-placeholder');
-        const mediaControls = document.getElementById('wa-media-controls');
-        if (mediaPlaceholder && mediaControls) {
+        if (mediaPlaceholder) {
             mediaPlaceholder.addEventListener('click', () => {
-                mediaControls.classList.toggle('hidden');
-                if (!mediaControls.classList.contains('hidden')) {
-                    // Focus the URL input when opening
-                    document.getElementById('media-url-input').focus();
-                }
+                const urlInput = document.getElementById('media-url-input');
+                if (urlInput) urlInput.focus();
             });
         }
 
@@ -808,6 +811,16 @@ class TemplateManager {
         const confirmBtn = document.getElementById('btn-confirm');
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => this.confirmButton());
+        }
+
+        const deleteBtn = document.getElementById('btn-delete-button');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => {
+                if (this.editingButtonIndex !== null && confirm('Delete this button?')) {
+                    this.removeButton(this.editingButtonIndex);
+                    this.hideButtonEditForm();
+                }
+            });
         }
 
         const btnTypeInput = document.getElementById('btn-type-input');

@@ -45,171 +45,188 @@
         <!-- Rendered by JS -->
     </div>
 
-    <!-- EDITOR CONTAINER (Hidden by default) -->
-    <div id="template-editor-container" class="hidden">
-        <div style="margin-bottom: 1rem;">
-            <button id="btn-back-to-list" class="action-btn-secondary">
-                ← Back to Templates
+    <!-- EDITOR CONTAINER -->
+    <div id="template-editor-container" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
+
+        <!-- 1. HEADER (Metadata) -->
+        <div class="editor-header"
+            style="flex-shrink: 0; padding: 1rem 2rem; border-bottom: 1px solid var(--border); background: var(--bg-panel); display: flex; align-items: center; gap: 2rem;">
+            <button id="btn-back-to-list" class="action-btn-secondary" style="margin-right: 1rem;">
+                ← Back
             </button>
+
+            <div style="flex: 1; display: flex; gap: 1rem; align-items: center;">
+                <input type="text" id="template-name-input" class="modern-input" placeholder="Template Name"
+                    style="font-weight: 700; font-size: 1.1rem;">
+
+                <select id="template-language-select" class="modern-input" style="width: 180px;">
+                    <option value="">Select Language</option>
+                </select>
+
+                <select id="template-category-select" class="modern-input" style="width: 180px;">
+                    <option value="">Select Category</option>
+                </select>
+            </div>
         </div>
 
-        <!-- EDITOR GRID (SINGLE COLUMN) -->
+        <!-- 2. STUDIO GRID (3 Columns) - NO PREVIEW DASHBOARD -->
         <div class="editor-layout-grid">
 
-            <!-- LIVE PREVIEW -->
-            <div class="editor-side-col">
-                <div style="position: sticky; top: 0;">
+            <!-- LEFT: MEDIA -->
+            <div class="editor-col editor-panel">
+                <div class="panel-title">Header Media</div>
 
-                    <div class="wa-preview-container">
-                        <div class="wa-header">
-                            <div class="wa-avatar"></div>
-                            <div style="flex:1;">
-                                <input type="text" id="template-name-input" class="modern-input"
-                                    placeholder="Template Name"
-                                    style="font-size:14px; font-weight:600; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px; width: 100%; margin-bottom: 8px;">
-
-                                <div style="display: flex; gap: 8px;">
-                                    <select id="template-language-select" class="modern-input"
-                                        style="flex: 1; font-size: 12px; padding: 4px 8px;">
-                                        <option value="">Select Language</option>
-                                    </select>
-                                    <select id="template-category-select" class="modern-input"
-                                        style="flex: 1; font-size: 12px; padding: 4px 8px;">
-                                        <option value="">Select Category</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="wa-body">
-                            <!-- BUBBLE -->
-                            <div class="wa-message-bubble">
-                                <!-- Media -->
-                                <div id="wa-media-preview" class="wa-media-container hidden"></div>
-                                <div id="wa-media-placeholder" class="wa-media-container dashed-border hidden">
-                                    <div style="text-align:center; color:rgba(255,255,255,0.3);">
-                                        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
-                                            viewBox="0 0 24 24" style="margin: 0 auto 4px auto;">
-                                            <path
-                                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
-                                            </path>
-                                        </svg>
-                                        <span style="font-size:10px;">Click to Add Media</span>
-                                    </div>
-                                </div>
-                                <!-- Inline Media Controls -->
-                                <div id="wa-media-controls" class="wa-media-controls hidden">
-                                    <div
-                                        style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center;">
-                                        <label for="media-file-input" class="pill-btn"
-                                            style="margin: 0; cursor: pointer;">
-                                            <svg width="14" height="14" fill="none" stroke="currentColor"
-                                                stroke-width="2" viewBox="0 0 24 24"
-                                                style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                                                <path
-                                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
-                                                </path>
-                                            </svg>
-                                            Upload File
-                                        </label>
-                                        <select id="media-type-select" class="modern-input small" style="width: auto;">
-                                            <option value="image">Image</option>
-                                            <option value="video">Video</option>
-                                        </select>
-                                    </div>
-                                    <input type="file" id="media-file-input" class="modern-input hidden"
-                                        accept="image/*,video/*">
-                                    <input type="text" id="media-url-input" class="modern-input hidden"
-                                        style="width: 100%;">
-                                </div>
-
-                                <!-- Text -->
-                                <!-- Text -->
-                                <div class="wa-text-content cursor-text editable-preview" id="wa-text-preview"
-                                    contenteditable="true"
-                                    data-placeholder="Type your message here... (Supports *bold*, _italic_, ~strike~)">
-                                </div>
-
-                                <!-- Footer -->
-                                <div class="wa-footer cursor-text editable-preview hidden" id="wa-footer-preview"
-                                    contenteditable="true" data-placeholder="Footer text..."></div>
-
-                                <div class="wa-time">Now</div>
-                            </div>
-
-                            <!-- BUTTONS -->
-                            <div id="wa-buttons-preview" class="wa-buttons-container"></div>
-
-                            <!-- Inline Button Edit Form -->
-                            <div id="wa-button-edit-form" class="wa-button-edit-form hidden">
-                                <div style="display: flex; gap: 0.5rem; flex-direction: column;">
-                                    <select id="btn-type-input" class="modern-input small">
-                                        <option value="reply">Quick Reply</option>
-                                        <option value="url">URL Action</option>
-                                        <option value="call">Phone Number</option>
-                                        <option value="copy">Copy Code</option>
-                                    </select>
-                                    <input type="text" id="btn-text-input" class="modern-input small"
-                                        placeholder="Button Label">
-                                    <input type="text" id="btn-value-input" class="modern-input small hidden"
-                                        placeholder="Value">
-                                    <button id="btn-confirm" class="pill-btn"
-                                        style="background: var(--primary); color: white;">
-                                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="3"
-                                            viewBox="0 0 24 24">
-                                            <path d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                        Confirm
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Add Button -->
-                            <div id="wa-button-add" class="wa-button-add">
-                                <button class="pill-btn" style="width: 100%;">
-                                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
-                                        viewBox="0 0 24 24"
-                                        style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                                        <path d="M12 4v16m8-8H4"></path>
-                                    </svg>
-                                    Add Button
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Action Controls (Moved from header) -->
-                    <div
-                        style="display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
-                        <!-- Session and Phone Number -->
-                        <div style="display: flex; gap: 1rem;">
-                            <div style="flex: 1;">
-                                <label
-                                    style="display: block; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 0.5rem; letter-spacing: 0.5px;">From
-                                    Device</label>
-                                <select id="session-select" class="modern-input" style="cursor: pointer; width: 100%;">
-                                    <option value="">Loading...</option>
-                                </select>
-                            </div>
-                            <div style="flex: 1;">
-                                <label
-                                    style="display: block; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 0.5rem; letter-spacing: 0.5px;">Receiver</label>
-                                <input type="text" id="phone-number" class="modern-input"
-                                    placeholder="e.g. 919876543210" style="width: 100%;">
-                            </div>
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <div style="display: flex; gap: 1rem; align-items: center;">
-                            <button id="btn-save-template" class="action-button-large btn-glass" style="flex:1;">Save
-                                Template</button>
-                            <button id="btn-send-message" class="action-button-large btn-primary" style="flex:2;">Send
-                                Message</button>
-                        </div>
-                    </div>
-                    <div id="status-message" class="text-sm font-bold hidden"
-                        style="color:#10b981; text-align:center; margin-top: 1rem;">
-                        Message Sent!</div>
+                <!-- Media Preview (Visual) -->
+                <div id="wa-media-preview" class="media-preview-box hidden"
+                    style="width:100%; aspect-ratio:16/9; background:#000; border-radius:8px; overflow:hidden; margin-bottom:1rem;">
                 </div>
+                <div id="wa-media-placeholder" class="media-preview-placeholder"
+                    style="width:100%; aspect-ratio:16/9; background:rgba(255,255,255,0.05); border:1px dashed rgba(255,255,255,0.2); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1rem;">
+                    <span>No Media Selected</span>
+                </div>
+
+                <!-- Media Controls -->
+                <div id="wa-media-controls" class="wa-media-controls">
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <select id="media-type-select" class="modern-input">
+                            <option value="none">No Media</option>
+                            <option value="image">Image</option>
+                            <option value="video">Video</option>
+                        </select>
+
+                        <div id="media-upload-area" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <label for="media-file-input" class="cta-button"
+                                style="background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.2);">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24">
+                                    <path
+                                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                                    </path>
+                                </svg>
+                                Choose File
+                            </label>
+                            <input type="file" id="media-file-input" class="hidden" accept="image/*,video/*">
+
+                            <div style="text-align: center; font-size: 0.8rem; color: var(--text-muted);">OR</div>
+
+                            <input type="text" id="media-url-input" class="modern-input"
+                                placeholder="Paste Image/Video URL">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CENTER: CONTENT (Text Only) -->
+            <div class="editor-col editor-col-center">
+
+                <!-- Main Message Body -->
+                <div class="content-card"
+                    style="width: 100%; background: var(--bg-panel); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+                    <div
+                        style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; font-weight: 700; margin-bottom: 0.5rem;">
+                        Message Body</div>
+                    <div class="wa-text-content cursor-text editable-preview" id="wa-text-preview"
+                        contenteditable="true"
+                        data-placeholder="Type your message here... (Supports *bold*, _italic_, ~strike~)"
+                        style="min-height: 200px; font-size: 1rem; line-height: 1.6; color: var(--text-primary); outline: none;">
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="content-card"
+                    style="width: 100%; background: var(--bg-panel); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); margin-top: 1rem;">
+                    <div
+                        style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; font-weight: 700; margin-bottom: 0.5rem;">
+                        Footer (Optional)</div>
+                    <div class="wa-footer cursor-text editable-preview" id="wa-footer-preview" contenteditable="true"
+                        data-placeholder="Add a footer text..."
+                        style="font-size: 0.9rem; color: var(--text-muted); outline: none;"></div>
+                </div>
+                <!-- Status Message -->
+                <div id="status-message" class="text-sm font-bold hidden"
+                    style="color:#10b981; text-align:center; margin-top: 1rem;">Message Sent!</div>
+            </div>
+
+            <!-- RIGHT: ACTIONS & BUTTONS -->
+            <div class="editor-col editor-panel">
+
+                <!-- Buttons Card -->
+                <div class="panel-section">
+                    <div class="panel-title">Interactive Buttons</div>
+
+                    <!-- Buttons List (Visual) moved here -->
+                    <div id="wa-buttons-preview" class="wa-buttons-container"
+                        style="flex-direction: column; align-items: stretch; gap: 0.5rem; margin-bottom: 1rem;"></div>
+
+                    <!-- Add Button -->
+                    <div id="wa-button-add" class="wa-button-add">
+                        <button class="pill-btn" style="width: 100%;">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24" style="margin-right: 4px;">
+                                <path d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Add Button
+                        </button>
+                    </div>
+
+                    <!-- Button Edit Form -->
+                    <div id="wa-button-edit-form" class="wa-button-edit-form hidden"
+                        style="margin-top: 1rem; border: 1px solid var(--border); padding: 1rem; border-radius: 8px;">
+                        <h4 style="font-size: 0.8rem; margin-bottom: 0.5rem; text-transform: uppercase;">Edit Button
+                        </h4>
+                        <div style="display: flex; gap: 0.5rem; flex-direction: column;">
+                            <select id="btn-type-input" class="modern-input small">
+                                <option value="reply">Quick Reply</option>
+                                <option value="url">URL Action</option>
+                                <option value="call">Phone Number</option>
+                                <option value="copy">Copy Code</option>
+                            </select>
+                            <input type="text" id="btn-text-input" class="modern-input small"
+                                placeholder="Button Label">
+                            <input type="text" id="btn-value-input" class="modern-input small hidden"
+                                placeholder="Value (URL/Phone)">
+                            <button id="btn-confirm" class="pill-btn primary-btn"
+                                style="width: 100%; justify-content: center;">Confirm</button>
+                            <button id="btn-delete-button" class="action-btn-secondary"
+                                style="color: #ef4444; border-color: rgba(239,68,68,0.3); margin-top: 0.5rem;">Delete</button>
+                        </div>
+                    </div>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border); margin: 0;">
+
+                <!-- Sample Message / Testing -->
+                <div class="panel-section">
+                    <div class="panel-title">Test & Save</div>
+
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div>
+                            <label
+                                style="display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.4rem;">Testing
+                                Session</label>
+                            <select id="session-select" class="modern-input">
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label
+                                style="display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.4rem;">Receiver
+                                Number</label>
+                            <input type="text" id="phone-number" class="modern-input" placeholder="e.g. 919876543210">
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+                        <button id="btn-send-message" class="cta-button"
+                            style="background: #0f1523; border: 1px solid var(--primary); color: var(--primary);">
+                            Test Send
+                        </button>
+                        <button id="btn-save-template" class="cta-button">
+                            Save Template
+                        </button>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
