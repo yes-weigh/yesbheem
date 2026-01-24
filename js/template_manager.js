@@ -125,7 +125,9 @@ class TemplateManager {
 
 
     renderCardView(templates) {
-        this.listContainer.innerHTML = templates.map(t => `
+        this.listContainer.innerHTML = templates.map(t => {
+            const media = this.getMediaUrl(t);
+            return `
             <div class="template-card" onclick="window.tmplMgr.openEditor('${t.id}')">
                 <div class="template-card-header" style="flex-direction: column; align-items: start; gap: 0.5rem;">
                     <div style="display:flex; justify-content:space-between; width:100%; align-items: center;">
@@ -140,16 +142,25 @@ class TemplateManager {
                             </button>
                         </div>
                     </div>
-                    <div class="template-card-badges">
+                    <div class="template-card-badges" style="display: flex; align-items: center; gap: 0.5rem;">
                         ${t.language ? `<span class="badge badge-lang">${t.language}</span>` : ''}
                         ${t.category ? `<span class="badge badge-cat">${t.category}</span>` : ''}
+                        ${media ? `
+                            <div style="width: 40px; height: 40px; border-radius: 6px; overflow: hidden; background: rgba(0,0,0,0.3); flex-shrink: 0;">
+                                ${media.type === 'image' ?
+                        `<img src="${media.url}" alt="Media" style="width: 100%; height: 100%; object-fit: cover;" />` :
+                        `<video src="${media.url}" style="width: 100%; height: 100%; object-fit: cover;" muted></video>`
+                    }
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
                 <div class="template-card-preview">
                     ${this.getPreviewText(t)}
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
 
@@ -166,6 +177,7 @@ class TemplateManager {
             <table class="template-table">
                 <thead>
                     <tr>
+                        <th style="width: 50px;"></th>
                         ${renderHeader('name', 'Name')}
                         ${renderHeader('category', 'Category')}
                         ${renderHeader('language', 'Language')}
@@ -174,8 +186,20 @@ class TemplateManager {
                     </tr>
                 </thead>
                 <tbody>
-                    ${templates.map(t => `
+                    ${templates.map(t => {
+            const media = this.getMediaUrl(t);
+            return `
                          <tr onclick="window.tmplMgr.openEditor('${t.id}')">
+                            <td style="padding: 0.5rem;">
+                                ${media ? `
+                                    <div style="width: 40px; height: 40px; border-radius: 6px; overflow: hidden; background: rgba(0,0,0,0.3);">
+                                        ${media.type === 'image' ?
+                        `<img src="${media.url}" alt="Media" style="width: 100%; height: 100%; object-fit: cover;" />` :
+                        `<video src="${media.url}" style="width: 100%; height: 100%; object-fit: cover;" muted></video>`
+                    }
+                                    </div>
+                                ` : ''}
+                            </td>
                             <td class="font-bold">${this.escapeHtml(t.name)}</td>
                             <td>${t.category ? `<span class="badge badge-cat">${t.category}</span>` : '-'}</td>
                             <td>${t.language ? `<span class="badge badge-lang">${t.language}</span>` : '-'}</td>
@@ -194,7 +218,8 @@ class TemplateManager {
                                 </div>
                             </td>
                         </tr>
-                    `).join('')}
+                        `;
+        }).join('')}
                 </tbody>
             </table >
             `;
