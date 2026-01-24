@@ -182,10 +182,27 @@ exports.verifySplitOTP = onCall(async (request) => {
     } catch (emailError) {
         if (emailError.code === 'auth/user-not-found') {
             console.log(`User not found by email ${email}. Checking phone number...`);
-            // format phone if needed, assuming stored with code (e.g. 91...)
-            // If stored without +, add it. IF stored with +, keep it.
-            // standardizing to + prefix for auth lookup if missing
-            const phoneToLookup = targetPhone.startsWith('+') ? targetPhone : `+${targetPhone}`;
+
+            // Normalize phone number format
+            let normalizedPhone = targetPhone.trim();
+
+            // Remove any spaces, dashes, or parentheses
+            normalizedPhone = normalizedPhone.replace(/[\s\-()]/g, '');
+
+            // If phone doesn't start with + or country code, assume India (91)
+            // Indian mobile numbers are 10 digits starting with 6-9
+            if (!normalizedPhone.startsWith('+') && !normalizedPhone.startsWith('91')) {
+                // Check if it looks like an Indian mobile number (10 digits starting with 6-9)
+                if (/^[6-9]\d{9}$/.test(normalizedPhone)) {
+                    normalizedPhone = '91' + normalizedPhone;
+                    console.log(`Auto-prepended country code 91 to phone number`);
+                }
+            }
+
+            // Ensure + prefix for Firebase Auth
+            const phoneToLookup = normalizedPhone.startsWith('+') ? normalizedPhone : `+${normalizedPhone}`;
+
+            console.log(`Looking up user by phone: ${phoneToLookup}`);
 
             try {
                 // Check if the phone number is already in use by another account
