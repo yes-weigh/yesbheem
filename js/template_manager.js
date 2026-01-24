@@ -269,39 +269,43 @@ class TemplateManager {
         this.listContainer.innerHTML = templates.map(t => {
             const media = this.getMediaUrl(t);
             return `
-            <div class="template-card" onclick="window.tmplMgr.openEditor('${t.id}')" style="flex-direction: row; gap: 2rem; align-items: start;">
-                 ${media ? `
-                 <div style="flex-shrink: 0; width: 180px;">
-                    <div style="width: 100%; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3);">
-                        ${media.type === 'image' ?
+            <div class="template-card" onclick="window.tmplMgr.openEditor('${t.id}')" style="flex-direction: column; gap: 1rem;">
+                 <!-- Top: Name and Actions -->
+                 <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                     <div class="template-card-title" style="font-size: 1.25rem;">${this.escapeHtml(t.name)}</div>
+                     <div style="display:flex; gap:0.25rem;">
+                          <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleClone('${t.id}')\" title="Clone">
+                             📄
+                         </button>
+                          <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')\" title="Delete">
+                             🗑️
+                         </button>
+                     </div>
+                 </div>
+                 
+                 <!-- Middle: Media and Text side by side -->
+                 <div style="display: flex; gap: 1.5rem; align-items: start;">
+                     ${media ? `
+                     <div style="flex-shrink: 0; width: 180px;">
+                        <div style="width: 100%; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3);">
+                            ${media.type === 'image' ?
                         `<img src="${media.url}" alt="Template media" style="width: 100%; height: 100%; object-fit: cover;" />` :
                         `<video src="${media.url}" style="width: 100%; height: 100%; object-fit: cover;" muted></video>`
                     }
-                    </div>
-                 </div>
-                 ` : ''}
-                 <div style="flex: 1;">
-                    <div style="display:flex; justify-content:space-between; align-items:start;">
-                        <div class="template-card-title" style="font-size: 1.25rem; margin-bottom: 0.5rem;">${this.escapeHtml(t.name)}</div>
-                        <div style="display:flex; gap:0.25rem;">
-
-                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleClone('${t.id}')" title="Clone">
-                                📄
-                            </button>
-                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
-                                🗑️
-                            </button>
                         </div>
-                    </div>
-                    <div class="template-card-badges" style="margin-bottom: 1rem;">
-                        ${t.language ? `<span class="badge badge-lang">${t.language}</span>` : ''}
-                        ${t.category ? `<span class="badge badge-cat">${t.category}</span>` : ''}
-                    </div>
+                     </div>
+                     ` : ''}
+                     <div style="flex: 1;">
+                        <div class="template-card-preview" style="-webkit-line-clamp: 5;">
+                            ${this.getPreviewText(t)}
+                        </div>
+                     </div>
                  </div>
-                 <div style="flex: 2;">
-                    <div class="template-card-preview" style="-webkit-line-clamp: 5;">
-                        ${this.getPreviewText(t)}
-                    </div>
+                 
+                 <!-- Bottom: Badges -->
+                 <div class="template-card-badges" style="display: flex; gap: 0.5rem;">
+                     ${t.language ? `<span class="badge badge-lang">${t.language}</span>` : ''}
+                     ${t.category ? `<span class="badge badge-cat">${t.category}</span>` : ''}
                  </div>
             </div>
             `;
