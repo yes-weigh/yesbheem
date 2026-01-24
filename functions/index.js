@@ -396,20 +396,25 @@ exports.cleanupStaleSessions = onSchedule("0 2 * * *", async (event) => {
         const data = doc.data();
         const updates = {};
 
-        Object.keys(data).forEach(key => {
-            if (key.startsWith('activeSessions.')) {
-                const sessionData = data[key];
+        // Check if activeSessions exists and is an object
+        if (data.activeSessions && typeof data.activeSessions === 'object') {
+            // Iterate through each session in the activeSessions map
+            Object.keys(data.activeSessions).forEach(fingerprint => {
+                const sessionData = data.activeSessions[fingerprint];
+
                 if (sessionData && sessionData.lastActiveAt) {
                     const lastActive = sessionData.lastActiveAt.toMillis();
                     const inactiveTime = now - lastActive;
 
                     if (inactiveTime > staleThreshold) {
-                        updates[key] = admin.firestore.FieldValue.delete();
+                        // Mark this specific session for deletion
+                        updates[`activeSessions.${fingerprint}`] = admin.firestore.FieldValue.delete();
                         cleanedCount++;
+                        console.log(`[cleanupStaleSessions] Marking session ${fingerprint} for deletion (inactive for ${Math.round(inactiveTime / 3600000)} hours)`);
                     }
                 }
-            }
-        });
+            });
+        }
 
         if (Object.keys(updates).length > 0) {
             batch.update(doc.ref, updates);
