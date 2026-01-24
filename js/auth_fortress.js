@@ -13,13 +13,52 @@ export class AuthFortress {
     }
 
     async initFingerprint() {
-        // Initialize FingerprintJS
-        const fpPromise = import('https://openfpcdn.io/fingerprintjs/v4')
-            .then(FingerprintJS => FingerprintJS.load());
-        const fp = await fpPromise;
-        const result = await fp.get();
-        this.fingerprint = result.visitorId;
-        console.log("Hardware Identity Secured:", this.fingerprint);
+        try {
+            // Initialize FingerprintJS
+            const fpPromise = import('https://openfpcdn.io/fingerprintjs/v4')
+                .then(FingerprintJS => FingerprintJS.load());
+            const fp = await fpPromise;
+            const result = await fp.get();
+            this.fingerprint = result.visitorId;
+            console.log("Hardware Identity Secured:", this.fingerprint);
+        } catch (error) {
+            console.warn("FingerprintJS failed to load, using fallback:", error.message);
+            // Fallback: Generate a browser-based fingerprint using available APIs
+            this.fingerprint = await this.generateFallbackFingerprint();
+            console.log("Fallback Identity Generated:", this.fingerprint);
+        }
+    }
+
+    async generateFallbackFingerprint() {
+        // Create a fingerprint from browser characteristics
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.textBaseline = 'top';
+        ctx.font = '14px Arial';
+        ctx.fillText('fingerprint', 2, 2);
+
+        const components = [
+            navigator.userAgent,
+            navigator.language,
+            screen.colorDepth,
+            screen.width + 'x' + screen.height,
+            new Date().getTimezoneOffset(),
+            canvas.toDataURL(),
+            navigator.hardwareConcurrency || 'unknown',
+            navigator.deviceMemory || 'unknown'
+        ];
+
+        // Simple hash function
+        const str = components.join('|||');
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+
+        // Convert to hex and add timestamp component for uniqueness
+        return 'fallback_' + Math.abs(hash).toString(16) + '_' + Date.now().toString(36);
     }
 
     async initiateLogin(email, phone) {
