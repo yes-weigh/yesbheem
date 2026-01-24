@@ -656,25 +656,57 @@ class InstanceManager {
         if (!confirm('⚠️ PERMANENT DELETE\n\nThis will delete:\n• Instance metadata\n• WhatsApp session\n• All associated data\n\nThis action cannot be undone. Continue?')) return;
 
         try {
-            // 1. Delete from Firestore
-            await deleteDoc(doc(db, "whatsapp_instances", sessionId));
+            // Find the instance to check if it's managed
+            const instance = this.instances.find(inst => inst.sessionId === sessionId);
+            const isManaged = instance ? instance.isManaged : false;
 
-            // 2. Delete from backend (session + data)
-            const response = await fetch(`${this.apiBase}/delete/${sessionId}`, {
-                method: 'DELETE'
-            });
+            let firestoreDeleted = false;
+            let backendDeleted = false;
 
-            if (!response.ok) {
-                throw new Error('Backend deletion failed');
+            // 1. Delete from Firestore (only if managed)
+            if (isManaged) {
+                try {
+                    await deleteDoc(doc(db, "whatsapp_instances", sessionId));
+                    firestoreDeleted = true;
+                    console.log('Firestore document deleted successfully');
+                } catch (firestoreError) {
+                    console.warn('Firestore deletion failed (may not exist):', firestoreError);
+                    // Continue to backend deletion even if Firestore fails
+                }
+            } else {
+                console.log('Skipping Firestore deletion for unmanaged instance');
             }
 
-            import('./utils/toast.js').then(m => m.Toast.success('Instance deleted permanently'));
-            this.fetchInstances();
+            // 2. Delete from backend (always attempt this)
+            try {
+                const response = await fetch(`${this.apiBase}/delete/${sessionId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    backendDeleted = true;
+                    console.log('Backend session deleted successfully');
+                } else {
+                    const errorText = await response.text();
+                    console.error('Backend deletion failed:', response.status, errorText);
+                    throw new Error(`Backend deletion failed: ${response.status}`);
+                }
+            } catch (backendError) {
+                console.error('Error during backend deletion:', backendError);
+                throw backendError;
+            }
+
+            // Success feedback
+            if (backendDeleted) {
+                import('./utils/toast.js').then(m => m.Toast.success('Instance deleted permanently'));
+                this.fetchInstances();
+            }
         } catch (e) {
             console.error('Error deleting instance:', e);
-            alert('Failed to delete instance completely. Some data may remain.');
+            alert('Failed to delete instance from backend. Please check the console for details.');
         }
     }
+
 
     /* --- GROUP CHIP SELECTOR HELPERS --- */
     renderGroupSelector(container, selectedGroups = []) {
@@ -848,29 +880,6 @@ class InstanceManager {
 
     /* --- HELPERS --- */
 
-    async deleteInstance(sessionId) {
-        if (!confirm('⚠️ PERMANENT DELETE\n\nThis will delete:\n• Instance metadata\n• WhatsApp session\n• All associated data\n\nThis action cannot be undone. Continue?')) return;
-
-        try {
-            // 1. Delete from Firestore
-            await deleteDoc(doc(db, "whatsapp_instances", sessionId));
-
-            // 2. Delete from backend (session + data)
-            const response = await fetch(`${this.apiBase}/delete/${sessionId}`, {
-                method: 'DELETE'
-            });
-
-            if (!response.ok) {
-                throw new Error('Backend deletion failed');
-            }
-
-            import('./utils/toast.js').then(m => m.Toast.success('Instance deleted permanently'));
-            this.fetchInstances();
-        } catch (e) {
-            console.error('Error deleting instance:', e);
-            alert('Failed to delete instance completely. Some data may remain.');
-        }
-    }
 
     showElement(el) {
         el.classList.remove('hidden');
