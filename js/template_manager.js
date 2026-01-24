@@ -132,7 +132,7 @@ class TemplateManager {
                         <div class="template-card-title">${this.escapeHtml(t.name)}</div>
                         <div style="display:flex; gap:0.25rem;">
 
-                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleDuplicate('${t.id}')" title="Duplicate">
+                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleClone('${t.id}')" title="Clone">
                                 📄
                             </button>
                              <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
@@ -147,9 +147,6 @@ class TemplateManager {
                 </div>
                 <div class="template-card-preview">
                     ${this.getPreviewText(t)}
-                </div>
-                <div class="text-xs text-muted mt-2">
-                    <span class="uppercase">${t.type}</span> • ${t.id.substring(0, 4)}
                 </div>
             </div>
         `).join('');
@@ -172,7 +169,6 @@ class TemplateManager {
                         ${renderHeader('name', 'Name')}
                         ${renderHeader('category', 'Category')}
                         ${renderHeader('language', 'Language')}
-                        ${renderHeader('type', 'Type')}
                         <th>Preview</th>
                         <th style="width: 50px;"></th>
                     </tr>
@@ -183,14 +179,13 @@ class TemplateManager {
                             <td class="font-bold">${this.escapeHtml(t.name)}</td>
                             <td>${t.category ? `<span class="badge badge-cat">${t.category}</span>` : '-'}</td>
                             <td>${t.language ? `<span class="badge badge-lang">${t.language}</span>` : '-'}</td>
-                            <td class="uppercase text-xs">${t.type}</td>
                             <td class="text-muted text-sm" style="max-width: 300px;">
                                 <div class="text-truncate-2">${this.getPreviewText(t)}</div>
                             </td>
                             <td>
                                 <div style="display:flex; gap:0.25rem;">
 
-                                     <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleDuplicate('${t.id}')" title="Duplicate">
+                                     <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleClone('${t.id}')" title="Clone">
                                         📄
                                     </button>
                                     <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
@@ -246,14 +241,26 @@ class TemplateManager {
     }
 
     renderDetailedView(templates) {
-        this.listContainer.innerHTML = templates.map(t => `
+        this.listContainer.innerHTML = templates.map(t => {
+            const media = this.getMediaUrl(t);
+            return `
             <div class="template-card" onclick="window.tmplMgr.openEditor('${t.id}')" style="flex-direction: row; gap: 2rem; align-items: start;">
+                 ${media ? `
+                 <div style="flex-shrink: 0; width: 180px;">
+                    <div style="width: 100%; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3);">
+                        ${media.type === 'image' ?
+                        `<img src="${media.url}" alt="Template media" style="width: 100%; height: 100%; object-fit: cover;" />` :
+                        `<video src="${media.url}" style="width: 100%; height: 100%; object-fit: cover;" muted></video>`
+                    }
+                    </div>
+                 </div>
+                 ` : ''}
                  <div style="flex: 1;">
                     <div style="display:flex; justify-content:space-between; align-items:start;">
                         <div class="template-card-title" style="font-size: 1.25rem; margin-bottom: 0.5rem;">${this.escapeHtml(t.name)}</div>
                         <div style="display:flex; gap:0.25rem;">
 
-                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleDuplicate('${t.id}')" title="Duplicate">
+                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleClone('${t.id}')" title="Clone">
                                 📄
                             </button>
                              <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
@@ -264,9 +271,7 @@ class TemplateManager {
                     <div class="template-card-badges" style="margin-bottom: 1rem;">
                         ${t.language ? `<span class="badge badge-lang">${t.language}</span>` : ''}
                         ${t.category ? `<span class="badge badge-cat">${t.category}</span>` : ''}
-                        <span class="badge">${t.type}</span>
                     </div>
-                    <div class="text-sm text-muted">ID: ${t.id}</div>
                  </div>
                  <div style="flex: 2;">
                     <div class="template-card-preview" style="-webkit-line-clamp: 5;">
@@ -274,7 +279,8 @@ class TemplateManager {
                     </div>
                  </div>
             </div>
-            `).join('');
+            `;
+        }).join('');
     }
 
     getPreviewText(t) {
@@ -282,6 +288,13 @@ class TemplateManager {
         if (t.content && t.content.caption) return '📷 ' + this.escapeHtml(t.content.caption);
         if (t.content && t.content.body) return this.escapeHtml(t.content.body); // WhatsApp API format sometimes
         return 'No text content';
+    }
+
+    getMediaUrl(t) {
+        if (!t.content) return null;
+        if (t.content.image && t.content.image.url) return { url: t.content.image.url, type: 'image' };
+        if (t.content.video && t.content.video.url) return { url: t.content.video.url, type: 'video' };
+        return null;
     }
 
     /* --- OLD METHODS ADAPTED --- */
@@ -427,24 +440,66 @@ class TemplateManager {
 
 
 
-    async handleDuplicate(id) {
+    async handleClone(id) {
         const t = this.templates.find(temp => temp.id === id);
         if (!t) return;
 
-        const newName = prompt('Enter name for the new template:', `Copy of ${t.name}`);
-        if (!newName) return;
+        // Open editor in "clone mode" - NEW template with cloned content
+        this.openEditor('NEW');
 
-        try {
-            const btn = document.activeElement;
-            if (btn) btn.innerHTML = '⏳';
+        // Wait for editor to be ready
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-            await this.service.duplicateTemplate(id, newName.trim());
-            await this.refreshTemplates();
-            alert('Template duplicated successfully!');
-        } catch (e) {
-            console.error(e);
-            alert('Failed to duplicate: ' + e.message);
+        // Populate with cloned content
+        const content = t.content || {};
+
+        // Set metadata (but leave name empty)
+        document.getElementById('template-name-input').value = '';
+        document.getElementById('template-name-input').placeholder = `Copy of ${t.name}`;
+
+        const languageSelect = document.getElementById('template-language-select');
+        const categorySelect = document.getElementById('template-category-select');
+        if (languageSelect) languageSelect.value = t.language || '';
+        if (categorySelect) categorySelect.value = t.category || '';
+
+        // Populate text content
+        const textPreview = document.getElementById('wa-text-preview');
+        const footerPreview = document.getElementById('wa-footer-preview');
+
+        if (textPreview) textPreview.innerText = content.text || content.caption || '';
+        if (footerPreview) {
+            footerPreview.innerText = content.footer || '';
+            if (content.footer) footerPreview.classList.remove('hidden');
         }
+
+        // Populate media
+        let mediaUrl = '';
+        let mediaType = 'none';
+        if (content.image) { mediaUrl = content.image.url; mediaType = 'image'; }
+        if (content.video) { mediaUrl = content.video.url; mediaType = 'video'; }
+
+        document.getElementById('media-url-input').value = mediaUrl;
+        document.getElementById('media-type-select').value = mediaType;
+
+        // Populate buttons
+        this.buttons = [];
+        if (content.interactiveButtons) {
+            this.buttons = content.interactiveButtons.map(b => {
+                const params = JSON.parse(b.buttonParamsJson);
+                let type = 'reply';
+                let val = '';
+                if (b.name === 'cta_url') { type = 'url'; val = params.url; }
+                if (b.name === 'cta_call') { type = 'call'; val = params.phone_number; }
+                if (b.name === 'cta_copy') { type = 'copy'; val = params.copy_code; }
+                return { type, text: params.display_text, value: val };
+            });
+        }
+
+        this.renderButtonsInline();
+        this.updateUI();
+
+        // Focus on name input
+        document.getElementById('template-name-input').focus();
     }
 
     async refreshTemplates() {

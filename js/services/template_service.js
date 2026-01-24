@@ -185,7 +185,7 @@ class TemplateService {
         return await this.saveTemplate(newTemplate);
     }
 
-    async duplicateTemplate(templateId, newName) {
+    async cloneTemplate(templateId, newName) {
         const templates = await this.getTemplates();
         const original = templates.find(t => t.id === templateId);
 
