@@ -120,28 +120,47 @@ class CampaignManager {
 
     async loadInstances() {
         try {
-            // 1. Fetch live sessions from Backend
-            const backendPromise = fetch(`${window.appConfig.apiUrl}/api/auth/sessions`).then(r => r.json());
+            // 1. Fetch live sessions from Backend (Graceful fail for Mixed Content/Down)
+            let liveSessions = [];
+            try {
+                const response = await fetch(`${window.appConfig.apiUrl}/api/auth/sessions`);
+                const data = await response.json();
+                if (data.success && Array.isArray(data.sessions)) {
+                    liveSessions = data.sessions;
+                }
+            } catch (e) {
+                console.warn('Backend fetch failed (likely Mixed Content or Offline):', e);
+            }
 
-            // 2. Fetch metadata from Firestore
-            const firestorePromise = getDocs(collection(db, "whatsapp_instances"));
-
-            const [backendData, firestoreSnap] = await Promise.all([backendPromise, firestorePromise]);
-
-            const liveSessions = (backendData.success && Array.isArray(backendData.sessions)) ? backendData.sessions : [];
+            // 2. Fetch metadata from Firestore (Source of Truth for existence)
+            const firestoreSnap = await getDocs(collection(db, "whatsapp_instances"));
             const metaDocs = [];
-            firestoreSnap.forEach(doc => metaDocs.push(doc.data()));
+            firestoreSnap.forEach(doc => metaDocs.push({ ...doc.data(), id: doc.id }));
 
-            // 3. Merge Data to get correct names
-            this.instances = liveSessions.map(session => {
-                const meta = metaDocs.find(m => m.sessionId === (session.id || session.sessionId));
-                return {
-                    ...session,
-                    name: meta ? meta.name : (session.name || 'Unnamed'),
-                    kam: meta ? meta.kam : null,
-                    groups: meta ? meta.groups : []
-                };
-            });
+            // 3. Merge Strategies
+            if (liveSessions.length > 0) {
+                // If backend is live, map backend sessions to metadata
+                this.instances = liveSessions.map(session => {
+                    const meta = metaDocs.find(m => m.sessionId === (session.id || session.sessionId));
+                    return {
+                        ...session,
+                        id: session.id || session.sessionId,
+                        name: meta ? meta.name : (session.name || 'Unnamed'),
+                        kam: meta ? meta.kam : null,
+                        groups: meta ? meta.groups : []
+                    };
+                });
+            } else {
+                // Fallback: Use Firestore Metadata directly
+                // (User can select instance, even if we don't know if it's connected right now. Backend will handle it)
+                this.instances = metaDocs.map(meta => ({
+                    id: meta.sessionId, // Critical: Backend needs sessionId
+                    name: meta.name || 'Unnamed Instance',
+                    kam: meta.kam,
+                    groups: meta.groups || [],
+                    connected: false // Unknown status
+                }));
+            }
 
             this.populateSenderSelect();
 
