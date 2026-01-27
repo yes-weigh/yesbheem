@@ -253,21 +253,30 @@ class CampaignManager {
         const id = this.templateSelect.value;
         const template = this.templates.find(t => t.id === id);
 
-        if (template && window.TemplateRenderer) {
+        if (template) {
             this.templatePreview.style.display = 'block';
-            this.templatePreview.innerHTML = ''; // Request renderer
-            // We need a lightweight renderer or use the existing one but disconnected from editor logic
-            // Simple Render:
-            const renderer = new window.TemplateRenderer({ readOnly: true });
+            this.templatePreview.innerHTML = '';
 
-            // Mock container
-            const mockContainer = document.createElement('div');
-            // We need to inject the HTML structure the renderer expects or just manually render
-            // TemplateRenderer is tightly coupled to DOM IDs. 
-            // Fallback: Simple HTML string construction for preview
+            // Extract Preview Text based on detected structure
+            let previewText = 'Preview unavailable';
+
+            if (Array.isArray(template.components)) {
+                // Standard WhatsApp Structure
+                const body = template.components.find(c => c.type === 'BODY');
+                previewText = body ? body.text : (template.components.find(c => c.type === 'HEADER')?.text || 'Media Template');
+            } else if (template.content) {
+                // Simplified Structure
+                if (typeof template.content === 'string') {
+                    previewText = template.content;
+                } else if (typeof template.content === 'object') {
+                    previewText = template.content.body || template.content.text || template.content.caption || JSON.stringify(template.content);
+                }
+            }
+
+            // Simple HTML string construction for preview
             this.templatePreview.innerHTML = `
-                <div style="color:white;">
-                    <p>${template.components.find(c => c.type === 'BODY').text}</p>
+                <div style="color:white; white-space: pre-wrap;">
+                    <p>${previewText}</p>
                 </div>
             `;
         } else {
