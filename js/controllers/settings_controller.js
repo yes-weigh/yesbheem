@@ -59,17 +59,20 @@ export class SettingsController {
 
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                this.keyAccounts = data.key_accounts || [];
-                this.dealerStages = data.dealer_stages || [];
-                this.keyAccounts = data.key_accounts || [];
+
+                // MIGRATION / NORMALIZATION:
+                // If key_accounts are strings, convert to objects
+                const rawKAMs = data.key_accounts || [];
+                this.keyAccounts = rawKAMs.map(k => {
+                    if (typeof k === 'string') return { name: k, phone: '' };
+                    return k;
+                });
+
                 this.dealerStages = data.dealer_stages || [];
                 this.dealerCategories = data.dealer_categories || [];
                 this.instanceGroups = data.instance_groups || [];
                 this.templateLanguages = data.template_languages || [];
                 this.templateCategories = data.template_categories || [];
-                this.keyAccounts = data.key_accounts || [];
-                this.dealerStages = data.dealer_stages || [];
-                this.dealerCategories = data.dealer_categories || [];
                 this.keyAccountImages = data.key_account_images || {};
                 this.stageImages = data.stage_images || {};
                 this.categoryImages = data.category_images || {};
@@ -83,18 +86,14 @@ export class SettingsController {
                 this.templateLanguages = ['English', 'Malayalam', 'Hindi', 'Tamil', 'Telugu'];
                 this.templateCategories = ['Marketing', 'Transactional', 'Promotional', 'Support'];
                 this.keyAccountImages = {}; // Map: Name -> URL
+
                 await setDoc(docRef, {
-                    key_accounts: this.keyAccounts,
-                    dealer_stages: this.dealerStages,
                     key_accounts: this.keyAccounts,
                     dealer_stages: this.dealerStages,
                     dealer_categories: this.dealerCategories,
                     instance_groups: this.instanceGroups,
                     template_languages: this.templateLanguages,
                     template_categories: this.templateCategories,
-                    key_accounts: this.keyAccounts,
-                    dealer_stages: this.dealerStages,
-                    dealer_categories: this.dealerCategories,
                     key_account_images: this.keyAccountImages,
                     stage_images: {},
                     category_images: {}
@@ -337,20 +336,39 @@ export class SettingsController {
      * Generic Add Item Handler
      */
     async handleAddItem(listName, inputElement) {
+        // Special Handling for KAMs (Object Structure)
+        if (listName === 'keyAccounts') {
+            const nameInput = document.getElementById('add-kam-input');
+            const phoneInput = document.getElementById('add-kam-phone'); // New Input
+
+            const nameVal = nameInput ? nameInput.value.trim() : '';
+            const phoneVal = phoneInput ? phoneInput.value.trim() : '';
+
+            if (!nameVal) return;
+
+            // Check duplicate by name
+            if (this.keyAccounts.some(k => k.name === nameVal)) {
+                alert('This name already exists!');
+                return;
+            }
+
+            this.keyAccounts.push({ name: nameVal, phone: phoneVal });
+            this.renderKeyAccounts();
+            this.updateBadges();
+
+            // Persist entire array for objects
+            await this.persistKeyAccounts();
+
+            if (nameInput) nameInput.value = '';
+            if (phoneInput) phoneInput.value = '';
+            return;
+        }
+
         const value = inputElement.value.trim();
         if (!value) return;
 
         // Optimistic UI Update
-        if (listName === 'keyAccounts') {
-            if (this.keyAccounts.includes(value)) {
-                alert('This name already exists!');
-                return;
-            }
-            this.keyAccounts.push(value);
-            this.renderKeyAccounts();
-            this.updateBadges();
-            await this.persistItem(listName, value, 'add');
-        } else if (listName === 'dealerStages') {
+        if (listName === 'dealerStages') {
             if (this.dealerStages.includes(value)) {
                 alert('This stage already exists!');
                 return;
@@ -366,7 +384,6 @@ export class SettingsController {
             }
             this.dealerCategories.push(value);
             this.renderDealerCategories();
-            this.updateBadges();
             this.updateBadges();
             await this.persistItem(listName, value, 'add');
         } else if (listName === 'instanceGroups') {
@@ -414,9 +431,9 @@ export class SettingsController {
 
         // 1. Remove from List
         if (listName === 'keyAccounts') {
-            this.keyAccounts = this.keyAccounts.filter(item => item !== value);
+            this.keyAccounts = this.keyAccounts.filter(item => item.name !== value);
             this.renderKeyAccounts();
-            await this.persistItem(listName, value, 'remove');
+            await this.persistKeyAccounts();
         } else if (listName === 'dealerStages') {
             this.dealerStages = this.dealerStages.filter(item => item !== value);
             this.renderDealerStages();
@@ -456,12 +473,12 @@ export class SettingsController {
             let fieldName = '';
 
             if (listName === 'keyAccounts') {
-                if (this.keyAccounts.includes(trimmedValue)) { alert('Name already exists'); return; }
-                const idx = this.keyAccounts.indexOf(oldValue);
+                if (this.keyAccounts.some(k => k.name === trimmedValue)) { alert('Name already exists'); return; }
+                const idx = this.keyAccounts.findIndex(k => k.name === oldValue);
                 if (idx !== -1) {
-                    this.keyAccounts[idx] = trimmedValue;
+                    this.keyAccounts[idx].name = trimmedValue; // Keep phone
                     this.renderKeyAccounts();
-                    await this.persistRename(listName, oldValue, trimmedValue);
+                    await this.persistKeyAccounts();
                     fieldName = 'key_account_manager';
                 }
             } else if (listName === 'dealerStages') {
@@ -589,14 +606,129 @@ export class SettingsController {
         };
     }
 
-    async persistRename(listName, oldValue, newValue) {
-        // Firestore Arrays don't support simple replace. We must Remove Old and Add New.
-        // Warning: This changes order if arrayUnion is used.
-        // If order matters, we might need to read-modify-write the whole array.
-        // For now, let's just do remove+add, assuming default alphabetic sort or irrelevant order.
+    /**
+     * Edit KAM Modal (Name + Phone)
+     */
+    async handleEditKAM(oldName) {
+        const kam = this.keyAccounts.find(k => k.name === oldName);
+        if (!kam) return;
 
+        this.showEditKAMModal(kam.name, kam.phone || '', async (newName, newPhone) => {
+            if (!newName || !newName.trim()) return;
+
+            const trimmedName = newName.trim();
+            const trimmedPhone = newPhone.trim();
+
+            // Check duplicate name if name changed
+            if (trimmedName !== oldName && this.keyAccounts.some(k => k.name === trimmedName)) {
+                alert('This name already exists!');
+                return;
+            }
+
+            // Update Object
+            const idx = this.keyAccounts.findIndex(k => k.name === oldName);
+            if (idx !== -1) {
+                this.keyAccounts[idx].name = trimmedName;
+                this.keyAccounts[idx].phone = trimmedPhone;
+
+                this.renderKeyAccounts();
+                await this.persistKeyAccounts();
+
+                // If name changed, trigger cascade update
+                if (trimmedName !== oldName && window.dataManager) {
+                    await window.dataManager.bulkUpdateMetadata('key_account_manager', oldName, trimmedName);
+                }
+            }
+        });
+    }
+
+    showEditKAMModal(currentName, currentPhone, onSave) {
+        const existing = document.getElementById('edit-kam-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'edit-kam-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            transition: opacity 0.2s;
+        `;
+
+        modal.innerHTML = `
+            <div style="background: var(--bg-panel, #1e293b); padding: 24px; border-radius: 12px; width: 400px; max-width: 90%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid var(--border-light, rgba(255,255,255,0.1)); transform: scale(0.95); transition: transform 0.2s;">
+                <h3 style="margin: 0 0 16px 0; font-size: 1.1rem; color: var(--text-main, #f8fafc);">Edit Key Account Manager</h3>
+                
+                <label style="display:block; margin-bottom:4px; font-size:0.8rem; color:var(--text-muted);">Name</label>
+                <input type="text" id="edit-kam-name" value="${this.escapeHtml(currentName)}" style="width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-light, rgba(255,255,255,0.1)); background: var(--bg-input, #0f172a); color: var(--text-main, #f8fafc); margin-bottom: 12px; font-size: 1rem; outline: none;">
+                
+                <label style="display:block; margin-bottom:4px; font-size:0.8rem; color:var(--text-muted);">Phone</label>
+                <input type="text" id="edit-kam-phone" value="${this.escapeHtml(currentPhone)}" placeholder="e.g. 919876543210" style="width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-light, rgba(255,255,255,0.1)); background: var(--bg-input, #0f172a); color: var(--text-main, #f8fafc); margin-bottom: 20px; font-size: 1rem; outline: none;">
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button id="edit-kam-cancel" style="padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border-light, rgba(255,255,255,0.1)); background: transparent; color: var(--text-muted, #94a3b8); cursor: pointer; font-weight: 500;">Cancel</button>
+                    <button id="edit-kam-save" style="padding: 8px 16px; border-radius: 6px; border: none; background: var(--primary-color, #3b82f6); color: white; cursor: pointer; font-weight: 500;">Save</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        requestAnimationFrame(() => {
+            modal.style.opacity = '1';
+            const content = modal.firstElementChild;
+            content.style.transform = 'scale(1)';
+        });
+
+        const nameInput = modal.querySelector('#edit-kam-name');
+        const phoneInput = modal.querySelector('#edit-kam-phone');
+        const cancelBtn = modal.querySelector('#edit-kam-cancel');
+        const saveBtn = modal.querySelector('#edit-kam-save');
+
+        nameInput.focus();
+
+        const close = () => {
+            modal.style.opacity = '0';
+            modal.firstElementChild.style.transform = 'scale(0.95)';
+            setTimeout(() => modal.remove(), 200);
+        };
+
+        const save = () => {
+            onSave(nameInput.value, phoneInput.value);
+            close();
+        };
+
+        cancelBtn.onclick = close;
+        saveBtn.onclick = save;
+
+        const enterHandler = (e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') close(); };
+        nameInput.onkeydown = enterHandler;
+        phoneInput.onkeydown = enterHandler;
+
+        modal.onclick = (e) => { if (e.target === modal) close(); };
+    }
+
+    async persistRename(listName, oldValue, newValue) {
         await this.persistItem(listName, oldValue, 'remove');
         await this.persistItem(listName, newValue, 'add');
+    }
+
+    async persistKeyAccounts() {
+        const docRef = doc(db, "settings", "general");
+        try {
+            await updateDoc(docRef, {
+                key_accounts: this.keyAccounts
+            });
+        } catch (error) {
+            console.error('Error saving Key Accounts:', error);
+            alert("Failed to save Key Accounts.");
+        }
     }
 
     /**
@@ -735,6 +867,17 @@ export class SettingsController {
                     <button class="close-modal-btn" onclick="document.getElementById('manage-modal-overlay').remove()">&times;</button>
                 </div>
                 <div class="modal-body">
+                    ${type === 'keyAccounts' ? `
+                    <div class="input-group" style="flex-direction: column; gap: 10px; width: 100%;">
+                        <input type="text" id="${inputId}" class="modern-input" placeholder="${placeholder}" style="width: 100%;">
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <input type="text" id="add-kam-phone" class="modern-input" placeholder="Phone (e.g., 919876543210)" style="flex: 1;">
+                            <button id="${btnId}" class="add-btn" style="white-space: nowrap; padding: 0 16px;">
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                    ` : `
                     <div class="input-group">
                         <input type="text" id="${inputId}" class="modern-input" placeholder="${placeholder}">
                         ${type !== 'deactivatedDealers' ? `
@@ -743,6 +886,7 @@ export class SettingsController {
                         </button>
                         ` : ''}
                     </div>
+                    `}
                     <div class="data-list" id="${listId}"></div>
                 </div>
                 <div class="modal-footer">
@@ -855,13 +999,18 @@ export class SettingsController {
 
     renderKeyAccounts() {
         if (!this.keyAccountsList) return;
-        this.keyAccountsList.innerHTML = this.keyAccounts.map(name => {
+        this.keyAccountsList.innerHTML = this.keyAccounts.map(account => {
+            const name = account.name;
+            const phone = account.phone || '';
             const hasImage = this.keyAccountImages && this.keyAccountImages[name];
             return `
             <div class="list-item">
-                <div style="display:flex; align-items:center; gap:10px;">
+                <div style="display:flex; align-items:center; gap:10px; flex: 1;">
                     ${hasImage ? `<img src="${this.escapeHtml(this.keyAccountImages[name])}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">` : ''}
-                    <span class="item-text">${this.escapeHtml(name)}</span>
+                    <div style="display: flex; flex-direction: column;">
+                        <span class="item-text">${this.escapeHtml(name)}</span>
+                        ${phone ? `<span style="font-size: 0.75rem; color: var(--text-muted);">${this.escapeHtml(phone)}</span>` : ''}
+                    </div>
                 </div>
                 <div class="actions">
                     ${hasImage ? `
@@ -872,7 +1021,7 @@ export class SettingsController {
                     <button class="edit-btn" onclick="window.settingsController.handleSetItemImage('kam', '${this.escapeHtml(name)}')" title="${hasImage ? 'Change Image' : 'Set Image'}">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                     </button>
-                    <button class="edit-btn" onclick="window.settingsController.handleRenameItem('keyAccounts', '${this.escapeHtml(name)}')" title="Rename">
+                    <button class="edit-btn" onclick="window.settingsController.handleEditKAM('${this.escapeHtml(name)}')" title="Edit details">
                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                     </button>
                     <button class="delete-btn" onclick="window.settingsController.handleRemoveItem('keyAccounts', '${this.escapeHtml(name)}')" title="Delete">

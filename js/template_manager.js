@@ -129,34 +129,36 @@ class TemplateManager {
             const media = this.getMediaUrl(t);
             return `
             <div class="template-card" onclick="window.tmplMgr.openEditor('${t.id}')">
-                <div class="template-card-header" style="flex-direction: column; align-items: start; gap: 0.5rem;">
-                    <div style="display:flex; justify-content:space-between; width:100%; align-items: center;">
-                        <div class="template-card-title">${this.escapeHtml(t.name)}</div>
-                        <div style="display:flex; gap:0.25rem;">
-
-                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleClone('${t.id}')" title="Clone">
-                                📄
-                            </button>
-                             <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
-                                🗑️
-                            </button>
-                        </div>
-                    </div>
-                    <div class="template-card-badges" style="display: flex; align-items: center; gap: 0.5rem;">
-                        ${t.language ? `<span class="badge badge-lang">${t.language}</span>` : ''}
-                        ${t.category ? `<span class="badge badge-cat">${t.category}</span>` : ''}
-                        ${media ? `
-                            <div style="width: 40px; height: 40px; border-radius: 6px; overflow: hidden; background: rgba(0,0,0,0.3); flex-shrink: 0;">
-                                ${media.type === 'image' ?
+                <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 0.75rem;">
+                    ${media ? `
+                        <div style="width: 60px; height: 60px; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3); flex-shrink: 0; border: 1px solid rgba(255,255,255,0.05);">
+                            ${media.type === 'image' ?
                         `<img src="${media.url}" alt="Media" style="width: 100%; height: 100%; object-fit: cover;" />` :
                         `<video src="${media.url}" style="width: 100%; height: 100%; object-fit: cover;" muted></video>`
                     }
-                            </div>
-                        ` : ''}
+                        </div>
+                    ` : ''}
+                    
+                    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div class="template-card-title" style="word-break: break-word; line-height: 1.3;">${this.escapeHtml(t.name)}</div>
+                        <div class="template-card-badges" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            ${t.language ? `<span class="badge badge-lang">${t.language}</span>` : ''}
+                            ${t.category ? `<span class="badge badge-cat">${t.category}</span>` : ''}
+                        </div>
                     </div>
                 </div>
-                <div class="template-card-preview">
+                
+                <div class="template-card-preview" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 1rem;">
                     ${this.getPreviewText(t)}
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem; margin-top: auto;">
+                     <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleClone('${t.id}')" title="Clone">
+                        📄
+                    </button>
+                     <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
+                        🗑️
+                    </button>
                 </div>
             </div>
             `;
@@ -269,41 +271,41 @@ class TemplateManager {
         this.listContainer.innerHTML = templates.map(t => {
             const media = this.getMediaUrl(t);
             return `
-            <div class="template-card" onclick="window.tmplMgr.openEditor('${t.id}')" style="flex-direction: column; gap: 1rem;">
+            <div class="template-card" onclick="window.tmplMgr.openEditor('${t.id}')" style="flex-direction: column; gap: 1rem; max-width: 400px; margin: 0 auto;">
                  <!-- Top: Name and Actions -->
-                 <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                     <div class="template-card-title" style="font-size: 1.25rem;">${this.escapeHtml(t.name)}</div>
-                     <div style="display:flex; gap:0.25rem;">
-                          <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleClone('${t.id}')\" title="Clone">
+                 <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
+                     <div class="template-card-title" style="font-size: 1.1rem; word-break: break-word;">${this.escapeHtml(t.name)}</div>
+                     <div style="display:flex; gap:0.25rem; flex-shrink: 0;">
+                          <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.handleClone('${t.id}')" title="Clone">
                              📄
                          </button>
-                          <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')\" title="Delete">
+                          <button class="action-btn-icon" onclick="event.stopPropagation(); window.tmplMgr.deleteTemplate('${t.id}')" title="Delete">
                              🗑️
                          </button>
                      </div>
                  </div>
                  
-                 <!-- Middle: Media and Text side by side -->
-                 <div style="display: flex; gap: 1.5rem; align-items: start;">
-                     ${media ? `
-                     <div style="flex-shrink: 0; width: 180px;">
-                        <div style="width: 100%; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3);">
-                            ${media.type === 'image' ?
+                 <!-- Middle: Media (Full Width) -->
+                 ${media ? `
+                 <div style="width: 100%;">
+                    <div style="width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05);">
+                        ${media.type === 'image' ?
                         `<img src="${media.url}" alt="Template media" style="width: 100%; height: 100%; object-fit: cover;" />` :
                         `<video src="${media.url}" style="width: 100%; height: 100%; object-fit: cover;" muted></video>`
                     }
-                        </div>
-                     </div>
-                     ` : ''}
-                     <div style="flex: 1;">
-                        <div class="template-card-preview" style="-webkit-line-clamp: 5;">
-                            ${this.getPreviewText(t)}
-                        </div>
-                     </div>
+                    </div>
+                 </div>
+                 ` : ''}
+
+                 <!-- Text Content (Under Media) -->
+                 <div style="width: 100%;">
+                    <div class="template-card-preview" style="-webkit-line-clamp: 6; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 0;">
+                        ${this.getPreviewText(t)}
+                    </div>
                  </div>
                  
                  <!-- Bottom: Badges -->
-                 <div class="template-card-badges" style="display: flex; gap: 0.5rem;">
+                 <div class="template-card-badges" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: auto;">
                      ${t.language ? `<span class="badge badge-lang">${t.language}</span>` : ''}
                      ${t.category ? `<span class="badge badge-cat">${t.category}</span>` : ''}
                  </div>
@@ -662,6 +664,14 @@ class TemplateManager {
             if (button) deleteBtn.classList.remove('hidden');
             else deleteBtn.classList.add('hidden');
         }
+
+        // Dynamic KAM Logic
+        const dynamicKamCb = document.getElementById('btn-dynamic-kam');
+        if (dynamicKamCb) {
+            dynamicKamCb.checked = button ? !!button.dynamicKam : false;
+            // Trigger change to update input state
+            dynamicKamCb.dispatchEvent(new Event('change'));
+        }
     }
 
     hideButtonEditForm() {
@@ -676,10 +686,28 @@ class TemplateManager {
 
     updateButtonValueInput(type) {
         const valueInput = document.getElementById('btn-value-input');
+        const dynamicKamWrapper = document.getElementById('btn-dynamic-kam-wrapper');
+        const dynamicKamCb = document.getElementById('btn-dynamic-kam');
+
         if (type === 'reply') {
             valueInput.classList.add('hidden');
+            if (dynamicKamWrapper) dynamicKamWrapper.classList.add('hidden');
         } else {
             valueInput.classList.remove('hidden');
+
+            // Show Dynamic KAM option only for 'call'
+            if (dynamicKamWrapper) {
+                if (type === 'call') {
+                    dynamicKamWrapper.classList.remove('hidden');
+                } else {
+                    dynamicKamWrapper.classList.add('hidden');
+                    if (dynamicKamCb) {
+                        dynamicKamCb.checked = false;
+                        valueInput.disabled = false;
+                    }
+                }
+            }
+
             if (type === 'url') valueInput.placeholder = 'https://example.com';
             else if (type === 'call') valueInput.placeholder = '+919876543210';
             else if (type === 'copy') valueInput.placeholder = 'Promo Code';
@@ -696,12 +724,20 @@ class TemplateManager {
             return;
         }
 
-        if (type !== 'reply' && !value) {
+        const dynamicKamCb = document.getElementById('btn-dynamic-kam');
+        const isDynamicKam = dynamicKamCb && dynamicKamCb.checked && type === 'call';
+
+        if (type !== 'reply' && !isDynamicKam && !value) {
             alert('Value is required for this button type');
             return;
         }
 
-        const buttonData = { type, text, value: type === 'reply' ? '' : value };
+        const buttonData = {
+            type,
+            text,
+            value: type === 'reply' ? '' : (isDynamicKam ? '{{KAM_PHONE}}' : value),
+            dynamicKam: isDynamicKam
+        };
 
         if (this.editingButtonIndex !== null && this.editingButtonIndex < this.buttons.length) {
             // Edit existing
@@ -746,7 +782,10 @@ class TemplateManager {
             btnEl.innerHTML = `
                 <div class="wa-button-content">
                     <span>${icon}</span>
-                    <span>${this.escapeHtml(btn.text) || 'Button'}</span>
+                    <div style="display:flex; flex-direction:column; gap:2px;">
+                        <span>${this.escapeHtml(btn.text) || 'Button'}</span>
+                        ${btn.dynamicKam ? '<span style="font-size:0.6rem; color:var(--primary); opacity:0.8;">(Dynamic: KAM Phone)</span>' : ''}
+                    </div>
                 </div>
             <div class="wa-button-icons">
                 <div class="wa-button-icon edit" data-index="${index}">
@@ -895,6 +934,24 @@ class TemplateManager {
                 if (this.editingButtonIndex !== null && confirm('Delete this button?')) {
                     this.removeButton(this.editingButtonIndex);
                     this.hideButtonEditForm();
+                }
+            });
+        }
+
+        // Dynamic KAM Checkbox Listener
+        const dynamicKamCb = document.getElementById('btn-dynamic-kam');
+        if (dynamicKamCb) {
+            dynamicKamCb.addEventListener('change', (e) => {
+                const valueInput = document.getElementById('btn-value-input');
+                if (valueInput) {
+                    valueInput.disabled = e.target.checked;
+                    if (e.target.checked) {
+                        valueInput.value = 'KAM Phone Number';
+                        valueInput.classList.add('disabled-input'); // Optional styling
+                    } else {
+                        valueInput.value = '';
+                        valueInput.classList.remove('disabled-input');
+                    }
                 }
             });
         }

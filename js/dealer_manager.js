@@ -401,7 +401,8 @@ if (!window.DealerManager) {
                 if (kamSelect) {
                     let html = '<option value="all">All KAMs</option>';
                     this.generalSettings.key_accounts.forEach(kam => {
-                        html += `<option value="${kam}">${kam}</option>`;
+                        const name = typeof kam === 'object' ? kam.name : kam;
+                        html += `<option value="${name}">${name}</option>`;
                     });
                     kamSelect.innerHTML = html;
                 }
@@ -421,7 +422,9 @@ if (!window.DealerManager) {
 
         updateKAMFilter() {
             if (this.kamSelector && this.generalSettings && this.generalSettings.key_accounts) {
-                this.kamSelector.setKAMs(this.generalSettings.key_accounts);
+                // Backward compatibility: Convert objects to strings (names) for the selector
+                const kamNames = this.generalSettings.key_accounts.map(k => typeof k === 'object' ? k.name : k);
+                this.kamSelector.setKAMs(kamNames);
                 this.kamSelector.setValue(this.kamFilter);
             }
         }
