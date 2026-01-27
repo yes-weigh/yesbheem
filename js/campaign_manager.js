@@ -1,7 +1,7 @@
 
 import { AudienceService } from './services/audience_service.js';
 import { db } from './services/firebase_config.js';
-import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 class CampaignManager {
     constructor() {
@@ -26,6 +26,7 @@ class CampaignManager {
         await this.loadAudiences();
         await this.loadInstances();
         await this.loadTemplates();
+        await this.loadKAMs();
 
         // Load Dashboard
         this.loadCampaigns();
@@ -46,6 +47,11 @@ class CampaignManager {
 
         this.templateSelect = document.getElementById('campaign-template-select');
         this.templatePreview = document.getElementById('campaign-template-preview');
+
+        // New Inputs
+        this.scheduleInput = document.getElementById('campaign-schedule-time');
+        this.speedSelect = document.getElementById('campaign-speed-select');
+        this.kamSelect = document.getElementById('campaign-kam-select');
 
         this.startBtn = document.getElementById('btn-start-campaign');
         this.statusBody = document.getElementById('campaign-list-body');
@@ -200,6 +206,30 @@ class CampaignManager {
         }
     }
 
+    async loadKAMs() {
+        try {
+            const docRef = doc(db, "settings", "general");
+            const snapshot = await getDoc(docRef);
+            if (snapshot.exists()) {
+                const data = snapshot.data();
+                const keyAccounts = data.key_accounts || []; // Array of {name, phone} or strings
+
+                this.kamSelect.innerHTML = '<option value="">Select Manager...</option>';
+                keyAccounts.forEach(kam => {
+                    const name = typeof kam === 'string' ? kam : kam.name;
+                    const phone = typeof kam === 'string' ? '' : kam.phone;
+
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name + (phone ? ` (${phone})` : '');
+                    this.kamSelect.appendChild(opt);
+                });
+            }
+        } catch (e) {
+            console.error('Error loading KAMs', e);
+        }
+    }
+
     handleTemplateChange() {
         const id = this.templateSelect.value;
         const template = this.templates.find(t => t.id === id);
@@ -246,7 +276,10 @@ class CampaignManager {
                 name,
                 audienceId,
                 audienceName: this.audiences.find(a => a.id === audienceId)?.name,
-                status: 'active', // For client-side MVP, we assume active immediately
+                status: this.scheduleInput.value ? 'scheduled' : 'active',
+                scheduledAt: this.scheduleInput.value ? new Date(this.scheduleInput.value).getTime() : Date.now(),
+                speed: parseInt(this.speedSelect.value) || 60,
+                campaignManager: this.kamSelect.value || null,
                 senderConfig: {
                     type: document.querySelector('input[name="senderType"]:checked').value,
                     id: senderId

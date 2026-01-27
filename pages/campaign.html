@@ -252,6 +252,42 @@
             </div>
         </div>
 
+        <!-- Step 4: Settings (Schedule, Speed, KAM) -->
+        <div class="wizard-step">
+            <div class="step-header">
+                <div class="step-title"><span class="step-number">4</span> Campaign Settings</div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                <div>
+                    <label style="display:block; color:var(--text-muted); font-size:0.8rem; margin-bottom:5px;">Schedule
+                        Start</label>
+                    <input type="datetime-local" id="campaign-schedule-time" class="modern-input" style="width: 100%;">
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Leave empty to start
+                        immediately</div>
+                </div>
+                <div>
+                    <label style="display:block; color:var(--text-muted); font-size:0.8rem; margin-bottom:5px;">Sending
+                        Speed</label>
+                    <select id="campaign-speed-select" class="modern-input" style="width: 100%;">
+                        <option value="60">Normal (~60 msgs/min)</option>
+                        <option value="120">Fast (~120 msgs/min)</option>
+                        <option value="30">Slow (~30 msgs/min)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label style="display:block; color:var(--text-muted); font-size:0.8rem; margin-bottom:5px;">Campaign
+                    Manager (Default KAM)</label>
+                <select id="campaign-kam-select" class="modern-input" style="width: 100%;">
+                    <option value="">Select Manager...</option>
+                </select>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Used as fallback if dealer has
+                    no assigned KAM</div>
+            </div>
+        </div>
+
         <!-- Action Bar -->
         <div style="max-width: 800px; margin: 20px auto; text-align: right;">
             <button id="btn-start-campaign" class="action-button-large btn-primary">🚀 Start Campaign</button>
