@@ -1559,8 +1559,9 @@ if (!window.DealerManager) {
             if (type === 'static') {
                 // If specific checkboxes selected, use those. Else use all currently filtered.
                 let ids = Array.from(this.selectedDealers);
+
+                // If no manual selection, use all currently filtered dealers
                 if (ids.length === 0) {
-                    // Fallback to all filtered
                     ids = this.filteredDealers.map(d => d.id);
                 }
 
@@ -1569,8 +1570,28 @@ if (!window.DealerManager) {
                     return;
                 }
 
-                payload.staticIds = ids;
-                payload.count = ids.length;
+                // Resolve IDs to full Contact Objects
+                // We map from 'ids' back to the dealer objects in 'this.dealers' 
+                // (using _internalId or id matching)
+                const selectedContacts = this.dealers
+                    .filter(d => ids.includes(d.id))
+                    .map(d => ({
+                        phone: d.mobile_phone || d.phone || '',
+                        name: d.customer_name || d.name || 'Unknown',
+                        kam: d.key_account_manager || d.kam || null,
+                        id: d.id // Helper for debugging
+                    }))
+                    .filter(c => c.phone && c.phone.length >= 10); // Basic validation
+
+                if (selectedContacts.length === 0) {
+                    alert('Selected dealers have no valid phone numbers.');
+                    return;
+                }
+
+                payload.contacts = selectedContacts; // Critical for Backend
+                payload.staticIds = ids; // Keep for UI reference/restoration
+                payload.count = selectedContacts.length;
+
             } else {
                 // Dynamic
                 payload.filterConfig = {
@@ -1581,7 +1602,18 @@ if (!window.DealerManager) {
                     district: this.districtFilter,
                     categories: this.categoryFilter
                 };
-                payload.count = this.filteredDealers.length;
+                // For dynamic filters, we might want to save a preview or just the count
+                // Backend needs to support re-running the filter OR we save the snapshot now.
+                // For MVP reliability: SAVE SNAPSHOT NOW.
+                const filteredContacts = this.filteredDealers.map(d => ({
+                    phone: d.mobile_phone || d.phone || '',
+                    name: d.customer_name || d.name || 'Unknown',
+                    kam: d.key_account_manager || d.kam || null,
+                    id: d.id
+                })).filter(c => c.phone && c.phone.length >= 10);
+
+                payload.contacts = filteredContacts; // Snapshot for sending
+                payload.count = filteredContacts.length;
             }
 
             try {
