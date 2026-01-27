@@ -169,7 +169,9 @@ export class KAMSelector {
                 iconHtml = `<img src="${imgUrl}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">`;
             } else {
                 // Fallback avatar if no image
-                iconHtml = `<div style="width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-muted);">${label.charAt(0)}</div>`;
+                const labelStr = String(label || '').trim();
+                const initial = labelStr.length > 0 ? labelStr.charAt(0).toUpperCase() : '?';
+                iconHtml = `<div style="width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-muted);">${initial}</div>`;
             }
         } else if (value === 'not_assigned') {
             iconHtml = `<div style="width: 24px; height: 24px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); display: flex; align-items: center; justify-content: center; font-size: 12px; color: #f87171;">!</div>`;
