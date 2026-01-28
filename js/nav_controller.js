@@ -15,6 +15,7 @@ class NavigationController {
             { id: 'media', name: 'Media', icon: '🖼️' },
             { id: 'yesbheem', name: 'Yes Bheem', icon: '⚡' },
             { id: 'template', name: 'Template', icon: '📄' },
+            { id: 'campaign', name: 'Campaign', icon: '📢' },
             { id: 'broadcast', name: 'Broadcast', icon: '📡' },
             { id: 'welcome', name: 'Welcome', icon: '👋' },
             { id: 'chatbot', name: 'Chatbot', icon: '🤖' },

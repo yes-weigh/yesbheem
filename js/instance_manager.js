@@ -138,7 +138,10 @@ class InstanceManager {
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                const kams = data.key_accounts || [];
+                const rawKams = data.key_accounts || [];
+                // Normalize: If objects, extract name
+                const kams = rawKams.map(k => (typeof k === 'object' && k !== null) ? k.name : k);
+
                 const groups = data.instance_groups || [];
 
                 this.kams = kams; // Store for filter

@@ -1572,14 +1572,12 @@ if (!window.DealerManager) {
 
                 // Resolve IDs to full Contact Objects
                 // We map from 'ids' back to the dealer objects in 'this.dealers' 
-                // (using _internalId or id matching)
                 const selectedContacts = this.dealers
                     .filter(d => ids.includes(d.id))
                     .map(d => ({
                         phone: d.mobile_phone || d.phone || '',
-                        name: d.customer_name || d.name || 'Unknown',
-                        kam: d.key_account_manager || d.kam || null,
-                        id: d.id // Helper for debugging
+                        name: d.customer_name || d.name || 'Unknown'
+                        // Removed 'id' as per user request for simpler list
                     }))
                     .filter(c => c.phone && c.phone.length >= 10); // Basic validation
 
@@ -1607,9 +1605,7 @@ if (!window.DealerManager) {
                 // For MVP reliability: SAVE SNAPSHOT NOW.
                 const filteredContacts = this.filteredDealers.map(d => ({
                     phone: d.mobile_phone || d.phone || '',
-                    name: d.customer_name || d.name || 'Unknown',
-                    kam: d.key_account_manager || d.kam || null,
-                    id: d.id
+                    name: d.customer_name || d.name || 'Unknown'
                 })).filter(c => c.phone && c.phone.length >= 10);
 
                 payload.contacts = filteredContacts; // Snapshot for sending
