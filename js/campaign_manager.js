@@ -81,12 +81,23 @@ class CampaignManager {
 
         // Refresh
         document.getElementById('btn-refresh-campaigns').addEventListener('click', () => this.loadCampaigns());
+
+        // Create Audience Button
+        const createAudienceBtn = document.getElementById('btn-create-audience');
+        if (createAudienceBtn) {
+            createAudienceBtn.addEventListener('click', () => this.openCreateAudienceModal());
+        }
     }
 
     switchTab(tabName) {
         this.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
         this.views.forEach(v => v.classList.toggle('active', v.id === `view-${tabName}`));
         this.activeTab = tabName;
+
+        // Render audiences when tab is activated
+        if (tabName === 'audiences') {
+            this.renderAudiencesTab();
+        }
     }
 
     async loadAudiences() {
@@ -472,6 +483,339 @@ class CampaignManager {
         // Ideally, expand the row or show a modal
         console.log('Viewing Campaign:', campaign);
         alert(`Campaign: ${campaign.name}\nStatus: ${campaign.status}\nSent: ${campaign.stats?.sent || 0}/${campaign.stats?.total || '?'}`);
+    }
+
+    // ==================== AUDIENCE MANAGEMENT ====================
+
+    async renderAudiencesTab() {
+        const grid = document.getElementById('audience-grid');
+        const emptyState = document.getElementById('audience-empty-state');
+
+        if (!this.audiences || this.audiences.length === 0) {
+            grid.style.display = 'none';
+            emptyState.style.display = 'flex';
+            return;
+        }
+
+        grid.style.display = 'grid';
+        emptyState.style.display = 'none';
+        grid.innerHTML = '';
+
+        this.audiences.forEach(audience => {
+            grid.appendChild(this.renderAudienceCard(audience));
+        });
+    }
+
+    renderAudienceCard(audience) {
+        const card = document.createElement('div');
+        card.className = 'audience-card';
+        card.dataset.audienceId = audience.id;
+
+        const createdDate = audience.createdAt?.toDate ?
+            audience.createdAt.toDate().toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) :
+            'Unknown';
+
+        card.innerHTML = `
+            <div class="audience-card-header">
+                <div class="audience-card-title">
+                    <div class="audience-card-name">${audience.name}</div>
+                    <span class="source-badge">${audience.source === 'static_list' ? 'Static' : 'Dynamic'}</span>
+                </div>
+                <div class="audience-card-actions">
+                    <button class="icon-btn" onclick="window.campaignManager.editAudience('${audience.id}')" title="Edit">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4l-7 7-3 1 1-3 7-7m0 0l2-2 3 3-2 2m-3-3l3 3"/></svg>
+                    </button>
+                    <button class="icon-btn" onclick="window.campaignManager.deleteAudience('${audience.id}')" title="Delete">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6m4-6v6"/></svg>
+                    </button>
+                    <button class="icon-btn" onclick="window.campaignManager.toggleAudienceExpand('${audience.id}')" title="View Contacts">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="audience-card-stats">
+                <div class="stat-item">
+                    <div class="stat-value">${audience.count || 0}</div>
+                    <div class="stat-label">Contacts</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${createdDate}</div>
+                    <div class="stat-label">Created</div>
+                </div>
+            </div>
+            <div class="audience-contacts" style="display: none;">
+                <div class="contacts-header">
+                    <input type="text" class="contact-search" placeholder="Search contacts..." onkeyup="window.campaignManager.filterContacts('${audience.id}', this.value)">
+                </div>
+                <div class="contact-list" id="contact-list-${audience.id}">
+                    ${this.renderContactList(audience)}
+                </div>
+            </div>
+        `;
+
+        return card;
+    }
+
+    renderContactList(audience) {
+        if (!audience.contacts || audience.contacts.length === 0) {
+            return '<div class="empty-contacts">No contacts in this audience</div>';
+        }
+
+        return audience.contacts.map((contact, index) => `
+            <div class="contact-row" data-contact-index="${index}">
+                <div class="contact-avatar">${this.getInitials(contact.name)}</div>
+                <div class="contact-info">
+                    <div class="contact-name">${contact.name}</div>
+                    <div class="contact-phone">${contact.phone}</div>
+                </div>
+                <div class="contact-actions">
+                    <button class="icon-btn" onclick="window.campaignManager.deleteContact('${audience.id}', ${index})" title="Remove">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/></svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    getInitials(name) {
+        if (!name) return '?';
+        const parts = name.trim().split(' ');
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[1][0]).toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
+    }
+
+    toggleAudienceExpand(audienceId) {
+        const card = document.querySelector(`[data-audience-id="${audienceId}"]`);
+        if (!card) return;
+
+        const contactsDiv = card.querySelector('.audience-contacts');
+        const isExpanded = card.classList.contains('expanded');
+
+        // Collapse all other cards
+        document.querySelectorAll('.audience-card.expanded').forEach(c => {
+            if (c !== card) {
+                c.classList.remove('expanded');
+                c.querySelector('.audience-contacts').style.display = 'none';
+            }
+        });
+
+        // Toggle current card
+        if (isExpanded) {
+            card.classList.remove('expanded');
+            contactsDiv.style.display = 'none';
+        } else {
+            card.classList.add('expanded');
+            contactsDiv.style.display = 'block';
+        }
+    }
+
+    filterContacts(audienceId, searchTerm) {
+        const contactList = document.getElementById(`contact-list-${audienceId}`);
+        const rows = contactList.querySelectorAll('.contact-row');
+
+        rows.forEach(row => {
+            const name = row.querySelector('.contact-name').textContent.toLowerCase();
+            const phone = row.querySelector('.contact-phone').textContent.toLowerCase();
+            const matches = name.includes(searchTerm.toLowerCase()) || phone.includes(searchTerm.toLowerCase());
+            row.style.display = matches ? 'flex' : 'none';
+        });
+    }
+
+    openCreateAudienceModal() {
+        this.editingAudienceId = null;
+        document.getElementById('modal-title').textContent = 'Create New Audience';
+        document.getElementById('modal-audience-name').value = '';
+        document.getElementById('btn-save-audience').textContent = 'Create Audience';
+
+        const contactList = document.getElementById('modal-contact-list');
+        contactList.innerHTML = '';
+
+        // Add 3 empty rows by default
+        for (let i = 0; i < 3; i++) {
+            this.addContactRow();
+        }
+
+        document.getElementById('audience-modal').style.display = 'flex';
+    }
+
+    closeAudienceModal() {
+        document.getElementById('audience-modal').style.display = 'none';
+        this.editingAudienceId = null;
+    }
+
+    addContactRow(name = '', phone = '') {
+        const contactList = document.getElementById('modal-contact-list');
+        const row = document.createElement('div');
+        row.className = 'contact-input-row';
+        row.innerHTML = `
+            <input type="text" class="modern-input contact-name-input" placeholder="Name" value="${name}">
+            <input type="tel" class="modern-input contact-phone-input" placeholder="+91 98765 43210" value="${phone}">
+            <button class="icon-btn" onclick="this.parentElement.remove(); window.campaignManager.updateContactCount()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+        `;
+        contactList.appendChild(row);
+        this.updateContactCount();
+    }
+
+    updateContactCount() {
+        const rows = document.querySelectorAll('.contact-input-row');
+        const validRows = Array.from(rows).filter(row => {
+            const name = row.querySelector('.contact-name-input').value.trim();
+            const phone = row.querySelector('.contact-phone-input').value.trim();
+            return name && phone;
+        });
+        document.getElementById('modal-contact-count').textContent = `${validRows.length} contacts added`;
+    }
+
+    validatePhone(phone) {
+        // Remove all non-digit characters
+        const cleaned = phone.replace(/\D/g, '');
+
+        // Check if it's a valid Indian number (10 digits) or international (with country code)
+        if (cleaned.length === 10) {
+            return '+91' + cleaned;
+        } else if (cleaned.length === 12 && cleaned.startsWith('91')) {
+            return '+' + cleaned;
+        } else if (cleaned.length > 10) {
+            return '+' + cleaned;
+        }
+
+        return null;
+    }
+
+    async saveAudience() {
+        const name = document.getElementById('modal-audience-name').value.trim();
+        if (!name) {
+            alert('Please enter an audience name');
+            return;
+        }
+
+        const rows = document.querySelectorAll('.contact-input-row');
+        const contacts = [];
+
+        for (const row of rows) {
+            const nameInput = row.querySelector('.contact-name-input').value.trim();
+            const phoneInput = row.querySelector('.contact-phone-input').value.trim();
+
+            if (nameInput && phoneInput) {
+                const validatedPhone = this.validatePhone(phoneInput);
+                if (!validatedPhone) {
+                    alert(`Invalid phone number: ${phoneInput}`);
+                    return;
+                }
+                contacts.push({ name: nameInput, phone: validatedPhone });
+            }
+        }
+
+        if (contacts.length === 0) {
+            alert('Please add at least one contact');
+            return;
+        }
+
+        try {
+            const audienceData = {
+                name,
+                contacts,
+                count: contacts.length,
+                source: 'static_list'
+            };
+
+            if (this.editingAudienceId) {
+                // Update existing audience
+                await this.audienceService.updateAudience(this.editingAudienceId, audienceData);
+                import('./utils/toast.js').then(module => {
+                    module.Toast.success('Audience updated successfully');
+                });
+            } else {
+                // Create new audience
+                await this.audienceService.createAudience(audienceData);
+                import('./utils/toast.js').then(module => {
+                    module.Toast.success('Audience created successfully');
+                });
+            }
+
+            this.closeAudienceModal();
+            await this.loadAudiences();
+            this.renderAudiencesTab();
+        } catch (error) {
+            console.error('Error saving audience:', error);
+            alert('Failed to save audience: ' + error.message);
+        }
+    }
+
+    async editAudience(audienceId) {
+        const audience = this.audiences.find(a => a.id === audienceId);
+        if (!audience) return;
+
+        this.editingAudienceId = audienceId;
+        document.getElementById('modal-title').textContent = 'Edit Audience';
+        document.getElementById('modal-audience-name').value = audience.name;
+        document.getElementById('btn-save-audience').textContent = 'Update Audience';
+
+        const contactList = document.getElementById('modal-contact-list');
+        contactList.innerHTML = '';
+
+        if (audience.contacts && audience.contacts.length > 0) {
+            audience.contacts.forEach(contact => {
+                this.addContactRow(contact.name, contact.phone);
+            });
+        } else {
+            this.addContactRow();
+        }
+
+        document.getElementById('audience-modal').style.display = 'flex';
+    }
+
+    async deleteAudience(audienceId) {
+        const audience = this.audiences.find(a => a.id === audienceId);
+        if (!audience) return;
+
+        if (!confirm(`Are you sure you want to delete "${audience.name}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            await this.audienceService.deleteAudience(audienceId);
+            import('./utils/toast.js').then(module => {
+                module.Toast.success('Audience deleted successfully');
+            });
+            await this.loadAudiences();
+            this.renderAudiencesTab();
+        } catch (error) {
+            console.error('Error deleting audience:', error);
+            alert('Failed to delete audience: ' + error.message);
+        }
+    }
+
+    async deleteContact(audienceId, contactIndex) {
+        const audience = this.audiences.find(a => a.id === audienceId);
+        if (!audience) return;
+
+        const contact = audience.contacts[contactIndex];
+        if (!confirm(`Remove ${contact.name} from this audience?`)) {
+            return;
+        }
+
+        try {
+            const updatedContacts = audience.contacts.filter((_, i) => i !== contactIndex);
+            await this.audienceService.updateAudience(audienceId, {
+                contacts: updatedContacts,
+                count: updatedContacts.length
+            });
+
+            import('./utils/toast.js').then(module => {
+                module.Toast.success('Contact removed successfully');
+            });
+
+            await this.loadAudiences();
+            this.renderAudiencesTab();
+        } catch (error) {
+            console.error('Error deleting contact:', error);
+            alert('Failed to delete contact: ' + error.message);
+        }
     }
 }
 
