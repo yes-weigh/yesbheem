@@ -979,7 +979,9 @@ if (!window.DealerManager) {
             if (select && this.generalSettings && Array.isArray(this.generalSettings.key_accounts)) {
                 let html = '<option value="">Not Assigned</option>'; // First option to clear KAM
                 this.generalSettings.key_accounts.forEach(kam => {
-                    html += `<option value="${kam}">${kam}</option>`;
+                    // Handle both object {name, phone} and string formats
+                    const kamName = typeof kam === 'object' ? kam.name : kam;
+                    html += `<option value="${kamName}">${kamName}</option>`;
                 });
                 select.innerHTML = html;
             }
@@ -2169,7 +2171,11 @@ if (!window.DealerManager) {
             dropdown.innerHTML = `
                 <select class="inline-edit-select">
                     ${field !== 'dealer_stage' ? `<option value="" ${currentValue === '' ? 'selected' : ''}>Not Assigned</option>` : ''}
-                    ${options.map(opt => `<option value="${opt}" ${opt === currentValue ? 'selected' : ''}>${opt}</option>`).join('')}
+                    ${options.map(opt => {
+                // Handle both object {name, phone} and string formats
+                const optValue = typeof opt === 'object' ? opt.name : opt;
+                return `<option value="${optValue}" ${optValue === currentValue ? 'selected' : ''}>${optValue}</option>`;
+            }).join('')}
                 </select>
                 <div class="inline-edit-actions">
                     <button class="inline-edit-btn save-btn" title="Save">
