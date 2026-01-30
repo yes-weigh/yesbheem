@@ -233,8 +233,10 @@ class UIRenderer {
 
             let optionsHtml = `<option value="" ${val === '' ? 'selected' : ''}>Select...</option>`;
             dd.options.forEach(opt => {
-                const isSel = opt === val ? 'selected' : '';
-                optionsHtml += `<option value="${opt}" ${isSel}>${opt}</option>`;
+                // Handle both object {name, phone} and string formats
+                const optValue = typeof opt === 'object' ? opt.name : opt;
+                const isSel = optValue === val ? 'selected' : '';
+                optionsHtml += `<option value="${optValue}" ${isSel}>${optValue}</option>`;
             });
 
             let inputHtml = `
@@ -366,7 +368,11 @@ class UIRenderer {
         // Helper: Render Floating Select
         const renderFloatingSelect = (label, field, options) => {
             const current = v(field);
-            const opts = options.map(o => `<option value="${o}" ${o === current ? 'selected' : ''}>${o}</option>`).join('');
+            // Handle both object {name, phone} and string formats
+            const opts = options.map(o => {
+                const optValue = typeof o === 'object' ? o.name : o;
+                return `<option value="${optValue}" ${optValue === current ? 'selected' : ''}>${optValue}</option>`;
+            }).join('');
             return `
                 <div class="floating-group">
                     <select class="floating-input" id="inp_${field}" data-field="${field}">

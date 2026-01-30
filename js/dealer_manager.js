@@ -401,6 +401,7 @@ if (!window.DealerManager) {
                 if (kamSelect) {
                     let html = '<option value="all">All KAMs</option>';
                     this.generalSettings.key_accounts.forEach(kam => {
+                        // Handle both object {name, phone} and string formats
                         const name = typeof kam === 'object' ? kam.name : kam;
                         html += `<option value="${name}">${name}</option>`;
                     });
