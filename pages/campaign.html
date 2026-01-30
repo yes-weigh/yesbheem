@@ -152,6 +152,88 @@
             background: rgba(107, 114, 128, 0.2);
             color: #9ca3af;
         }
+
+        /* === DASHBOARD STATS CARDS === */
+        .stats-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: #0f1523;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+            min-height: 90px;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 6px;
+            height: 50%;
+            border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .stat-card.stat-total {
+            color: #3b82f6;
+        }
+
+        .stat-card.stat-completed {
+            color: #10b981;
+        }
+
+        .stat-card.stat-in-progress {
+            color: #f59e0b;
+        }
+
+        .stat-card.stat-scheduled {
+            color: #8b5cf6;
+        }
+
+        .stat-card.stat-total::before {
+            background-color: #3b82f6;
+        }
+
+        .stat-card.stat-completed::before {
+            background-color: #10b981;
+        }
+
+        .stat-card.stat-in-progress::before {
+            background-color: #f59e0b;
+        }
+
+        .stat-card.stat-scheduled::before {
+            background-color: #8b5cf6;
+        }
+
+        .stat-number {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1;
+            margin-left: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            text-align: right;
+        }
     </style>
 
     <div class="campaign-header">
@@ -167,6 +249,26 @@
 
     <!-- VIEW: Dashboard -->
     <div id="view-dashboard" class="view-section active">
+        <!-- Dashboard Stats Cards -->
+        <div class="stats-dashboard">
+            <div class="stat-card stat-total">
+                <div class="stat-number" id="stat-total-campaigns">0</div>
+                <div class="stat-label">TOTAL</div>
+            </div>
+            <div class="stat-card stat-completed">
+                <div class="stat-number" id="stat-completed">0</div>
+                <div class="stat-label">COMPLETED</div>
+            </div>
+            <div class="stat-card stat-in-progress">
+                <div class="stat-number" id="stat-in-progress">0</div>
+                <div class="stat-label">IN PROGRESS</div>
+            </div>
+            <div class="stat-card stat-scheduled">
+                <div class="stat-number" id="stat-scheduled">0</div>
+                <div class="stat-label">SCHEDULED</div>
+            </div>
+        </div>
+
         <div class="wizard-step" style="max-width: 100%; background: transparent; border: none; padding:0;">
             <table class="campaign-table">
                 <thead>

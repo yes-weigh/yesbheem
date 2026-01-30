@@ -401,6 +401,9 @@ class CampaignManager {
                 </td>
             </tr>
         `}).join('');
+
+        // Update dashboard stats
+        this.updateDashboardStats();
     }
 
     async deleteCampaign(id) {
@@ -473,6 +476,30 @@ class CampaignManager {
         // Given complexity, "Duplicate & Edit" is safer logic for now, but UI says "Edit".
         // Let's alert them.
         alert('Campaign details loaded into the form. You can modify and create a new campaign, or update logic usage.');
+    }
+
+
+    updateDashboardStats() {
+        const campaigns = this.campaigns || [];
+
+        // Total campaigns
+        const total = campaigns.length;
+
+        // Count by status
+        const completed = campaigns.filter(c => c.status === 'COMPLETED' || c.status === 'completed').length;
+        const inProgress = campaigns.filter(c => c.status === 'IN_PROGRESS' || c.status === 'active' || c.status === 'processing').length;
+        const scheduled = campaigns.filter(c => c.status === 'SCHEDULED' || c.status === 'scheduled' || c.status === 'pending').length;
+
+        // Update DOM
+        const totalEl = document.getElementById('stat-total-campaigns');
+        const completedEl = document.getElementById('stat-completed');
+        const inProgressEl = document.getElementById('stat-in-progress');
+        const scheduledEl = document.getElementById('stat-scheduled');
+
+        if (totalEl) totalEl.textContent = total;
+        if (completedEl) completedEl.textContent = completed;
+        if (inProgressEl) inProgressEl.textContent = inProgress;
+        if (scheduledEl) scheduledEl.textContent = scheduled;
     }
 
     viewCampaign(id) {

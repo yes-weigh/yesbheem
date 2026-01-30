@@ -42,6 +42,9 @@ class TemplateManager {
             // Initial Render: List View
             this.renderList();
 
+            // Update dashboard stats
+            this.updateDashboardStats();
+
             // Populate language and category dropdowns
             if (settings) {
                 this.settings = settings; // Store settings
@@ -52,6 +55,58 @@ class TemplateManager {
         } catch (e) {
             console.error('Init failed', e);
         }
+    }
+
+    /* --- DASHBOARD STATS --- */
+
+    updateDashboardStats() {
+        const templates = this.templates || [];
+
+        // Total templates
+        const total = templates.length;
+
+        // Count by language
+        const malayalam = templates.filter(t =>
+            t.language?.toLowerCase() === 'malayalam' ||
+            t.language?.toLowerCase() === 'ml'
+        ).length;
+
+        const english = templates.filter(t =>
+            t.language?.toLowerCase() === 'english' ||
+            t.language?.toLowerCase() === 'en'
+        ).length;
+
+        // Count templates with media
+        const withMedia = templates.filter(t => {
+            if (!t.content) return false;
+
+            // Check if template has image or video
+            if (t.content.image || t.content.video) {
+                return true;
+            }
+
+            // Check WhatsApp API format components
+            if (Array.isArray(t.content.components)) {
+                return t.content.components.some(c =>
+                    c.type === 'HEADER' &&
+                    c.format &&
+                    ['IMAGE', 'VIDEO'].includes(c.format.toUpperCase())
+                );
+            }
+
+            return false;
+        }).length;
+
+        // Update DOM
+        const totalEl = document.getElementById('stat-total-templates');
+        const malayalamEl = document.getElementById('stat-malayalam');
+        const englishEl = document.getElementById('stat-english');
+        const mediaEl = document.getElementById('stat-media');
+
+        if (totalEl) totalEl.textContent = total;
+        if (malayalamEl) malayalamEl.textContent = malayalam;
+        if (englishEl) englishEl.textContent = english;
+        if (mediaEl) mediaEl.textContent = withMedia;
     }
 
     /* --- VIEW & NAVIGATION --- */
@@ -348,19 +403,35 @@ class TemplateManager {
     }
 
     populateLanguages(languages) {
+        // Populate editor dropdown
         const select = document.getElementById('template-language-select');
-        if (!select) return;
+        if (select) {
+            select.innerHTML = '<option value="">Select Language</option>' +
+                languages.map(lang => `<option value="${this.escapeHtml(lang)}">${this.escapeHtml(lang)}</option>`).join('');
+        }
 
-        select.innerHTML = '<option value="">Select Language</option>' +
-            languages.map(lang => `<option value="${this.escapeHtml(lang)}">${this.escapeHtml(lang)}</option>`).join('');
+        // Populate filter dropdown on main page
+        const filterSelect = document.getElementById('filter-language');
+        if (filterSelect) {
+            filterSelect.innerHTML = '<option value="">All Languages</option>' +
+                languages.map(lang => `<option value="${this.escapeHtml(lang)}">${this.escapeHtml(lang)}</option>`).join('');
+        }
     }
 
     populateCategories(categories) {
+        // Populate editor dropdown
         const select = document.getElementById('template-category-select');
-        if (!select) return;
+        if (select) {
+            select.innerHTML = '<option value="">Select Category</option>' +
+                categories.map(cat => `<option value="${this.escapeHtml(cat)}">${this.escapeHtml(cat)}</option>`).join('');
+        }
 
-        select.innerHTML = '<option value="">Select Category</option>' +
-            categories.map(cat => `<option value="${this.escapeHtml(cat)}">${this.escapeHtml(cat)}</option>`).join('');
+        // Populate filter dropdown on main page
+        const filterSelect = document.getElementById('filter-category');
+        if (filterSelect) {
+            filterSelect.innerHTML = '<option value="">All Categories</option>' +
+                categories.map(cat => `<option value="${this.escapeHtml(cat)}">${this.escapeHtml(cat)}</option>`).join('');
+        }
     }
 
     escapeHtml(unsafe) {
@@ -535,6 +606,7 @@ class TemplateManager {
 
     async refreshTemplates() {
         this.templates = await this.service.getTemplates();
+        this.updateDashboardStats(); // Update dashboard stats
         if (this.activeTemplateId) {
             // If editing, maybe just update internal state or do nothing?
             // For now, if we are in editor, we don't strictly need to re-render the list immediately unless we go back.

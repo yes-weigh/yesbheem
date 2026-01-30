@@ -41,6 +41,89 @@
     background: rgba(255, 255, 255, 0.2);
 }
 
+/* === DASHBOARD STATS CARDS === */
+.stats-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: #0f1523;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    min-height: 90px;
+}
+
+/* The "Pill" accent on the left */
+.stat-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 50%;
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 0 10px currentColor;
+}
+
+.stat-card.stat-total {
+    color: #3b82f6;
+}
+
+.stat-card.stat-malayalam {
+    color: #10b981;
+}
+
+.stat-card.stat-english {
+    color: #8b5cf6;
+}
+
+.stat-card.stat-media {
+    color: #f59e0b;
+}
+
+.stat-card.stat-total::before {
+    background-color: #3b82f6;
+}
+
+.stat-card.stat-malayalam::before {
+    background-color: #10b981;
+}
+
+.stat-card.stat-english::before {
+    background-color: #8b5cf6;
+}
+
+.stat-card.stat-media::before {
+    background-color: #f59e0b;
+}
+
+.stat-number {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1;
+    margin-left: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-align: right;
+}
+
 /* --- LAYOUT --- */
 /* --- LAYOUT --- */
 .template-grid-container {
