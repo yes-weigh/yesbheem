@@ -520,7 +520,12 @@ class TemplateManager {
                 if (b.name === 'cta_url') { type = 'url'; val = params.url; }
                 if (b.name === 'cta_call') { type = 'call'; val = params.phone_number; }
                 if (b.name === 'cta_copy') { type = 'copy'; val = params.copy_code; }
-                return { type, text: params.display_text, value: val };
+                return {
+                    type,
+                    text: params.display_text,
+                    value: val,
+                    dynamicKam: params.dynamicKam || false
+                };
             });
         }
 
@@ -593,7 +598,12 @@ class TemplateManager {
                 if (b.name === 'cta_url') { type = 'url'; val = params.url; }
                 if (b.name === 'cta_call') { type = 'call'; val = params.phone_number; }
                 if (b.name === 'cta_copy') { type = 'copy'; val = params.copy_code; }
-                return { type, text: params.display_text, value: val };
+                return {
+                    type,
+                    text: params.display_text,
+                    value: val,
+                    dynamicKam: params.dynamicKam || false
+                };
             });
         }
 
@@ -1130,6 +1140,8 @@ class TemplateManager {
                 if (b.type === 'copy') { name = 'cta_copy'; params.copy_code = b.value; }
                 if (b.type === 'call') { name = 'cta_call'; params.phone_number = b.value; }
                 if (b.type === 'reply') { params.id = 'btn_' + Math.random().toString(36).substr(2, 9); }
+                // Preserve dynamicKam flag for call buttons
+                if (b.dynamicKam) params.dynamicKam = true;
                 return { name, buttonParamsJson: JSON.stringify(params) };
             });
         }
