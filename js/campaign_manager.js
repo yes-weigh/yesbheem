@@ -14,11 +14,18 @@ class CampaignManager {
         this.templates = [];
         this.campaigns = []; // Dashboard data
 
+        // Firestore listener unsubscribe function
+        this.unsubscribeCampaigns = null;
+
         this.init();
     }
 
     async init() {
         console.log('CampaignManager: Initializing...');
+
+        // Clean up any existing listeners first
+        this.cleanup();
+
         this.cacheDOM();
         this.bindEvents();
 
@@ -30,6 +37,15 @@ class CampaignManager {
 
         // Load Dashboard
         this.loadCampaigns();
+    }
+
+    cleanup() {
+        // Unsubscribe from Firestore listener if it exists
+        if (this.unsubscribeCampaigns) {
+            console.log('CampaignManager: Cleaning up existing listener');
+            this.unsubscribeCampaigns();
+            this.unsubscribeCampaigns = null;
+        }
     }
 
     cacheDOM() {
@@ -350,16 +366,33 @@ class CampaignManager {
         const q = query(collection(db, "campaigns"), orderBy("createdAt", "desc"));
         this.statusBody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
 
-        // Real-time listener
-        onSnapshot(q, (snapshot) => {
+        // Show loading state in stats
+        this.showLoadingStats();
+
+        // Real-time listener - store unsubscribe function
+        this.unsubscribeCampaigns = onSnapshot(q, (snapshot) => {
             if (snapshot.empty) {
                 this.statusBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#666;">No campaigns found. Create one!</td></tr>';
+                this.campaigns = [];
+                this.updateDashboardStats();
                 return;
             }
 
             this.campaigns = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             this.renderDashboard();
         });
+    }
+
+    showLoadingStats() {
+        const totalEl = document.getElementById('stat-total-campaigns');
+        const completedEl = document.getElementById('stat-completed');
+        const inProgressEl = document.getElementById('stat-in-progress');
+        const scheduledEl = document.getElementById('stat-scheduled');
+
+        if (totalEl) totalEl.textContent = '...';
+        if (completedEl) completedEl.textContent = '...';
+        if (inProgressEl) inProgressEl.textContent = '...';
+        if (scheduledEl) scheduledEl.textContent = '...';
     }
 
     renderDashboard() {
@@ -846,6 +879,13 @@ class CampaignManager {
     }
 }
 
-// Auto-start
-const campaignManager = new CampaignManager();
-window.campaignManager = campaignManager;
+// Auto-start or reinitialize
+if (window.campaignManager) {
+    // Page was revisited - reinitialize the existing instance
+    console.log('CampaignManager: Reinitializing existing instance');
+    window.campaignManager.init();
+} else {
+    // First time loading - create new instance
+    const campaignManager = new CampaignManager();
+    window.campaignManager = campaignManager;
+}

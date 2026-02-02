@@ -853,10 +853,26 @@
 <script src="js/renderers/template_renderer.js"></script>
 <script type="module" src="js/campaign_manager.js"></script>
 <script>
-
-    // Cleanup any existing instance if re-navigating
-    if (window.campaignManager) {
-        // window.campaignManager.destroy(); // if we implement destroy
+    // This inline script runs every time the page is loaded (even when module is skipped)
+    // Wait for DOM to be ready, then check if CampaignManager exists and reinitialize
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeCampaignPage);
+    } else {
+        // DOM already loaded
+        initializeCampaignPage();
     }
-    // Logic will auto-instantiate in the module file similar to others
+    
+    function initializeCampaignPage() {
+        console.log('Campaign page loaded, checking for existing CampaignManager...');
+        
+        // Give the module script a moment to load if this is the first time
+        setTimeout(() => {
+            if (window.campaignManager) {
+                console.log('CampaignManager exists, reinitializing...');
+                window.campaignManager.init();
+            } else {
+                console.log('CampaignManager not yet available, will be created by module script');
+            }
+        }, 100);
+    }
 </script>
