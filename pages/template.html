@@ -207,6 +207,7 @@
                                 <option value="reply">Quick Reply</option>
                                 <option value="url">URL Action</option>
                                 <option value="call">Phone Number</option>
+                                <option value="chat">Chat Button</option>
                                 <option value="copy">Copy Code</option>
                             </select>
 
@@ -219,6 +220,12 @@
                                 placeholder="Button Label">
                             <input type="text" id="btn-value-input" class="modern-input small hidden"
                                 placeholder="Value (URL/Phone)">
+                            <!-- Chat Button Specific Fields -->
+                            <input type="text" id="btn-chat-phone-input" class="modern-input small hidden"
+                                placeholder="Phone Number (e.g., 919876543210)">
+                            <textarea id="btn-chat-message-input" class="modern-input small hidden"
+                                placeholder="Pre-filled message (optional)" rows="3"
+                                style="resize: vertical; font-family: inherit;"></textarea>
                             <button id="btn-confirm" class="pill-btn primary-btn"
                                 style="width: 100%; justify-content: center;">Confirm</button>
                             <button id="btn-delete-button" class="action-btn-secondary"

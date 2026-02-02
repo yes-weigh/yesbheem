@@ -27,7 +27,15 @@ class CampaignManager {
         this.cleanup();
 
         this.cacheDOM();
-        this.bindEvents();
+
+        // Only bind events once to prevent duplicate event listeners
+        if (!this.eventsBound) {
+            console.log('CampaignManager: Binding events for the first time');
+            this.bindEvents();
+            this.eventsBound = true;
+        } else {
+            console.log('CampaignManager: Events already bound, skipping bindEvents');
+        }
 
         // Load initial data
         await this.loadAudiences();
@@ -279,9 +287,11 @@ class CampaignManager {
     handleTemplateChange() {
         const id = this.templateSelect.value;
         const template = this.templates.find(t => t.id === id);
+        const placeholder = document.getElementById('campaign-template-placeholder');
 
         if (template) {
             this.templatePreview.style.display = 'block';
+            if (placeholder) placeholder.style.display = 'none';
             this.templatePreview.innerHTML = '';
 
             // Extract Preview Text based on detected structure
@@ -300,14 +310,21 @@ class CampaignManager {
                 }
             }
 
-            // Simple HTML string construction for preview
+            // Truncate to first 150 characters for preview
+            const truncatedText = previewText.length > 150
+                ? previewText.substring(0, 150) + '...'
+                : previewText;
+
+            // Simple HTML string construction for preview with overflow handling
             this.templatePreview.innerHTML = `
-                <div style="color:white; white-space: pre-wrap;">
-                    <p>${previewText}</p>
+                <div style="color: white; white-space: pre-wrap; overflow: hidden; max-height: 250px; line-height: 1.5;">
+                    <p style="margin: 0; font-size: 0.9rem;">${truncatedText}</p>
+                    ${previewText.length > 150 ? '<div style="margin-top: 12px; padding: 8px; background: rgba(99, 102, 241, 0.1); border-radius: 6px; font-size: 0.8rem; color: var(--text-muted); text-align: center;">Preview truncated. Full message will be sent.</div>' : ''}
                 </div>
             `;
         } else {
             this.templatePreview.style.display = 'none';
+            if (placeholder) placeholder.style.display = 'flex';
         }
     }
 

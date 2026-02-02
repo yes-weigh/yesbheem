@@ -517,7 +517,21 @@ class TemplateManager {
                 const params = JSON.parse(b.buttonParamsJson);
                 let type = 'reply';
                 let val = '';
-                if (b.name === 'cta_url') { type = 'url'; val = params.url; }
+                if (b.name === 'cta_url') {
+                    // Check if it's a wa.me link (chat button)
+                    const url = params.url || '';
+                    if (url.includes('wa.me/')) {
+                        type = 'chat';
+                        // Parse wa.me URL to extract phone and text
+                        const urlObj = new URL(url);
+                        const phone = urlObj.pathname.replace('/', '');
+                        const text = urlObj.searchParams.get('text') || '';
+                        val = `${phone}|${text}`;
+                    } else {
+                        type = 'url';
+                        val = url;
+                    }
+                }
                 if (b.name === 'cta_call') { type = 'call'; val = params.phone_number; }
                 if (b.name === 'cta_copy') { type = 'copy'; val = params.copy_code; }
                 return {
@@ -595,7 +609,21 @@ class TemplateManager {
                 const params = JSON.parse(b.buttonParamsJson);
                 let type = 'reply';
                 let val = '';
-                if (b.name === 'cta_url') { type = 'url'; val = params.url; }
+                if (b.name === 'cta_url') {
+                    // Check if it's a wa.me link (chat button)
+                    const url = params.url || '';
+                    if (url.includes('wa.me/')) {
+                        type = 'chat';
+                        // Parse wa.me URL to extract phone and text
+                        const urlObj = new URL(url);
+                        const phone = urlObj.pathname.replace('/', '');
+                        const text = urlObj.searchParams.get('text') || '';
+                        val = `${phone}|${text}`;
+                    } else {
+                        type = 'url';
+                        val = url;
+                    }
+                }
                 if (b.name === 'cta_call') { type = 'call'; val = params.phone_number; }
                 if (b.name === 'cta_copy') { type = 'copy'; val = params.copy_code; }
                 return {
@@ -729,12 +757,21 @@ class TemplateManager {
         const addBtn = document.getElementById('wa-button-add');
 
         // Populate form
-        document.getElementById('btn-type-input').value = button ? button.type : 'reply';
+        const btnType = button ? button.type : 'reply';
+        document.getElementById('btn-type-input').value = btnType;
         document.getElementById('btn-text-input').value = button ? button.text : '';
-        document.getElementById('btn-value-input').value = button ? button.value || '' : '';
+
+        // Handle chat button separately
+        if (btnType === 'chat' && button) {
+            const parts = (button.value || '').split('|');
+            document.getElementById('btn-chat-phone-input').value = parts[0] || '';
+            document.getElementById('btn-chat-message-input').value = parts[1] || '';
+        } else {
+            document.getElementById('btn-value-input').value = button ? button.value || '' : '';
+        }
 
         // Show/hide value input based on type
-        this.updateButtonValueInput(button ? button.type : 'reply');
+        this.updateButtonValueInput(btnType);
 
         // Show form, hide add button
         form.classList.remove('hidden');
@@ -747,12 +784,30 @@ class TemplateManager {
             else deleteBtn.classList.add('hidden');
         }
 
-        // Dynamic KAM Logic
+        // Dynamic KAM Logic - Set checkbox state WITHOUT triggering change event yet
         const dynamicKamCb = document.getElementById('btn-dynamic-kam');
         if (dynamicKamCb) {
-            dynamicKamCb.checked = button ? !!button.dynamicKam : false;
-            // Trigger change to update input state
-            dynamicKamCb.dispatchEvent(new Event('change'));
+            const isKam = button ? !!button.dynamicKam : false;
+            dynamicKamCb.checked = isKam;
+
+            // Manually update the input state based on KAM status
+            if (isKam) {
+                if (btnType === 'chat') {
+                    const chatPhoneInput = document.getElementById('btn-chat-phone-input');
+                    if (chatPhoneInput) {
+                        chatPhoneInput.disabled = true;
+                        chatPhoneInput.value = 'KAM Phone Number';
+                        chatPhoneInput.classList.add('disabled-input');
+                    }
+                } else if (btnType === 'call') {
+                    const valueInput = document.getElementById('btn-value-input');
+                    if (valueInput) {
+                        valueInput.disabled = true;
+                        valueInput.value = 'KAM Phone Number';
+                        valueInput.classList.add('disabled-input');
+                    }
+                }
+            }
         }
     }
 
@@ -768,13 +823,27 @@ class TemplateManager {
 
     updateButtonValueInput(type) {
         const valueInput = document.getElementById('btn-value-input');
+        const chatPhoneInput = document.getElementById('btn-chat-phone-input');
+        const chatMessageInput = document.getElementById('btn-chat-message-input');
         const dynamicKamWrapper = document.getElementById('btn-dynamic-kam-wrapper');
         const dynamicKamCb = document.getElementById('btn-dynamic-kam');
 
+        // Hide all inputs first
+        valueInput.classList.add('hidden');
+        if (chatPhoneInput) chatPhoneInput.classList.add('hidden');
+        if (chatMessageInput) chatMessageInput.classList.add('hidden');
+        if (dynamicKamWrapper) dynamicKamWrapper.classList.add('hidden');
+
         if (type === 'reply') {
-            valueInput.classList.add('hidden');
-            if (dynamicKamWrapper) dynamicKamWrapper.classList.add('hidden');
+            // Nothing to show for reply
+        } else if (type === 'chat') {
+            // Show chat-specific fields
+            if (chatPhoneInput) chatPhoneInput.classList.remove('hidden');
+            if (chatMessageInput) chatMessageInput.classList.remove('hidden');
+            // Show KAM option for chat buttons too
+            if (dynamicKamWrapper) dynamicKamWrapper.classList.remove('hidden');
         } else {
+            // Show standard value input for other types
             valueInput.classList.remove('hidden');
 
             // Show Dynamic KAM option only for 'call'
@@ -782,7 +851,6 @@ class TemplateManager {
                 if (type === 'call') {
                     dynamicKamWrapper.classList.remove('hidden');
                 } else {
-                    dynamicKamWrapper.classList.add('hidden');
                     if (dynamicKamCb) {
                         dynamicKamCb.checked = false;
                         valueInput.disabled = false;
@@ -799,7 +867,7 @@ class TemplateManager {
     confirmButton() {
         const type = document.getElementById('btn-type-input').value;
         const text = document.getElementById('btn-text-input').value;
-        const value = document.getElementById('btn-value-input').value;
+        let value = '';
 
         if (!text) {
             alert('Button label is required');
@@ -807,11 +875,26 @@ class TemplateManager {
         }
 
         const dynamicKamCb = document.getElementById('btn-dynamic-kam');
-        const isDynamicKam = dynamicKamCb && dynamicKamCb.checked && type === 'call';
+        const isDynamicKam = dynamicKamCb && dynamicKamCb.checked && (type === 'call' || type === 'chat');
 
-        if (type !== 'reply' && !isDynamicKam && !value) {
-            alert('Value is required for this button type');
-            return;
+        // Get value based on type
+        if (type === 'chat') {
+            const phone = document.getElementById('btn-chat-phone-input').value.trim();
+            const message = document.getElementById('btn-chat-message-input').value.trim();
+
+            if (!isDynamicKam && !phone) {
+                alert('Phone number is required for chat button');
+                return;
+            }
+
+            value = `${isDynamicKam ? '{{KAM_PHONE}}' : phone}|${message}`;
+        } else if (type !== 'reply') {
+            value = document.getElementById('btn-value-input').value;
+
+            if (!isDynamicKam && !value) {
+                alert('Value is required for this button type');
+                return;
+            }
         }
 
         const buttonData = {
@@ -858,6 +941,7 @@ class TemplateManager {
             let icon = '';
             if (btn.type === 'url') icon = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>';
             if (btn.type === 'call') icon = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>';
+            if (btn.type === 'chat') icon = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>';
             if (btn.type === 'reply') icon = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>';
             if (btn.type === 'copy') icon = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>';
 
@@ -1024,15 +1108,27 @@ class TemplateManager {
         const dynamicKamCb = document.getElementById('btn-dynamic-kam');
         if (dynamicKamCb) {
             dynamicKamCb.addEventListener('change', (e) => {
+                const btnType = document.getElementById('btn-type-input').value;
                 const valueInput = document.getElementById('btn-value-input');
-                if (valueInput) {
+                const chatPhoneInput = document.getElementById('btn-chat-phone-input');
+
+                if (btnType === 'call' && valueInput) {
                     valueInput.disabled = e.target.checked;
                     if (e.target.checked) {
                         valueInput.value = 'KAM Phone Number';
-                        valueInput.classList.add('disabled-input'); // Optional styling
+                        valueInput.classList.add('disabled-input');
                     } else {
                         valueInput.value = '';
                         valueInput.classList.remove('disabled-input');
+                    }
+                } else if (btnType === 'chat' && chatPhoneInput) {
+                    chatPhoneInput.disabled = e.target.checked;
+                    if (e.target.checked) {
+                        chatPhoneInput.value = 'KAM Phone Number';
+                        chatPhoneInput.classList.add('disabled-input');
+                    } else {
+                        chatPhoneInput.value = '';
+                        chatPhoneInput.classList.remove('disabled-input');
                     }
                 }
             });
@@ -1137,6 +1233,15 @@ class TemplateManager {
                 let params = { display_text: b.text };
                 let name = 'quick_reply';
                 if (b.type === 'url') { name = 'cta_url'; params.url = params.merchant_url = b.value; }
+                if (b.type === 'chat') {
+                    // Parse phone|text format and create wa.me URL
+                    const parts = b.value.split('|');
+                    const phone = parts[0] || '';
+                    const text = parts[1] || '';
+                    const waUrl = `https://wa.me/${phone}${text ? '?text=' + encodeURIComponent(text) : ''}`;
+                    name = 'cta_url';
+                    params.url = params.merchant_url = waUrl;
+                }
                 if (b.type === 'copy') { name = 'cta_copy'; params.copy_code = b.value; }
                 if (b.type === 'call') { name = 'cta_call'; params.phone_number = b.value; }
                 if (b.type === 'reply') { params.id = 'btn_' + Math.random().toString(36).substr(2, 9); }
