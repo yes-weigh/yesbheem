@@ -413,44 +413,59 @@ class CampaignManager {
     }
 
     renderDashboard() {
+        const tbody = document.getElementById('campaign-list-body');
+        if (!tbody) return;
+
         if (!this.campaigns || this.campaigns.length === 0) {
-            this.statusBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem;">No campaigns found.</td></tr>';
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align:center; padding:2rem; color:#64748b;">
+                        No campaigns yet. Create your first campaign!
+                    </td>
+                </tr>
+            `;
             return;
         }
 
-        this.statusBody.innerHTML = this.campaigns.map(c => {
-            const isEditable = ['scheduled', 'pending', 'active'].includes(c.status);
-            const statusColors = {
-                'active': '#10b981',
-                'completed': '#3b82f6',
-                'scheduled': '#f59e0b',
-                'failed': '#ef4444',
-                'processing': '#8b5cf6',
-                'paused': '#f97316'
-            };
-            const statusColor = statusColors[c.status] || '#6b7280';
+        tbody.innerHTML = this.campaigns.map(c => {
+            const progress = c.stats?.total > 0 ? Math.round((c.stats.sent / c.stats.total) * 100) : 0;
+            const statusBadge = c.status === 'completed' ? 'COMPLETED' :
+                c.status === 'scheduled' ? 'SCHEDULED' :
+                    c.status === 'in_progress' ? 'IN PROGRESS' : 'ACTIVE';
 
             return `
-            <tr>
-                <td style="font-weight:600;">${c.name}</td>
-                <td>${c.audienceName || 'Unknown'}</td>
-                <td><span class="status-badge" style="background:${statusColor}20; color:${statusColor}; padding:2px 8px; border-radius:12px; font-size:0.75rem;">${c.status.toUpperCase()}</span></td>
-                <td>
-                    <div style="background:#333; height:6px; border-radius:3px; overflow:hidden; width:100px;">
-                       <div style="background:${statusColor}; width:${(c.stats?.sent / (c.stats?.total || 1)) * 100 || 0}%; height:100%; border-radius:3px;"></div>
-                    </div>
-                </td>
-                <td>${c.stats?.sent || 0} / ${c.stats?.total || '?'}</td>
-                <td>${c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString() : 'Just now'}</td>
-                <td>
-                    <div style="display:flex; gap:0.5rem;">
-                        <button onclick="window.campaignManager.viewCampaign('${c.id}')" class="btn-secondary" style="font-size:0.7rem; padding: 4px 8px;">View</button>
-                        ${isEditable ? `<button onclick="window.campaignManager.editCampaign('${c.id}')" class="btn-secondary" style="font-size:0.7rem; padding: 4px 8px; color:#f59e0b;">Edit</button>` : ''}
-                        <button onclick="window.campaignManager.deleteCampaign('${c.id}')" class="btn-secondary" style="font-size:0.7rem; padding: 4px 8px; color:#ef4444;">Delete</button>
-                    </div>
-                </td>
-            </tr>
-        `}).join('');
+                <tr>
+                    <td>${this.escapeHtml(c.name)}</td>
+                    <td>${this.escapeHtml(c.audienceName || 'N/A')}</td>
+                    <td><span class="status-badge status-${c.status}">${statusBadge}</span></td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width:${progress}%"></div>
+                        </div>
+                    </td>
+                    <td>${c.stats?.sent || 0} / ${c.stats?.total || 0}</td>
+                    <td>${c.createdAt ? new Date(c.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
+                    <td>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button class="action-btn view-btn" onclick="window.campaignManager.viewCampaign('${c.id}')" title="View Details">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                                <span>View</span>
+                            </button>
+                            <button class="action-btn duplicate-btn" onclick="window.campaignManager.duplicateCampaign('${c.id}')" title="Duplicate Campaign">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                </svg>
+                                <span>Duplicate</span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
 
         // Update dashboard stats
         this.updateDashboardStats();
@@ -481,51 +496,77 @@ class CampaignManager {
         }
     }
 
-    async editCampaign(id) {
+    async duplicateCampaign(id) {
         const campaign = this.campaigns.find(c => c.id === id);
         if (!campaign) return;
 
-        // Pre-fill Form
-        document.getElementById('campaign-name').value = campaign.name;
+        // Switch to New Campaign tab
+        this.switchTab('new-campaign');
 
-        // Select Audience (if exists in dropdown)
-        const audSelect = document.getElementById('audience-select');
-        if (audSelect) audSelect.value = campaign.audienceId;
+        // Pre-fill Campaign Name (cleared for user to enter new name)
+        const nameInput = document.getElementById('new-campaign-name');
+        if (nameInput) {
+            nameInput.value = '';
+            nameInput.placeholder = `Copy of ${campaign.name}`;
+            // Focus the name field
+            setTimeout(() => nameInput.focus(), 100);
+        }
 
-        // Select Template (if exists)
-        const tmplSelect = document.getElementById('template-select');
-        if (tmplSelect) {
-            tmplSelect.value = campaign.templateId || (campaign.templateConfig ? campaign.templateConfig.id : '');
+        // Select Audience
+        const audSelect = document.getElementById('campaign-audience-select');
+        if (audSelect && campaign.audienceId) {
+            audSelect.value = campaign.audienceId;
+            audSelect.dispatchEvent(new Event('change'));
+        }
+
+        // Set Sender Type Radio Button
+        if (campaign.senderConfig && campaign.senderConfig.type) {
+            const senderTypeRadio = document.querySelector(`input[name="senderType"][value="${campaign.senderConfig.type}"]`);
+            if (senderTypeRadio) {
+                senderTypeRadio.checked = true;
+                senderTypeRadio.dispatchEvent(new Event('change'));
+            }
+        }
+
+        // Select Sender (after radio is set and dropdown is populated)
+        setTimeout(() => {
+            const senderSelect = document.getElementById('campaign-sender-select');
+            if (senderSelect && campaign.senderConfig && campaign.senderConfig.id) {
+                senderSelect.value = campaign.senderConfig.id;
+            }
+        }, 100);
+
+        // Select Template
+        const tmplSelect = document.getElementById('campaign-template-select');
+        if (tmplSelect && campaign.templateConfig && campaign.templateConfig.id) {
+            tmplSelect.value = campaign.templateConfig.id;
             // Trigger change to load preview
             tmplSelect.dispatchEvent(new Event('change'));
         }
 
         // Set Schedule
-        if (campaign.scheduledAt) {
+        const scheduleInput = document.getElementById('campaign-schedule-time');
+        if (scheduleInput && campaign.scheduledAt) {
             const date = new Date(campaign.scheduledAt);
-            // Format to datetime-local: YYYY-MM-DDTHH:mm
-            const iso = date.toISOString().slice(0, 16); // Simple truncation for local time adjustment might be needed
-            // Actually ISO is UTC. datetime-local expects local.
-            // Quick hack for local iso string
+            // Convert to local datetime-local format
             const localIso = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-            document.getElementById('schedule-time').value = localIso;
+            scheduleInput.value = localIso;
         }
 
         // Set Speed
-        if (campaign.speed) document.getElementById('speed-control').value = campaign.speed;
+        const speedSelect = document.getElementById('campaign-speed-select');
+        if (speedSelect && campaign.speed) {
+            speedSelect.value = campaign.speed;
+        }
 
         // Set KAM
-        if (campaign.campaignManager) document.getElementById('campaign-manager-select').value = campaign.campaignManager;
+        const kamSelect = document.getElementById('campaign-kam-select');
+        if (kamSelect && campaign.campaignManager) {
+            kamSelect.value = campaign.campaignManager;
+        }
 
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
-
-        // Optional: Change "Start Campaign" button/mode to "Update"?
-        // For now, let's keep it simple: User edits and creates a NEW campaign (effectively cloning).
-        // To support "Update", we'd need to store the ID in a hidden field and update `startCampaign`.
-        // Given complexity, "Duplicate & Edit" is safer logic for now, but UI says "Edit".
-        // Let's alert them.
-        alert('Campaign details loaded into the form. You can modify and create a new campaign, or update logic usage.');
     }
 
 
@@ -893,6 +934,16 @@ class CampaignManager {
             console.error('Error deleting contact:', error);
             alert('Failed to delete contact: ' + error.message);
         }
+    }
+
+    escapeHtml(unsafe) {
+        if (!unsafe) return '';
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 }
 

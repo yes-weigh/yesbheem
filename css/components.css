@@ -699,3 +699,88 @@ input:checked+.slider:before {
         opacity: 1;
     }
 }
+
+/* Modern Action Buttons */
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-light);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-main);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px);
+    white-space: nowrap;
+}
+
+.action-btn svg {
+    flex-shrink: 0;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border-color: var(--border-hover);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.action-btn:active {
+    transform: translateY(0);
+}
+
+/* View Button - Blue Theme */
+.action-btn.view-btn {
+    border-color: rgba(59, 130, 246, 0.3);
+    color: #60a5fa;
+}
+
+.action-btn.view-btn:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #93c5fd;
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
+}
+
+.action-btn.view-btn:hover svg {
+    transform: scale(1.1);
+}
+
+/* Duplicate Button - Purple Theme */
+.action-btn.duplicate-btn {
+    border-color: rgba(168, 85, 247, 0.3);
+    color: #c084fc;
+}
+
+.action-btn.duplicate-btn:hover {
+    background: rgba(168, 85, 247, 0.15);
+    border-color: rgba(168, 85, 247, 0.5);
+    color: #e9d5ff;
+    box-shadow: 0 4px 16px rgba(168, 85, 247, 0.25);
+}
+
+.action-btn.duplicate-btn:hover svg {
+    transform: scale(1.1) rotate(5deg);
+}
+
+/* Delete Button - Red Theme (if needed) */
+.action-btn.delete-btn {
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #f87171;
+}
+
+.action-btn.delete-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #fca5a5;
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
+}
+
+.action-btn.delete-btn:hover svg {
+    transform: scale(1.1);
+}

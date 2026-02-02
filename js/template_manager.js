@@ -65,48 +65,35 @@ class TemplateManager {
         // Total templates
         const total = templates.length;
 
-        // Count by language
-        const malayalam = templates.filter(t =>
-            t.language?.toLowerCase() === 'malayalam' ||
-            t.language?.toLowerCase() === 'ml'
-        ).length;
-
-        const english = templates.filter(t =>
-            t.language?.toLowerCase() === 'english' ||
-            t.language?.toLowerCase() === 'en'
-        ).length;
-
-        // Count templates with media
-        const withMedia = templates.filter(t => {
-            if (!t.content) return false;
-
-            // Check if template has image or video
-            if (t.content.image || t.content.video) {
-                return true;
-            }
-
-            // Check WhatsApp API format components
-            if (Array.isArray(t.content.components)) {
-                return t.content.components.some(c =>
-                    c.type === 'HEADER' &&
-                    c.format &&
-                    ['IMAGE', 'VIDEO'].includes(c.format.toUpperCase())
-                );
-            }
-
-            return false;
-        }).length;
-
         // Update DOM
         const totalEl = document.getElementById('stat-total-templates');
-        const malayalamEl = document.getElementById('stat-malayalam');
-        const englishEl = document.getElementById('stat-english');
-        const mediaEl = document.getElementById('stat-media');
-
         if (totalEl) totalEl.textContent = total;
-        if (malayalamEl) malayalamEl.textContent = malayalam;
-        if (englishEl) englishEl.textContent = english;
-        if (mediaEl) mediaEl.textContent = withMedia;
+
+        // Render dynamic language stats
+        this.renderLanguageStats();
+    }
+
+    renderLanguageStats() {
+        const container = document.getElementById('language-stats-container');
+        if (!container || !this.languages || this.languages.length === 0) return;
+
+        const templates = this.templates || [];
+
+        // Count templates per language
+        const languageCounts = this.languages.map(lang => {
+            const count = templates.filter(t =>
+                t.language?.toLowerCase() === lang.toLowerCase()
+            ).length;
+            return { language: lang, count };
+        });
+
+        // Generate HTML for each language card
+        container.innerHTML = languageCounts.map(({ language, count }) => `
+            <div class="stat-card stat-language">
+                <div class="stat-number">${count}</div>
+                <div class="stat-label">${this.escapeHtml(language).toUpperCase()}</div>
+            </div>
+        `).join('');
     }
 
     /* --- VIEW & NAVIGATION --- */
@@ -403,6 +390,9 @@ class TemplateManager {
     }
 
     populateLanguages(languages) {
+        // Store languages for dashboard stats
+        this.languages = languages || [];
+
         // Populate editor dropdown
         const select = document.getElementById('template-language-select');
         if (select) {
@@ -416,6 +406,9 @@ class TemplateManager {
             filterSelect.innerHTML = '<option value="">All Languages</option>' +
                 languages.map(lang => `<option value="${this.escapeHtml(lang)}">${this.escapeHtml(lang)}</option>`).join('');
         }
+
+        // Update dashboard stats with new languages
+        this.updateDashboardStats();
     }
 
     populateCategories(categories) {
@@ -761,13 +754,23 @@ class TemplateManager {
         document.getElementById('btn-type-input').value = btnType;
         document.getElementById('btn-text-input').value = button ? button.text : '';
 
+        // Clear all value fields first
+        document.getElementById('btn-value-input').value = '';
+        const chatPhoneInput = document.getElementById('btn-chat-phone-input');
+        const chatMessageInput = document.getElementById('btn-chat-message-input');
+        if (chatPhoneInput) chatPhoneInput.value = '';
+        if (chatMessageInput) chatMessageInput.value = '';
+
         // Handle chat button separately
         if (btnType === 'chat' && button) {
             const parts = (button.value || '').split('|');
-            document.getElementById('btn-chat-phone-input').value = parts[0] || '';
-            document.getElementById('btn-chat-message-input').value = parts[1] || '';
-        } else {
-            document.getElementById('btn-value-input').value = button ? button.value || '' : '';
+            const phone = parts[0] || '';
+            const message = parts[1] || '';
+
+            if (chatPhoneInput) chatPhoneInput.value = phone;
+            if (chatMessageInput) chatMessageInput.value = message;
+        } else if (button) {
+            document.getElementById('btn-value-input').value = button.value || '';
         }
 
         // Show/hide value input based on type
@@ -793,12 +796,12 @@ class TemplateManager {
             // Manually update the input state based on KAM status
             if (isKam) {
                 if (btnType === 'chat') {
-                    const chatPhoneInput = document.getElementById('btn-chat-phone-input');
                     if (chatPhoneInput) {
                         chatPhoneInput.disabled = true;
                         chatPhoneInput.value = 'KAM Phone Number';
                         chatPhoneInput.classList.add('disabled-input');
                     }
+                    // Keep the message value intact - don't overwrite it
                 } else if (btnType === 'call') {
                     const valueInput = document.getElementById('btn-value-input');
                     if (valueInput) {
@@ -900,7 +903,7 @@ class TemplateManager {
         const buttonData = {
             type,
             text,
-            value: type === 'reply' ? '' : (isDynamicKam ? '{{KAM_PHONE}}' : value),
+            value: type === 'reply' ? '' : value,  // Use the value as-is, it's already formatted correctly
             dynamicKam: isDynamicKam
         };
 
