@@ -71,10 +71,11 @@ class CampaignManager {
 
         this.templateSelect = document.getElementById('campaign-template-select');
         this.templatePreview = document.getElementById('campaign-template-preview');
+        this.templatePlaceholder = document.getElementById('campaign-template-placeholder'); // New
 
         // New Inputs
         this.scheduleInput = document.getElementById('campaign-schedule-time');
-        this.speedSelect = document.getElementById('campaign-speed-select');
+        this.maxDelayInput = document.getElementById('campaign-max-delay-input'); // Changed from speedSelect
         this.kamSelect = document.getElementById('campaign-kam-select');
 
         this.startBtn = document.getElementById('btn-start-campaign');
@@ -334,6 +335,14 @@ class CampaignManager {
         const senderId = this.senderSelect.value;
         const templateId = this.templateSelect.value;
 
+        // Get and validate max delay
+        const maxDelay = parseInt(this.maxDelayInput.value) || 5;
+
+        if (maxDelay < 1 || maxDelay > 86400) {
+            alert('Maximum delay must be between 1 and 86400 seconds (24 hours).');
+            return;
+        }
+
         if (!name || !audienceId || !senderId || !templateId) {
             alert('Please complete all fields.');
             return;
@@ -350,7 +359,8 @@ class CampaignManager {
                 audienceName: this.audiences.find(a => a.id === audienceId)?.name,
                 status: this.scheduleInput.value ? 'scheduled' : 'active',
                 scheduledAt: this.scheduleInput.value ? new Date(this.scheduleInput.value).getTime() : Date.now(),
-                speed: parseInt(this.speedSelect.value) || 60,
+                maxDelay: maxDelay,
+                minDelay: 1,
                 campaignManager: this.kamSelect.value || null,
                 senderConfig: {
                     type: document.querySelector('input[name="senderType"]:checked').value,
@@ -366,7 +376,7 @@ class CampaignManager {
 
             await addDoc(collection(db, "campaigns"), payload);
 
-            alert('Campaign Created! (Backend execution pending implementation)');
+            alert(`Campaign Created! Messages will be sent with random delays between 1-${maxDelay} seconds.`);
             this.switchTab('dashboard');
             this.loadCampaigns(); // refresh
 
@@ -553,10 +563,9 @@ class CampaignManager {
             scheduleInput.value = localIso;
         }
 
-        // Set Speed
-        const speedSelect = document.getElementById('campaign-speed-select');
-        if (speedSelect && campaign.speed) {
-            speedSelect.value = campaign.speed;
+        // Set Max Delay
+        if (this.maxDelayInput && campaign.maxDelay) {
+            this.maxDelayInput.value = campaign.maxDelay;
         }
 
         // Set KAM
