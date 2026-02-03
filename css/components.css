@@ -584,7 +584,7 @@ input:checked+.slider:before {
     bottom: 0;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
-    z-index: 2000;
+    z-index: 9999;
     display: flex;
     /* controlled by JS (flex or none) */
     align-items: center;

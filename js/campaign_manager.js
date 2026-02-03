@@ -1,7 +1,7 @@
 
 import { AudienceService } from './services/audience_service.js';
 import { db } from './services/firebase_config.js';
-import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, getDocs, doc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, getDocs, doc, getDoc, deleteDoc, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 class CampaignManager {
     constructor() {
@@ -53,6 +53,14 @@ class CampaignManager {
             console.log('CampaignManager: Cleaning up existing listener');
             this.unsubscribeCampaigns();
             this.unsubscribeCampaigns = null;
+            this.unsubscribeCampaigns = null;
+        }
+
+        // Cleanup Modal from Body (prevent leaks if moved)
+        const modal = document.getElementById('view-campaign-modal');
+        if (modal && modal.parentElement === document.body) {
+            console.log('CampaignManager: Cleaning up teleported modal');
+            modal.remove();
         }
     }
 
@@ -603,16 +611,321 @@ class CampaignManager {
     }
 
     viewCampaign(id) {
+        console.log('viewCampaign called with ID:', id);
         const campaign = this.campaigns.find(c => c.id === id);
-        if (!campaign) return;
+        if (!campaign) {
+            console.error('Campaign not found in local state:', id);
+            return;
+        }
 
-        // For now, just logging or a simple alert summary
-        // Ideally, expand the row or show a modal
-        console.log('Viewing Campaign:', campaign);
-        alert(`Campaign: ${campaign.name}\nStatus: ${campaign.status}\nSent: ${campaign.stats?.sent || 0}/${campaign.stats?.total || '?'}`);
+        // DUPLICATE CLEANUP: Remove any existing modals on body to prevent ID conflicts
+        const existingModals = document.querySelectorAll('#view-campaign-modal');
+        if (existingModals.length > 1) {
+            console.warn('Found multiple modals, cleaning up orphans...');
+            existingModals.forEach((m) => {
+                if (m.parentElement === document.body) {
+                    m.remove();
+                }
+            });
+        }
+
+        // Elements
+        let modal = document.getElementById('view-campaign-modal');
+        if (!modal) {
+            console.error('Modal element #view-campaign-modal not found in DOM');
+            alert('Error: Modal template missing. Please refresh the page.');
+            return;
+        }
+
+        // Fix: Move modal to body to prevent clipping/overflow issues
+        if (modal.parentElement !== document.body) {
+            console.log('Moving modal to body to prevent clipping');
+            document.body.appendChild(modal);
+        }
+
+        // Store reference for closing
+        this.activeViewModal = modal;
+
+        // AGGRESSIVE VISIBILITY ENFORCEMENT
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        modal.style.zIndex = '99999';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.background = 'rgba(0, 0, 0, 0.8)';
+        modal.style.pointerEvents = 'auto'; // Fix for click transparency
+
+        // Debug Alert to prove execution
+        console.log('Modal styles enforced. Display:', modal.style.display);
+
+        const nameEl = document.getElementById('view-campaign-name');
+        const statusEl = document.getElementById('view-campaign-status');
+        const progressEl = document.getElementById('view-campaign-progress');
+        const audienceEl = document.getElementById('view-campaign-audience');
+        const kamEl = document.getElementById('view-campaign-kam');
+        const templateEl = document.getElementById('view-campaign-template');
+        const senderEl = document.getElementById('view-campaign-sender');
+        const delayEl = document.getElementById('view-campaign-delay');
+        const createdEl = document.getElementById('view-campaign-created');
+        const duplicateBtn = document.getElementById('view-campaign-duplicate-btn');
+
+        if (!modal) return;
+
+        try {
+            // Populate Data
+            if (nameEl) nameEl.textContent = campaign.name || 'Untitled';
+
+            // Status Badge Logic
+            const statusColors = {
+                active: '#4ade80',
+                completed: '#3b82f6',
+                scheduled: '#fbbf24',
+                paused: '#f87171',
+                failed: '#ef4444'
+            };
+            const color = statusColors[campaign.status] || '#94a3b8';
+            if (statusEl) statusEl.innerHTML = `<span style="background: ${color}20; color: ${color}; padding: 4px 12px; border-radius: 99px; font-size: 0.85rem;">${(campaign.status || 'UNKNOWN').toUpperCase()}</span>`;
+
+            // Progress
+            const sent = campaign.stats?.sent || 0;
+            const total = campaign.stats?.total || 0;
+            const percent = total > 0 ? Math.round((sent / total) * 100) : 0;
+            if (progressEl) progressEl.textContent = `${sent} / ${total} (${percent}%)`;
+
+            // Details
+            if (audienceEl) audienceEl.textContent = campaign.audienceName || 'Unknown Audience';
+            if (kamEl) kamEl.textContent = campaign.campaignManager || 'Not Assigned';
+            if (templateEl) templateEl.textContent = campaign.templateConfig?.name || campaign.templateId || 'N/A';
+            if (senderEl) senderEl.textContent = `${campaign.senderConfig?.id || '?'} (${campaign.senderConfig?.type || '?'})`;
+
+            // Delay Display
+            if (delayEl) {
+                if (campaign.maxDelay) {
+                    delayEl.textContent = `Random (1-${campaign.maxDelay}s)`;
+                } else if (campaign.speed) {
+                    const delay = Math.floor(60000 / campaign.speed);
+                    delayEl.textContent = `~${campaign.speed} msgs/min (${(delay / 1000).toFixed(1)}s)`;
+                } else {
+                    delayEl.textContent = 'Default (5s)';
+                }
+            }
+
+            if (createdEl) {
+                const seconds = campaign.createdAt?.seconds || campaign.createdAt?._seconds; // Handle different timestamp formats
+                createdEl.textContent = seconds ? new Date(seconds * 1000).toLocaleString() : 'Just now';
+            }
+
+            // Bind Duplicate Button
+            if (duplicateBtn) {
+                duplicateBtn.onclick = () => {
+                    this.closeViewModal();
+                    this.duplicateCampaign(campaign.id);
+                };
+            }
+
+            // DYNAMIC CLOSE BUTTON BINDING (Fix for lost scope)
+            const closeBtn = modal.querySelector('.btn-secondary'); // "Close" button
+            const closeIcon = modal.querySelector('.modal-close'); // "X" icon
+
+            if (closeBtn) {
+                closeBtn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Close button clicked');
+                    this.closeViewModal();
+                };
+            }
+
+            if (closeIcon) {
+                closeIcon.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('X icon clicked');
+                    this.closeViewModal();
+                };
+            }
+
+            // Show Modal
+            modal.style.display = 'flex';
+            console.log('Modal displayed successfully');
+
+        } catch (error) {
+            console.error('Error populating campaign modal:', error);
+            alert('Failed to display campaign details: ' + error.message);
+        }
     }
 
-    // ==================== AUDIENCE MANAGEMENT ====================
+    closeViewModal() {
+        // Use stored reference first, fallback to DOM query
+        const modal = this.activeViewModal || document.getElementById('view-campaign-modal');
+
+        console.log('Closing modal', modal);
+
+        if (modal) {
+            // Reset Aggressive Styles
+            modal.style.display = 'none';
+            modal.style.visibility = '';
+            modal.style.opacity = '';
+            modal.style.zIndex = '';
+            modal.style.position = '';
+            modal.style.top = '';
+            modal.style.left = '';
+            modal.style.width = '';
+            modal.style.height = '';
+            modal.style.background = '';
+
+            // Clean up reference
+            this.activeViewModal = null;
+
+            // Optional: Move back to original container or remove if it was cloned?
+            // For now, just hiding is fine, but removing from body if we moved it is cleaner for SPA
+            if (modal.parentElement === document.body) {
+                // Don't remove immediately to allow fade out, or just remove to be safe
+                // modal.remove(); // Uncomment if we want to destroy it
+            }
+        } else {
+            console.error('No modal found to close');
+        }
+    }
+
+    switchViewTab(tabName) {
+        const modal = this.activeViewModal || document.getElementById('view-campaign-modal');
+        if (!modal) return;
+
+        // Tabs
+        const tabOverview = modal.querySelector('#tab-btn-overview');
+        const tabLogs = modal.querySelector('#tab-btn-logs');
+
+        // Content
+        const contentOverview = modal.querySelector('#view-tab-overview');
+        const contentLogs = modal.querySelector('#view-tab-logs');
+
+        if (tabName === 'overview') {
+            tabOverview.style.color = 'var(--text-main)';
+            tabOverview.style.borderBottomColor = 'var(--accent-color)';
+            tabLogs.style.color = 'var(--text-muted)';
+            tabLogs.style.borderBottomColor = 'transparent';
+
+            contentOverview.style.display = 'block';
+            contentLogs.style.display = 'none';
+        } else {
+            tabLogs.style.color = 'var(--text-main)';
+            tabLogs.style.borderBottomColor = 'var(--accent-color)';
+            tabOverview.style.color = 'var(--text-muted)';
+            tabOverview.style.borderBottomColor = 'transparent';
+
+            contentLogs.style.display = 'block';
+            contentOverview.style.display = 'none';
+
+            // Load Logs if empty or refreshed
+            this.loadCampaignLogs(this.currentViewingCampaignId);
+        }
+    }
+
+    async loadCampaignLogs(campaignId) {
+        if (!campaignId) return;
+        const tbody = document.getElementById('view-campaign-logs-body');
+        if (!tbody) return;
+
+        // Helper to update status
+        const setStatus = (msg) => {
+            tbody.innerHTML = `<tr><td colspan="4" style="padding:40px; text-align:center; color:var(--text-muted);">${msg}</td></tr>`;
+        };
+
+        setStatus(`Loading logs for ID: ${campaignId}...`);
+
+        console.log(`[loadCampaignLogs] Starting fetch for campaign: ${campaignId}`);
+
+        try {
+            if (!db) {
+                throw new Error("Firebase DB instance is undefined");
+            }
+
+            setStatus('Initializing query...');
+
+            // SIMPLIFIED QUERY DEBUGGING
+            // Removed orderBy and limit to rule out Indexing issues
+            const q = query(
+                collection(db, 'campaigns', campaignId, 'items')
+            );
+
+            setStatus('Fetching data from Firestore...');
+            console.log('[loadCampaignLogs] Executing query...');
+
+            // Timeout race to detect hangs
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("Request timed out after 10s")), 10000)
+            );
+
+            const querySnapshot = await Promise.race([getDocs(q), timeoutPromise]);
+
+            console.log(`[loadCampaignLogs] Query complete. Found ${querySnapshot.size} docs.`);
+
+            if (querySnapshot.empty) {
+                setStatus('No messages found in database.');
+                return;
+            }
+
+            // Client-side sort since we removed server-side sort
+            const docs = [];
+            querySnapshot.forEach(doc => docs.push(doc.data()));
+            docs.sort((a, b) => {
+                const tA = a.sentAt ? a.sentAt.seconds : 0;
+                const tB = b.sentAt ? b.sentAt.seconds : 0;
+                return tB - tA; // Descending
+            });
+
+            // Build rows
+            let rowsHtml = '';
+            docs.forEach((item) => {
+                // Format Date
+                let timeStr = '-';
+                if (item.sentAt) {
+                    timeStr = new Date(item.sentAt.seconds * 1000).toLocaleString();
+                } else if (item.status === 'pending') {
+                    timeStr = 'Pending...';
+                }
+
+                // Status Badge
+                let statusColor = '#94a3b8'; // gray
+                if (item.status === 'sent') statusColor = '#4ade80'; // green
+                if (item.status === 'failed') statusColor = '#ef4444'; // red
+                if (item.status === 'pending') statusColor = '#fbbf24'; // yellow
+
+                const phone = item.phone || '-';
+                const name = item.name || '-';
+                const status = item.status ? item.status.toUpperCase() : 'UNKNOWN';
+                const error = item.error ? `<div style="font-size:0.7rem; color:#ef4444; margin-top:2px;">${item.error}</div>` : '';
+
+                rowsHtml += `
+                    <tr style="border-bottom: 1px solid var(--border-light); transition: background 0.1s;">
+                        <td style="padding: 12px 16px; color: var(--text-main); font-family: monospace;">${phone}</td>
+                        <td style="padding: 12px 16px; color: var(--text-main);">${name}</td>
+                        <td style="padding: 12px 16px;">
+                            <span style="background: ${statusColor}20; color: ${statusColor}; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
+                                ${status}
+                            </span>
+                             ${error}
+                        </td>
+                        <td style="padding: 12px 16px; color: var(--text-muted); font-size: 0.85rem;">${timeStr}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = rowsHtml;
+
+        } catch (error) {
+            console.error('[loadCampaignLogs] Error:', error);
+            setStatus(`
+                <div style="margin-bottom:8px; font-weight:bold; color:#ef4444;">Error loading logs</div>
+                <div style="font-size:0.9rem; color:#ef4444;">${error.message}</div>
+            `);
+        }
+    }
 
     async renderAudiencesTab() {
         const grid = document.getElementById('audience-grid');
