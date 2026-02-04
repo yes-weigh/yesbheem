@@ -28,14 +28,9 @@ class CampaignManager {
 
         this.cacheDOM();
 
-        // Only bind events once to prevent duplicate event listeners
-        if (!this.eventsBound) {
-            console.log('CampaignManager: Binding events for the first time');
-            this.bindEvents();
-            this.eventsBound = true;
-        } else {
-            console.log('CampaignManager: Events already bound, skipping bindEvents');
-        }
+        // Always bind events (handle SPA re-initialization where DOM is replaced)
+        console.log('CampaignManager: Binding events');
+        this.bindEvents();
 
         // Load initial data
         await this.loadAudiences();
