@@ -18,7 +18,8 @@ const MIME_TYPES = {
     '.ttf': 'font/ttf',
     '.eot': 'application/vnd.ms-fontobject',
     '.otf': 'font/otf',
-    '.wasm': 'application/wasm'
+    '.wasm': 'application/wasm',
+    '.pdf': 'application/pdf'
 };
 
 const server = http.createServer((req, res) => {
@@ -26,6 +27,11 @@ const server = http.createServer((req, res) => {
 
     // Handle basic path normalization
     let requestUrl = req.url.split('?')[0]; // Ignore query strings
+    try {
+        requestUrl = decodeURIComponent(requestUrl);
+    } catch (e) {
+        console.error('URI Decode Error:', e);
+    }
 
     // Prevent directory traversal
     const safePath = path.normalize(requestUrl).replace(/^(\.\.[\/\\])+/, '');
