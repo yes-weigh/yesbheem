@@ -440,7 +440,7 @@ class CampaignManager {
             return;
         }
 
-        tbody.innerHTML = this.campaigns.map(c => {
+        tbody.innerHTML = this.campaigns.map((c, i) => {
             const progress = c.stats?.total > 0 ? Math.round((c.stats.sent / c.stats.total) * 100) : 0;
             const statusBadge = c.status === 'completed' ? 'COMPLETED' :
                 c.status === 'scheduled' ? 'SCHEDULED' :
@@ -448,6 +448,7 @@ class CampaignManager {
 
             return `
                 <tr>
+                    <td style="color: var(--text-muted); font-size: 0.85rem;">${i + 1}</td>
                     <td>${this.escapeHtml(c.name)}</td>
                     <td>${this.escapeHtml(c.audienceName || 'N/A')}</td>
                     <td><span class="status-badge status-${c.status}">${statusBadge}</span></td>
@@ -456,8 +457,8 @@ class CampaignManager {
                             <div class="progress-fill" style="width:${progress}%"></div>
                         </div>
                     </td>
-                    <td>${c.stats?.sent || 0} / ${c.stats?.total || 0}</td>
                     <td>${c.createdAt ? new Date(c.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
+                    <td style="font-family: monospace; color: var(--text-main);">${c.stats?.sent || 0} / ${c.stats?.total || 0}</td>
                     <td>
                         <div style="display: flex; gap: 8px; align-items: center;">
                             <button class="action-btn view-btn" onclick="window.campaignManager.viewCampaign('${c.id}')" title="View Details">
