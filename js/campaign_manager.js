@@ -618,6 +618,9 @@ class CampaignManager {
             return;
         }
 
+        // Fix: Track Current ID for Logs
+        this.currentViewingCampaignId = id;
+
         // DUPLICATE CLEANUP: Remove any existing modals on body to prevent ID conflicts
         const existingModals = document.querySelectorAll('#view-campaign-modal');
         if (existingModals.length > 1) {
@@ -780,6 +783,7 @@ class CampaignManager {
 
             // Clean up reference
             this.activeViewModal = null;
+            this.currentViewingCampaignId = null;
 
             // Optional: Move back to original container or remove if it was cloned?
             // For now, just hiding is fine, but removing from body if we moved it is cleaner for SPA
