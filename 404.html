@@ -26,16 +26,11 @@
 
         const match = pathname.match(/^(\/[^\/]+)\//);
         if (match && match[1] !== '' && !isAppRoute) {
-            console.log('Setting base path to subdir:', match[1]);
             basePath = match[1] + '/';
-        } else {
-            console.log('Setting base path to root (App Route or Root detected). Path:', pathname);
         }
 
-        // Set base tag
-        const base = document.createElement('base');
-        base.href = window.location.origin + basePath;
-        document.head.appendChild(base);
+        // Set base tag using document.write to block preloader requests relative to wrong path
+        document.write('<base href="' + window.location.origin + basePath + '">');
     </script>
 
     <!-- Modular CSS -->
