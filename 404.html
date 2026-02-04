@@ -26,7 +26,10 @@
 
         const match = pathname.match(/^(\/[^\/]+)\//);
         if (match && match[1] !== '' && !isAppRoute) {
+            console.log('Setting base path to subdir:', match[1]);
             basePath = match[1] + '/';
+        } else {
+            console.log('Setting base path to root (App Route or Root detected). Path:', pathname);
         }
 
         // Set base tag
