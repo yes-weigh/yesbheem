@@ -60,40 +60,43 @@ class TemplateManager {
     /* --- DASHBOARD STATS --- */
 
     updateDashboardStats() {
-        const templates = this.templates || [];
-
-        // Total templates
-        const total = templates.length;
-
-        // Update DOM
-        const totalEl = document.getElementById('stat-total-templates');
-        if (totalEl) totalEl.textContent = total;
-
-        // Render dynamic language stats
+        // Delegate to main render function
         this.renderLanguageStats();
     }
 
     renderLanguageStats() {
         const container = document.getElementById('language-stats-container');
-        if (!container || !this.languages || this.languages.length === 0) return;
+        if (!container) return;
 
         const templates = this.templates || [];
 
-        // Count templates per language
-        const languageCounts = this.languages.map(lang => {
-            const count = templates.filter(t =>
-                t.language?.toLowerCase() === lang.toLowerCase()
-            ).length;
-            return { language: lang, count };
-        });
+        // 1. Build Total Card (First Position)
+        const totalCount = templates.length;
+        const totalCardHtml = `
+            <div class="stat-card stat-total">
+                <div class="stat-number">${totalCount}</div>
+                <div class="stat-label">TOTAL</div>
+            </div>
+        `;
 
-        // Generate HTML for each language card
-        container.innerHTML = languageCounts.map(({ language, count }) => `
+        // 2. Build Language Cards
+        let langCardsHtml = '';
+        if (this.languages && this.languages.length > 0) {
+            langCardsHtml = this.languages.map(lang => {
+                const count = templates.filter(t =>
+                    t.language?.toLowerCase() === lang.toLowerCase()
+                ).length;
+
+                return `
             <div class="stat-card stat-language">
                 <div class="stat-number">${count}</div>
-                <div class="stat-label">${this.escapeHtml(language).toUpperCase()}</div>
-            </div>
-        `).join('');
+                <div class="stat-label">${this.escapeHtml(lang).toUpperCase()}</div>
+            </div>`;
+            }).join('');
+        }
+
+        // Render all
+        container.innerHTML = totalCardHtml + langCardsHtml;
     }
 
     /* --- VIEW & NAVIGATION --- */

@@ -50,8 +50,9 @@
 }
 
 /* Total card - fixed width */
+/* Total card - uses grid sizing now */
 .stat-card.stat-total {
-    flex: 0 0 200px;
+    /* Removed fixed width */
 }
 
 /* Language stats grid container - takes remaining space */
