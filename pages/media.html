@@ -1,99 +1,137 @@
-<div class="page-container" id="media-page">
-    <div class="page-title-bar">
-        <div class="page-title-content">
-            <div class="page-breadcrumb">
-                <span class="breadcrumb-item">Yes Bheem</span>
-                <span class="breadcrumb-separator">/</span>
-                <span class="breadcrumb-item active">Media Library</span>
+<div class="template-grid-container" id="media-page">
+    <link rel="stylesheet" href="/css/template.css">
+    <!-- Reusing template.css for consistent look as requested -->
+
+    <div class="stats-dashboard">
+        <!-- Media Stats can go here -->
+        <div id="media-stats-container" class="language-stats-grid">
+            <!-- Dynamic stats rendered by JS -->
+        </div>
+    </div>
+
+    <!-- CONTROLS BAR -->
+    <div class="unified-controls-bar" id="media-controls">
+        <div class="controls-left">
+            <button id="btn-new-media" class="primary-btn">
+                <span class="btn-icon">⬆️</span>
+                Upload Media
+            </button>
+        </div>
+
+        <div class="controls-middle">
+            <input type="text" id="search-media" class="search-input" placeholder="🔍 Search media...">
+
+            <select id="filter-language" class="filter-select">
+                <option value="">All Languages</option>
+            </select>
+
+            <select id="filter-category" class="filter-select">
+                <option value="">All Categories</option>
+            </select>
+        </div>
+
+        <div class="controls-right">
+            <!-- View Toggle (Optional, sticking to Grid for now) -->
+            <div class="view-mode-toggle">
+                <button class="view-btn active" data-view="grid" title="Grid View">
+                    <span class="view-icon">▦</span>
+                </button>
             </div>
         </div>
     </div>
 
-    <div class="construction-container">
-        <div class="construction-content">
-            <div class="icon">🖼️</div>
-            <h2>Media Library</h2>
-            <p>This module is currently under development.</p>
-            <div class="status-badge">Coming Soon</div>
+    <!-- MEDIA GRID CONTAINER -->
+    <div id="media-grid-container" class="media-grid-container"
+        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem; padding: 1rem 0;">
+        <!-- Rendered by JS -->
+        <div class="text-muted" style="grid-column: 1/-1; text-align: center; padding: 2rem;">Loading media library...
         </div>
     </div>
+
+    <!-- UPLOAD MODAL -->
+    <div id="upload-modal" class="modal-overlay hidden"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+        <div class="modal-content"
+            style="background: var(--bg-panel); padding: 2rem; border-radius: 16px; border: 1px solid var(--border); width: 500px; max-width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary);">Upload Media</h2>
+                <button id="btn-close-modal"
+                    style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 5px;">✕</button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+
+                <!-- File Input -->
+                <div id="drop-zone"
+                    style="border: 2px dashed var(--border); border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.02);">
+                    <input type="file" id="file-input" class="hidden" accept="image/*,video/*">
+                    <div id="upload-prompt">
+                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">📁</div>
+                        <div style="color: var(--text-primary); font-weight: 600;">Click or Drag file here</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Supports JPG, PNG, MP4</div>
+                    </div>
+                    <div id="file-preview" class="hidden" style="position: relative;">
+                        <!-- Preview Image/Video injected here -->
+                        <div id="preview-container"
+                            style="max-height: 200px; overflow: hidden; border-radius: 6px; margin-bottom: 0.5rem; display: flex; justify-content: center;">
+                        </div>
+                        <div id="file-name-display" style="font-size: 0.9rem; color: var(--text-primary);"></div>
+                        <button id="btn-change-file" class="action-btn-secondary"
+                            style="margin-top: 0.5rem; font-size: 0.8rem;">Change File</button>
+                    </div>
+                </div>
+
+                <!-- Metadata Inputs -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem;">Language</label>
+                        <select id="upload-language" class="modern-input" style="width: 100%;">
+                            <option value="">Select Language</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem;">Category</label>
+                        <select id="upload-category" class="modern-input" style="width: 100%;">
+                            <option value="">Select Category</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label
+                        style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem;">Media
+                        Name</label>
+                    <input type="text" id="upload-name" class="modern-input" placeholder="e.g. Onam Special Offer"
+                        style="width: 100%;">
+                </div>
+
+                <!-- Progress Bar -->
+                <div id="upload-progress-container" class="hidden" style="margin-top: 0.5rem;">
+                    <div style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+                        <div id="upload-progress-bar"
+                            style="height: 100%; width: 0%; background: var(--primary); transition: width 0.3s;"></div>
+                    </div>
+                    <div id="upload-status-text"
+                        style="font-size: 0.8rem; color: var(--text-muted); text-align: right; margin-top: 4px;">0%
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+                    <button id="btn-cancel-upload" class="action-btn-secondary">Cancel</button>
+                    <button id="btn-confirm-upload" class="cta-button primary-btn" disabled>Upload</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
-<style>
-    .page-title-bar {
-        height: 35px;
-        background: var(--bg-secondary);
-        border-bottom: 1px solid var(--border-light);
-        display: flex;
-        align-items: center;
-        padding: 0 16px;
-    }
-
-    .page-title-content {
-        display: flex;
-        align-items: center;
-        width: 100%;
-    }
-
-    .page-breadcrumb {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-    }
-
-    .breadcrumb-item {
-        color: var(--text-muted);
-    }
-
-    .breadcrumb-item.active {
-        color: var(--text-main);
-    }
-
-    .breadcrumb-separator {
-        color: var(--text-muted);
-        user-select: none;
-    }
-
-    .construction-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: calc(100% - 35px);
-        background: var(--bg-primary);
-    }
-
-    .construction-content {
-        text-align: center;
-        padding: 2rem;
-        max-width: 400px;
-    }
-
-    .construction-content .icon {
-        font-size: 4rem;
-        margin-bottom: 1rem;
-        opacity: 0.8;
-    }
-
-    .construction-content h2 {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-        color: var(--text-main);
-    }
-
-    .construction-content p {
-        color: var(--text-muted);
-        margin-bottom: 1.5rem;
-    }
-
-    .status-badge {
-        display: inline-block;
-        padding: 0.25rem 0.75rem;
-        background: var(--bg-highlight);
-        color: var(--primary);
-        border-radius: 12px;
-        font-size: 0.85rem;
-        font-weight: 500;
-        border: 1px solid var(--border-highlight);
-    }
-</style>
+<!-- Scripts -->
+<script src="/js/services/media_service.js"></script>
+<script src="/js/media_manager.js"></script>
+<script>
+    // Initialize Logic
+    window.mediaMgr = new MediaManager();
+</script>

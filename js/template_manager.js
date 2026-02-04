@@ -10,6 +10,9 @@ class TemplateManager {
             onUpdateButton: (index, key, value) => this.updateButton(index, key, value)
         });
 
+        // Components
+        this.mediaSelector = new window.MediaSelector();
+
         // State
         this.templates = [];
         this.activeTemplateId = null;
@@ -1077,18 +1080,29 @@ class TemplateManager {
 
         // Auto-resize Textarea (Removed)
 
-        // Media File -> Upload -> URL
-        const fileInput = document.getElementById('media-file-input');
-        fileInput.addEventListener('change', async (e) => {
-            if (e.target.files[0]) {
-                try {
-                    const url = await this.service.uploadFile(e.target.files[0]);
-                    document.getElementById('media-url-input').value = url;
-                    this.updateUI();
-                } catch (err) { alert(err.message); }
-            }
-        });
+        // Media Library
+        const libBtn = document.getElementById('btn-open-media-library');
+        if (libBtn) {
+            libBtn.addEventListener('click', () => {
+                const currentType = document.getElementById('media-type-select').value;
+                this.mediaSelector.open(
+                    currentType === 'none' ? null : currentType,
+                    (mediaItem) => {
+                        document.getElementById('media-url-input').value = mediaItem.url;
 
+                        // Auto-update type
+                        const typeSelect = document.getElementById('media-type-select');
+                        if (mediaItem.type === 'video' || (mediaItem.mimeType && mediaItem.mimeType.startsWith('video'))) {
+                            typeSelect.value = 'video';
+                        } else {
+                            typeSelect.value = 'image';
+                        }
+
+                        this.updateUI();
+                    }
+                );
+            });
+        }
         // Inline Button Controls
         const addButtonBtn = document.getElementById('wa-button-add');
         if (addButtonBtn) {

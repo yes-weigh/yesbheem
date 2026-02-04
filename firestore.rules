@@ -109,6 +109,11 @@ service cloud.firestore {
       allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
     }
 
+    // Media Library
+    match /media_library/{mediaId} {
+      allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
+    }
+
     // Campaigns
     match /campaigns/{campaignId} {
       allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
