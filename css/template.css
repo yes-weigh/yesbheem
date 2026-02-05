@@ -1359,3 +1359,11 @@
 .wa-button-icon.delete:hover {
     color: #ef4444;
 }
+/* --- EDITOR STATES --- */
+.disabled-area {
+    opacity: 0.5;
+    pointer-events: none;
+    filter: grayscale(0.8);
+    transition: all 0.3s ease;
+    user-select: none;
+}

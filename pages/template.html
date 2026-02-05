@@ -103,16 +103,26 @@
                         </select>
 
                         <div id="media-upload-area" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                            <button id="btn-open-media-library" class="cta-button"
-                                style="background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.2); width: 100%; justify-content: center;">
-                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
-                                    viewBox="0 0 24 24">
-                                    <path
-                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
-                                    </path>
-                                </svg>
-                                Choose from Library
-                            </button>
+                            <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                                <button id="btn-open-media-library" class="cta-button"
+                                    style="background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.2); flex: 1; justify-content: center; font-size: 0.8rem; padding: 0.5rem;">
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                                        viewBox="0 0 24 24" style="margin-right: 4px;">
+                                        <path
+                                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                                        </path>
+                                    </svg>
+                                    Library
+                                </button>
+                                <button id="btn-upload-pc" class="cta-button"
+                                    style="background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.2); flex: 1; justify-content: center; font-size: 0.8rem; padding: 0.5rem;">
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right: 4px;">
+                                        <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                                    </svg>
+                                    Upload
+                                </button>
+                            </div>
+                            <input type="file" id="media-file-input" class="hidden" accept="image/*,video/*">
 
                             <div style="text-align: center; font-size: 0.8rem; color: var(--text-muted);">OR</div>
 

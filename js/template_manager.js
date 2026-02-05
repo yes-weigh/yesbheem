@@ -60,6 +60,41 @@ class TemplateManager {
         }
     }
 
+    /* --- HELPERS --- */
+
+    validateMetadata() {
+        const name = document.getElementById('template-name-input').value.trim();
+        const language = document.getElementById('template-language-select').value;
+        const category = document.getElementById('template-category-select').value;
+
+        const grid = document.querySelector('.editor-layout-grid');
+        const isValid = name && language && category;
+
+        if (grid) {
+            if (isValid) {
+                grid.classList.remove('disabled-area');
+            } else {
+                grid.classList.add('disabled-area');
+            }
+        }
+    }
+
+    setMedia(mediaItem) {
+        document.getElementById('media-url-input').value = mediaItem.url;
+
+        // Auto-update type
+        const typeSelect = document.getElementById('media-type-select');
+        const isVideo = mediaItem.type === 'video' || (mediaItem.mimeType && mediaItem.mimeType.startsWith('video'));
+
+        if (isVideo) {
+            typeSelect.value = 'video';
+        } else {
+            typeSelect.value = 'image';
+        }
+
+        this.updateUI();
+    }
+
     /* --- DASHBOARD STATS --- */
 
     updateDashboardStats() {
@@ -138,6 +173,7 @@ class TemplateManager {
 
         if (id === 'NEW') {
             this.resetForm();
+            this.validateMetadata(); // Initial check (will likely disable)
         } else {
             this.loadTemplate(id);
         }
@@ -470,6 +506,9 @@ class TemplateManager {
         const categorySelect = document.getElementById('template-category-select');
         if (languageSelect) languageSelect.value = template.language || '';
         if (categorySelect) categorySelect.value = template.category || '';
+
+        // Validate to enable editor
+        this.validateMetadata();
 
         // Delete Button Logic
         const delBtn = document.getElementById('btn-delete-template');
@@ -1046,6 +1085,15 @@ class TemplateManager {
         const backBtn = document.getElementById('btn-back-to-list');
         if (backBtn) backBtn.addEventListener('click', () => this.showDashboard());
 
+        // METADATA VALIDATION
+        ['template-name-input', 'template-language-select', 'template-category-select'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', () => this.validateMetadata());
+                el.addEventListener('change', () => this.validateMetadata());
+            }
+        });
+
         // Translation Button
         const translateBtn = document.getElementById('btn-translate-editor');
         if (translateBtn) {
@@ -1088,19 +1136,48 @@ class TemplateManager {
                 this.mediaSelector.open(
                     currentType === 'none' ? null : currentType,
                     (mediaItem) => {
-                        document.getElementById('media-url-input').value = mediaItem.url;
-
-                        // Auto-update type
-                        const typeSelect = document.getElementById('media-type-select');
-                        if (mediaItem.type === 'video' || (mediaItem.mimeType && mediaItem.mimeType.startsWith('video'))) {
-                            typeSelect.value = 'video';
-                        } else {
-                            typeSelect.value = 'image';
-                        }
-
-                        this.updateUI();
+                        this.setMedia(mediaItem);
                     }
                 );
+            });
+        }
+
+        // Media Upload (from PC)
+        const uploadBtn = document.getElementById('btn-upload-pc');
+        const fileInput = document.getElementById('media-file-input');
+
+        if (uploadBtn && fileInput) {
+            uploadBtn.addEventListener('click', () => fileInput.click()); // Trigger hidden input
+
+            fileInput.addEventListener('change', async (e) => {
+                if (e.target.files[0]) {
+                    const file = e.target.files[0];
+
+                    // Get Metadata from Editor
+                    const name = document.getElementById('template-name-input').value || `Upload ${new Date().toLocaleTimeString()}`;
+                    const language = document.getElementById('template-language-select').value;
+                    const category = document.getElementById('template-category-select').value;
+
+                    // Temporary Loading State could be added here
+                    const prevText = uploadBtn.innerHTML;
+                    uploadBtn.innerHTML = '⏳ Uploading...';
+                    uploadBtn.disabled = true;
+
+                    try {
+                        // Use MediaSelector's service (or new one) to upload AND add to library
+                        const metadata = { name, language, category };
+                        const result = await this.mediaSelector.service.uploadMedia(file, metadata);
+
+                        this.setMedia(result); // Use same helper
+
+                    } catch (err) {
+                        alert('Upload Failed: ' + err.message);
+                    } finally {
+                        uploadBtn.innerHTML = prevText;
+                        uploadBtn.disabled = false;
+                        fileInput.value = ''; // Reset
+                    }
+                }
             });
         }
         // Inline Button Controls
