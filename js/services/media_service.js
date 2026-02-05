@@ -57,7 +57,9 @@ class MediaService {
             const downloadURL = await getDownloadURL(snapshot.ref);
 
             // 2. Identify Type
-            const type = file.type.startsWith('image') ? 'image' : 'video';
+            let type = 'document';
+            if (file.type.startsWith('image/')) type = 'image';
+            else if (file.type.startsWith('video/')) type = 'video';
 
             // 3. Save to Firestore
             const docRef = await addDoc(collection(db, 'media_library'), {

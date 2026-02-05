@@ -156,12 +156,22 @@ class MediaManager {
     }
 
     createCardHtml(m) {
-        // Determine preview based on type
-        let previewHtml = '';
+        let badgeHtml = '';
         if (m.type === 'video' || m.mimeType?.startsWith('video')) {
             previewHtml = `<video src="${m.url}" style="width: 100%; height: 100%; object-fit: cover;"></video>`;
-        } else {
+            badgeHtml = 'VIDEO';
+        } else if (m.type === 'image' || m.mimeType?.startsWith('image')) {
             previewHtml = `<img src="${m.url}" alt="${this.escapeHtml(m.name)}" style="width: 100%; height: 100%; object-fit: cover;">`;
+            badgeHtml = 'IMAGE';
+        } else {
+            previewHtml = `
+                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); color: var(--text-muted);">
+                    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+            `;
+            badgeHtml = 'DOC';
         }
 
         return `
@@ -169,7 +179,7 @@ class MediaManager {
                 <div style="width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); position: relative;">
                     ${previewHtml}
                     <div style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; color: white;">
-                        ${m.type === 'video' ? 'VIDEO' : 'IMAGE'}
+                        ${badgeHtml}
                     </div>
                 </div>
                 
@@ -320,8 +330,8 @@ class MediaManager {
 
     handleFileSelect(file) {
         if (!file) return;
-        if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-            alert('Please select an image or video file.');
+        if (!file.type.startsWith('image/') && !file.type.startsWith('video/') && file.type !== 'application/pdf') {
+            alert('Please select an image, video, or PDF file.');
             return;
         }
 
@@ -361,6 +371,14 @@ class MediaManager {
             vid.style.maxHeight = '100%';
             container.innerHTML = '';
             container.appendChild(vid);
+        } else {
+            // Document Fallback
+            container.innerHTML = `
+                <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 0.5rem;">📄</div>
+                    <div style="font-size: 0.9rem;">${file.type}</div>
+                </div>
+            `;
         }
     }
 

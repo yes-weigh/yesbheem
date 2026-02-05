@@ -85,11 +85,14 @@ class TemplateManager {
         // Auto-update type
         const typeSelect = document.getElementById('media-type-select');
         const isVideo = mediaItem.type === 'video' || (mediaItem.mimeType && mediaItem.mimeType.startsWith('video'));
+        const isImage = mediaItem.type === 'image' || (mediaItem.mimeType && mediaItem.mimeType.startsWith('image'));
 
         if (isVideo) {
             typeSelect.value = 'video';
-        } else {
+        } else if (isImage) {
             typeSelect.value = 'image';
+        } else {
+            typeSelect.value = 'document';
         }
 
         this.updateUI();
@@ -409,6 +412,7 @@ class TemplateManager {
         if (!t.content) return null;
         if (t.content.image && t.content.image.url) return { url: t.content.image.url, type: 'image' };
         if (t.content.video && t.content.video.url) return { url: t.content.video.url, type: 'video' };
+        if (t.content.document && t.content.document.url) return { url: t.content.document.url, type: 'document' };
         return null;
     }
 
@@ -539,6 +543,7 @@ class TemplateManager {
         let mediaType = 'image';
         if (content.image) { mediaUrl = content.image.url; mediaType = 'image'; }
         if (content.video) { mediaUrl = content.video.url; mediaType = 'video'; }
+        if (content.document) { mediaUrl = content.document.url; mediaType = 'document'; }
 
         document.getElementById('media-url-input').value = mediaUrl;
         document.getElementById('media-type-select').value = mediaType;
@@ -636,6 +641,7 @@ class TemplateManager {
         let mediaType = 'none';
         if (content.image) { mediaUrl = content.image.url; mediaType = 'image'; }
         if (content.video) { mediaUrl = content.video.url; mediaType = 'video'; }
+        if (content.document) { mediaUrl = content.document.url; mediaType = 'document'; }
 
         document.getElementById('media-url-input').value = mediaUrl;
         document.getElementById('media-type-select').value = mediaType;

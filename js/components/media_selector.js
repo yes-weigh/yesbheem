@@ -170,9 +170,11 @@ class MediaSelector {
                 // Check if mimeType or type matches
                 const isVideo = m.type === 'video' || m.mimeType?.startsWith('video');
                 const isImage = m.type === 'image' || m.mimeType?.startsWith('image');
+                const isDocument = m.type === 'document' || (!isVideo && !isImage);
 
                 if (this.filter.type === 'video' && !isVideo) return false;
                 if (this.filter.type === 'image' && !isImage) return false;
+                if (this.filter.type === 'document' && !isDocument) return false;
             }
 
             // Search & Select Filters
@@ -205,10 +207,24 @@ class MediaSelector {
 
     createCardHtml(m) {
         let previewHtml = '';
+        let badgeHtml = '';
+
         if (m.type === 'video' || m.mimeType?.startsWith('video')) {
             previewHtml = `<video src="${m.url}" style="width: 100%; height: 100%; object-fit: cover; pointer-events: none;"></video>`;
-        } else {
+            badgeHtml = 'VIDEO';
+        } else if (m.type === 'image' || m.mimeType?.startsWith('image')) {
             previewHtml = `<img src="${m.url}" alt="${this.escapeHtml(m.name)}" style="width: 100%; height: 100%; object-fit: cover; pointer-events: none;">`;
+            badgeHtml = 'IMAGE';
+        } else {
+            // Document / PDF Fallback
+            previewHtml = `
+                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); color: var(--text-muted);">
+                    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+            `;
+            badgeHtml = 'DOC';
         }
 
         return `
@@ -225,7 +241,7 @@ class MediaSelector {
                 <div style="aspect-ratio: 1; position: relative;">
                     ${previewHtml}
                     <div style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px; font-size: 0.6rem; color: white;">
-                        ${m.type === 'video' ? 'VIDEO' : 'IMAGE'}
+                        ${badgeHtml}
                     </div>
                 </div>
                 <div style="padding: 0.8rem;">

@@ -164,11 +164,22 @@ class TemplateRenderer {
                     vid.className = 'wa-media-img';
                     vid.controls = true;
                     mediaView.appendChild(vid);
-                } else {
+                } else if (mediaType === 'image') {
                     const img = document.createElement('img');
                     img.src = mediaUrl;
                     img.className = 'wa-media-img';
                     mediaView.appendChild(img);
+                } else {
+                    // Document Fallback
+                    mediaView.innerHTML = `
+                        <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(255,255,255,0.05); color:var(--text-muted); padding:1rem;">
+                            <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:0.5rem; opacity:0.7;">
+                                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <span style="font-size:0.8rem;">Document Attached</span>
+                            <span style="font-size:0.7rem; opacity:0.5; margin-top:0.2rem; word-break:break-all; max-width:80%; text-align:center;">${mediaUrl.split('/').pop().split('?')[0].substring(0, 30)}...</span>
+                        </div>
+                    `;
                 }
             } else {
                 mediaView.classList.add('hidden');

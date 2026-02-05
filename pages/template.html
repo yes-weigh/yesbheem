@@ -100,6 +100,7 @@
                             <option value="none">No Media</option>
                             <option value="image">Image</option>
                             <option value="video">Video</option>
+                            <option value="document">Document</option>
                         </select>
 
                         <div id="media-upload-area" style="display: flex; flex-direction: column; gap: 0.5rem;">
@@ -116,13 +117,15 @@
                                 </button>
                                 <button id="btn-upload-pc" class="cta-button"
                                     style="background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.2); flex: 1; justify-content: center; font-size: 0.8rem; padding: 0.5rem;">
-                                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right: 4px;">
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                                        viewBox="0 0 24 24" style="margin-right: 4px;">
                                         <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
                                     </svg>
                                     Upload
                                 </button>
                             </div>
-                            <input type="file" id="media-file-input" class="hidden" accept="image/*,video/*">
+                            <input type="file" id="media-file-input" class="hidden"
+                                accept="image/*,video/*,application/pdf">
 
                             <div style="text-align: center; font-size: 0.8rem; color: var(--text-muted);">OR</div>
 
