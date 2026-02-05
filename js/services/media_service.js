@@ -87,6 +87,29 @@ class MediaService {
     }
 
     /**
+     * Update media metadata
+     * @param {string} id 
+     * @param {Object} metadata { name, language, category }
+     */
+    async updateMediaMetadata(id, metadata) {
+        if (!window.firebaseContext) throw new Error('Firebase context missing');
+        const { db } = window.firebaseContext;
+        const { doc, updateDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+
+        try {
+            const docRef = doc(db, 'media_library', id);
+            await updateDoc(docRef, {
+                ...metadata,
+                updatedAt: serverTimestamp()
+            });
+            return true;
+        } catch (e) {
+            console.error('Service: Update failed', e);
+            throw e;
+        }
+    }
+
+    /**
      * Delete media from Storage and Firestore
      */
     async deleteMedia(id, storagePath) {

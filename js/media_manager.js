@@ -16,6 +16,7 @@ class MediaManager {
             category: ''
         };
         this.uploadFile = null;
+        this.editingMediaId = null;
 
         // UI Refs
         this.gridContainer = document.getElementById('media-grid-container');
@@ -60,6 +61,7 @@ class MediaManager {
     async loadMedia() {
         this.media = await this.service.getMedia();
         this.updateStats();
+        this.renderFilteredGrid();
     }
 
     async loadSettings() {
@@ -156,6 +158,7 @@ class MediaManager {
     }
 
     createCardHtml(m) {
+        let previewHtml = '';
         let badgeHtml = '';
         if (m.type === 'video' || m.mimeType?.startsWith('video')) {
             previewHtml = `<video src="${m.url}" style="width: 100%; height: 100%; object-fit: cover;"></video>`;
@@ -175,7 +178,7 @@ class MediaManager {
         }
 
         return `
-            <div class="template-card" style="flex-direction: column; gap: 0.8rem; padding: 0.8rem;">
+            <div class="template-card" style="flex-direction: column; gap: 0.8rem; padding: 0.8rem; cursor: pointer;" onclick="window.mediaMgr.editMedia('${m.id}')">
                 <div style="width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); position: relative;">
                     ${previewHtml}
                     <div style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; color: white;">
@@ -194,11 +197,11 @@ class MediaManager {
                 </div>
 
                 <div style="display: flex; justify-content: flex-end; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
-                    <button class="action-btn-icon" onclick="window.mediaMgr.deleteMedia('${m.id}', '${m.storagePath || ''}')" title="Delete" style="color: #ef4444;">
+                    <button class="action-btn-icon" onclick="event.stopPropagation(); window.mediaMgr.deleteMedia('${m.id}', '${m.storagePath || ''}')" title="Delete" style="color: #ef4444;">
                         🗑️
                     </button>
                     <!-- Potential for Copy URL button -->
-                    <button class="action-btn-icon" onclick="window.mediaMgr.copyUrl('${m.url}')" title="Copy URL">
+                    <button class="action-btn-icon" onclick="event.stopPropagation(); window.mediaMgr.copyUrl('${m.url}')" title="Copy URL">
                         📋
                     </button>
                 </div>
@@ -317,6 +320,7 @@ class MediaManager {
 
     resetModal() {
         this.uploadFile = null;
+        this.editingMediaId = null;
         document.getElementById('file-input').value = '';
         document.getElementById('upload-prompt').classList.remove('hidden');
         document.getElementById('file-preview').classList.add('hidden');
@@ -324,7 +328,11 @@ class MediaManager {
         document.getElementById('upload-name').value = '';
         document.getElementById('upload-language').value = '';
         document.getElementById('upload-category').value = '';
-        document.getElementById('btn-confirm-upload').disabled = true;
+
+        const btn = document.getElementById('btn-confirm-upload');
+        btn.disabled = true;
+        btn.textContent = 'Upload'; // Reset text
+
         this.progressContainer.classList.add('hidden');
     }
 
@@ -382,8 +390,56 @@ class MediaManager {
         }
     }
 
+    editMedia(id) {
+        const m = this.media.find(x => x.id === id);
+        if (!m) return;
+
+        this.openModal();
+        this.editingMediaId = id;
+
+        // Hide file upload prompt as we are editing metadata
+        // For now, let's keep it simple: just pre-fill metadata. 
+        // If they want to change file, they can drag/drop new one (handled by existing logic)
+
+        document.getElementById('upload-name').value = m.name || '';
+        document.getElementById('upload-language').value = m.language || '';
+        document.getElementById('upload-category').value = m.category || '';
+
+        // Show current preview
+        this.showFilePreview({ name: m.name, type: m.mimeType || m.type });
+        // Note: showFilePreview expects a File object usually for URL.createObjectURL
+        // We need to handle this case where we have a remote URL.
+        const container = document.getElementById('preview-container');
+        document.getElementById('upload-prompt').classList.add('hidden');
+        document.getElementById('file-preview').classList.remove('hidden');
+        document.getElementById('file-name-display').textContent = m.name;
+
+        if (m.type === 'image' || m.mimeType?.startsWith('image')) {
+            container.innerHTML = `<img src="${m.url}" style="max-width:100%; max-height:100%;">`;
+        } else if (m.type === 'video' || m.mimeType?.startsWith('video')) {
+            container.innerHTML = `<video src="${m.url}" controls style="max-width:100%; max-height:100%;"></video>`;
+        } else {
+            container.innerHTML = `
+                <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 0.5rem;">📄</div>
+                    <div style="font-size: 0.9rem;">${m.type}</div>
+                </div>
+            `;
+        }
+
+        const btn = document.getElementById('btn-confirm-upload');
+        btn.textContent = 'Update';
+        btn.disabled = false;
+    }
+
     async upload() {
-        if (!this.uploadFile) return;
+        // Validation check
+        // If editing, we don't strictly *need* a new file, but if new file provided, we use it.
+        // Actually, replacing file is complex (Storage path change etc). 
+        // Let's assume for this iteration: EDIT = Metadata Update Only.
+
+        const isEdit = !!this.editingMediaId;
+        if (!isEdit && !this.uploadFile) return;
 
         const name = document.getElementById('upload-name').value;
         const language = document.getElementById('upload-language').value;
@@ -395,33 +451,37 @@ class MediaManager {
         }
 
         // UI State
-        document.getElementById('btn-confirm-upload').disabled = true;
+        const btn = document.getElementById('btn-confirm-upload');
+        btn.disabled = true;
         document.getElementById('btn-cancel-upload').disabled = true;
         this.progressContainer.classList.remove('hidden');
-        this.updateProgress(10, 'Starting upload...');
+        this.updateProgress(10, isEdit ? 'Updating...' : 'Starting upload...');
 
         try {
-            // Simulated progress for better UX (Storage uploadBytes doesn't emit progress easily in basic usage without task management)
-            // But we can just jump to 50% then 100%
-            setTimeout(() => this.updateProgress(40, 'Uploading to Storage...'), 500);
-
             const metadata = { name, language, category };
-            await this.service.uploadMedia(this.uploadFile, metadata);
 
-            this.updateProgress(100, 'Done!');
+            if (isEdit) {
+                // Update Metadata Only
+                await this.service.updateMediaMetadata(this.editingMediaId, metadata);
+                this.updateProgress(100, 'Updated!');
+            } else {
+                // New Upload
+                setTimeout(() => this.updateProgress(40, 'Uploading to Storage...'), 500);
+                await this.service.uploadMedia(this.uploadFile, metadata);
+                this.updateProgress(100, 'Done!');
+            }
 
             setTimeout(() => {
                 this.closeModal();
                 this.loadMedia(); // Refresh grid
-                // Toast success
-                this.showToast('Media uploaded successfully!');
+                this.showToast(isEdit ? 'Media updated!' : 'Media uploaded successfully!');
             }, 800);
 
         } catch (e) {
-            console.error('Upload Error', e);
-            alert('Upload Failed: ' + e.message);
+            console.error('Action Failed', e);
+            alert((isEdit ? 'Update' : 'Upload') + ' Failed: ' + e.message);
             this.updateProgress(0, 'Failed');
-            document.getElementById('btn-confirm-upload').disabled = false;
+            btn.disabled = false;
             document.getElementById('btn-cancel-upload').disabled = false;
         }
     }
