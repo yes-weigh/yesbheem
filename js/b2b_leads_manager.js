@@ -26,6 +26,9 @@ if (!window.B2BLeadsManager) {
             // Selection
             this.selectedLeads = new Set();
 
+            // Modal state
+            this.isModalOpen = false;
+
             this.init();
         }
 
@@ -68,6 +71,26 @@ if (!window.B2BLeadsManager) {
         }
 
         setupEventListeners() {
+            // Cleanup old modal if exists in body to prevent duplicates
+            const oldModal = document.querySelector('body > #lead-edit-modal');
+            if (oldModal) {
+                console.log('Removing stale modal from body');
+                oldModal.remove();
+            }
+
+            // Move Modal to Body to avoid stacking context issues
+            const modal = document.getElementById('lead-edit-modal');
+            if (modal) {
+                if (modal.parentElement !== document.body) {
+                    console.log('Moving modal to body. Current parent:', modal.parentElement.tagName);
+                    document.body.appendChild(modal);
+                } else {
+                    console.log('Modal already in body');
+                }
+            } else {
+                console.error('Modal #lead-edit-modal NOT FOUND in DOM during setup');
+            }
+
             // Search
             const searchInput = document.getElementById('lead-search');
             if (searchInput) {
@@ -287,6 +310,11 @@ if (!window.B2BLeadsManager) {
         // --- Modals ---
 
         openAddModal() {
+            console.log('openAddModal clicked. isModalOpen:', this.isModalOpen);
+            if (this.isModalOpen) {
+                console.log('Modal already open, ignoring duplicate call');
+                return;
+            }
             this.openEditModal(null);
         }
 
@@ -341,14 +369,56 @@ if (!window.B2BLeadsManager) {
                             </div>
                         </div>
                         <div style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px;">
-                            <button type="button" class="btn-secondary" onclick="document.getElementById('lead-edit-modal').style.display='none'">Cancel</button>
+                            <button type="button" class="btn-secondary" onclick="window.b2bLeadsManager.closeModal()">Cancel</button>
                             <button type="submit" class="btn-primary">Save Lead</button>
                         </div>
                     </form>
                 </div>
             `;
 
+            this.isModalOpen = true;
             modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.zIndex = '10001';
+
+
+            // Add overlay click handler to close modal when clicking outside
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    this.closeModal();
+                }
+            };
+
+            // Prevent clicks on modal container from closing the modal
+            const modalContainer = modal.querySelector('.modal-container');
+            if (modalContainer) {
+                modalContainer.onclick = (e) => {
+                    e.stopPropagation();
+                };
+            }
+
+            // Debug visibility
+            const computedStyle = window.getComputedStyle(modal);
+            console.log('Modal opened. Display:', computedStyle.display, 'Z-Index:', computedStyle.zIndex, 'Visibility:', computedStyle.visibility);
+            console.log('Modal parent:', modal.parentElement.tagName);
+
+            // Watch for unexpected changes
+            setTimeout(() => {
+                const newStyle = window.getComputedStyle(modal);
+                if (newStyle.display === 'none' || newStyle.visibility === 'hidden') {
+                    console.error('MODAL WAS AUTO-HIDDEN! Display:', newStyle.display, 'Visibility:', newStyle.visibility);
+                }
+            }, 100);
+        }
+
+        closeModal() {
+            console.log('closeModal called');
+            this.isModalOpen = false;
+            const modal = document.getElementById('lead-edit-modal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.style.visibility = 'hidden';
+            }
         }
 
         async saveLead(leadId) {
