@@ -60,8 +60,13 @@ class SecurityOverlay {
 
                     this.createOverlay();
                     this.startWatchdog();
-                    this.startHeartbeat(); // Start session heartbeat
-                    this.startSessionValidator(); // Start listening for remote termination
+
+                    if (tokenResult.claims.role !== 'media_viewer') {
+                        this.startHeartbeat(); // Start session heartbeat
+                        this.startSessionValidator(); // Start listening for remote termination
+                    } else {
+                        console.log('[SecurityOverlay] Public Media Viewer: Skipping session heartbeat/validation.');
+                    }
                 } catch (e) {
                     console.error("[SecurityOverlay] Token verification error:", e);
                     this.terminate("Auth Verification Failed");
@@ -86,7 +91,14 @@ class SecurityOverlay {
                 }
 
                 // Redirect to Fortress Login if not authenticated
-                window.location.href = 'login.html';
+                // UNLESS we are on a public route!
+                if (window.location.pathname.startsWith('/public/')) {
+                    console.log('[SecurityOverlay] Public route detected. Skipping strict redirect.');
+                    return;
+                }
+
+                console.warn("[SecurityOverlay] Unauthenticated access. Redirecting...");
+                window.location.href = '/login.html';
             }
         });
 
@@ -121,7 +133,7 @@ class SecurityOverlay {
 
         document.getElementById('force-logout-btn').addEventListener('click', () => {
             signOut(auth).then(() => {
-                window.location.href = 'login.html';
+                window.location.href = '/login.html';
             });
         });
     }
@@ -265,12 +277,12 @@ class SecurityOverlay {
             `;
             // Note: LogoutHandler will redirect, but we set a backup timeout
             setTimeout(() => {
-                window.location.href = 'login.html';
+                window.location.href = '/login.html';
             }, 3000);
         }).catch((error) => {
             console.error('[SecurityOverlay] Terminate failed:', error);
             // Force redirect even if cleanup fails
-            window.location.href = 'login.html';
+            window.location.href = '/login.html';
         });
     }
 }

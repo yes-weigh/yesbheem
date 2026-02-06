@@ -482,3 +482,53 @@ exports.translateText = onCall(async (request) => {
         throw new HttpsError('internal', `Translation failed: ${error.message}`);
     }
 });
+
+// ============================================================================
+// MEDIA PASSKEY AUTH
+// ============================================================================
+
+/**
+ * Verifies the shared passkey and returns a custom Auth Token
+ * used for public media access
+ */
+exports.verifyMediaPasskey = onCall({ cors: true }, async (request) => {
+    // 1. Validate Input
+    const { passkey } = request.data;
+    if (!passkey) {
+        throw new HttpsError('invalid-argument', 'Passkey required.');
+    }
+
+    // 2. Check Passkey
+    // In production, this should be in an environment variable (e.g. process.env.MEDIA_PASSKEY)
+    // For now, hardcoding as agreed in plan
+    const CORRECT_PASSKEY = "YesMedia2024!";
+
+    if (passkey !== CORRECT_PASSKEY) {
+        // Log the failed attempt for security auditing
+        console.warn(`[verifyMediaPasskey] Failed attempt with passkey: ${passkey.substring(0, 3)}***`);
+        throw new HttpsError('permission-denied', 'Invalid Passkey.');
+    }
+
+    // 3. Mint Custom Token
+    // We create a "virtual" user UID. 
+    // It's better to use a random UID each time so sessions are unique 
+    // and we don't hit rate limits on a single UID.
+    const uniqueSessionId = `media-viewer-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
+    try {
+        const customClaims = {
+            role: 'media_viewer',
+            restricted: true,
+            trustedDevice: true // Bypass the security overlay check naturally
+        };
+
+        const token = await admin.auth().createCustomToken(uniqueSessionId, customClaims);
+        console.log(`[verifyMediaPasskey] Generated token for session: ${uniqueSessionId}`);
+
+        return { token };
+
+    } catch (e) {
+        console.error('[verifyMediaPasskey] Token creation failed:', e);
+        throw new HttpsError('internal', 'Auth Token Generation Failed');
+    }
+});

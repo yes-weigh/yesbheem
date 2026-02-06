@@ -21,7 +21,7 @@ export class LogoutHandler {
         if (!user) {
             // Already logged out, just redirect
             console.log('[LogoutHandler] No user logged in, redirecting to login');
-            window.location.href = 'login.html';
+            window.location.href = '/login.html';
             return;
         }
 
@@ -62,7 +62,7 @@ export class LogoutHandler {
 
             // Redirect to login
             console.log('[LogoutHandler] Redirecting to login page...');
-            window.location.href = 'login.html';
+            window.location.href = '/login.html';
 
         } catch (error) {
             console.error('[LogoutHandler] Logout error:', error);
@@ -81,7 +81,7 @@ export class LogoutHandler {
             }
 
             // Always redirect to login
-            window.location.href = 'login.html';
+            window.location.href = '/login.html';
         }
     }
 

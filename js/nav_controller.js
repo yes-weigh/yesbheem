@@ -47,6 +47,14 @@ class NavigationController {
                 }
             }
         }
+
+        // [Public Route] Media Access
+        if (path.startsWith('/public/media')) {
+            import('./public_access_manager.js').then(({ PublicAccessManager }) => {
+                PublicAccessManager.init();
+            });
+            return;
+        }
         let initialPage = 'dashboard';
 
         // Check if path corresponds to a valid page
@@ -162,7 +170,7 @@ class NavigationController {
 
                     // Do NOT remove the loader. 
                     // Redirect immediately.
-                    window.location.href = 'login.html';
+                    window.location.href = '/login.html';
                     return;
                 }
                 // Hide initial loader ONLY if authenticated
@@ -178,7 +186,7 @@ class NavigationController {
             console.error('Error in checkAccess:', e);
             // In case of error (e.g. auth service down), we might want to redirect too
             // But for now, let's just log it. The loader might stay endlessly, which is better than leaking UI.
-            window.location.href = 'login.html';
+            window.location.href = '/login.html';
         }
     }
 
@@ -263,7 +271,7 @@ class NavigationController {
                         const { app } = await import(configPath);
                         const auth = getAuth(app);
                         await signOut(auth);
-                        window.location.href = 'login.html';
+                        window.location.href = '/login.html';
                     } catch (fallbackError) {
                         console.error('Fallback sign out also failed:', fallbackError);
                         alert('Sign out failed: ' + error.message);

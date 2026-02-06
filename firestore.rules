@@ -111,7 +111,9 @@ service cloud.firestore {
 
     // Media Library
     match /media_library/{mediaId} {
-      allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
+      // Allow read for Admin, Active Trusted Users, OR the new Media Viewer role
+      allow read: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin' || request.auth.token.role == 'media_viewer';
+      allow write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
     }
 
     // Campaigns
