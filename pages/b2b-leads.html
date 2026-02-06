@@ -230,7 +230,8 @@
             <span id="lead-count-display" style="font-size: 0.85rem; color: var(--text-muted);">Loading...</span>
             <button class="btn-secondary" onclick="window.b2bLeadsManager.openImportModal()">Import CSV</button>
             <button class="btn-secondary" onclick="window.b2bLeadsManager.exportCSV()">Export CSV</button>
-            <button class="btn-primary" onclick="window.b2bLeadsManager.openAddModal()">+ Add Lead</button>
+            <button class="btn-primary" onclick="event.stopPropagation(); window.b2bLeadsManager.openAddModal()">+ Add
+                Lead</button>
         </div>
     </div>
 
@@ -330,5 +331,7 @@
         </div>
     </div>
 </div>
+
+
 
 <script type="module" src="js/b2b_leads_manager.js"></script>

@@ -311,9 +311,17 @@ if (!window.B2BLeadsManager) {
 
         openAddModal() {
             console.log('openAddModal clicked. isModalOpen:', this.isModalOpen);
+
+            // Self-repair: If flag says open, but DOM says hidden/missing, reset flag
+            const modal = document.getElementById('lead-edit-modal');
             if (this.isModalOpen) {
-                console.log('Modal already open, ignoring duplicate call');
-                return;
+                if (!modal || modal.style.display === 'none') {
+                    console.warn('State mismatch detected (isModalOpen=true but modal hidden). Resetting state.');
+                    this.isModalOpen = false;
+                } else {
+                    console.log('Modal already open, ignoring duplicate call');
+                    return;
+                }
             }
             this.openEditModal(null);
         }
@@ -322,8 +330,18 @@ if (!window.B2BLeadsManager) {
             const isEdit = !!leadId;
             const lead = isEdit ? this.leads.find(l => l.id === leadId) : {};
 
-            const modal = document.getElementById('lead-edit-modal');
+            let modal = document.getElementById('lead-edit-modal');
+            if (!modal) {
+                console.error('CRITICAL: lead-edit-modal NOT FOUND in DOM.');
+                alert('Error: Modal template missing. Please reload the page.');
+                return;
+            }
+
             const content = document.getElementById('lead-edit-modal-content');
+            if (!content) {
+                console.error('CRITICAL: lead-edit-modal-content container NOT FOUND.');
+                return;
+            }
 
             content.innerHTML = `
                 <div style="padding: 20px;">
@@ -377,22 +395,50 @@ if (!window.B2BLeadsManager) {
             `;
 
             this.isModalOpen = true;
+
+            // BRUTE FORCE VISIBILITY FIX vs Animation Glitches
+            // Ensure no animation resets visibility to hidden
+            modal.style.transition = 'none';
+            modal.style.animation = 'none';
+
+            // Force visibility
             modal.style.display = 'flex';
             modal.style.visibility = 'visible';
-            modal.style.zIndex = '10001';
+            modal.style.opacity = '1';
 
+            // Fix interactivity
+            modal.style.pointerEvents = 'auto';
+
+            // Fix interactivity on container specifically
+            if (modal.querySelector('.modal-container')) {
+                modal.querySelector('.modal-container').style.pointerEvents = 'auto';
+            }
+
+            // Ensure it's on top of EVERYTHING
+            modal.style.zIndex = '2147483647';
+
+            // Attempt to keep blur, but prioritize content visibility
+            modal.style.backdropFilter = 'blur(4px)';
+
+            // Debug specific properties
+            console.log('Applied Brute Force Styles to Modal');
 
             // Add overlay click handler to close modal when clicking outside
-            modal.onclick = (e) => {
-                if (e.target === modal) {
-                    this.closeModal();
-                }
-            };
+            // Use setTimeout to ensure we don't catch the same click that opened it (if bubbling happened despite stopPropagation)
+            setTimeout(() => {
+                modal.onclick = (e) => {
+                    if (e.target === modal) {
+                        console.log('Overlay clicked. Closing modal.');
+                        this.closeModal();
+                    }
+                };
+            }, 100);
 
             // Prevent clicks on modal container from closing the modal
             const modalContainer = modal.querySelector('.modal-container');
             if (modalContainer) {
                 modalContainer.onclick = (e) => {
+                    console.log('Modal Container clicked'); // Debug interaction
                     e.stopPropagation();
                 };
             }
@@ -400,22 +446,23 @@ if (!window.B2BLeadsManager) {
             // Debug visibility
             const computedStyle = window.getComputedStyle(modal);
             console.log('Modal opened. Display:', computedStyle.display, 'Z-Index:', computedStyle.zIndex, 'Visibility:', computedStyle.visibility);
-            console.log('Modal parent:', modal.parentElement.tagName);
 
             // Watch for unexpected changes
             setTimeout(() => {
                 const newStyle = window.getComputedStyle(modal);
                 if (newStyle.display === 'none' || newStyle.visibility === 'hidden') {
-                    console.error('MODAL WAS AUTO-HIDDEN! Display:', newStyle.display, 'Visibility:', newStyle.visibility);
+                    console.error('MODAL WAS AUTO-HIDDEN (Post-Open)! Display:', newStyle.display, 'Visibility:', newStyle.visibility, 'Parent:', modal.parentElement.tagName);
                 }
             }, 100);
         }
 
         closeModal() {
+            // console.trace('closeModal called'); // Uncomment for debugging
             console.log('closeModal called');
             this.isModalOpen = false;
             const modal = document.getElementById('lead-edit-modal');
             if (modal) {
+                modal.onclick = null; // Cleanup listener
                 modal.style.display = 'none';
                 modal.style.visibility = 'hidden';
             }
@@ -525,5 +572,11 @@ if (!window.B2BLeadsManager) {
 }
 
 if (window.B2BLeadsManager) {
-    window.b2bLeadsManager = new window.B2BLeadsManager();
+    if (!window.b2bLeadsManager) {
+        window.b2bLeadsManager = new window.B2BLeadsManager();
+    } else {
+        // Re-initialize existing instance to attach to new DOM elements from fresh page load
+        console.log('Re-using existing B2BLeadsManager instance');
+        window.b2bLeadsManager.init();
+    }
 }
