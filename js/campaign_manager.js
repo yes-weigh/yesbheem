@@ -88,32 +88,41 @@ class CampaignManager {
     bindEvents() {
         // Tab Switching
         this.tabs.forEach(tab => {
-            tab.addEventListener('click', (e) => {
+            tab.onclick = (e) => {
                 this.switchTab(e.target.dataset.tab);
-            });
+            };
         });
 
         // Audience Logic
-        this.audienceSelect.addEventListener('change', () => this.handleAudienceChange());
+        if (this.audienceSelect) {
+            this.audienceSelect.onchange = () => this.handleAudienceChange();
+        }
 
         // Sender Type Toggle
         this.senderRadios.forEach(radio => {
-            radio.addEventListener('change', () => this.populateSenderSelect());
+            radio.onchange = () => this.populateSenderSelect();
         });
 
         // Template Preview
-        this.templateSelect.addEventListener('change', () => this.handleTemplateChange());
+        if (this.templateSelect) {
+            this.templateSelect.onchange = () => this.handleTemplateChange();
+        }
 
         // Start Campaign
-        this.startBtn.addEventListener('click', () => this.startCampaign());
+        if (this.startBtn) {
+            this.startBtn.onclick = () => this.startCampaign();
+        }
 
         // Refresh
-        document.getElementById('btn-refresh-campaigns').addEventListener('click', () => this.loadCampaigns());
+        const refreshBtn = document.getElementById('btn-refresh-campaigns');
+        if (refreshBtn) {
+            refreshBtn.onclick = () => this.loadCampaigns();
+        }
 
         // Create Audience Button
         const createAudienceBtn = document.getElementById('btn-create-audience');
         if (createAudienceBtn) {
-            createAudienceBtn.addEventListener('click', () => this.openCreateAudienceModal());
+            createAudienceBtn.onclick = () => this.openCreateAudienceModal();
         }
     }
 
@@ -333,6 +342,8 @@ class CampaignManager {
     }
 
     async startCampaign() {
+        if (this.isSubmitting) return;
+
         const name = this.nameInput.value.trim();
         const audienceId = this.audienceSelect.value;
         const senderId = this.senderSelect.value;
@@ -351,6 +362,7 @@ class CampaignManager {
             return;
         }
 
+        this.isSubmitting = true;
         this.startBtn.disabled = true;
         this.startBtn.textContent = '🚀 Launching...';
 
@@ -387,6 +399,7 @@ class CampaignManager {
             console.error("Campaign Start Error:", e);
             alert("Failed to start campaign");
         } finally {
+            this.isSubmitting = false;
             this.startBtn.disabled = false;
             this.startBtn.textContent = '🚀 Start Campaign';
         }
