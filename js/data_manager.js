@@ -12,7 +12,7 @@ import { DataLayer } from './core/data-layer.js';
 import StringUtils from './utils/string-utils.js';
 
 
-class DataManager {
+export class DataManager {
     constructor() {
         this.currentCSVUrl = null;
         // URL for the 'zip_codes' sheet CSV export

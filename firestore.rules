@@ -134,7 +134,7 @@ service cloud.firestore {
     // Report Data (Actual CSV content stored in separate collection)
     match /reports_data/{docId} {
       allow read: if request.auth != null;
-      allow write: if isActiveUser() && isTrustedDevice();
+      allow write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
     }
 
     // Task Management Rules

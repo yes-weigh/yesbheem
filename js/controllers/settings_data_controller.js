@@ -2,6 +2,8 @@
  * SettingsDataController
  * Manages CSV report uploads, report management, and KPI data input from Settings page
  */
+import { DataManager } from '../data_manager.js';
+
 export class SettingsDataController {
     constructor() {
         this.dataManager = null;
@@ -19,16 +21,9 @@ export class SettingsDataController {
     async init() {
         console.log('SettingsDataController initializing...');
 
-        // Wait for DataManager
-        await this.waitForDataManager();
+        // Initialize DataManager
+        this.dataManager = new DataManager();
 
-        // Get or create DataManager instance
-        if (window.dataManager) {
-            this.dataManager = window.dataManager;
-        } else {
-            this.dataManager = new DataManager();
-            window.dataManager = this.dataManager;
-        }
 
         // Setup DOM references
         this.setupDOMReferences();
@@ -40,20 +35,7 @@ export class SettingsDataController {
         await this.renderReportsList();
     }
 
-    async waitForDataManager() {
-        return new Promise((resolve) => {
-            if (typeof DataManager !== 'undefined') {
-                resolve();
-            } else {
-                const check = setInterval(() => {
-                    if (typeof DataManager !== 'undefined') {
-                        clearInterval(check);
-                        resolve();
-                    }
-                }, 100);
-            }
-        });
-    }
+
 
     setupDOMReferences() {
         this.uploadZone = document.getElementById('upload-zone');
