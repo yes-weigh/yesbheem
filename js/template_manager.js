@@ -1458,10 +1458,9 @@ class TemplateManager {
 
         const footerPreview = document.getElementById('wa-footer-preview');
         if (footerPreview) {
-            footerPreview.innerText = '';
-            footerPreview.classList.add('hidden');
+            footerPreview.innerText = 'Interweighing Pvt Ltd';
+            footerPreview.classList.remove('hidden');
         }
-
         document.getElementById('media-url-input').value = '';
         this.buttons = [];
         this.renderButtonsInline();
