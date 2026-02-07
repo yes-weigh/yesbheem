@@ -119,6 +119,11 @@ service cloud.firestore {
     // Campaigns
     match /campaigns/{campaignId} {
       allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
+      
+      // Campaign Logs (Items subcollection)
+      match /items/{itemId} {
+        allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
+      }
     }
 
     // Campaign Recipients
