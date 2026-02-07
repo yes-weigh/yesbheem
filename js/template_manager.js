@@ -33,6 +33,22 @@ class TemplateManager {
         this.setupEventListeners();
         this.setupViewToggle();
 
+        // Initialize KAM Selector
+        try {
+            const { KAMSelector } = await import('./components/kam-selector.js');
+            this.kamSelector = new KAMSelector({
+                containerId: 'test-kam-selector-container',
+                onChange: (val) => {
+                    console.log('Selected Test KAM:', val);
+                },
+                getKAMImage: (name) => {
+                    return (this.settings && this.settings.key_account_images && this.settings.key_account_images[name]) || null;
+                }
+            });
+        } catch (e) {
+            console.error('Failed to load KAM Selector component', e);
+        }
+
         try {
             const [sessions, templates, settings] = await Promise.all([
                 this.service.getSessions(),
@@ -48,11 +64,18 @@ class TemplateManager {
             // Update dashboard stats
             this.updateDashboardStats();
 
-            // Populate language and category dropdowns
+            // Populate language and category dropdowns, and KAMs
             if (settings) {
                 this.settings = settings; // Store settings
                 this.populateLanguages(settings.template_languages || []);
                 this.populateCategories(settings.template_categories || []);
+
+                // Populate KAM Selector
+                if (this.kamSelector && settings.key_accounts) {
+                    // Extract names from key_accounts (which might be strings or objects)
+                    const kamNames = settings.key_accounts.map(k => typeof k === 'string' ? k : k.name);
+                    this.kamSelector.setKAMs(kamNames);
+                }
             }
 
         } catch (e) {
@@ -1287,7 +1310,66 @@ class TemplateManager {
         btn.disabled = true;
 
         try {
+            // Prepared payload (has Placeholders like {{KAM_PHONE}})
             const payload = this.preparePayload();
+
+            // --- RESOLVE DYNAMIC VALUES FOR TEST SEND ---
+            // 1. Get Selected KAM
+            const selectedKamName = this.kamSelector ? this.kamSelector.currentKAM : null;
+            let kamPhone = null;
+
+            if (selectedKamName && selectedKamName !== 'all' && selectedKamName !== 'not_assigned') {
+                // Resolve phone from settings
+                if (this.settings && this.settings.key_accounts) {
+                    const kamObj = this.settings.key_accounts.find(k => {
+                        if (typeof k === 'string') return k === selectedKamName;
+                        return k.name === selectedKamName;
+                    });
+                    if (kamObj && typeof kamObj === 'object' && kamObj.phone) {
+                        kamPhone = kamObj.phone;
+                    }
+                }
+            }
+
+            // 2. Alert if dynamic buttons exist but no KAM selected/resolved
+            const hasDynamicButtons = payload.content && payload.content.interactiveButtons &&
+                payload.content.interactiveButtons.some(b => {
+                    const params = JSON.parse(b.buttonParamsJson);
+                    return params.dynamicKam || b.name === 'cta_call' && params.phone_number === '{{KAM_PHONE}}'
+                        || b.name === 'cta_url' && params.url.includes('{{KAM_PHONE}}');
+                });
+
+            if (hasDynamicButtons && !kamPhone) {
+                alert('Warning: This template uses dynamic KAM buttons, but no KAM is selected (or selected KAM has no phone). Buttons may not work as expected.');
+            }
+
+            // 3. Perform Replacement in Payload
+            if (kamPhone && payload.content && payload.content.interactiveButtons) {
+                payload.content.interactiveButtons = payload.content.interactiveButtons.map(b => {
+                    const params = JSON.parse(b.buttonParamsJson);
+                    let url = params.url || '';
+                    let phoneNumber = params.phone_number || '';
+
+                    // Check for Dynamic placeholders or flags
+                    const isDynamic = params.dynamicKam || phoneNumber === '{{KAM_PHONE}}' || url.includes('{{KAM_PHONE}}');
+
+                    if (isDynamic) {
+                        if (b.name === 'cta_call') {
+                            params.phone_number = kamPhone;
+                        } else if (b.name === 'cta_url') {
+                            params.url = params.url.replace('{{KAM_PHONE}}', kamPhone);
+                            params.merchant_url = params.url; // Update merchant url too
+                        }
+                        // Remove dynamic flag for final send
+                        delete params.dynamicKam;
+                    }
+
+                    return { ...b, buttonParamsJson: JSON.stringify(params) };
+                });
+            }
+
+            // --- END RESOLUTION ---
+
             const res = await this.service.sendMessage({
                 sessionId,
                 to,
@@ -1303,7 +1385,7 @@ class TemplateManager {
 
         } catch (e) { console.error(e); alert('Failed to send'); }
         finally {
-            btn.textContent = 'Send Message';
+            btn.textContent = 'Test Send'; // Fixed Text
             btn.disabled = false;
         }
     }
@@ -1344,9 +1426,19 @@ class TemplateManager {
                     const waUrl = `https://wa.me/${phone}${text ? '?text=' + encodeURIComponent(text) : ''}`;
                     name = 'cta_url';
                     params.url = params.merchant_url = waUrl;
+
+                    // Maintain Dynamic KAM for Chat Buttons
+                    if (b.dynamicKam) {
+                        const dynamicWaUrl = `https://wa.me/{{KAM_PHONE}}${text ? '?text=' + encodeURIComponent(text) : ''}`;
+                        params.url = params.merchant_url = dynamicWaUrl;
+                    }
                 }
                 if (b.type === 'copy') { name = 'cta_copy'; params.copy_code = b.value; }
-                if (b.type === 'call') { name = 'cta_call'; params.phone_number = b.value; }
+                if (b.type === 'call') {
+                    name = 'cta_call';
+                    // If Dynamic, use placeholder for payload generation (to be replaced later)
+                    params.phone_number = b.dynamicKam ? '{{KAM_PHONE}}' : b.value;
+                }
                 if (b.type === 'reply') { params.id = 'btn_' + Math.random().toString(36).substr(2, 9); }
                 // Preserve dynamicKam flag for call buttons
                 if (b.dynamicKam) params.dynamicKam = true;
