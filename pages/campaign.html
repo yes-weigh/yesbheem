@@ -234,6 +234,23 @@
             letter-spacing: 0.1em;
             text-align: right;
         }
+
+        /* Delete Button Styles (Inline Fallback) */
+        .action-btn.delete-btn {
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+
+        .action-btn.delete-btn:hover {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.5);
+            color: #fca5a5;
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
+        }
+
+        .action-btn.delete-btn:hover svg {
+            transform: scale(1.1);
+        }
     </style>
 
     <div class="campaign-header">
@@ -280,7 +297,7 @@
                         <th>Progress</th>
                         <th>Created</th>
                         <th>Sent</th>
-                        <th>Actions</th>
+                        <th style="min-width: 200px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="campaign-list-body">
@@ -1156,7 +1173,7 @@
     <!-- Load Logic -->
     <script src="js/services/template_service.js"></script>
     <script src="js/renderers/template_renderer.js"></script>
-    <script type="module" src="js/campaign_manager.js?t=1770118600000"></script>
+    <script type="module" src="js/campaign_manager.js?t=1770444300000"></script>
     <script>
         // This inline script runs every time the page is loaded (even when module is skipped)
         // Wait for DOM to be ready, then check if CampaignManager exists and reinitialize

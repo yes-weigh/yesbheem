@@ -468,20 +468,6 @@ class NavigationController {
             // Because we append timestamp, we perform a partial match or check global registry if we had one.
             // Simplified check: check if any script tag ends with the base filename
 
-            // Clean the src of query params for checking
-            const cleanSrc = src.split('?')[0];
-            const fileName = cleanSrc.substring(cleanSrc.lastIndexOf('/') + 1);
-
-            // Avoid re-loading service/renderer scripts which are likely to declare global classes
-            // This is a heuristic. A robust solution would use a module system or manual registry.
-            if (document.querySelector(`script[src*="${fileName}"]`)) {
-                console.log(`Script ${fileName} already loaded. Skipping.`);
-                resolve();
-                return;
-            }
-
-            const script = document.createElement('script');
-
             // Resolve the path using the base path configuration
             let resolvedSrc = src;
             if (window.appConfig && !src.startsWith('http') && !src.startsWith('//')) {
@@ -489,6 +475,26 @@ class NavigationController {
                 resolvedSrc = window.appConfig.resolvePath(src);
             }
 
+            // Check if script is already loaded by filename
+            const cleanSrc = src.split('?')[0];
+            const fileName = cleanSrc.substring(cleanSrc.lastIndexOf('/') + 1);
+
+            const existingScript = document.querySelector(`script[src*="${fileName}"]`);
+            if (existingScript) {
+                // Check if the source is exactly the same (including query params)
+                // We compare against the resolved source
+                if (existingScript.getAttribute('src') === resolvedSrc || existingScript.src === resolvedSrc || existingScript.src.endsWith(resolvedSrc)) {
+                    console.log(`Script ${fileName} already loaded with same version. Skipping.`);
+                    resolve();
+                    return;
+                }
+
+                // If different, verify if we should reload (e.g. timestamp changed)
+                console.log(`Script ${fileName} found but version changed. Reloading...`);
+                existingScript.remove();
+            }
+
+            const script = document.createElement('script');
             script.src = resolvedSrc;
             if (isModule) script.type = 'module';
             script.onload = resolve;
