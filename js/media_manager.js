@@ -123,8 +123,22 @@ class MediaManager {
 
         // 2. Language Cards
         let langCardsHtml = '';
+        const allowedLanguages = ['Malayalam', 'Tamil', 'Hindi', 'Kannada', 'Telugu'];
+
         if (this.languages && this.languages.length > 0) {
-            langCardsHtml = this.languages.map(lang => {
+            // Filter languages to only the allowed ones (case-insensitive matching)
+            const targetLanguages = this.languages.filter(lang =>
+                allowedLanguages.some(allowed => allowed.toLowerCase() === lang.toLowerCase())
+            );
+
+            // Sort to match the user's preferred order
+            targetLanguages.sort((a, b) => {
+                const indexA = allowedLanguages.findIndex(l => l.toLowerCase() === a.toLowerCase());
+                const indexB = allowedLanguages.findIndex(l => l.toLowerCase() === b.toLowerCase());
+                return indexA - indexB;
+            });
+
+            langCardsHtml = targetLanguages.map(lang => {
                 const count = this.media.filter(m =>
                     m.language?.toLowerCase() === lang.toLowerCase()
                 ).length;

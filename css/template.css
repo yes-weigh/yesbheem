@@ -69,6 +69,11 @@
     scroll-behavior: smooth;
 }
 
+/* Scoped layout for Media Dashboard - Single Row */
+#media-page .language-stats-grid {
+    grid-template-rows: 1fr;
+}
+
 /* Custom scrollbar for language grid */
 .language-stats-grid::-webkit-scrollbar {
     height: 8px;
