@@ -768,19 +768,19 @@ input:checked+.slider:before {
     transform: scale(1.1) rotate(5deg);
 }
 
-/* Delete Button - Red Theme (if needed) */
-.action-btn.delete-btn {
+/* Delete Button - Red Theme */
+.action-btn.campaign-delete-btn {
     border-color: rgba(239, 68, 68, 0.3);
     color: #f87171;
 }
 
-.action-btn.delete-btn:hover {
+.action-btn.campaign-delete-btn:hover {
     background: rgba(239, 68, 68, 0.15);
     border-color: rgba(239, 68, 68, 0.5);
     color: #fca5a5;
     box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
 }
 
-.action-btn.delete-btn:hover svg {
+.action-btn.campaign-delete-btn:hover svg {
     transform: scale(1.1);
 }
