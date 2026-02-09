@@ -9,8 +9,7 @@ const nodemailer = require('nodemailer');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
-const { promisify } = require('util');
-const poppler = require('pdf-poppler');
+const sharp = require('sharp');
 
 admin.initializeApp();
 
@@ -653,24 +652,57 @@ exports.onCampaignCompleted = onDocumentUpdated({
 // ============================================================================
 
 /**
- * Helper function to generate a thumbnail from a PDF file
+ * Helper function to generate a simple placeholder thumbnail for PDF files
+ * Uses sharp to create a styled placeholder image
  * @param {string} pdfPath - Local path to the PDF file
- * @param {string} outputPath - Local path where thumbnail should be saved
+ * @param {string} outputPath - Directory where thumbnail should be saved
  * @returns {Promise<string>} Path to generated thumbnail
  */
 async function generatePdfThumbnail(pdfPath, outputPath) {
-    const opts = {
-        format: 'jpeg',
-        out_dir: outputPath,
-        out_prefix: 'thumb',
-        page: 1, // First page only
-        scale: 800 // Output width in pixels
-    };
-
     try {
-        await poppler.convert(pdfPath, opts);
-        // pdf-poppler generates: thumb-1.jpg
-        const thumbnailPath = path.join(outputPath, 'thumb-1.jpg');
+        const thumbnailPath = path.join(outputPath, 'thumb.jpg');
+
+        // Create apdfPlaceholder styled placeholder image using Sharp
+        // Create a simple gray gradient background with "PDF" text overlay
+        const width = 800;
+        const height = 1131; // A4 aspect ratio (800 * 1.414)
+
+        // Create SVG placeholder
+        const svg = `
+            <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+                <!-- Background gradient -->
+                <defs>
+                    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#f9fafb;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#e5e7eb;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#bg)"/>
+                
+                <!-- Content area -->
+                <rect x="40" y="40" width="${width - 80}" height="${height - 80}" 
+                      fill="#ffffff" stroke="#d1d5db" stroke-width="2" rx="8"/>
+                
+                <!-- PDF Icon -->
+                <path d="M ${width / 2 - 60} ${height / 2 - 80} 
+                         l 80 0 l 40 40 l 0 120 l -120 0 z" 
+                      fill="#ef4444" stroke="#dc2626" stroke-width="2"/>
+                <text x="${width / 2}" y="${height / 2 + 20}" 
+                      font-family="Arial, sans-serif" font-size="48" font-weight="bold"
+                      fill="#ffffff" text-anchor="middle">PDF</text>
+                
+                <!-- Document text -->
+                <text x="${width / 2}" y="${height / 2 + 80}" 
+                      font-family="Arial, sans-serif" font-size="24"
+                      fill="#6b7280" text-anchor="middle">Document Preview</text>
+            </svg>
+        `;
+
+        // Generate JPEG from SVG using sharp
+        await sharp(Buffer.from(svg))
+            .jpeg({ quality: 85 })
+            .toFile(thumbnailPath);
+
         return thumbnailPath;
     } catch (error) {
         console.error('[generatePdfThumbnail] Error:', error);
@@ -682,24 +714,24 @@ async function generatePdfThumbnail(pdfPath, outputPath) {
  * Storage Trigger: Generates thumbnail when a PDF is uploaded to /media/*
  * Automatically runs on every new file upload to the media folder
  */
-exports.onMediaFileUploaded = onObjectFinalized(async (event) => {
+exports.onPdfUploaded = onObjectFinalized(async (event) => {
     const filePath = event.data.name; // e.g. "media/abc123.pdf"
     const contentType = event.data.contentType;
     const bucket = admin.storage().bucket(event.bucket);
 
     // Only process PDFs
     if (!contentType || contentType !== 'application/pdf') {
-        console.log(`[onMediaFileUploaded] Skipping non-PDF file: ${filePath}`);
+        console.log(`[onPdfUploaded] Skipping non-PDF file: ${filePath}`);
         return;
     }
 
     // Skip if this is already a thumbnail
     if (filePath.includes('/thumbnails/')) {
-        console.log(`[onMediaFileUploaded] Skipping thumbnail file: ${filePath}`);
+        console.log(`[onPdfUploaded] Skipping thumbnail file: ${filePath}`);
         return;
     }
 
-    console.log(`[onMediaFileUploaded] Processing PDF: ${filePath}`);
+    console.log(`[onPdfUploaded] Processing PDF: ${filePath}`);
 
     // Extract media ID from path (e.g. "media/abc123.pdf" -> "abc123")
     const fileName = path.basename(filePath, path.extname(filePath));
@@ -710,7 +742,7 @@ exports.onMediaFileUploaded = onObjectFinalized(async (event) => {
     const [thumbnailExists] = await bucket.file(thumbnailPath).exists();
 
     if (thumbnailExists) {
-        console.log(`[onMediaFileUploaded] Thumbnail already exists: ${thumbnailPath}`);
+        console.log(`[onPdfUploaded] Thumbnail already exists: ${thumbnailPath}`);
         return;
     }
 
@@ -727,11 +759,11 @@ exports.onMediaFileUploaded = onObjectFinalized(async (event) => {
 
         // Download PDF
         await bucket.file(filePath).download({ destination: tempPdfPath });
-        console.log(`[onMediaFileUploaded] Downloaded PDF to: ${tempPdfPath}`);
+        console.log(`[onPdfUploaded] Downloaded PDF to: ${tempPdfPath}`);
 
         // Generate thumbnail
         const thumbnailLocalPath = await generatePdfThumbnail(tempPdfPath, tempThumbDir);
-        console.log(`[onMediaFileUploaded] Generated thumbnail: ${thumbnailLocalPath}`);
+        console.log(`[onPdfUploaded] Generated thumbnail: ${thumbnailLocalPath}`);
 
         // Upload thumbnail to Storage
         await bucket.upload(thumbnailLocalPath, {
@@ -743,7 +775,7 @@ exports.onMediaFileUploaded = onObjectFinalized(async (event) => {
                 }
             }
         });
-        console.log(`[onMediaFileUploaded] Uploaded thumbnail to: ${thumbnailPath}`);
+        console.log(`[onPdfUploaded] Uploaded thumbnail to: ${thumbnailPath}`);
 
         // Get public URL
         const file = bucket.file(thumbnailPath);
@@ -764,9 +796,9 @@ exports.onMediaFileUploaded = onObjectFinalized(async (event) => {
                 thumbnailUrl: thumbnailUrl,
                 thumbnailGeneratedAt: admin.firestore.FieldValue.serverTimestamp()
             });
-            console.log(`[onMediaFileUploaded] Updated Firestore document: ${mediaDoc.id}`);
+            console.log(`[onPdfUploaded] Updated Firestore document: ${mediaDoc.id}`);
         } else {
-            console.warn(`[onMediaFileUploaded] No Firestore document found for: ${filePath}`);
+            console.warn(`[onPdfUploaded] No Firestore document found for: ${filePath}`);
         }
 
         // Cleanup temp files
@@ -775,7 +807,7 @@ exports.onMediaFileUploaded = onObjectFinalized(async (event) => {
         fs.rmdirSync(tempThumbDir);
 
     } catch (error) {
-        console.error(`[onMediaFileUploaded] Error processing ${filePath}:`, error);
+        console.error(`[onPdfUploaded] Error processing ${filePath}:`, error);
         // Cleanup on error
         try {
             if (fs.existsSync(tempPdfPath)) fs.unlinkSync(tempPdfPath);
@@ -786,7 +818,7 @@ exports.onMediaFileUploaded = onObjectFinalized(async (event) => {
                 fs.rmdirSync(tempThumbDir);
             }
         } catch (cleanupError) {
-            console.error('[onMediaFileUploaded] Cleanup error:', cleanupError);
+            console.error('[onPdfUploaded] Cleanup error:', cleanupError);
         }
     }
 });
