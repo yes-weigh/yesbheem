@@ -446,7 +446,6 @@ exports.cleanupStaleSessions = onSchedule("0 2 * * *", async (event) => {
 // ============================================================================
 
 const { Translate } = require('@google-cloud/translate').v2;
-const translate = new Translate();
 
 /**
  * Translates text using Google Cloud Translation API
@@ -454,6 +453,9 @@ const translate = new Translate();
  * Output: { translatedText: string }
  */
 exports.translateText = onCall(async (request) => {
+    // Lazy load outside global scope
+    const translate = new Translate();
+
     // 1. Authentication Check
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'User must be authenticated to use translation services.');
