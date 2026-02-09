@@ -574,8 +574,20 @@ exports.onCampaignCompleted = onDocumentUpdated({
             }
         });
 
+        // Fetch detailed items for the report
+        const itemsSnapshot = await admin.firestore()
+            .collection('campaigns')
+            .doc(campaignId)
+            .collection('items')
+            .orderBy('sentAt', 'desc') // effective ordering
+            .limit(500) // Safety limit for email size
+            .get();
+
+        const items = itemsSnapshot.docs.map(doc => doc.data());
+
         const { generateCampaignReportHtml } = require('./templates/campaignReport');
-        const htmlContent = generateCampaignReportHtml(campaignName, stats, campaignId);
+        // Pass newData (as campaignData) and items
+        const htmlContent = generateCampaignReportHtml(campaignName, stats, campaignId, newData, items);
 
         const recipients = [
             "fak.mzn@gmail.com",
