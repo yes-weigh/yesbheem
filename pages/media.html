@@ -76,8 +76,12 @@
                             style="max-height: 200px; overflow: hidden; border-radius: 6px; margin-bottom: 0.5rem; display: flex; justify-content: center;">
                         </div>
                         <div id="file-name-display" style="font-size: 0.9rem; color: var(--text-primary);"></div>
-                        <button id="btn-change-file" class="action-btn-secondary"
-                            style="margin-top: 0.5rem; font-size: 0.8rem;">Change File</button>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                            <button id="btn-change-file" class="action-btn-secondary"
+                                style="font-size: 0.8rem; flex: 1;">Change File</button>
+                            <button id="btn-download-file" class="action-btn-secondary hidden"
+                                style="font-size: 0.8rem; flex: 1;">📥 Download</button>
+                        </div>
                     </div>
                 </div>
 
@@ -129,6 +133,14 @@
 </div>
 
 <!-- Scripts -->
+<!-- PDF.js Library for PDF Thumbnail Generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+    // Configure PDF.js worker
+    if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+</script>
 <script src="/js/services/media_service.js"></script>
 <script src="/js/media_manager.js"></script>
 <script>

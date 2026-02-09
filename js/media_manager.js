@@ -169,6 +169,14 @@ class MediaManager {
         }
 
         this.gridContainer.innerHTML = filtered.map(m => this.createCardHtml(m)).join('');
+
+        // Generate PDF thumbnails only for PDFs without server thumbnails
+        const pdfsNeedingClientRendering = filtered.filter(m =>
+            (m.type === 'document' || m.mimeType === 'application/pdf') && !m.thumbnailUrl
+        );
+        if (pdfsNeedingClientRendering.length > 0) {
+            this.generatePdfThumbnails(pdfsNeedingClientRendering);
+        }
     }
 
     createCardHtml(m) {
@@ -180,6 +188,23 @@ class MediaManager {
         } else if (m.type === 'image' || m.mimeType?.startsWith('image')) {
             previewHtml = `<img src="${m.url}" alt="${this.escapeHtml(m.name)}" style="width: 100%; height: 100%; object-fit: cover;">`;
             badgeHtml = 'IMAGE';
+        } else if (m.type === 'document' || m.mimeType === 'application/pdf') {
+            // PDF - Check if we have a server-generated thumbnail
+            if (m.thumbnailUrl) {
+                // Use fast server thumbnail
+                previewHtml = `<img src="${m.thumbnailUrl}" alt="${this.escapeHtml(m.name)}" style="width: 100%; height: 100%; object-fit: cover;">`;
+            } else {
+                // Fallback to canvas placeholder for client-side rendering
+                previewHtml = `
+                    <canvas id="pdf-thumb-${m.id}" style="width: 100%; height: 100%; object-fit: cover;"></canvas>
+                    <div id="pdf-loading-${m.id}" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); color: var(--text-muted);">
+                        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                `;
+            }
+            badgeHtml = 'PDF';
         } else {
             previewHtml = `
                 <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); color: var(--text-muted);">
@@ -302,6 +327,14 @@ class MediaManager {
             });
         }
 
+        const downloadBtn = document.getElementById('btn-download-file');
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.downloadCurrentMedia();
+            });
+        }
+
         // Upload Action
         safeAddListener('btn-confirm-upload', 'click', () => this.upload());
     }
@@ -335,6 +368,7 @@ class MediaManager {
     resetModal() {
         this.uploadFile = null;
         this.editingMediaId = null;
+        this.currentMediaUrl = null; // Track current media URL for downloading
         document.getElementById('file-input').value = '';
         document.getElementById('upload-prompt').classList.remove('hidden');
         document.getElementById('file-preview').classList.add('hidden');
@@ -346,6 +380,10 @@ class MediaManager {
         const btn = document.getElementById('btn-confirm-upload');
         btn.disabled = true;
         btn.textContent = 'Upload'; // Reset text
+
+        // Hide download button by default
+        const downloadBtn = document.getElementById('btn-download-file');
+        if (downloadBtn) downloadBtn.classList.add('hidden');
 
         this.progressContainer.classList.add('hidden');
     }
@@ -393,6 +431,16 @@ class MediaManager {
             vid.style.maxHeight = '100%';
             container.innerHTML = '';
             container.appendChild(vid);
+        } else if (file.type === 'application/pdf') {
+            // PDF Preview
+            const iframe = document.createElement('iframe');
+            iframe.src = URL.createObjectURL(file);
+            iframe.style.width = '100%';
+            iframe.style.height = '400px';
+            iframe.style.border = 'none';
+            iframe.style.borderRadius = '8px';
+            container.innerHTML = '';
+            container.appendChild(iframe);
         } else {
             // Document Fallback
             container.innerHTML = `
@@ -419,10 +467,7 @@ class MediaManager {
         document.getElementById('upload-language').value = m.language || '';
         document.getElementById('upload-category').value = m.category || '';
 
-        // Show current preview
-        this.showFilePreview({ name: m.name, type: m.mimeType || m.type });
-        // Note: showFilePreview expects a File object usually for URL.createObjectURL
-        // We need to handle this case where we have a remote URL.
+        // Show current preview from Firestore URL
         const container = document.getElementById('preview-container');
         document.getElementById('upload-prompt').classList.add('hidden');
         document.getElementById('file-preview').classList.remove('hidden');
@@ -432,11 +477,14 @@ class MediaManager {
             container.innerHTML = `<img src="${m.url}" style="max-width:100%; max-height:100%;">`;
         } else if (m.type === 'video' || m.mimeType?.startsWith('video')) {
             container.innerHTML = `<video src="${m.url}" controls style="max-width:100%; max-height:100%;"></video>`;
+        } else if (m.type === 'document' || m.mimeType === 'application/pdf') {
+            // PDF Preview
+            container.innerHTML = `<iframe src="${m.url}" style="width:100%; height:400px; border:none; border-radius:8px;"></iframe>`;
         } else {
             container.innerHTML = `
                 <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
                     <div style="font-size: 3rem; margin-bottom: 0.5rem;">📄</div>
-                    <div style="font-size: 0.9rem;">${m.type}</div>
+                    <div style="font-size: 0.9rem;">${m.type || m.mimeType}</div>
                 </div>
             `;
         }
@@ -444,6 +492,11 @@ class MediaManager {
         const btn = document.getElementById('btn-confirm-upload');
         btn.textContent = 'Update';
         btn.disabled = false;
+
+        // Store URL for downloading and show download button
+        this.currentMediaUrl = m.url;
+        const downloadBtn = document.getElementById('btn-download-file');
+        if (downloadBtn) downloadBtn.classList.remove('hidden');
     }
 
     async upload() {
@@ -503,6 +556,78 @@ class MediaManager {
     updateProgress(percent, text) {
         this.progressBar.style.width = percent + '%';
         this.statusText.textContent = text;
+    }
+
+    downloadCurrentMedia() {
+        if (!this.currentMediaUrl) {
+            this.showToast('No file available for download');
+            return;
+        }
+
+        const fileName = document.getElementById('upload-name').value || 'download';
+        const link = document.createElement('a');
+        link.href = this.currentMediaUrl;
+        link.download = fileName;
+        link.target = '_blank'; // Fallback if download doesn't work
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        this.showToast('Download started');
+    }
+
+    async generatePdfThumbnails(mediaItems) {
+        // Filter PDF items
+        const pdfItems = mediaItems.filter(m =>
+            m.type === 'document' || m.mimeType === 'application/pdf'
+        );
+
+        if (pdfItems.length === 0 || typeof pdfjsLib === 'undefined') return;
+
+        // Generate thumbnails for each PDF
+        for (const item of pdfItems) {
+            try {
+                await this.renderPdfThumbnail(item.id, item.url);
+            } catch (e) {
+                console.warn(`Failed to generate thumbnail for ${item.name}:`, e);
+            }
+        }
+    }
+
+    async renderPdfThumbnail(itemId, url) {
+        const canvas = document.getElementById(`pdf-thumb-${itemId}`);
+        const loadingDiv = document.getElementById(`pdf-loading-${itemId}`);
+
+        if (!canvas) return;
+
+        try {
+            // Load PDF
+            const loadingTask = pdfjsLib.getDocument(url);
+            const pdf = await loadingTask.promise;
+
+            // Get first page
+            const page = await pdf.getPage(1);
+
+            // Set canvas dimensions
+            const viewport = page.getViewport({ scale: 1.5 });
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            // Render page to canvas
+            const context = canvas.getContext('2d');
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+
+            await page.render(renderContext).promise;
+
+            // Hide loading indicator
+            if (loadingDiv) loadingDiv.style.display = 'none';
+
+        } catch (e) {
+            console.error('PDF thumbnail render error:', e);
+            // Keep loading placeholder if render fails
+        }
     }
 
     async deleteMedia(id, path) {
