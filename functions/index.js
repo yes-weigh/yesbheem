@@ -827,7 +827,9 @@ exports.onPdfUploaded = onObjectFinalized(async (event) => {
  * Callable Function: Batch generates thumbnails for all PDFs without thumbnails
  * Call this after deployment to process existing PDFs
  */
-exports.generateMissingThumbnails = onCall(async (request) => {
+exports.generateMissingThumbnails = onCall({
+    cors: true  // Enable CORS for all origins (development + production)
+}, async (request) => {
     // Check authentication
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'User must be authenticated');
