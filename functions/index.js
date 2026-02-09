@@ -585,9 +585,43 @@ exports.onCampaignCompleted = onDocumentUpdated({
 
         const items = itemsSnapshot.docs.map(doc => doc.data());
 
+        // Helper: Fetch Instance Name
+        let senderName = newData.senderConfig?.id || 'Unknown';
+        try {
+            if (newData.senderConfig?.id) {
+                // Try to find the instance doc (ID matching config ID)
+                // Note: config.id is usually the session ID which we mapped to.
+                // It might be the doc ID in current implementation.
+                // We'll check both just in case or query.
+                // Based on campaign_manager, we store sessionId in 'id'.
+                // If it's a direct ID, we can getDoc.
+                const instanceDoc = await admin.firestore().collection('whatsapp_instances').doc(newData.senderConfig.id).get();
+                if (instanceDoc.exists) {
+                    senderName = instanceDoc.data().name || newData.senderConfig.id;
+                } else {
+                    // Fallback: Query by sessionId field
+                    const q = await admin.firestore().collection('whatsapp_instances').where('sessionId', '==', newData.senderConfig.id).limit(1).get();
+                    if (!q.empty) {
+                        senderName = q.docs[0].data().name || newData.senderConfig.id;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error fetching instance name:', e);
+        }
+
+        // Inject sender name into campaignData
+        const campaignDataForReport = {
+            ...newData,
+            senderConfig: {
+                ...newData.senderConfig,
+                name: senderName
+            }
+        };
+
         const { generateCampaignReportHtml } = require('./templates/campaignReport');
-        // Pass newData (as campaignData) and items
-        const htmlContent = generateCampaignReportHtml(campaignName, stats, campaignId, newData, items);
+        // Pass enriched data (campaignDataForReport) and items
+        const htmlContent = generateCampaignReportHtml(campaignName, stats, campaignId, campaignDataForReport, items);
 
         const recipients = [
             "fak.mzn@gmail.com",

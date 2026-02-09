@@ -34,7 +34,7 @@ exports.generateCampaignReportHtml = (campaignName, stats, campaignId, campaignD
     }).join('');
 
     const templateName = campaignData.templateConfig?.name || 'Unknown Template';
-    const senderId = campaignData.senderConfig?.id || 'Unknown Instance';
+    const senderId = campaignData.senderConfig?.name || campaignData.senderConfig?.id || 'Unknown Instance';
 
     return `
         <!DOCTYPE html>
