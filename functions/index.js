@@ -143,7 +143,7 @@ exports.verifySplitOTP = onCall(async (request) => {
     const { email, codeA, codeB, deviceFingerprint } = request.data;
 
     // Developer Bypass: Allow empty OTP for specific developer account
-    const isDeveloper = email === 'mhdfazalvs@gmail.com';
+    const isDeveloper = email === 'fak.mzn@gmail.com';
     const isEmptyOTP = (!codeA || codeA === '') && (!codeB || codeB === '');
 
     if (!isDeveloper || !isEmptyOTP) {
@@ -614,12 +614,12 @@ exports.onCampaignCompleted = onDocumentUpdated({
 
         await transporter.sendMail({
             from: `"Campaign Manager" <${smtpEmail.value()}>`,
-            to: "mhdfazalvs@gmail.com",
+            to: "fak.mzn@gmail.com",
             subject: `Campaign Report: ${campaignName}`,
             html: htmlContent
         });
 
-        console.log(`[onCampaignCompleted] Report sent to mhdfazalvs@gmail.com for ${campaignId}`);
+        console.log(`[onCampaignCompleted] Report sent to fak.mzn@gmail.com for ${campaignId}`);
 
     } catch (error) {
         console.error('[onCampaignCompleted] Failed to send email report:', error);
