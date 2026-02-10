@@ -2,7 +2,7 @@ export class StateSelector {
     constructor(options = {}) {
         this.containerId = options.containerId || 'state-selector-container';
         this.onChange = options.onChange || (() => { });
-        this.currentState = 'all';
+        this.selectedStates = new Set();
         this.allStates = [];
         this.isOpen = false;
 
@@ -20,20 +20,21 @@ export class StateSelector {
 
         container.innerHTML = `
             <div class="state-selector-wrapper" style="position: relative;">
-                <button id="state-trigger" class="filter-select" style="display: flex; align-items: center; justify-content: space-between; min-width: 160px; cursor: pointer; height: 38px;">
-                     <div id="state-trigger-content" style="display: flex; align-items: center; gap: 8px;">
-                        <span id="state-trigger-text">All States</span>
-                     </div>
-                    <span style="font-size: 0.7rem; opacity: 0.7; margin-left:8px;">▼</span>
+                <button id="state-trigger" class="filter-select" style="display: flex; align-items: center; justify-content: space-between; min-width: 140px; cursor: pointer;">
+                    <span id="state-trigger-text">States</span>
+                    <span style="font-size: 0.7rem; opacity: 0.7;">▼</span>
                 </button>
                 
                 <!-- Dropdown -->
                 <div id="state-dropdown" class="fancy-dropdown-state" style="display: none;">
                     <div class="dropdown-header">
-                        SELECT STATE
+                        SELECT STATES
                     </div>
                     <div class="dropdown-list" id="state-list">
                         <!-- Options injected here -->
+                    </div>
+                    <div class="dropdown-footer">
+                        <button id="state-apply-btn" class="apply-btn">Apply Changes</button>
                     </div>
                 </div>
             </div>
@@ -44,7 +45,7 @@ export class StateSelector {
                     top: 100%;
                     left: 0;
                     margin-top: 8px;
-                    width: 240px;
+                    width: 280px;
                     background: #1e293b; /* Dark slate */
                     border: 1px solid var(--border-light);
                     border-radius: 12px;
@@ -75,32 +76,75 @@ export class StateSelector {
                 .fancy-dropdown-state .dropdown-list {
                     max-height: 250px;
                     overflow-y: auto;
-                    padding: 4px 0;
+                    padding: 8px 0;
                 }
 
                 .fancy-dropdown-state .dropdown-item {
                     display: flex;
                     align-items: center;
-                    padding: 10px 16px;
+                    padding: 8px 16px;
                     cursor: pointer;
                     transition: background 0.15s;
                     color: var(--text-main);
                     font-size: 0.9rem;
                     gap: 12px;
-                    border-left: 3px solid transparent;
                 }
 
                 .fancy-dropdown-state .dropdown-item:hover {
                     background: rgba(255,255,255,0.05);
                 }
 
-                .fancy-dropdown-state .dropdown-item.selected {
-                    background: rgba(59, 130, 246, 0.1);
-                    border-left-color: var(--accent-color);
-                    color: white;
+                /* Custom Checkbox */
+                .fancy-dropdown-state .custom-checkbox {
+                    width: 18px;
+                    height: 18px;
+                    border: 2px solid var(--border-light);
+                    border-radius: 4px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s;
+                    flex-shrink: 0;
                 }
 
-                 /* Scrollbar */
+                .fancy-dropdown-state .dropdown-item.selected .custom-checkbox {
+                    background: var(--accent-color, #3b82f6);
+                    border-color: var(--accent-color, #3b82f6);
+                }
+
+                .fancy-dropdown-state .dropdown-item.selected .custom-checkbox::after {
+                    content: '✓';
+                    font-size: 12px;
+                    color: white;
+                    font-weight: bold;
+                }
+
+                .fancy-dropdown-state .dropdown-footer {
+                    padding: 12px;
+                    border-top: 1px solid rgba(255,255,255,0.05);
+                    background: rgba(0,0,0,0.2);
+                    display: flex;
+                    justify-content: flex-end;
+                }
+
+                .fancy-dropdown-state .apply-btn {
+                    background: var(--accent-color, #3b82f6);
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    font-size: 0.85rem;
+                    font-weight: 500;
+                    cursor: pointer;
+                    width: 100%;
+                    transition: opacity 0.2s;
+                }
+
+                .fancy-dropdown-state .apply-btn:hover {
+                    opacity: 0.9;
+                }
+
+                /* Scrollbar */
                 .fancy-dropdown-state .dropdown-list::-webkit-scrollbar {
                     width: 6px;
                 }
@@ -118,12 +162,18 @@ export class StateSelector {
         this.triggerBtn = document.getElementById('state-trigger');
         this.dropdown = document.getElementById('state-dropdown');
         this.listContainer = document.getElementById('state-list');
-        this.triggerContent = document.getElementById('state-trigger-content');
+        this.applyBtn = document.getElementById('state-apply-btn');
+        this.triggerText = document.getElementById('state-trigger-text');
 
         // Event Listeners
         this.triggerBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.toggleDropdown();
+        });
+
+        this.applyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.applyChanges();
         });
 
         this.dropdown.addEventListener('click', (e) => e.stopPropagation());
@@ -134,55 +184,52 @@ export class StateSelector {
         this.renderList();
     }
 
-    setValue(value) {
-        this.currentState = value || 'all';
-        this.renderList(); // Re-render to show selection state
-        this.updateTrigger();
+    setValue(selectedStates) {
+        // Support both array and single value for backward compatibility
+        if (Array.isArray(selectedStates)) {
+            this.selectedStates = new Set(selectedStates);
+        } else if (selectedStates && selectedStates !== 'all') {
+            this.selectedStates = new Set([selectedStates]);
+        } else {
+            this.selectedStates = new Set();
+        }
+        this.renderList();
+        this.updateTriggerText();
     }
 
     renderList() {
         this.listContainer.innerHTML = '';
 
-        // Add "All States" option
-        this.renderOption('all', 'All States');
+        if (this.allStates.length === 0) {
+            this.listContainer.innerHTML = '<div style="padding: 12px 16px; color: var(--text-muted); font-size: 0.85rem;">No states found</div>';
+            return;
+        }
 
-        if (this.allStates.length > 0) {
-            this.allStates.forEach(state => {
-                this.renderOption(state, state);
+        this.allStates.forEach(state => {
+            const isSelected = this.selectedStates.has(state);
+            const item = document.createElement('div');
+            item.className = `dropdown-item ${isSelected ? 'selected' : ''}`;
+            item.innerHTML = `
+                <div class="custom-checkbox"></div>
+                <span>${state}</span>
+            `;
+
+            item.addEventListener('click', () => {
+                this.toggleSelection(state, item);
             });
-        }
-    }
 
-    renderOption(value, label) {
-        const isSelected = this.currentState === value;
-        const item = document.createElement('div');
-        item.className = `dropdown-item ${isSelected ? 'selected' : ''}`;
-
-        // Just text for state, no image for now
-        item.innerHTML = `<span>${label}</span>`;
-
-        item.addEventListener('click', () => {
-            this.select(value);
+            this.listContainer.appendChild(item);
         });
-
-        this.listContainer.appendChild(item);
     }
 
-    select(value) {
-        this.currentState = value;
-        this.updateTrigger();
-        this.closeDropdown();
-        this.onChange(value);
-    }
-
-    updateTrigger() {
-        let contentHtml = '';
-        if (this.currentState === 'all') {
-            contentHtml = `<span id="state-trigger-text">All States</span>`;
+    toggleSelection(state, element) {
+        if (this.selectedStates.has(state)) {
+            this.selectedStates.delete(state);
+            element.classList.remove('selected');
         } else {
-            contentHtml = `<span>${this.currentState}</span>`;
+            this.selectedStates.add(state);
+            element.classList.add('selected');
         }
-        this.triggerContent.innerHTML = contentHtml;
     }
 
     toggleDropdown() {
@@ -196,14 +243,31 @@ export class StateSelector {
                 detail: { id: this.containerId }
             }));
         } else {
-            this.triggerBtn.style.borderColor = '';
+            this.triggerBtn.style.borderColor = 'var(--border-strong)';
         }
     }
 
     closeDropdown() {
         this.isOpen = false;
         this.dropdown.style.display = 'none';
-        this.triggerBtn.style.borderColor = '';
+        this.triggerBtn.style.borderColor = 'var(--border-strong)';
+    }
+
+    applyChanges() {
+        this.onChange(Array.from(this.selectedStates));
+        this.closeDropdown();
+        this.updateTriggerText();
+    }
+
+    updateTriggerText() {
+        const count = this.selectedStates.size;
+        if (count === 0) {
+            this.triggerText.textContent = 'States';
+        } else if (count === 1) {
+            this.triggerText.textContent = `States (${count})`;
+        } else {
+            this.triggerText.textContent = `States (${count})`;
+        }
     }
 
     attachGlobalListeners() {
@@ -226,5 +290,13 @@ export class StateSelector {
                 this.closeDropdown();
             }
         });
+    }
+
+    // Reset method for clear filters
+    reset() {
+        this.selectedStates.clear();
+        this.renderList(); // Re-render to clear checkboxes
+        this.updateTriggerText();
+        this.closeDropdown();
     }
 }

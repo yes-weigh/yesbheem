@@ -41,7 +41,7 @@ if (!window.DealerManager) {
             this.stageFilter = 'all';
             this.kamFilter = 'all';
             this.districtFilter = 'all';
-            this.stateFilter = 'all';
+            this.stateFilter = [];
             this.categoryFilter = [];
 
             // Pagination
@@ -437,10 +437,10 @@ if (!window.DealerManager) {
             const wrapper = districtSelect.closest('.filter-wrapper');
             const clearBtn = wrapper ? wrapper.querySelector('.filter-clear-btn') : null;
 
-            // Dependent on State Filter
-            const selectedState = this.stateFilter; // Assuming this is set BEFORE this method is called
+            // Dependent on State Filter (now an array)
+            const selectedStates = this.stateFilter;
 
-            if (!selectedState || selectedState === 'all') {
+            if (!selectedStates || selectedStates.length === 0) {
                 // Hide District Filter
                 if (wrapper) wrapper.style.display = 'none';
 
@@ -458,9 +458,9 @@ if (!window.DealerManager) {
             if (wrapper) wrapper.style.display = 'flex';
 
             if (this.dealers.length > 0) {
-                // Filter districts by selected state
+                // Filter districts by selected states
                 const relevantDealers = this.dealers.filter(d => {
-                    return d.state === selectedState;
+                    return selectedStates.includes(d.state);
                 });
 
                 const districts = [...new Set(relevantDealers.map(d => d.district).filter(Boolean).filter(d => d !== 'Unknown'))].sort();
@@ -681,8 +681,8 @@ if (!window.DealerManager) {
             if (this.stageFilter && this.stageFilter !== 'all') {
                 createChip('Stage', this.stageFilter, 'stage');
             }
-            if (this.stateFilter && this.stateFilter !== 'all') {
-                createChip('State', this.stateFilter, 'state');
+            if (this.stateFilter && this.stateFilter.length > 0) {
+                createChip('States', this.stateFilter.length + ' selected', 'state');
             }
             if (this.districtFilter && this.districtFilter !== 'all') {
                 createChip('District', this.districtFilter, 'district');
@@ -740,8 +740,8 @@ if (!window.DealerManager) {
             }
 
             if (type === 'state') {
-                this.stateFilter = 'all';
-                if (this.stateSelector) this.stateSelector.setValue('all');
+                this.stateFilter = [];
+                if (this.stateSelector) this.stateSelector.reset();
                 this.updateDistrictFilter();
                 this.applyFilters();
                 return;
@@ -776,8 +776,8 @@ if (!window.DealerManager) {
                 this.categorySelector.reset();
             }
             if (this.stateSelector) {
-                this.stateSelector.setValue('all');
-                this.stateFilter = 'all';
+                this.stateSelector.reset();
+                this.stateFilter = [];
                 this.updateDistrictFilter();
             }
             // Search query? 

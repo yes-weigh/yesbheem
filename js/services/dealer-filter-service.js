@@ -8,7 +8,7 @@ export class DealerFilterService {
             search: '',
             kam: 'all',
             stage: 'all',
-            state: 'all',
+            state: [],
             district: 'all',
             categories: []
         };
@@ -68,9 +68,16 @@ export class DealerFilterService {
                 return false;
             }
 
-            // State
-            if (this.filters.state !== 'all' && dealer.state !== this.filters.state) {
-                return false;
+            // State (Multi-select)
+            if (this.filters.state && this.filters.state.length > 0) {
+                // If dealer has no state but filter is active, exclude
+                if (!dealer.state) {
+                    return false;
+                }
+                // Check if dealer's state is in the selected states
+                if (!this.filters.state.includes(dealer.state)) {
+                    return false;
+                }
             }
 
             // Categories
@@ -97,7 +104,7 @@ export class DealerFilterService {
             search: '',
             kam: 'all',
             stage: 'all',
-            state: 'all',
+            state: [],
             district: 'all',
             categories: []
         };
