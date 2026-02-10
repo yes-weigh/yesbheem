@@ -335,30 +335,6 @@ class MediaManager {
             });
         }
 
-        // Generate Thumbnails Button
-        safeAddListener('btn-generate-thumbnails', 'click', async () => {
-            if (!confirm('Generate thumbnails for all PDFs without thumbnails? This may take a few minutes.')) return;
-
-            const btn = document.getElementById('btn-generate-thumbnails');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="btn-icon">⏳</span> Generating...';
-
-            try {
-                const { functions, httpsCallable } = window.firebaseContext;
-                const generateThumbnails = httpsCallable(functions, 'generateMissingThumbnails');
-                const result = await generateThumbnails();
-
-                this.showToast(`✅ Generated ${result.data.generated} thumbnails! Skipped: ${result.data.skipped}`);
-                await this.loadMedia(); // Refresh to show new thumbnails
-            } catch (error) {
-                console.error('Thumbnail generation error:', error);
-                alert(`Error: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<span class="btn-icon">🖼️</span> Generate Thumbnails';
-            }
-        });
-
         // Upload Action
         safeAddListener('btn-confirm-upload', 'click', () => this.upload());
     }
