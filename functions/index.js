@@ -148,7 +148,7 @@ exports.verifySplitOTP = onCall(async (request) => {
     const { email, codeA, codeB, deviceFingerprint } = request.data;
 
     // Developer Bypass: Allow empty OTP for specific developer account
-    const isDeveloper = email === 'fak.mzn@gmail.com';
+    const isDeveloper = email === 'mhdfazalvs@gmail.com';
     const isEmptyOTP = (!codeA || codeA === '') && (!codeB || codeB === '');
 
     if (!isDeveloper || !isEmptyOTP) {
@@ -828,7 +828,10 @@ exports.onPdfUploaded = onObjectFinalized(async (event) => {
  * Call this after deployment to process existing PDFs
  */
 exports.generateMissingThumbnails = onCall({
-    cors: true  // Enable CORS for all origins (development + production)
+    cors: {
+        origin: true,  // Allow all origins for development and production
+        methods: ['POST', 'OPTIONS']
+    }
 }, async (request) => {
     // Check authentication
     if (!request.auth) {
