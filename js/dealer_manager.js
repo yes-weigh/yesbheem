@@ -1579,7 +1579,8 @@ if (!window.DealerManager) {
                     .filter(d => ids.includes(d.id))
                     .map(d => {
                         const rawPhone = d.mobile_phone || d.phone || '';
-                        const formattedPhone = FormatUtils.formatPhoneNumber(rawPhone);
+                        console.log('FormatUtils:', FormatUtils); // Debug
+                        const formattedPhone = FormatUtils.formatPhoneNumber ? FormatUtils.formatPhoneNumber(rawPhone) : rawPhone; // Safe call
                         return {
                             phone: formattedPhone,
                             name: d.customer_name || d.name || 'Unknown'

@@ -159,3 +159,4 @@ class FormatUtils {
 
 // Export as default for ES6 module import
 export default FormatUtils;
+// Updated: FormatPhoneNumber added
