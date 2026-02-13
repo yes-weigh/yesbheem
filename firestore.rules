@@ -96,17 +96,17 @@ service cloud.firestore {
 
     // WhatsApp Instances Metadata
     match /whatsapp_instances/{docId} {
-      allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
+      allow read, write: if isActiveUser() || request.auth.token.role == 'admin';
     }
 
     // Templates
     match /templates/{templateId} {
-      allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
+      allow read, write: if isActiveUser() || request.auth.token.role == 'admin';
     }
 
     // Audiences
     match /audiences/{audienceId} {
-      allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
+      allow read, write: if isActiveUser() || request.auth.token.role == 'admin';
     }
 
     // Media Library
@@ -118,17 +118,17 @@ service cloud.firestore {
 
     // Campaigns
     match /campaigns/{campaignId} {
-      allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
+      allow read, write: if isActiveUser() || request.auth.token.role == 'admin';
       
       // Campaign Logs (Items subcollection)
       match /items/{itemId} {
-        allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
+        allow read, write: if isActiveUser() || request.auth.token.role == 'admin';
       }
     }
 
     // Campaign Recipients
     match /campaign_recipients/{recipientId} {
-      allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
+      allow read, write: if isActiveUser() || request.auth.token.role == 'admin';
     }
 
     // Report Data (Actual CSV content stored in separate collection)
