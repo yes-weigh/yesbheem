@@ -2,6 +2,7 @@
 import { AudienceService } from './services/audience_service.js';
 import { db } from './services/firebase_config.js';
 import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, getDocs, doc, getDoc, deleteDoc, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 class CampaignManager {
     constructor() {
@@ -357,8 +358,9 @@ class CampaignManager {
             return;
         }
 
-        if (!name || !audienceId || !senderId || !templateId) {
-            alert('Please complete all fields.');
+        const kam = this.kamSelect.value;
+        if (!name || !audienceId || !senderId || !templateId || !kam) {
+            alert('Please complete all fields, including Campaign Manager.');
             return;
         }
 
@@ -376,7 +378,9 @@ class CampaignManager {
                 scheduledAt: this.scheduleInput.value ? new Date(this.scheduleInput.value).getTime() : Date.now(),
                 maxDelay: maxDelay,
                 minDelay: 1,
-                campaignManager: this.kamSelect.value || null,
+                campaignManager: kam,
+                createdBy: getAuth().currentUser ? getAuth().currentUser.uid : 'unknown',
+                creatorEmail: getAuth().currentUser ? getAuth().currentUser.email : 'unknown',
                 senderConfig: {
                     type: document.querySelector('input[name="senderType"]:checked').value,
                     id: senderId

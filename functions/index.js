@@ -616,8 +616,19 @@ exports.onCampaignCompleted = onDocumentUpdated({
         }
 
         // Inject sender name into campaignData
+        // ROBUSTNESS FIX: Fallback to creator email if KAM is missing
+        let displayKAM = newData.campaignManager;
+        if (!displayKAM || displayKAM === 'null' || displayKAM === 'undefined') {
+            displayKAM = newData.creatorEmail
+                ? `Created by: ${newData.creatorEmail}`
+                : 'Not Assigned';
+        }
+
+        console.log('[onCampaignCompleted] Campaign Data Snapshot:', JSON.stringify(newData, null, 2));
+
         const campaignDataForReport = {
             ...newData,
+            campaignManager: displayKAM,
             senderConfig: {
                 ...newData.senderConfig,
                 name: senderName
