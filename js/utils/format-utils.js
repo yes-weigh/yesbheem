@@ -115,6 +115,46 @@ class FormatUtils {
 
         return num * multiplier;
     }
+
+    /**
+     * Format a phone number to E.164 standard (e.g., +919876543210)
+     * Handles common Indian formats: 10 digit, 0+10 digit, +91+10 digit
+     * 
+     * @param {string} phone - Phone number to format
+     * @returns {string|null} Formatted phone number or null if invalid
+     */
+    static formatPhoneNumber(phone) {
+        if (!phone) return null;
+
+        // Remove all non-digit characters
+        let cleaned = phone.toString().replace(/\D/g, '');
+
+        // Handle common cases
+
+        // Case 1: 10 digits (Standard Mobile) -> Add 91
+        if (cleaned.length === 10) {
+            return '+91' + cleaned;
+        }
+
+        // Case 2: 11 digits starting with 0 (Landline/Old Mobile style) -> Remove 0, Add 91
+        if (cleaned.length === 11 && cleaned.startsWith('0')) {
+            return '+91' + cleaned.substring(1);
+        }
+
+        // Case 3: 12 digits starting with 91 (Already has country code) -> Add +
+        if (cleaned.length === 12 && cleaned.startsWith('91')) {
+            return '+' + cleaned;
+        }
+
+        // Case 4: Already valid E.164 without + (unlikely given regex, but for safety)
+        // If it matches country code 91 and length is correct, ensure +
+
+        // Fallback/Validation
+        // If it doesn't match expected lengths, return null (invalid)
+        // We could support other country codes here if needed, but focusing on IN for now.
+
+        return null;
+    }
 }
 
 // Export as default for ES6 module import

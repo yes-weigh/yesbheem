@@ -1577,12 +1577,15 @@ if (!window.DealerManager) {
                 // We map from 'ids' back to the dealer objects in 'this.dealers' 
                 const selectedContacts = this.dealers
                     .filter(d => ids.includes(d.id))
-                    .map(d => ({
-                        phone: d.mobile_phone || d.phone || '',
-                        name: d.customer_name || d.name || 'Unknown'
-                        // Removed 'id' as per user request for simpler list
-                    }))
-                    .filter(c => c.phone && c.phone.length >= 10); // Basic validation
+                    .map(d => {
+                        const rawPhone = d.mobile_phone || d.phone || '';
+                        const formattedPhone = FormatUtils.formatPhoneNumber(rawPhone);
+                        return {
+                            phone: formattedPhone,
+                            name: d.customer_name || d.name || 'Unknown'
+                        };
+                    })
+                    .filter(c => c.phone); // Filter out invalid phone numbers
 
                 if (selectedContacts.length === 0) {
                     alert('Selected dealers have no valid phone numbers.');
