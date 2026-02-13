@@ -4,12 +4,10 @@ const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onObjectFinalized } = require("firebase-functions/v2/storage");
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
-const axios = require('axios');
-const nodemailer = require('nodemailer');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
-const sharp = require('sharp');
+
 
 admin.initializeApp();
 
@@ -88,6 +86,7 @@ exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail
     console.log(`Attempting WATI Dispatch to ${phoneNumber} at ${watiUrl}`);
 
     try {
+        const axios = require('axios');
         const watiResponse = await axios.post(watiUrl, {
             template_name: "yesgatcauth",
             broadcast_name: "OTP_Dispatch",
@@ -114,33 +113,32 @@ exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail
         expires: Date.now() + 300000
     });
 
-    // 3. Email Dispatch (Part B)
-    try {
-        const transporter = nodemailer.createTransport({
-            host: smtpHost.value(),
-            port: parseInt(smtpPort.value()),
-            secure: parseInt(smtpPort.value()) === 465, // true for 465, false for other ports
-            auth: {
-                user: smtpUser.value(),
-                pass: smtpPassword.value()
-            }
-        });
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+        host: smtpHost.value(),
+        port: parseInt(smtpPort.value()),
+        secure: parseInt(smtpPort.value()) === 465, // true for 465, false for other ports
+        auth: {
+            user: smtpUser.value(),
+            pass: smtpPassword.value()
+        }
+    });
 
-        await transporter.sendMail({
-            from: `"Noreply YESGATC" <${smtpEmail.value()}>`,
-            to: email,
-            subject: 'Your Login Verification Code (Part B)',
-            text: `Your verification code Part B is: ${codeB}\n\nThis code expires in 5 minutes.\nPlease enter this along with Part A (sent to WhatsApp) to complete your login.\n\n\nthis is an automated mail , do not reply\nBest regards,\n\nIT Team\n\nInterweighing Pvt Ltd`
-        });
-        console.log(`Email sent successfully to ${email}`);
-    } catch (emailError) {
-        console.error("Failed to send email:", emailError);
-        // Throwing error here so client knows email failed
-        throw new HttpsError('internal', `Email dispatch failed: ${emailError.message}`);
-    }
+    await transporter.sendMail({
+        from: `"Noreply YESGATC" <${smtpEmail.value()}>`,
+        to: email,
+        subject: 'Your Login Verification Code (Part B)',
+        text: `Your verification code Part B is: ${codeB}\n\nThis code expires in 5 minutes.\nPlease enter this along with Part A (sent to WhatsApp) to complete your login.\n\n\nthis is an automated mail , do not reply\nBest regards,\n\nIT Team\n\nInterweighing Pvt Ltd`
+    });
+    console.log(`Email sent successfully to ${email}`);
+} catch (emailError) {
+    console.error("Failed to send email:", emailError);
+    // Throwing error here so client knows email failed
+    throw new HttpsError('internal', `Email dispatch failed: ${emailError.message}`);
+}
 
-    return { success: true };
-});
+return { success: true };
+    });
 
 
 
@@ -269,6 +267,7 @@ exports.verifySplitOTP = onCall(async (request) => {
             // This prevents the issue seen in the screenshot where a '$' symbol was included.
             const cleanIp = clientIp.replace(/[^0-9a-fA-F:.]/g, '');
 
+            const axios = require('axios');
             const locRes = await axios.get(`http://ip-api.com/json/${cleanIp}?fields=city,regionName,country`);
             if (locRes.data && locRes.data.city) {
                 locationData = {
@@ -569,6 +568,7 @@ exports.onCampaignCompleted = onDocumentUpdated({
     console.log(`[onCampaignCompleted] Campaign ${campaignId} completed. Sending report...`);
 
     try {
+        const nodemailer = require('nodemailer');
         const transporter = nodemailer.createTransport({
             host: smtpHost.value(),
             port: parseInt(smtpPort.value()),
@@ -699,6 +699,7 @@ async function generatePdfThumbnail(pdfPath, outputPath) {
         `;
 
         // Generate JPEG from SVG using sharp
+        const sharp = require('sharp');
         await sharp(Buffer.from(svg))
             .jpeg({ quality: 85 })
             .toFile(thumbnailPath);

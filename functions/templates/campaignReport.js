@@ -64,6 +64,14 @@ exports.generateCampaignReportHtml = (campaignName, stats, campaignId, campaignD
                             <p style="margin: 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Sent Via</p>
                             <p style="margin: 5px 0 0; color: #1e293b; font-weight: 600;">${senderId}</p>
                         </div>
+                        <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <p style="margin: 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Audience</p>
+                            <p style="margin: 5px 0 0; color: #1e293b; font-weight: 600;">${campaignData.audienceName || 'Unknown Audience'}</p>
+                        </div>
+                        <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <p style="margin: 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">KAM</p>
+                            <p style="margin: 5px 0 0; color: #1e293b; font-weight: 600;">${campaignData.campaignManager || 'Not Assigned'}</p>
+                        </div>
                     </div>
 
                     <!-- Stats Cards -->
