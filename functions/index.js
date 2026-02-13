@@ -113,32 +113,33 @@ exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail
         expires: Date.now() + 300000
     });
 
-    const nodemailer = require('nodemailer');
-    const transporter = nodemailer.createTransport({
-        host: smtpHost.value(),
-        port: parseInt(smtpPort.value()),
-        secure: parseInt(smtpPort.value()) === 465, // true for 465, false for other ports
-        auth: {
-            user: smtpUser.value(),
-            pass: smtpPassword.value()
-        }
-    });
+    try {
+        const nodemailer = require('nodemailer');
+        const transporter = nodemailer.createTransport({
+            host: smtpHost.value(),
+            port: parseInt(smtpPort.value()),
+            secure: parseInt(smtpPort.value()) === 465, // true for 465, false for other ports
+            auth: {
+                user: smtpUser.value(),
+                pass: smtpPassword.value()
+            }
+        });
 
-    await transporter.sendMail({
-        from: `"Noreply YESGATC" <${smtpEmail.value()}>`,
-        to: email,
-        subject: 'Your Login Verification Code (Part B)',
-        text: `Your verification code Part B is: ${codeB}\n\nThis code expires in 5 minutes.\nPlease enter this along with Part A (sent to WhatsApp) to complete your login.\n\n\nthis is an automated mail , do not reply\nBest regards,\n\nIT Team\n\nInterweighing Pvt Ltd`
-    });
-    console.log(`Email sent successfully to ${email}`);
-} catch (emailError) {
-    console.error("Failed to send email:", emailError);
-    // Throwing error here so client knows email failed
-    throw new HttpsError('internal', `Email dispatch failed: ${emailError.message}`);
-}
+        await transporter.sendMail({
+            from: `"Noreply YESGATC" <${smtpEmail.value()}>`,
+            to: email,
+            subject: 'Your Login Verification Code (Part B)',
+            text: `Your verification code Part B is: ${codeB}\n\nThis code expires in 5 minutes.\nPlease enter this along with Part A (sent to WhatsApp) to complete your login.\n\n\nthis is an automated mail , do not reply\nBest regards,\n\nIT Team\n\nInterweighing Pvt Ltd`
+        });
+        console.log(`Email sent successfully to ${email}`);
+    } catch (emailError) {
+        console.error("Failed to send email:", emailError);
+        // Throwing error here so client knows email failed
+        throw new HttpsError('internal', `Email dispatch failed: ${emailError.message}`);
+    }
 
-return { success: true };
-    });
+    return { success: true };
+});
 
 
 
