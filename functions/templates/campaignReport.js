@@ -54,25 +54,29 @@ exports.generateCampaignReportHtml = (campaignName, stats, campaignId, campaignD
 
                 <div style="padding: 30px;">
                     
-                    <!-- Meta Info Grid -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px;">
-                        <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                            <p style="margin: 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Template</p>
-                            <p style="margin: 5px 0 0; color: #1e293b; font-weight: 600;">${templateName}</p>
-                        </div>
-                        <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                            <p style="margin: 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Sent Via</p>
-                            <p style="margin: 5px 0 0; color: #1e293b; font-weight: 600;">${senderId}</p>
-                        </div>
-                        <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                            <p style="margin: 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Audience</p>
-                            <p style="margin: 5px 0 0; color: #1e293b; font-weight: 600;">${campaignData.audienceName || 'Unknown Audience'}</p>
-                        </div>
-                        <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                            <p style="margin: 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">KAM</p>
-                            <p style="margin: 5px 0 0; color: #1e293b; font-weight: 600;">${campaignData.campaignManager || 'Not Assigned'}</p>
-                        </div>
-                    </div>
+                    <!-- Meta Info Grid (Table Layout for Email Compatibility) -->
+                    <table style="width: 100%; border-collapse: separate; border-spacing: 10px; margin-bottom: 20px;">
+                        <tr>
+                            <td style="width: 50%; background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; vertical-align: top;">
+                                <p style="margin: 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Template</p>
+                                <p style="margin: 5px 0 0; color: #1e293b; font-weight: 600;">${templateName}</p>
+                            </td>
+                            <td style="width: 50%; background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; vertical-align: top;">
+                                <p style="margin: 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Sent Via</p>
+                                <p style="margin: 5px 0 0; color: #1e293b; font-weight: 600;">${senderId}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 50%; background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; vertical-align: top;">
+                                <p style="margin: 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Audience</p>
+                                <p style="margin: 5px 0 0; color: #1e293b; font-weight: 600;">${campaignData.audienceName || 'Unknown Audience'}</p>
+                            </td>
+                            <td style="width: 50%; background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; vertical-align: top;">
+                                <p style="margin: 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">KAM</p>
+                                <p style="margin: 5px 0 0; color: #1e293b; font-weight: 600;">${campaignData.campaignManager || 'Not Assigned'}</p>
+                            </td>
+                        </tr>
+                    </table>
 
                     <!-- Stats Cards -->
                     <div style="display: flex; gap: 10px; margin-bottom: 30px; justify-content: space-between;">
