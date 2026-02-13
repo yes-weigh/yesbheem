@@ -18,6 +18,9 @@ class CampaignManager {
         // Firestore listener unsubscribe function
         this.unsubscribeCampaigns = null;
 
+        // View State
+        this.audienceViewMode = localStorage.getItem('audienceViewMode') || 'grid';
+
         this.init();
     }
 
@@ -953,21 +956,144 @@ class CampaignManager {
 
     async renderAudiencesTab() {
         const grid = document.getElementById('audience-grid');
+        const listView = document.getElementById('audience-list-view');
+        const detailedView = document.getElementById('audience-detailed-view');
         const emptyState = document.getElementById('audience-empty-state');
+        const searchInput = document.getElementById('audience-search-input'); // Changed ID in HTML
 
-        if (!this.audiences || this.audiences.length === 0) {
+        // Filter audiences
+        let displayedAudiences = this.audiences || [];
+        if (searchInput && searchInput.value) {
+            const term = searchInput.value.toLowerCase();
+            displayedAudiences = displayedAudiences.filter(a => a.name.toLowerCase().includes(term));
+        }
+
+        if (displayedAudiences.length === 0) {
             grid.style.display = 'none';
+            if (listView) listView.style.display = 'none';
+            if (detailedView) detailedView.style.display = 'none';
             emptyState.style.display = 'flex';
             return;
         }
 
-        grid.style.display = 'grid';
         emptyState.style.display = 'none';
-        grid.innerHTML = '';
 
-        this.audiences.forEach(audience => {
-            grid.appendChild(this.renderAudienceCard(audience));
+        // Update View Buttons
+        document.querySelectorAll('.view-btn-icon').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === this.audienceViewMode);
         });
+
+        // Search Input Binding (if not already bound)
+        if (searchInput && !searchInput.onkeyup) {
+            searchInput.onkeyup = () => this.renderAudiencesTab();
+        }
+
+        // Render based on mode
+        if (this.audienceViewMode === 'list') {
+            grid.style.display = 'none';
+            if (detailedView) detailedView.style.display = 'none';
+            if (listView) {
+                listView.style.display = 'block';
+                this.renderAudienceListMode(displayedAudiences);
+            }
+        } else if (this.audienceViewMode === 'detailed') {
+            grid.style.display = 'none';
+            if (listView) listView.style.display = 'none';
+            if (detailedView) {
+                detailedView.style.display = 'flex';
+                this.renderAudienceDetailedMode(displayedAudiences);
+            }
+        } else {
+            // Default: Grid
+            if (listView) listView.style.display = 'none';
+            if (detailedView) detailedView.style.display = 'none';
+            grid.style.display = 'grid';
+
+            grid.innerHTML = '';
+            displayedAudiences.forEach(audience => {
+                grid.appendChild(this.renderAudienceCard(audience));
+            });
+        }
+    }
+
+    setAudienceView(mode) {
+        this.audienceViewMode = mode;
+        localStorage.setItem('audienceViewMode', mode);
+        this.renderAudiencesTab();
+    }
+
+    renderAudienceListMode(audiences) {
+        const tbody = document.getElementById('audience-list-body');
+        if (!tbody) return;
+
+        tbody.innerHTML = audiences.map(audience => {
+            const createdDate = audience.createdAt?.toDate ?
+                audience.createdAt.toDate().toLocaleDateString('en-IN') : '-';
+
+            return `
+                <tr>
+                    <td>
+                        <div style="font-weight: 600;">${this.escapeHtml(audience.name)}</div>
+                    </td>
+                    <td>
+                         <span class="source-badge">${audience.source === 'static_list' ? 'Static' : 'Dynamic'}</span>
+                    </td>
+                    <td>${audience.count || 0}</td>
+                    <td>${createdDate}</td>
+                    <td style="text-align: right;">
+                        <button class="icon-btn" onclick="window.campaignManager.editAudience('${audience.id}')" title="Edit">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4l-7 7-3 1 1-3 7-7m0 0l2-2 3 3-2 2m-3-3l3 3"/></svg>
+                        </button>
+                        <button class="icon-btn" onclick="window.campaignManager.deleteAudience('${audience.id}')" title="Delete">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6m4-6v6"/></svg>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    renderAudienceDetailedMode(audiences) {
+        const container = document.getElementById('audience-detailed-view');
+        if (!container) return;
+
+        container.innerHTML = audiences.map(audience => {
+            const createdDate = audience.createdAt?.toDate ?
+                audience.createdAt.toDate().toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) :
+                'Unknown';
+
+            return `
+                <div class="audience-detailed-card">
+                    <div class="detailed-info">
+                        <h3>${this.escapeHtml(audience.name)}</h3>
+                        <div class="detailed-meta">
+                            <span>📅 Created: ${createdDate}</span>
+                            <span>🏷️ Type: ${audience.source === 'static_list' ? 'Static List' : 'Dynamic Filter'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="detailed-stat">
+                        <span class="detailed-stat-label">Contacts</span>
+                        <span class="detailed-stat-value">${audience.count || 0}</span>
+                    </div>
+
+                    <div class="detailed-stat">
+                        <span class="detailed-stat-label">Campaigns</span>
+                        <span class="detailed-stat-value">-</span> 
+                        <!-- Placeholder for future campaign count linking -->
+                    </div>
+
+                    <div class="audience-card-actions" style="opacity: 1;">
+                        <button class="icon-btn" onclick="window.campaignManager.editAudience('${audience.id}')" title="Edit">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4l-7 7-3 1 1-3 7-7m0 0l2-2 3 3-2 2m-3-3l3 3"/></svg>
+                        </button>
+                        <button class="icon-btn" onclick="window.campaignManager.deleteAudience('${audience.id}')" title="Delete">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6m4-6v6"/></svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     renderAudienceCard(audience) {
