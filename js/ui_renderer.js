@@ -726,6 +726,321 @@ class UIRenderer {
             </style>
         `;
     }
+
+    /**
+     * Render the B2B Lead Edit Modal
+     * Matches the UI/UX of the Dealer Details Modal
+     * @param {Object} lead - Lead object
+     * @param {Object} settings - { key_accounts, lead_statuses }
+     */
+    static renderB2BLeadModal(lead, settings) {
+        const leadName = lead.name || 'New Lead';
+
+        // Helper: Safe Value
+        const v = (val) => {
+            if (val === undefined || val === null) return '';
+            return val.toString().replace(/"/g, '&quot;');
+        };
+
+        // Helper: Render Floating Label Input
+        const renderFloatingInput = (label, field, type = 'text', readonly = true, extraAttrs = '') => `
+            <div class="floating-group">
+                <input type="${type}" 
+                       class="floating-input" 
+                       id="inp_${field}" 
+                       data-field="${field}" 
+                       value="${v(lead[field])}" 
+                       placeholder=" "
+                       ${readonly ? 'readonly tabindex="-1"' : ''}
+                       ${extraAttrs}>
+                <label class="floating-label" for="inp_${field}">${label}</label>
+                ${field === 'pincode' ? `
+                    <svg class="zip-loading-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none; position: absolute; right: 10px; top: 12px; animation: spin 1s linear infinite; color: var(--color-info);">
+                        <circle cx="12" cy="12" r="10" opacity="0.25"></circle>
+                        <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path>
+                    </svg>
+                ` : ''}
+                ${readonly ? `
+                <button onclick="window.b2bLeadsManager.toggleEditField(this)" class="edit-toggle-btn" title="Edit ${label}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                </button>
+                ` : ''}
+            </div>
+        `;
+
+        // Helper: Render Floating Select
+        const renderFloatingSelect = (label, field, options, readonly = true) => {
+            const current = v(lead[field]);
+            // Handle both object {name, phone} and string formats
+            const opts = options.map(o => {
+                const optValue = typeof o === 'object' ? o.name : o;
+                return `<option value="${optValue}" ${optValue === current ? 'selected' : ''}>${optValue}</option>`;
+            }).join('');
+
+            return `
+                <div class="floating-group">
+                    <select class="floating-input" id="inp_${field}" data-field="${field}" ${readonly ? 'disabled' : ''}>
+                        <option value="" ${current === '' ? 'selected' : ''}>Select...</option>
+                        ${opts}
+                    </select>
+                    <label class="floating-label" for="inp_${field}">${label}</label>
+                    ${readonly ? `
+                    <button onclick="window.b2bLeadsManager.toggleEditField(this)" class="edit-toggle-btn" title="Edit ${label}">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                    </button>
+                    ` : ''}
+                </div>
+            `;
+        };
+
+        const statusOptions = settings.lead_stages || ['New', 'Contacted', 'Converted', 'Lost'];
+
+        const overviewHtml = `
+            <div class="compact-grid">
+                <!-- Col 1: Identity -->
+                <div class="grid-col">
+                    <h5 class="col-title">Identity</h5>
+                    ${renderFloatingSelect('Status', 'status', statusOptions)}
+                    ${renderFloatingSelect('KAM', 'kam', settings.key_accounts || [])}
+                    ${renderFloatingInput('Business Name', 'business_name')}
+                </div>
+
+                <!-- Col 2: Contact -->
+                <div class="grid-col">
+                    <h5 class="col-title">Contact</h5>
+                    ${renderFloatingInput('Name', 'name')}
+                    ${renderFloatingInput('Phone', 'phone')}
+                </div>
+
+                <!-- Col 3: Location -->
+                <div class="grid-col">
+                    <h5 class="col-title">Location</h5>
+                    ${renderFloatingInput('Pincode', 'pincode', 'text', true, 'onchange="window.b2bLeadsManager.handlePopupZipChange(this)"')}
+                    ${renderFloatingInput('District', 'district', 'text', true)}
+                    ${renderFloatingInput('State', 'state', 'text', true)}
+                </div>
+            </div>
+        `;
+
+        // --- MODAL SHELL ---
+        return `
+            <div class="dealer-modal-overlay" onclick="window.b2bLeadsManager.closeEditModal()">
+                <div class="dealer-modal" onclick="event.stopPropagation()">
+                    <!-- Header -->
+                    <div class="dealer-modal-header">
+                        <div class="header-left">
+                            <h2>${lead.id ? 'Edit Lead' : 'Add New Lead'}</h2>
+                        </div>
+                        <div class="header-actions">
+                            ${lead.status ? `<span class="badge stage-badge stage-${(lead.status || '').toLowerCase()}">${lead.status}</span>` : ''}
+                            <button class="close-btn" onclick="window.b2bLeadsManager.closeEditModal()">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabs (Simplified for B2B - just Overview for now, maybe History later) -->
+                    <div class="dealer-modal-tabs">
+                        <button class="tab-btn active">Overview</button>
+                    </div>
+
+                    <!-- Body -->
+                    <div class="dealer-modal-content">
+                        ${overviewHtml}
+                    </div>
+                
+                    <!-- Footer -->
+                    <div class="dealer-modal-footer">
+                        <div class="footer-note">
+                            <!-- <span style="color:var(--color-info);">*</span> Auto-saved -->
+                        </div>
+                        <div class="footer-actions">
+                            <button class="btn-cancel" onclick="window.b2bLeadsManager.closeEditModal()">Cancel</button>
+                            <button class="btn-save" onclick="window.b2bLeadsManager.saveLeadDetails('${lead.id || ''}')">${lead.id ? 'Save Changes' : 'Create Lead'}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <style>
+                .dealer-modal-overlay {
+                    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                    background: var(--modal-overlay-bg, rgba(0, 0, 0, 0.75));
+                    backdrop-filter: blur(8px);
+                    z-index: 10000;
+                    display: flex; align-items: center; justify-content: center;
+                    animation: fadeIn 0.1s ease-out;
+                }
+                .dealer-modal {
+                    background: var(--modal-bg-gradient, #0f172a);
+                    width: 750px;
+                    max-width: 95%;
+                    border-radius: 16px;
+                    border: var(--modal-border, 1px solid rgba(255,255,255,0.1));
+                    box-shadow: var(--modal-shadow, 0 25px 50px -12px rgba(0, 0, 0, 0.5));
+                    color: var(--modal-input-text, #e2e8f0);
+                    display: flex; flex-direction: column;
+                    overflow: hidden;
+                    animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                
+                @keyframes scaleUp {
+                    from { transform: scale(0.95) translateY(10px); opacity: 0; }
+                    to { transform: scale(1) translateY(0); opacity: 1; }
+                }
+
+                /* Header */
+                .dealer-modal-header {
+                    padding: 16px 24px;
+                    border-bottom: var(--modal-tabs-border, 1px solid rgba(255,255,255,0.05));
+                    display: flex; justify-content: space-between; align-items: center;
+                    background: var(--modal-header-bg, rgba(255,255,255,0.02));
+                }
+                .dealer-modal-header h2 { 
+                    margin: 0; font-size: 1.25rem; font-weight: 700; 
+                    color: var(--modal-h2-color, #f8fafc);
+                    text-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                }
+                .header-actions { display: flex; gap: 12px; align-items: center; }
+                .stage-badge { 
+                    padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; 
+                    text-transform: uppercase; background: rgba(16, 185, 129, 0.2); color: #34d399; 
+                    border: 1px solid rgba(16, 185, 129, 0.3);
+                }
+                
+                .close-btn { 
+                    background: rgba(255,255,255,0.05); border: none; color: var(--modal-text-secondary, #94a3b8); 
+                    border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+                    cursor: pointer; transition: all 0.2s; 
+                }
+                .close-btn:hover { background: rgba(100,100,255,0.1); color: var(--modal-h2-color); transform: rotate(90deg); }
+
+                /* Tabs */
+                .dealer-modal-tabs {
+                    display: flex; padding: 0 24px;
+                    background: var(--modal-tabs-bg, rgba(0,0,0,0.1));
+                    border-bottom: var(--modal-tabs-border, 1px solid rgba(255,255,255,0.05));
+                }
+                .tab-btn {
+                    padding: 14px 4px; margin-right: 24px;
+                    background: none; border: none; 
+                    color: var(--modal-label-color, #64748b);
+                    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+                    position: relative; transition: color 0.2s;
+                }
+                .tab-btn.active { color: var(--modal-h2-color, #f8fafc); }
+                .tab-btn.active::after {
+                    content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+                    height: 2px; background: var(--color-info, #3b82f6); box-shadow: 0 -1px 8px var(--color-info);
+                }
+
+                /* Content Body */
+                .dealer-modal-content { padding: 24px; flex: 1; }
+                
+                /* Compact Grid Layout */
+                .compact-grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 20px;
+                }
+                @media (max-width: 768px) {
+                    .compact-grid { grid-template-columns: 1fr; }
+                    .dealer-modal { width: 100%; height: 100%; border-radius: 0; }
+                }
+
+                .col-title {
+                    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+                    color: var(--modal-label-color, #64748b); margin: 0 0 16px 0; font-weight: 700;
+                    border-bottom: 1px dashed var(--modal-table-border, rgba(255,255,255,0.1)); padding-bottom: 4px;
+                }
+
+                /* Floating Labels */
+                .floating-group { position: relative; margin-bottom: 16px; }
+                .floating-input {
+                    width: 100%;
+                    padding: 16px 12px 6px;
+                    height: 48px;
+                    background: var(--modal-input-bg, rgba(30, 41, 59, 0.5));
+                    border: var(--modal-input-border, 1px solid rgba(255, 255, 255, 0.1));
+                    border-radius: 8px;
+                    color: var(--modal-input-text, #f1f5f9);
+                    font-size: 0.9rem;
+                    font-family: inherit;
+                    transition: all 0.2s;
+                    box-sizing: border-box;
+                }
+                .floating-input:focus {
+                    outline: none;
+                    border-color: var(--color-info, #3b82f6);
+                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                    background: var(--modal-input-focus-bg, rgba(30, 41, 59, 0.8));
+                }
+                .floating-label {
+                    position: absolute;
+                    top: 14px; left: 12px;
+                    font-size: 0.85rem;
+                    color: var(--modal-label-color, #94a3b8);
+                    pointer-events: none;
+                    transition: all 0.2s ease-out;
+                }
+                /* Active State for Float */
+                .floating-input:focus ~ .floating-label,
+                .floating-input:not(:placeholder-shown) ~ .floating-label {
+                    top: 4px;
+                    font-size: 0.65rem;
+                    color: var(--color-info, #3b82f6);
+                    font-weight: 600;
+                }
+                /* Select handling */
+                select.floating-input { padding-top: 16px; cursor: pointer; }
+                select.floating-input option { background: var(--modal-input-bg, #1e293b); color: var(--modal-input-text); }
+
+                /* Readonly */
+                .floating-input[readonly], .floating-input[disabled] {
+                    background: var(--modal-readonly-bg, rgba(0, 0, 0, 0.2));
+                    border-color: transparent;
+                    cursor: default;
+                    color: var(--modal-text-secondary, #94a3b8);
+                }
+
+                /* Edit Toggle Button */
+                .edit-toggle-btn {
+                    position: absolute; right: 10px; top: 12px;
+                    background: none; border: none;
+                    color: var(--text-muted); opacity: 0.5;
+                    cursor: pointer; transition: all 0.2s;
+                }
+                .edit-toggle-btn:hover { opacity: 1; color: var(--accent-color); }
+
+                /* Footer */
+                .dealer-modal-footer {
+                    padding: 16px 24px;
+                    border-top: var(--modal-footer-border, 1px solid rgba(255,255,255,0.05));
+                    background: var(--modal-footer-bg, rgba(15, 23, 42, 0.5));
+                    display: flex; justify-content: space-between; align-items: center;
+                }
+                .footer-note { font-size: 0.75rem; color: var(--modal-text-secondary, #94a3b8); font-style: italic; }
+                
+                .btn-cancel {
+                    padding: 8px 16px; margin-right: 8px;
+                    background: transparent; border: 1px solid var(--modal-table-border, rgba(255,255,255,0.1));
+                    color: var(--modal-text-secondary, #94a3b8); border-radius: 6px; cursor: pointer; transition: 0.2s;
+                }
+                .btn-cancel:hover { background: rgba(255,255,255,0.05); color: var(--modal-h2-color, #f8fafc); }
+                
+                .btn-save {
+                    padding: 8px 24px;
+                    background: linear-gradient(135deg, #3b82f6, #2563eb);
+                    border: none; color: white; border-radius: 6px;
+                    font-weight: 600; cursor: pointer;
+                    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+                    transition: transform 0.1s, box-shadow 0.2s;
+                }
+                .btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4); }
+                .btn-save:active { transform: translateY(0); }
+            </style>
+        `;
+    }
 }
 
 window.UIRenderer = UIRenderer;

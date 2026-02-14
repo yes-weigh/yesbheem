@@ -4,6 +4,7 @@
  */
 import { B2BLeadsService } from './services/b2b_leads_service.js';
 import { AudienceService } from './services/audience_service.js';
+import { DataManager } from './data_manager.js';
 import FormatUtils from './utils/format-utils.js';
 import { Toast } from './utils/toast.js';
 
@@ -12,8 +13,13 @@ if (!window.B2BLeadsManager) {
         constructor() {
             this.leads = [];
             this.filteredLeads = []; // Total results after filter
+            this.leads = this.leads.map(lead => ({
+                ...lead,
+                searchString: `${lead.name || ''} ${lead.phone || ''} ${lead.business_name || ''} ${lead.state || ''} ${lead.district || ''}`.toLowerCase()
+            }));
             this.service = new B2BLeadsService();
             this.audienceService = new AudienceService();
+            this.dataManager = new DataManager();
 
             // Filters
             this.searchQuery = '';
@@ -42,6 +48,9 @@ if (!window.B2BLeadsManager) {
         async init() {
             console.log('B2BLeadsManager initializing...');
             this.setupEventListeners();
+            if (this.dataManager) {
+                await this.dataManager.loadGeneralSettings();
+            }
             await this.loadData();
         }
 
@@ -147,6 +156,15 @@ if (!window.B2BLeadsManager) {
                 kams.forEach(k => html += `<option value="${k}">${k}</option>`);
                 kamSelect.innerHTML = html;
                 kamSelect.value = this.kamFilter;
+            }
+
+            // Populate Status Filter
+            const statusSelect = document.getElementById('filter-status');
+            if (statusSelect && this.dataManager && this.dataManager.generalSettings && this.dataManager.generalSettings.lead_stages) {
+                let html = '<option value="all">All Status</option>';
+                this.dataManager.generalSettings.lead_stages.forEach(s => html += `<option value="${s}">${s}</option>`);
+                statusSelect.innerHTML = html;
+                statusSelect.value = this.statusFilter;
             }
         }
 
@@ -342,10 +360,10 @@ if (!window.B2BLeadsManager) {
                     <td style="text-align:center; color:var(--text-muted); font-size: 0.8rem;">${startIdx + index + 1}</td>
                     <td style="font-weight:500;">${lead.name || '-'}</td>
                     <td>${lead.business_name || '-'}</td>
-                    <td style="font-family:monospace; opacity:0.9;">${lead.phone || '-'}</td>
+                    <td class="editable-cell" onclick="window.b2bLeadsManager.showInlineEdit('${lead.id}', 'phone', this)" style="font-family:monospace; opacity:0.9;">${lead.phone || '-'}</td>
                     <td>${lead.state || '-'}</td>
                     <td>${lead.district || '-'}</td>
-                    <td><span class="status-badge ${lead.status || 'new'}">${lead.status || 'New'}</span></td>
+                    <td class="editable-cell" onclick="window.b2bLeadsManager.showInlineEdit('${lead.id}', 'status', this)"><span class="status-badge ${lead.status || 'new'}">${lead.status || 'New'}</span></td>
                     <td>${lead.kam || '-'}</td>
                     <td style="text-align:center;">
                         <button class="icon-btn" onclick="window.b2bLeadsManager.openEditModal('${lead.id}')" title="Edit">
@@ -430,116 +448,140 @@ if (!window.B2BLeadsManager) {
             const isEdit = !!leadId;
             const lead = isEdit ? this.leads.find(l => l.id === leadId) : {};
 
-            const modal = document.getElementById('lead-edit-modal');
-            const content = document.getElementById('lead-edit-modal-content');
-
-            if (!modal || !content) return;
-
-            content.innerHTML = `
-                <div style="padding: 32px 24px 24px;">
-                    <h3 style="margin-bottom: 24px; color: var(--text-main); font-size:1.5rem; margin-top:0;">${isEdit ? 'Edit Lead' : 'Add New Lead'}</h3>
-                    <form id="lead-form" onsubmit="event.preventDefault(); window.b2bLeadsManager.saveLead('${leadId || ''}')">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label>Phone *</label>
-                                <input type="text" id="lead-phone" class="modern-input" value="${lead.phone || ''}" required placeholder="91XXXXXXXXXX">
-                            </div>
-                             <div class="form-group">
-                                <label>Name</label>
-                                <input type="text" id="lead-name" class="modern-input" value="${lead.name || ''}" placeholder="John Doe">
-                            </div>
-                             <div class="form-group">
-                                <label>Business Name</label>
-                                <input type="text" id="lead-business" class="modern-input" value="${lead.business_name || ''}" placeholder="Business Corp">
-                            </div>
-                             <div class="form-group">
-                                <label>State</label>
-                                <input type="text" id="lead-state" class="modern-input" value="${lead.state || ''}" placeholder="Kerala">
-                            </div>
-                             <div class="form-group">
-                                <label>District</label>
-                                <input type="text" id="lead-district" class="modern-input" value="${lead.district || ''}" placeholder="Ernakulam">
-                            </div>
-                             <div class="form-group">
-                                <label>Pincode</label>
-                                <input type="text" id="lead-pincode" class="modern-input" value="${lead.pincode || ''}" placeholder="682001">
-                            </div>
-                             <div class="form-group">
-                                <label>Status</label>
-                                <select id="lead-status" class="modern-input">
-                                    <option value="New" ${lead.status === 'New' ? 'selected' : ''}>New</option>
-                                    <option value="Contacted" ${lead.status === 'Contacted' ? 'selected' : ''}>Contacted</option>
-                                    <option value="Converted" ${lead.status === 'Converted' ? 'selected' : ''}>Converted</option>
-                                     <option value="Lost" ${lead.status === 'Lost' ? 'selected' : ''}>Lost</option>
-                                </select>
-                            </div>
-                             <div class="form-group">
-                                <label>KAM</label>
-                                <input type="text" id="lead-kam" class="modern-input" value="${lead.kam || ''}" placeholder="Assign to...">
-                            </div>
-                        </div>
-                        <div style="margin-top: 32px; display: flex; justify-content: flex-end; gap: 12px;">
-                            <button type="button" class="btn-secondary" onclick="window.b2bLeadsManager.closeModal()">Cancel</button>
-                            <button type="submit" class="btn-primary" id="btn-save-lead">Save Lead</button>
-                        </div>
-                    </form>
-                </div>
-            `;
-
-            this.isModalOpen = true;
-            modal.classList.add('active');
-        }
-
-        closeModal() {
-            this.isModalOpen = false;
-            const modal = document.getElementById('lead-edit-modal');
-            if (modal) modal.classList.remove('active');
-        }
-
-        async saveLead(leadId) {
-            const btn = document.getElementById('btn-save-lead');
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = 'Saving...';
+            if (!lead && isEdit) {
+                if (Toast) Toast.error('Lead not found.');
+                return;
             }
 
-            const data = {
-                phone: document.getElementById('lead-phone').value,
-                name: document.getElementById('lead-name').value,
-                business_name: document.getElementById('lead-business').value,
-                state: document.getElementById('lead-state').value,
-                district: document.getElementById('lead-district').value,
-                pincode: document.getElementById('lead-pincode').value,
-                status: document.getElementById('lead-status').value,
-                kam: document.getElementById('lead-kam').value
-            };
+            // Close correct modal
+            this.closeEditModal();
+
+            // Load settings? Assuming dataManager has them
+            const settings = this.dataManager ? this.dataManager.generalSettings : {};
+
+            const html = window.UIRenderer.renderB2BLeadModal(lead, settings);
+            document.body.insertAdjacentHTML('beforeend', html);
+            this.isModalOpen = true;
+        }
+
+        closeEditModal() {
+            this.isModalOpen = false;
+            const modal = document.querySelector('.dealer-modal-overlay');
+            if (modal) modal.remove();
+        }
+
+        toggleEditField(btn) {
+            const container = btn.parentElement;
+            // .floating-input or .edit-field-input
+            const input = container.querySelector('.floating-input, .edit-field-input');
+            if (input) {
+                if (input.hasAttribute('readonly') || input.disabled) {
+                    input.removeAttribute('readonly');
+                    input.disabled = false;
+                    input.focus();
+                    btn.classList.add('active');
+                    btn.style.color = 'var(--accent-color, #3b82f6)';
+                    btn.style.opacity = '1';
+                } else {
+                    input.setAttribute('readonly', 'true');
+                    input.disabled = true; // Use disabled for select
+                    // For input text, restore readonly? Actually dealer page sets disabled=true for inputs?
+                    // Dealer page uses disabled for input too in toggleEditField logic (lines 2100 in dealer_manager.js)
+                    // But floating input render uses readonly for text and disabled for select.
+                    // Let's stick to what renderer does.
+                    if (input.tagName === 'INPUT') input.setAttribute('readonly', 'true');
+
+                    btn.classList.remove('active');
+                    btn.style.color = '';
+                    btn.style.opacity = '0.5';
+                }
+            }
+        }
+
+        async handlePopupZipChange(inputField) {
+            const zipCode = inputField.value.trim();
+            if (!zipCode || !/^\d{6}$/.test(zipCode)) return;
+
+            const container = inputField.parentElement;
+            const spinner = container.querySelector('.zip-loading-spinner');
+            if (spinner) spinner.style.display = 'block';
+
+            try {
+                // Use dataManager to get location
+                const location = await this.dataManager.getLocationFromZip(zipCode);
+                if (location) {
+                    // Find fields within the modal
+                    const modal = inputField.closest('.dealer-modal');
+                    if (modal) {
+                        const districtInput = modal.querySelector('input[data-field="district"]');
+                        const stateInput = modal.querySelector('input[data-field="state"]');
+
+                        if (districtInput) {
+                            districtInput.value = location.district;
+                            // Flash effect?
+                            districtInput.style.transition = 'background 0.2s';
+                            districtInput.style.background = 'rgba(59, 130, 246, 0.2)';
+                            setTimeout(() => districtInput.style.background = '', 500);
+                        }
+                        if (stateInput) {
+                            stateInput.value = location.state;
+                            stateInput.style.transition = 'background 0.2s';
+                            stateInput.style.background = 'rgba(59, 130, 246, 0.2)';
+                            setTimeout(() => stateInput.style.background = '', 500);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching zip location:', error);
+            } finally {
+                if (spinner) spinner.style.display = 'none';
+            }
+        }
+
+        async saveLeadDetails(leadId) {
+            const modal = document.querySelector('.dealer-modal');
+            if (!modal) return;
+
+            const saveBtn = modal.querySelector('.btn-save');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+            }
+
+            const data = {};
+            // Scrape all data-field inputs
+            modal.querySelectorAll('[data-field]').forEach(input => {
+                const field = input.dataset.field;
+                const val = input.value; // .trim() done inside?
+                if (field) data[field] = val;
+            });
 
             try {
                 if (leadId) {
                     await this.service.updateLead(leadId, data);
                     // Update local state
                     const index = this.leads.findIndex(l => l.id === leadId);
-                    if (index !== -1) this.leads[index] = { ...this.leads[index], ...data };
+                    if (index !== -1) {
+                        this.leads[index] = { ...this.leads[index], ...data };
+                        // Update search string too
+                        this.leads[index].searchString = `${this.leads[index].name || ''} ${this.leads[index].phone || ''} ${this.leads[index].business_name || ''} ${this.leads[index].state || ''} ${this.leads[index].district || ''}`.toLowerCase();
+                    }
                     if (Toast) Toast.success('Lead updated successfully');
                 } else {
                     const newLead = await this.service.addLead(data);
-                    this.leads.push(newLead);
+                    // Add to local state
+                    newLead.searchString = `${newLead.name || ''} ${newLead.phone || ''} ${newLead.business_name || ''} ${newLead.state || ''} ${newLead.district || ''}`.toLowerCase();
+                    this.leads.unshift(newLead); // Add to top
                     if (Toast) Toast.success('Lead added successfully');
                 }
 
-                // Refresh
-                this.leads = this.leads.map(lead => ({
-                    ...lead,
-                    searchString: `${lead.name || ''} ${lead.phone || ''} ${lead.business_name || ''} ${lead.state || ''} ${lead.district || ''}`.toLowerCase()
-                }));
-
-                this.closeModal();
+                this.closeEditModal();
                 this.applyFilters();
             } catch (error) {
                 if (Toast) Toast.error('Error saving lead: ' + error.message);
-                if (btn) {
-                    btn.disabled = false;
-                    btn.textContent = 'Save Lead';
+                if (saveBtn) {
+                    saveBtn.disabled = false; // Re-enable
+                    saveBtn.textContent = leadId ? 'Save Changes' : 'Create Lead';
                 }
             }
         }
@@ -557,6 +599,179 @@ if (!window.B2BLeadsManager) {
             } catch (error) {
                 console.error(error);
                 if (Toast) Toast.error('Failed to delete lead');
+            }
+        }
+
+        // --- Inline Editing ---
+
+        showInlineEdit(leadId, field, cell) {
+            this.closeInlineEdit(); // Close any open edits
+
+            const lead = this.leads.find(l => l.id === leadId);
+            if (!lead) return;
+
+            const currentValue = lead[field] || '';
+
+            // Handle Status Dropdown
+            if (field === 'status') {
+                const options = (this.dataManager && this.dataManager.generalSettings && this.dataManager.generalSettings.lead_stages)
+                    ? this.dataManager.generalSettings.lead_stages
+                    : ['New', 'Contacted', 'Converted', 'Lost'];
+
+                const dropdown = document.createElement('div');
+                dropdown.className = 'inline-edit-dropdown';
+                dropdown.innerHTML = `
+                    <select class="inline-edit-select">
+                        ${options.map(opt => `<option value="${opt}" ${opt === currentValue ? 'selected' : ''}>${opt}</option>`).join('')}
+                    </select>
+                    <div class="inline-edit-actions">
+                        <button class="inline-edit-btn save-btn" title="Save">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+                        </button>
+                        <button class="inline-edit-btn cancel-btn" title="Cancel">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                `;
+                this.setupInlineEditEvents(dropdown, leadId, field, cell, 'select');
+            }
+            // Handle Phone/Text Input
+            else if (field === 'phone') {
+                const dropdown = document.createElement('div');
+                dropdown.className = 'inline-edit-dropdown';
+                dropdown.style.flexDirection = 'row';
+                dropdown.style.alignItems = 'center';
+                dropdown.innerHTML = `
+                    <input type="text" class="inline-edit-input" value="${currentValue}" style="margin-right:0.5rem;">
+                    <div class="inline-edit-actions">
+                        <button class="inline-edit-btn save-btn" title="Save">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+                        </button>
+                        <button class="inline-edit-btn cancel-btn" title="Cancel">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                `;
+                this.setupInlineEditEvents(dropdown, leadId, field, cell, 'input');
+            }
+        }
+
+        setupInlineEditEvents(dropdown, leadId, field, cell, inputType) {
+            const saveBtn = dropdown.querySelector('.save-btn');
+            const cancelBtn = dropdown.querySelector('.cancel-btn');
+            const input = dropdown.querySelector(inputType === 'select' ? 'select' : 'input');
+
+            // Save Handler
+            saveBtn.onclick = (e) => {
+                e.stopPropagation();
+                // Get value depending on input type
+                const newValue = input.value;
+                this.saveInlineEdit(leadId, field, newValue, cell);
+            };
+
+            // Cancel Handler
+            cancelBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.closeInlineEdit();
+            };
+
+            // Prevent click propagation inside dropdown
+            dropdown.addEventListener('click', (e) => e.stopPropagation());
+
+            // Position and Append
+            const rect = cell.getBoundingClientRect();
+
+            // Improved positioning logic from DealerManager
+            dropdown.style.top = `${rect.top + window.scrollY - 4}px`; // Overlap slightly
+            // Check right edge
+            const isRightEdge = (window.innerWidth - rect.right) < 200;
+            if (isRightEdge) {
+                dropdown.style.right = `${window.innerWidth - rect.right - window.scrollX}px`;
+                dropdown.style.left = 'auto';
+            } else {
+                dropdown.style.left = `${rect.left + window.scrollX - 4}px`;
+            }
+            dropdown.style.minWidth = `${Math.max(180, rect.width)}px`;
+
+
+            // Mark cell
+            cell.dataset.originalContent = cell.innerHTML;
+            cell.classList.add('editing');
+
+            document.body.appendChild(dropdown);
+
+            // Focus and Outside Click
+            setTimeout(() => {
+                input.focus();
+                const closeHandler = (e) => {
+                    // Check if click is inside dropdown or on the editing cell itself
+                    if (!e.target.closest('.inline-edit-dropdown') && !e.target.closest('.editing')) {
+                        this.closeInlineEdit();
+                        document.removeEventListener('click', closeHandler);
+                        document.removeEventListener('keydown', keyHandler);
+                    }
+                };
+                const keyHandler = (e) => {
+                    if (e.key === 'Escape') {
+                        this.closeInlineEdit();
+                        document.removeEventListener('click', closeHandler);
+                        document.removeEventListener('keydown', keyHandler);
+                    } else if (e.key === 'Enter' && inputType !== 'textarea') {
+                        // Optional: Save on Enter
+                        // this.saveInlineEdit(...)
+                    }
+                };
+
+                document.addEventListener('click', closeHandler);
+                document.addEventListener('keydown', keyHandler);
+            }, 50);
+        }
+
+        closeInlineEdit() {
+            const dropdown = document.querySelector('.inline-edit-dropdown');
+            if (dropdown) dropdown.remove();
+
+            document.querySelectorAll('.editing').forEach(cell => {
+                // Restore original (unless we saved, in which case re-render handles it,
+                // but if we cancel we need this. If we saved, this might briefly flash old content before refresh)
+                // Actually saveInlineEdit calls refresh which re-renders table, so this only runs on cancel.
+                if (cell.dataset.originalContent) {
+                    cell.innerHTML = cell.dataset.originalContent;
+                    delete cell.dataset.originalContent;
+                }
+                cell.classList.remove('editing');
+            });
+        }
+
+        async saveInlineEdit(leadId, field, newValue, cell) {
+            this.closeInlineEdit(); // Close UI
+            if (cell) {
+                // Show saving state
+                cell.innerHTML = '<span style="opacity:0.6; font-size:0.85rem;">Saving...</span>';
+            }
+
+            try {
+                // Determine update object. Use service.
+                const updateData = { [field]: newValue };
+                await this.service.updateLead(leadId, updateData);
+
+                // Update local state
+                const lead = this.leads.find(l => l.id === leadId);
+                if (lead) {
+                    lead[field] = newValue;
+                    // Re-calculate search string if needed
+                    if (field === 'phone') {
+                        lead.searchString = `${lead.name || ''} ${lead.phone || ''} ${lead.business_name || ''} ${lead.state || ''} ${lead.district || ''}`.toLowerCase();
+                    }
+                }
+
+                if (Toast) Toast.success('Lead updated');
+                // Re-apply filters to refresh view (and re-sort/filter if affected)
+                this.applyFilters();
+            } catch (error) {
+                console.error('Save failed:', error);
+                if (Toast) Toast.error('Failed to save: ' + error.message);
+                this.renderTable(); // Revert visual state
             }
         }
 

@@ -10,6 +10,7 @@ export class SettingsController {
     constructor() {
         this.keyAccounts = [];
         this.dealerStages = [];
+        this.leadStages = [];
         this.dealerCategories = [];
         this.instanceGroups = [];
         this.isLoading = false;
@@ -18,6 +19,7 @@ export class SettingsController {
         this.deactivatedList = null;
         this.addKeyAccountInput = null;
         this.addDealerStageInput = null;
+        this.addLeadStageInput = null;
         this.addCategoryInput = null;
         this.addGroupInput = null;
 
@@ -69,6 +71,7 @@ export class SettingsController {
                 });
 
                 this.dealerStages = data.dealer_stages || [];
+                this.leadStages = data.lead_stages || [];
                 this.dealerCategories = data.dealer_categories || [];
                 this.instanceGroups = data.instance_groups || [];
                 this.templateLanguages = data.template_languages || [];
@@ -81,6 +84,7 @@ export class SettingsController {
                 // Initialize defaults
                 this.keyAccounts = [];
                 this.dealerStages = ['Contacted', 'Interested', 'Negotiation', 'Closed'];
+                this.leadStages = ['New', 'Contacted', 'Converted', 'Lost'];
                 this.dealerCategories = [];
                 this.instanceGroups = [];
                 this.templateLanguages = ['English', 'Malayalam', 'Hindi', 'Tamil', 'Telugu'];
@@ -90,6 +94,7 @@ export class SettingsController {
                 await setDoc(docRef, {
                     key_accounts: this.keyAccounts,
                     dealer_stages: this.dealerStages,
+                    lead_stages: this.leadStages,
                     dealer_categories: this.dealerCategories,
                     instance_groups: this.instanceGroups,
                     template_languages: this.templateLanguages,
@@ -114,6 +119,7 @@ export class SettingsController {
             // Fallback for offline/error
             this.keyAccounts = [];
             this.dealerStages = [];
+            this.leadStages = [];
             this.dealerCategories = [];
         } finally {
             this.setLoading(false);
@@ -377,6 +383,15 @@ export class SettingsController {
             this.renderDealerStages();
             this.updateBadges();
             await this.persistItem(listName, value, 'add');
+        } else if (listName === 'leadStages') {
+            if (this.leadStages.includes(value)) {
+                alert('This stage already exists!');
+                return;
+            }
+            this.leadStages.push(value);
+            this.renderLeadStages();
+            this.updateBadges();
+            await this.persistItem(listName, value, 'add');
         } else if (listName === 'dealerCategories') {
             if (this.dealerCategories.includes(value)) {
                 alert('This category already exists!');
@@ -427,6 +442,7 @@ export class SettingsController {
         let fieldName = '';
         if (listName === 'keyAccounts') fieldName = 'key_account_manager';
         else if (listName === 'dealerStages') fieldName = 'dealer_stage';
+        else if (listName === 'leadStages') fieldName = 'status'; // B2B Lead Status
         else if (listName === 'dealerCategories') fieldName = 'categories';
 
         // 1. Remove from List
@@ -437,6 +453,10 @@ export class SettingsController {
         } else if (listName === 'dealerStages') {
             this.dealerStages = this.dealerStages.filter(item => item !== value);
             this.renderDealerStages();
+            await this.persistItem(listName, value, 'remove');
+        } else if (listName === 'leadStages') {
+            this.leadStages = this.leadStages.filter(item => item !== value);
+            this.renderLeadStages();
             await this.persistItem(listName, value, 'remove');
         } else if (listName === 'dealerCategories') {
             this.dealerCategories = this.dealerCategories.filter(item => item !== value);
@@ -489,6 +509,15 @@ export class SettingsController {
                     this.renderDealerStages();
                     await this.persistRename(listName, oldValue, trimmedValue);
                     fieldName = 'dealer_stage';
+                }
+            } else if (listName === 'leadStages') {
+                if (this.leadStages.includes(trimmedValue)) { alert('Stage already exists'); return; }
+                const idx = this.leadStages.indexOf(oldValue);
+                if (idx !== -1) {
+                    this.leadStages[idx] = trimmedValue;
+                    this.renderLeadStages();
+                    await this.persistRename(listName, oldValue, trimmedValue);
+                    fieldName = 'status'; // Cascade rename for leads? Might need deeper support in DataManager
                 }
             } else if (listName === 'dealerCategories') {
                 if (this.dealerCategories.includes(trimmedValue)) { alert('Category already exists'); return; }
@@ -740,6 +769,7 @@ export class SettingsController {
 
         if (listName === 'keyAccounts') firestoreField = 'key_accounts';
         else if (listName === 'dealerStages') firestoreField = 'dealer_stages';
+        else if (listName === 'leadStages') firestoreField = 'lead_stages';
 
         else if (listName === 'dealerCategories') firestoreField = 'dealer_categories';
         else if (listName === 'instanceGroups') {
@@ -821,6 +851,13 @@ export class SettingsController {
             inputId = 'add-stage-input';
             btnId = 'add-stage-btn';
             renderMethod = 'renderDealerStages';
+            placeholder = 'Enter stage name...';
+        } else if (type === 'leadStages') {
+            title = 'Manage Lead Stages';
+            listId = 'lead-stages-list';
+            inputId = 'add-lead-stage-input';
+            btnId = 'add-lead-stage-btn';
+            renderMethod = 'renderLeadStages';
             placeholder = 'Enter stage name...';
         } else if (type === 'dealerCategories') {
             title = 'Manage Dealer Categories';
@@ -913,6 +950,11 @@ export class SettingsController {
             this.addDealerStageInput = document.getElementById(inputId);
             document.getElementById(btnId).onclick = () => this.handleAddItem('dealerStages', this.addDealerStageInput);
             this.addDealerStageInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('dealerStages', this.addDealerStageInput); };
+        } else if (type === 'leadStages') {
+            this.leadStagesList = document.getElementById(listId);
+            this.addLeadStageInput = document.getElementById(inputId);
+            document.getElementById(btnId).onclick = () => this.handleAddItem('leadStages', this.addLeadStageInput);
+            this.addLeadStageInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('leadStages', this.addLeadStageInput); };
         } else if (type === 'dealerCategories') {
             this.dealerCategoriesList = document.getElementById(listId);
             this.addCategoryInput = document.getElementById(inputId);
@@ -957,6 +999,7 @@ export class SettingsController {
         this.renderDealerStages();
         this.renderDealerCategories();
         this.renderDealerStages();
+        this.renderLeadStages();
         this.renderDealerCategories();
         this.renderDeactivatedDealers();
         this.renderInstanceGroups();
@@ -1068,6 +1111,26 @@ export class SettingsController {
         `}).join('');
     }
 
+    renderLeadStages() {
+        if (!this.leadStagesList) return;
+        this.leadStagesList.innerHTML = this.leadStages.map(stage => `
+            <div class="list-item">
+                <span class="item-text">${this.escapeHtml(stage)}</span>
+                <div class="actions">
+                    <button class="edit-btn" onclick="window.settingsController.handleRenameItem('leadStages', '${this.escapeHtml(stage)}')" title="Rename">
+                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                    </button>
+                    <button class="delete-btn" onclick="window.settingsController.handleRemoveItem('leadStages', '${this.escapeHtml(stage)}')" title="Delete">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
     renderInstanceGroups() {
         if (!this.instanceGroupsList) return;
         this.instanceGroupsList.innerHTML = this.instanceGroups.map(group => `
@@ -1171,6 +1234,14 @@ export class SettingsController {
         if (stagesBadge) {
             const count = this.dealerStages.length;
             stagesBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+
+            // Update Lead Stages badge (Added manually since not in original logic)
+            const leadStagesBadge = document.getElementById('lead-stages-count');
+            if (leadStagesBadge) {
+                const count = this.leadStages.length;
+                leadStagesBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+            }
+
             const kamCount = document.getElementById('kam-count');
             const stagesCount = document.getElementById('stages-count');
             const categoriesCount = document.getElementById('categories-count');
