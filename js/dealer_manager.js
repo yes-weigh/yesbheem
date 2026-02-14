@@ -1610,10 +1610,14 @@ if (!window.DealerManager) {
                 // For dynamic filters, we might want to save a preview or just the count
                 // Backend needs to support re-running the filter OR we save the snapshot now.
                 // For MVP reliability: SAVE SNAPSHOT NOW.
-                const filteredContacts = this.filteredDealers.map(d => ({
-                    phone: d.mobile_phone || d.phone || '',
-                    name: d.customer_name || d.name || 'Unknown'
-                })).filter(c => c.phone && c.phone.length >= 10);
+                const filteredContacts = this.filteredDealers.map(d => {
+                    const rawPhone = d.mobile_phone || d.phone || '';
+                    const formattedPhone = FormatUtils.formatPhoneNumber ? FormatUtils.formatPhoneNumber(rawPhone) : rawPhone;
+                    return {
+                        phone: formattedPhone,
+                        name: d.customer_name || d.name || 'Unknown'
+                    };
+                }).filter(c => c.phone && c.phone.length >= 10);
 
                 payload.contacts = filteredContacts; // Snapshot for sending
                 payload.count = filteredContacts.length;
