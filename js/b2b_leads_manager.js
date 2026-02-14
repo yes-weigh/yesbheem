@@ -450,8 +450,8 @@ if (!window.B2BLeadsManager) {
             const pageData = this.filteredLeads.slice(startIdx, startIdx + this.itemsPerPage);
 
             tbody.innerHTML = pageData.map((lead, index) => `
-                <tr class="lead-row">
-                    <td style="text-align:center">
+                <tr class="lead-row" onclick="window.b2bLeadsManager.openEditModal('${lead.id}')">
+                    <td style="text-align:center" onclick="event.stopPropagation()">
                         <input type="checkbox" 
                             ${this.selectedLeads.has(lead.id) ? 'checked' : ''} 
                             onchange="window.b2bLeadsManager.toggleSelection('${lead.id}', this.checked)">
@@ -459,15 +459,12 @@ if (!window.B2BLeadsManager) {
                     <td style="text-align:center; color:var(--text-muted); font-size: 0.8rem;">${startIdx + index + 1}</td>
                     <td style="font-weight:500;">${lead.name || '-'}</td>
                     <td>${lead.business_name || '-'}</td>
-                    <td class="editable-cell" onclick="window.b2bLeadsManager.showInlineEdit('${lead.id}', 'phone', this)" style="font-family:monospace; opacity:0.9;">${lead.phone || '-'}</td>
+                    <td class="editable-cell" onclick="event.stopPropagation(); window.b2bLeadsManager.showInlineEdit('${lead.id}', 'phone', this)" style="font-family:monospace; opacity:0.9;">${lead.phone || '-'}</td>
                     <td>${lead.state || '-'}</td>
                     <td>${lead.district || '-'}</td>
-                    <td class="editable-cell" onclick="window.b2bLeadsManager.showInlineEdit('${lead.id}', 'status', this)"><span class="status-badge ${lead.status || 'new'}">${lead.status || 'New'}</span></td>
+                    <td class="editable-cell" onclick="event.stopPropagation(); window.b2bLeadsManager.showInlineEdit('${lead.id}', 'status', this)"><span class="status-badge ${lead.status || 'new'}">${lead.status || 'New'}</span></td>
                     <td>${lead.kam || '-'}</td>
-                    <td style="text-align:center;">
-                        <button class="icon-btn" onclick="window.b2bLeadsManager.openEditModal('${lead.id}')" title="Edit">
-                           ✏️
-                        </button>
+                    <td style="text-align:center;" onclick="event.stopPropagation()">
                         <button class="icon-btn delete" onclick="window.b2bLeadsManager.deleteLead('${lead.id}')" title="Delete">
                            🗑️
                         </button>
