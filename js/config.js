@@ -23,7 +23,7 @@ class Config {
         }
 
         // List of Known App Routes that should NOT be treated as base path prefixes
-        const appRoutes = ['/dashboard', '/dealer', '/discussions', '/instance', '/message', '/contact', '/product', '/pricelist', '/media', '/yesbheem', '/template', '/broadcast', '/welcome', '/chatbot', '/groupgrabber', '/report', '/integration', '/settings', '/cirtificates'];
+        const appRoutes = ['/dashboard', '/dealer', '/discussions', '/instance', '/message', '/b2b-leads', '/product', '/pricelist', '/media', '/yesbheem', '/template', '/broadcast', '/welcome', '/chatbot', '/groupgrabber', '/report', '/integration', '/settings', '/cirtificates'];
 
         // internal helper to check if current path starts with an app route
         const isAppRoute = appRoutes.some(route => pathname.startsWith(route));

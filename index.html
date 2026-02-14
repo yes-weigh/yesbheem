@@ -21,7 +21,7 @@
 
         // Check if we're in a subdirectory (e.g., /yesbheem/)
         // But ignore app routes (SPA routes)
-        const appRoutes = ['/dashboard', '/dealer', '/discussions', '/instance', '/message', '/contact', '/product', '/pricelist', '/media', '/yesbheem', '/template', '/broadcast', '/welcome', '/chatbot', '/groupgrabber', '/report', '/integration', '/settings', '/cirtificates'];
+        const appRoutes = ['/dashboard', '/dealer', '/discussions', '/instance', '/message', '/b2b-leads', '/product', '/pricelist', '/media', '/yesbheem', '/template', '/broadcast', '/welcome', '/chatbot', '/groupgrabber', '/report', '/integration', '/settings', '/cirtificates'];
         const isAppRoute = appRoutes.some(route => pathname.startsWith(route));
 
         const match = pathname.match(/^(\/[^\/]+)\//);
