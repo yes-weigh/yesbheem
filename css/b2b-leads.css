@@ -105,8 +105,186 @@ td.editing {
     position: absolute;
     right: 4px;
     top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.75rem;
-    color: #94a3b8;
-    opacity: 0.5;
-}
+
+    /* --- Dashboard Cards (KPI) --- */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 16px;
+        width: 100%;
+        margin-bottom: 20px;
+    }
+
+    .kpi-card {
+        padding: 12px 20px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.4) 0%, rgba(30, 41, 59, 0.2) 100%);
+        /* var(--modal-bg-gradient) approx */
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 60px;
+        position: relative;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.2s, background 0.2s;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(30, 41, 59, 0.4) 100%);
+    }
+
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 12px;
+        bottom: 12px;
+        width: 3px;
+        border-radius: 0 4px 4px 0;
+        background: currentColor;
+        box-shadow: 2px 0 8px currentColor;
+    }
+
+    .kpi-content {
+        order: 1;
+    }
+
+    .kpi-header {
+        order: 2;
+        margin-bottom: 0;
+    }
+
+    .kpi-value {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #f8fafc;
+        line-height: 1;
+        letter-spacing: -0.5px;
+    }
+
+    .kpi-label {
+        font-size: 0.70rem;
+        color: #94a3b8;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-align: right;
+        opacity: 0.8;
+    }
+
+    /* Card Colors */
+    .card-blue {
+        border-left: 4px solid #3b82f6;
+        color: #3b82f6;
+    }
+
+    .card-teal {
+        border-left: 4px solid #14b8a6;
+        color: #14b8a6;
+    }
+
+    .card-orange {
+        border-left: 4px solid #f59e0b;
+        color: #f59e0b;
+    }
+
+    .card-purple {
+        border-left: 4px solid #8b5cf6;
+        color: #8b5cf6;
+    }
+
+    .card-red {
+        border-left: 4px solid #ef4444;
+        color: #ef4444;
+    }
+
+    .card-indigo {
+        border-left: 4px solid #6366f1;
+        color: #6366f1;
+    }
+
+    .card-green {
+        border-left: 4px solid #10b981;
+        color: #10b981;
+    }
+
+    @media (max-width: 1200px) {
+        .kpi-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .kpi-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* --- Pagination Polishing --- */
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #334155;
+        background: rgba(30, 41, 59, 0.5);
+        /* Match table footer */
+        color: #94a3b8;
+        font-size: 0.875rem;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+    }
+
+    .pagination-info {
+        flex: 1;
+    }
+
+    .pagination-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .page-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 32px;
+        padding: 0 12px;
+        border-radius: 6px;
+        background: transparent;
+        border: 1px solid transparent;
+        color: #94a3b8;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.875rem;
+        gap: 4px;
+    }
+
+    .page-btn:hover:not(:disabled) {
+        background: #334155;
+        color: #f8fafc;
+    }
+
+    .page-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .page-current {
+        font-family: monospace;
+        padding: 0 8px;
+        color: #e2e8f0;
+    }
+
+    .pagination-divider {
+        width: 1px;
+        height: 16px;
+        background: #475569;
+        margin: 0 10px;
+    }

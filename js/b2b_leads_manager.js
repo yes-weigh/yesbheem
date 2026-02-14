@@ -51,6 +51,7 @@ if (!window.B2BLeadsManager) {
             if (this.dataManager) {
                 await this.dataManager.loadGeneralSettings();
             }
+            this.renderKPICards(); // Initialize cards with settings
             await this.loadData();
         }
 
@@ -247,83 +248,181 @@ if (!window.B2BLeadsManager) {
             });
         }
 
-        updateStats() {
-            const countEl = document.getElementById('lead-count-display');
-            if (countEl) countEl.textContent = `${this.filteredLeads.length} leads`;
-        }
-
         // --- Pagination ---
 
         renderPagination() {
+            const container = document.getElementById('pagination-controls');
+            if (!container) return;
+
             const totalItems = this.filteredLeads.length;
+
+            if (totalItems === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let infoText = '';
+            let controlsHtml = '';
+
             const totalPages = Math.ceil(totalItems / this.itemsPerPage);
 
             // Adjust current page if out of bounds
             if (this.currentPage > totalPages) this.currentPage = Math.max(1, totalPages);
 
-            const startIdx = (this.currentPage - 1) * this.itemsPerPage;
-            const endIdx = Math.min(startIdx + this.itemsPerPage, totalItems);
+            const startIdx = (this.currentPage - 1) * this.itemsPerPage + 1;
+            const endIdx = Math.min(this.currentPage * this.itemsPerPage, totalItems);
 
-            document.getElementById('pag-start').textContent = totalItems > 0 ? startIdx + 1 : 0;
-            document.getElementById('pag-end').textContent = endIdx;
-            document.getElementById('pag-total').textContent = totalItems;
+            infoText = `<div class="pagination-info">Showing ${startIdx}-${endIdx} of ${totalItems}</div>`;
 
-            const btnPrev = document.getElementById('btn-prev');
-            const btnNext = document.getElementById('btn-next');
-            if (btnPrev) btnPrev.disabled = this.currentPage <= 1;
-            if (btnNext) btnNext.disabled = this.currentPage >= totalPages;
+            controlsHtml = `
+                <div class="pagination-actions">
+                    <button class="page-btn" ${this.currentPage === 1 ? 'disabled' : ''} onclick="window.b2bLeadsManager.changePage(${this.currentPage - 1})">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                        Prev
+                    </button>
+                    <span class="page-current">Page ${this.currentPage} of ${totalPages}</span>
+                    <button class="page-btn" ${this.currentPage === totalPages ? 'disabled' : ''} onclick="window.b2bLeadsManager.changePage(${this.currentPage + 1})">
+                        Next
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                    </button>
+                    <div class="pagination-divider"></div>
+                     <!-- Optional: View All Toggle or Items Per Page -->
+                </div>
+            `;
 
-            // Page numbers
-            const numbersContainer = document.getElementById('pagination-numbers');
-            if (numbersContainer) {
-                let html = '';
-                // Simple logic: show first, last, and around current
-                // For simplified UX, just show current if many pages, or all if few
-                if (totalPages <= 7) {
-                    for (let i = 1; i <= totalPages; i++) {
-                        html += `<div class="page-btn ${i === this.currentPage ? 'active' : ''}" onclick="window.b2bLeadsManager.goToPage(${i})">${i}</div>`;
-                    }
-                } else {
-                    html += `<div class="page-btn ${1 === this.currentPage ? 'active' : ''}" onclick="window.b2bLeadsManager.goToPage(1)">1</div>`;
-                    if (this.currentPage > 3) html += `<span style="display:flex;align-items:center;padding:0 4px;color:var(--text-muted)">...</span>`;
-
-                    // Middle
-                    let start = Math.max(2, this.currentPage - 1);
-                    let end = Math.min(totalPages - 1, this.currentPage + 1);
-
-                    for (let i = start; i <= end; i++) {
-                        html += `<div class="page-btn ${i === this.currentPage ? 'active' : ''}" onclick="window.b2bLeadsManager.goToPage(${i})">${i}</div>`;
-                    }
-
-                    if (this.currentPage < totalPages - 2) html += `<span style="display:flex;align-items:center;padding:0 4px;color:var(--text-muted)">...</span>`;
-                    html += `<div class="page-btn ${totalPages === this.currentPage ? 'active' : ''}" onclick="window.b2bLeadsManager.goToPage(${totalPages})">${totalPages}</div>`;
-                }
-                numbersContainer.innerHTML = html;
-            }
+            container.innerHTML = infoText + controlsHtml;
         }
 
-        prevPage() {
-            if (this.currentPage > 1) {
-                this.currentPage--;
-                this.renderTable();
-                this.renderPagination();
-            }
-        }
-
-        nextPage() {
+        changePage(newPage) {
             const totalItems = this.filteredLeads.length;
             const totalPages = Math.ceil(totalItems / this.itemsPerPage);
-            if (this.currentPage < totalPages) {
-                this.currentPage++;
-                this.renderTable();
-                this.renderPagination();
+
+            if (newPage < 1 || newPage > totalPages) return;
+
+            this.currentPage = newPage;
+            this.renderTable();
+            this.renderPagination();
+            // Scroll to top of table
+            const tableContainer = document.querySelector('.leads-table-container');
+            if (tableContainer) tableContainer.scrollTop = 0;
+        }
+
+
+        // --- Stats & Helpers ---
+
+        setStatusFilter(status) {
+            const select = document.getElementById('filter-status');
+            if (select) {
+                select.value = status;
+                // Trigger change event manually
+                select.dispatchEvent(new Event('change', { bubbles: true }));
             }
         }
 
-        goToPage(page) {
-            this.currentPage = page;
-            this.renderTable();
-            this.renderPagination();
+        renderKPICards() {
+            const container = document.getElementById('kpi-grid');
+            if (!container) return;
+
+            // Default stages if settings not loaded
+            const stages = this.dataManager?.generalSettings?.lead_stages || ['New', 'Contacted', 'Converted', 'Lost'];
+
+            // Colors to cycle through
+            const colors = ['card-blue', 'card-teal', 'card-indigo', 'card-green', 'card-red', 'card-yellow', 'card-purple', 'card-orange', 'card-pink'];
+
+            let html = '';
+
+            // 1. Total Card (Always first)
+            html += `
+                <div class="kpi-card card-blue" onclick="window.b2bLeadsManager.setStatusFilter('all')" style="cursor: pointer;">
+                    <div class="kpi-content">
+                        <span class="kpi-value" id="stats-total">0</span>
+                    </div>
+                    <div class="kpi-header">
+                        <span class="kpi-label">TOTAL</span>
+                    </div>
+                </div>
+            `;
+
+            // 2. Dynamic Stage Cards
+            stages.forEach((stage, index) => {
+                // Skip 'Total' or 'All' if they somehow got into settings
+                if (stage.toLowerCase() === 'all' || stage.toLowerCase() === 'total') return;
+
+                const colorClass = colors[(index + 1) % colors.length]; // Offset by 1 to skip blue used for Total
+                const safeId = stage.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+
+                html += `
+                    <div class="kpi-card ${colorClass}" onclick="window.b2bLeadsManager.setStatusFilter('${stage}')" style="cursor: pointer;">
+                        <div class="kpi-content">
+                            <span class="kpi-value" id="stats-stage-${safeId}">0</span>
+                        </div>
+                        <div class="kpi-header">
+                            <span class="kpi-label">${stage.toUpperCase()}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+
+            // Update grid columns based on count (Total + stages)
+            const cardCount = 1 + stages.length;
+            container.style.gridTemplateColumns = `repeat(${cardCount}, 1fr)`;
+            // If too many cards, perhaps wrap? "repeat(auto-fit, minmax(200px, 1fr))" might be safer but user asked for specificity.
+            // Let's stick to auto-fit for robustness if many stages.
+            container.style.gridTemplateColumns = `repeat(auto-fit, minmax(180px, 1fr))`;
+        }
+
+        updateHeaderStats() {
+            if (!document.getElementById('stats-total')) {
+                // If cards not rendered yet (e.g. first load), render them
+                this.renderKPICards();
+            }
+
+            const stages = this.dataManager?.generalSettings?.lead_stages || ['New', 'Contacted', 'Converted', 'Lost'];
+            const stats = { total: this.filteredLeads.length };
+
+            // Initialize counts
+            stages.forEach(stage => {
+                stats[stage] = 0;
+            });
+
+            // Count
+            this.filteredLeads.forEach(l => {
+                const status = l.status || 'New';
+                // Find matching stage (case-insensitive check might be needed if data is messy, but let's assume exact match from dropdown)
+                if (stats.hasOwnProperty(status)) {
+                    stats[status]++;
+                } else {
+                    // If status isn't in settings, maybe count it under closest match or ignore? 
+                    // For now, only count known stages to match cards.
+                }
+            });
+
+            // Update DOM
+            const updateEl = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    // Small animation effect
+                    const current = parseInt(el.textContent) || 0;
+                    if (current !== val) {
+                        el.textContent = val;
+                        el.style.transform = 'scale(1.2)';
+                        setTimeout(() => el.style.transform = 'scale(1)', 200);
+                    }
+                }
+            };
+
+            updateEl('stats-total', stats.total);
+
+            stages.forEach(stage => {
+                const safeId = stage.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+                updateEl(`stats-stage-${safeId}`, stats[stage]);
+            });
+        }
+
+        updateStats() {
+            this.updateHeaderStats();
         }
 
         // --- Table Rendering ---

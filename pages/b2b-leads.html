@@ -1,4 +1,435 @@
-<link rel="stylesheet" href="css/b2b-leads.css">
+<style>
+    /* Scoped Page Styles - Ported from Dealer Page */
+    #b2b-leads-page {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: var(--bg-primary);
+        font-family: 'Inter', sans-serif;
+        /* Ensure font matches */
+    }
+
+    .page-title-bar {
+        height: 60px;
+        /* Taller bar */
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        padding: 0 24px;
+        flex-shrink: 0;
+        justify-content: space-between;
+    }
+
+    .page-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    /* Controls Bar */
+    .controls-bar {
+        padding: 16px 24px;
+        display: flex;
+        gap: 16px;
+        border-bottom: 1px solid var(--modal-border);
+        background: var(--modal-header-bg);
+        backdrop-filter: blur(8px);
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .control-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .search-group {
+        flex: 1;
+        min-width: 250px;
+        position: relative;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        pointer-events: none;
+    }
+
+    #lead-search {
+        width: 100%;
+        background: var(--modal-input-bg);
+        border: 1px solid var(--modal-border);
+        border-radius: 8px;
+        padding: 10px 12px 10px 40px;
+        color: var(--modal-h2-color);
+        font-size: 0.95rem;
+        outline: none;
+        transition: all 0.2s;
+    }
+
+    #lead-search:focus {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+
+    .filter-select {
+        background: var(--modal-input-bg);
+        border: 1px solid var(--modal-border);
+        color: var(--modal-h2-color);
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        outline: none;
+        cursor: pointer;
+        min-width: 140px;
+        appearance: none;
+        /* Custom arrow ideally */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 36px;
+    }
+
+    .filter-select:hover {
+        border-color: var(--accent-color);
+    }
+
+    .filter-select option {
+        background: #1e293b;
+        /* Dark bg */
+        color: #f8fafc;
+    }
+
+
+    /* --- KPI Grid (Copied & Refined) --- */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 16px;
+        padding: 20px 24px 0 24px;
+        /* Padding inside content area */
+        margin-bottom: 0;
+    }
+
+    .kpi-card {
+        padding: 16px 20px;
+        border-radius: 12px;
+        background: linear-gradient(145deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.4) 100%);
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 80px;
+        position: relative;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 16px;
+        bottom: 16px;
+        width: 4px;
+        border-radius: 0 4px 4px 0;
+        background: currentColor;
+        box-shadow: 2px 0 12px currentColor;
+    }
+
+    .kpi-content {
+        order: 1;
+    }
+
+    .kpi-header {
+        order: 2;
+    }
+
+    .kpi-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #f1f5f9;
+        line-height: 1;
+        letter-spacing: -0.02em;
+    }
+
+    .kpi-label {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        text-align: right;
+    }
+
+    /* Colors */
+    .card-blue {
+        color: #3b82f6;
+    }
+
+    .card-teal {
+        color: #14b8a6;
+    }
+
+    .card-indigo {
+        color: #6366f1;
+    }
+
+    .card-green {
+        color: #10b981;
+    }
+
+    .card-red {
+        color: #ef4444;
+    }
+
+
+    /* --- Table Styling --- */
+    .leads-table-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0;
+        position: relative;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-strong) transparent;
+        min-height: 0;
+    }
+
+    .leads-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.9rem;
+        table-layout: fixed;
+        /* Fixed layout for better control */
+    }
+
+    .leads-table th {
+        background: var(--modal-header-bg);
+        /* Use var */
+        backdrop-filter: blur(8px);
+        color: var(--modal-text-secondary);
+        /* Match dealer */
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 12px 16px;
+        text-align: left;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 1px solid var(--modal-border);
+        white-space: nowrap;
+        user-select: none;
+    }
+
+    .leads-table td {
+        padding: 8px 16px;
+        /* Compact padding like dealer (was 14px) */
+        border-bottom: 1px solid var(--modal-border);
+        color: var(--modal-h2-color);
+        /* Match dealer color */
+        vertical-align: middle;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        background: transparent;
+        /* Let row handle bg */
+        font-size: 0.85rem;
+        /* Match dealer size */
+    }
+
+    .leads-table th.sortable {
+        cursor: pointer;
+        padding-right: 24px;
+        transition: color 0.2s;
+    }
+
+    .leads-table th.sortable:hover {
+        color: var(--modal-h2-color);
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .lead-row {
+        transition: background 0.15s;
+        cursor: pointer;
+        height: 44px;
+        /* Slightly taller than dealer's 38px for readability? or match 38px? Let's match dealer: 38px */
+        height: 38px;
+    }
+
+    .lead-row:hover {
+        background: rgba(255, 255, 255, 0.04) !important;
+        /* Force override */
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        z-index: 1;
+        position: relative;
+    }
+
+    /* Ultra Modern Checkbox (Ported from Dealer) */
+    .leads-table input[type="checkbox"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px;
+        /* Slightly smaller than 20px to fit compact row */
+        height: 18px;
+        border: 2px solid var(--border-light);
+        border-radius: 4px;
+        /* Square-ish */
+        background: var(--bg-secondary);
+        position: relative;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        margin: 0;
+        vertical-align: middle;
+        display: inline-block;
+    }
+
+    .leads-table input[type="checkbox"]:hover {
+        border-color: var(--accent);
+        background: var(--surface-hover);
+        transform: scale(1.05);
+    }
+
+    .leads-table input[type="checkbox"]:checked {
+        background-color: var(--accent-color);
+        border-color: var(--accent-color);
+        box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+    }
+
+    .leads-table input[type="checkbox"]:checked::after {
+        content: '';
+        position: absolute;
+        left: 5px;
+        top: 1px;
+        width: 5px;
+        height: 10px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+
+    /* Column Widths (Approximate to match Dealer feel) */
+    .leads-table th:first-child,
+    .leads-table td:first-child {
+        width: 40px;
+        text-align: center;
+        padding: 0;
+    }
+
+    .leads-table th:nth-child(2),
+    .leads-table td:nth-child(2) {
+        width: 50px;
+        text-align: center;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    .status-badge {
+        padding: 4px 10px;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        line-height: 1;
+    }
+
+    .status-badge.New {
+        background: rgba(59, 130, 246, 0.15);
+        color: #60a5fa;
+        border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .status-badge.Contacted {
+        background: rgba(99, 102, 241, 0.15);
+        color: #818cf8;
+        border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .status-badge.Converted {
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .status-badge.Lost {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    /* --- Pagination Bar --- */
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 24px;
+        background: #1e293b;
+        border-top: 1px solid #334155;
+        color: #94a3b8;
+        font-size: 0.875rem;
+    }
+
+    .page-btn {
+        background: transparent;
+        border: 1px solid transparent;
+        color: #cbd5e1;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+    }
+
+    .page-btn:hover:not(:disabled) {
+        background: #334155;
+    }
+
+    .page-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Scrollbar */
+    .leads-table-container::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .leads-table-container::-webkit-scrollbar-track {
+        background: #0f172a;
+    }
+
+    .leads-table-container::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 4px;
+    }
+
+    .leads-table-container::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+    }
+</style>
+
 
 <div class="page-container b2b-leads-page-container" id="b2b-leads-page">
 
@@ -18,7 +449,14 @@
         </div>
     </div>
 
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid" id="kpi-grid">
+        <!-- Dynamically populated by JS -->
+    </div>
+
     <div class="controls-bar">
+
         <div class="control-group search-group">
             <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2">
@@ -76,7 +514,7 @@
                     <th style="text-align: center">
                         <input type="checkbox" id="select-all-leads">
                     </th>
-                    <th>#</th>
+                    <th style="color: var(--text-muted); font-size: 0.75rem;">SL.NO</th>
                     <th class="sortable" onclick="window.b2bLeadsManager.sortBy('name')">Name</th>
                     <th class="sortable" onclick="window.b2bLeadsManager.sortBy('business_name')">Business</th>
                     <th>Phone</th>
@@ -95,106 +533,103 @@
 
     <!-- Pagination Controls -->
     <div class="pagination-controls" id="pagination-controls">
-        <div class="pagination-info">
-            Showing <span id="pag-start">0</span> to <span id="pag-end">0</span> of <span id="pag-total">0</span>
-            entries
+        <!-- Populated by JS -->
+    </div>
+</div>
+<div class="pagination-actions">
+    <button class="page-btn" onclick="window.b2bLeadsManager.prevPage()" id="btn-prev" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    </button>
+    <div id="pagination-numbers" style="display:flex; gap:4px;">
+        <!-- Page numbers rendered here -->
+    </div>
+    <button class="page-btn" onclick="window.b2bLeadsManager.nextPage()" id="btn-next" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+    </button>
+</div>
+</div>
+
+<!-- Bulk Actions -->
+<div id="bulk-actions-bar" class="bulk-actions-bar">
+    <div style="display:flex; gap:8px; align-items:center;">
+        <span style="font-weight:bold; color:var(--text-main);" id="bulk-selected-count">12</span>
+        <span style="color:var(--text-muted);">Selected</span>
+    </div>
+    <div style="display:flex; gap:12px;">
+        <button class="btn-secondary" onclick="window.b2bLeadsManager.clearSelection()">Clear</button>
+        <button class="btn-primary" onclick="window.b2bLeadsManager.openAudienceModal()">Save as Audience</button>
+        <button class="btn-secondary" style="border-color: #f87171; color: #f87171;"
+            onclick="window.b2bLeadsManager.bulkDelete()">
+            Delete Selected
+        </button>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="lead-edit-modal" class="modal-overlay">
+    <div class="modal-container" style="width:650px;">
+        <div id="lead-edit-modal-content"></div>
+    </div>
+</div>
+
+<!-- Save Audience Modal -->
+<div id="save-audience-modal" class="modal-overlay">
+    <div class="modal-container" style="width:480px; padding: 24px; display: flex; flex-direction: column;">
+        <div style="margin-bottom: 24px;">
+            <h3 style="margin-bottom: 8px; color: var(--text-main); margin-top: 0; font-size: 1.25rem;">Save
+                Audience Segment</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0; line-height: 1.5;">
+                Create a reusable audience from your current selection.
+            </p>
         </div>
-        <div class="pagination-actions">
-            <button class="page-btn" onclick="window.b2bLeadsManager.prevPage()" id="btn-prev" disabled>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-            </button>
-            <div id="pagination-numbers" style="display:flex; gap:4px;">
-                <!-- Page numbers rendered here -->
+
+        <div style="margin-bottom: 20px;">
+            <label
+                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 8px; font-weight: 500;">Audience
+                Name</label>
+            <input type="text" id="audience-name-input" class="modern-input" placeholder="e.g. High Value Leads"
+                style="width: 100%;">
+        </div>
+
+        <div style="margin-bottom: 24px;">
+            <label
+                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px; font-weight: 500;">Audience
+                Type</label>
+
+            <div class="radio-group" style="display: flex; gap: 24px; margin-bottom: 16px;">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text-main);">
+                    <input type="radio" name="audienceType" value="static" checked
+                        onchange="window.b2bLeadsManager.toggleAudienceTypeDescription()">
+                    <span style="font-weight: 500;">Static List</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text-main);">
+                    <input type="radio" name="audienceType" value="dynamic"
+                        onchange="window.b2bLeadsManager.toggleAudienceTypeDescription()">
+                    <span style="font-weight: 500;">Dynamic Filter</span>
+                </label>
             </div>
-            <button class="page-btn" onclick="window.b2bLeadsManager.nextPage()" id="btn-next" disabled>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-            </button>
+
+            <p id="audience-type-desc"
+                style="margin: 0; font-size: 0.9rem; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; line-height: 1.5; border: 1px solid var(--border-light);">
+                Save the <strong id="audience-count-preview" style="color: var(--accent-color);">0</strong>
+                currently selected leads as a fixed list.
+                Future changes to leads data won't affect who is in this list.
+            </p>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: auto;">
+            <button class="btn-secondary" onclick="window.b2bLeadsManager.closeAudienceModal()">Cancel</button>
+            <button class="btn-primary" onclick="window.b2bLeadsManager.confirmSaveAudience()">Save
+                Audience</button>
         </div>
     </div>
-
-    <!-- Bulk Actions -->
-    <div id="bulk-actions-bar" class="bulk-actions-bar">
-        <div style="display:flex; gap:8px; align-items:center;">
-            <span style="font-weight:bold; color:var(--text-main);" id="bulk-selected-count">12</span>
-            <span style="color:var(--text-muted);">Selected</span>
-        </div>
-        <div style="display:flex; gap:12px;">
-            <button class="btn-secondary" onclick="window.b2bLeadsManager.clearSelection()">Clear</button>
-            <button class="btn-primary" onclick="window.b2bLeadsManager.openAudienceModal()">Save as Audience</button>
-            <button class="btn-secondary" style="border-color: #f87171; color: #f87171;"
-                onclick="window.b2bLeadsManager.bulkDelete()">
-                Delete Selected
-            </button>
-        </div>
-    </div>
-
-    <!-- Edit Modal -->
-    <div id="lead-edit-modal" class="modal-overlay">
-        <div class="modal-container" style="width:650px;">
-            <div id="lead-edit-modal-content"></div>
-        </div>
-    </div>
-
-    <!-- Save Audience Modal -->
-    <div id="save-audience-modal" class="modal-overlay">
-        <div class="modal-container" style="width:480px; padding: 24px; display: flex; flex-direction: column;">
-            <div style="margin-bottom: 24px;">
-                <h3 style="margin-bottom: 8px; color: var(--text-main); margin-top: 0; font-size: 1.25rem;">Save
-                    Audience Segment</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0; line-height: 1.5;">
-                    Create a reusable audience from your current selection.
-                </p>
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <label
-                    style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 8px; font-weight: 500;">Audience
-                    Name</label>
-                <input type="text" id="audience-name-input" class="modern-input" placeholder="e.g. High Value Leads"
-                    style="width: 100%;">
-            </div>
-
-            <div style="margin-bottom: 24px;">
-                <label
-                    style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px; font-weight: 500;">Audience
-                    Type</label>
-
-                <div class="radio-group" style="display: flex; gap: 24px; margin-bottom: 16px;">
-                    <label
-                        style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text-main);">
-                        <input type="radio" name="audienceType" value="static" checked
-                            onchange="window.b2bLeadsManager.toggleAudienceTypeDescription()">
-                        <span style="font-weight: 500;">Static List</span>
-                    </label>
-                    <label
-                        style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text-main);">
-                        <input type="radio" name="audienceType" value="dynamic"
-                            onchange="window.b2bLeadsManager.toggleAudienceTypeDescription()">
-                        <span style="font-weight: 500;">Dynamic Filter</span>
-                    </label>
-                </div>
-
-                <p id="audience-type-desc"
-                    style="margin: 0; font-size: 0.9rem; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; line-height: 1.5; border: 1px solid var(--border-light);">
-                    Save the <strong id="audience-count-preview" style="color: var(--accent-color);">0</strong>
-                    currently selected leads as a fixed list.
-                    Future changes to leads data won't affect who is in this list.
-                </p>
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: auto;">
-                <button class="btn-secondary" onclick="window.b2bLeadsManager.closeAudienceModal()">Cancel</button>
-                <button class="btn-primary" onclick="window.b2bLeadsManager.confirmSaveAudience()">Save
-                    Audience</button>
-            </div>
-        </div>
-    </div>
+</div>
 </div>
 <style>
     /* Reusing Dealer Page Styles */
