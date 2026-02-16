@@ -8,7 +8,6 @@ class NavigationController {
             { id: 'discussions', name: 'Tasks', icon: '📋' },
             { id: 'dealer', name: 'Dealer', icon: '🤝' },
             { id: 'instance', name: 'Instance', icon: '🖥️' },
-            { id: 'message', name: 'Message', icon: '💬' },
             { id: 'b2b-leads', name: 'B2B Leads', icon: '👤' },
             { id: 'product', name: 'Product', icon: '📦' },
             { id: 'pricelist', name: 'Pricelist', icon: '🏷️' },
