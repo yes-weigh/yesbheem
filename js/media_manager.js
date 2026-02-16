@@ -61,7 +61,7 @@ class MediaManager {
     async loadMedia() {
         this.media = await this.service.getMedia();
         this.updateStats();
-        this.renderFilteredGrid();
+        // Do not render here; init() or the caller will handle rendering
     }
 
     async loadSettings() {
@@ -156,6 +156,10 @@ class MediaManager {
     }
 
     renderFilteredGrid() {
+        // Generate a unique ID for this render cycle
+        const renderId = Symbol('renderId');
+        this.currentRenderId = renderId;
+
         const filtered = this.media.filter(m => {
             const matchesSearch = !this.filter.search || m.name.toLowerCase().includes(this.filter.search.toLowerCase());
             const matchesLang = !this.filter.language || m.language === this.filter.language;
@@ -175,7 +179,7 @@ class MediaManager {
             (m.type === 'document' || m.mimeType === 'application/pdf') && !m.thumbnailUrl
         );
         if (pdfsNeedingClientRendering.length > 0) {
-            this.generatePdfThumbnails(pdfsNeedingClientRendering);
+            this.generatePdfThumbnails(pdfsNeedingClientRendering, renderId);
         }
     }
 
@@ -575,7 +579,7 @@ class MediaManager {
         this.showToast('Download started');
     }
 
-    async generatePdfThumbnails(mediaItems) {
+    async generatePdfThumbnails(mediaItems, renderId) {
         // Filter PDF items
         const pdfItems = mediaItems.filter(m =>
             m.type === 'document' || m.mimeType === 'application/pdf'
@@ -585,6 +589,12 @@ class MediaManager {
 
         // Generate thumbnails for each PDF
         for (const item of pdfItems) {
+            // Check if this render cycle is still active
+            if (this.currentRenderId !== renderId) {
+                console.log('Stopped obsolete PDF thumbnail generation');
+                break;
+            }
+
             try {
                 await this.renderPdfThumbnail(item.id, item.url);
             } catch (e) {

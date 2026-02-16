@@ -389,11 +389,10 @@ class NavigationController {
             const scripts = tempDiv.querySelectorAll('script');
             const scriptContents = [];
             scripts.forEach(script => {
+                // Do NOT append timestamp here. Let loadExternalScript handle versioning checks if needed.
+                // Appending timestamp forces loadExternalScript to treat it as a new file (and re-execute),
+                // which causes "Identifier already declared" errors for global classes.
                 let src = script.src;
-                if (src) {
-                    // Check if it already has params
-                    src += (src.includes('?') ? '&' : '?') + 't=' + Date.now();
-                }
 
                 const scriptInfo = {
                     type: script.src ? 'src' : 'inline',
