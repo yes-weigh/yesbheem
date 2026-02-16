@@ -31,8 +31,9 @@ async function generatePdfThumbnail(pdfPath, outputPath) {
 
         for await (const image of document) {
             // image is a Buffer (PNG)
-            // Use sharp to optimize and save as JPEG
+            // Use sharp to flatten transparency (white bg) and save as JPEG
             await sharp(image)
+                .flatten({ background: '#ffffff' })
                 .jpeg({ quality: 80 })
                 .toFile(thumbnailPath);
             return thumbnailPath; // Return after first page
@@ -82,6 +83,7 @@ async function generateMissingThumbnails() {
 
 
         // Check if thumbnail exists in Storage
+        /*
         const thumbnailPath = `media/thumbnails/${mediaId}.jpg`;
         const [thumbnailExists] = await bucket.file(thumbnailPath).exists();
 
@@ -98,6 +100,9 @@ async function generateMissingThumbnails() {
             skipped++;
             continue;
         }
+        */
+
+        const thumbnailPath = `media/thumbnails/${mediaId}.jpg`;
 
 
         // const thumbnailPath = `media/thumbnails/${mediaId}.jpg`; // This line is now redundant
