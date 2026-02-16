@@ -419,6 +419,13 @@ if (!window.B2BLeadsManager) {
                 const safeId = stage.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
                 updateEl(`stats-stage-${safeId}`, stats[stage]);
             });
+
+            // Update Header Count Display
+            const countDisplay = document.getElementById('lead-count-display');
+            if (countDisplay) {
+                countDisplay.textContent = `${stats.total} Lead${stats.total !== 1 ? 's' : ''}`;
+                countDisplay.style.color = 'var(--text-main)'; // Remove muted color
+            }
         }
 
         updateStats() {
