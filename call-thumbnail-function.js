@@ -3,10 +3,12 @@
 
 const admin = require('firebase-admin');
 
-// Initialize with default credentials
+const serviceAccount = require('./serviceAccountKey.json');
+
+// Initialize with credential
 admin.initializeApp({
-    projectId: 'yesweighmomentumhub',
-    storageBucket: 'yesweighmomentumhub.appspot.com'
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: 'yesweighmomentumhub.firebasestorage.app'
 });
 
 const db = admin.firestore();
@@ -16,41 +18,27 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-// Reuse the same generatePdfThumbnail function
+// Use pdf-to-img for real PDF rendering
+// const pdfImgConvert = require('pdf-img-convert'); // Failed
+
 async function generatePdfThumbnail(pdfPath, outputPath) {
     try {
+        const { pdf } = await import('pdf-to-img');
         const thumbnailPath = path.join(outputPath, 'thumb.jpg');
-        const width = 800;
-        const height = 1131; // A4 aspect ratio
 
-        const svg = `
-            <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" style="stop-color:#f9fafb;stop-opacity:1" />
-                        <stop offset="100%" style="stop-color:#e5e7eb;stop-opacity:1" />
-                    </linearGradient>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#bg)"/>
-                <rect x="40" y="40" width="${width - 80}" height="${height - 80}" 
-                      fill="#ffffff" stroke="#d1d5db" stroke-width="2" rx="8"/>
-                <path d="M ${width / 2 - 60} ${height / 2 - 80} 
-                         l 80 0 l 40 40 l 0 120 l -120 0 z" 
-                      fill="#ef4444" stroke="#dc2626" stroke-width="2"/>
-                <text x="${width / 2}" y="${height / 2 + 20}" 
-                      font-family="Arial, sans-serif" font-size="48" font-weight="bold"
-                      fill="#ffffff" text-anchor="middle">PDF</text>
-                <text x="${width / 2}" y="${height / 2 + 80}" 
-                      font-family="Arial, sans-serif" font-size="24"
-                      fill="#6b7280" text-anchor="middle">Document Preview</text>
-            </svg>
-        `;
+        // Convert first page to image
+        const document = await pdf(pdfPath, { scale: 2 });
 
-        await sharp(Buffer.from(svg))
-            .jpeg({ quality: 85 })
-            .toFile(thumbnailPath);
+        for await (const image of document) {
+            // image is a Buffer (PNG)
+            // Use sharp to optimize and save as JPEG
+            await sharp(image)
+                .jpeg({ quality: 80 })
+                .toFile(thumbnailPath);
+            return thumbnailPath; // Return after first page
+        }
 
-        return thumbnailPath;
+        throw new Error('No images generated from PDF');
     } catch (error) {
         console.error('[generatePdfThumbnail] Error:', error);
         throw error;
@@ -60,18 +48,25 @@ async function generatePdfThumbnail(pdfPath, outputPath) {
 async function generateMissingThumbnails() {
     console.log('[Script] Starting batch thumbnail generation...');
 
-    // Get all PDF media items
-    const mediaSnapshot = await db.collection('media')
-        .where('mimeType', '==', 'application/pdf')
-        .get();
+    // Get all media items
+    console.log('[Script] Querying collection: media_library');
+    const mediaSnapshot = await db.collection('media_library').get();
 
     let generated = 0;
     let skipped = 0;
     const errors = [];
 
-    console.log(`[Script] Found ${mediaSnapshot.size} PDF files`);
+    console.log(`[Script] Found ${mediaSnapshot.size} total media files`);
 
-    for (const doc of mediaSnapshot.docs) {
+    // Filter for PDFs
+    const pdfDocs = mediaSnapshot.docs.filter(doc => {
+        const data = doc.data();
+        return data.type === 'document' || data.mimeType === 'application/pdf';
+    });
+
+    console.log(`[Script] Identified ${pdfDocs.length} PDF files`);
+
+    for (const doc of pdfDocs) {
         const mediaData = doc.data();
         const mediaId = doc.id;
         const storagePath = mediaData.storagePath;
@@ -84,6 +79,7 @@ async function generateMissingThumbnails() {
             skipped++;
             continue;
         }
+
 
         // Check if thumbnail exists in Storage
         const thumbnailPath = `media/thumbnails/${mediaId}.jpg`;
@@ -102,6 +98,9 @@ async function generateMissingThumbnails() {
             skipped++;
             continue;
         }
+
+
+        // const thumbnailPath = `media/thumbnails/${mediaId}.jpg`; // This line is now redundant
 
         // Generate thumbnail
         const tempDir = os.tmpdir();
