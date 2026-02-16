@@ -196,7 +196,7 @@ class MediaManager {
             // PDF - Check if we have a server-generated thumbnail
             if (m.thumbnailUrl) {
                 // Use fast server thumbnail
-                previewHtml = `<img src="${m.thumbnailUrl}" alt="${this.escapeHtml(m.name)}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                previewHtml = `<img src="${m.thumbnailUrl}" alt="${this.escapeHtml(m.name)}" style="width: 100%; height: 100%; object-fit: contain; background: #f0f0f0;">`;
             } else {
                 // Fallback to canvas placeholder for client-side rendering
                 previewHtml = `

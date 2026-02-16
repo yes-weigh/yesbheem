@@ -27,12 +27,13 @@ async function generatePdfThumbnail(pdfPath, outputPath) {
         const thumbnailPath = path.join(outputPath, 'thumb.jpg');
 
         // Convert first page to image
-        const document = await pdf(pdfPath, { scale: 2 });
+        const document = await pdf(pdfPath, { scale: 1.5 }); // Use 1.5 to avoid stride issues at scale 2
 
         for await (const image of document) {
             // image is a Buffer (PNG)
-            // Use sharp to flatten transparency (white bg) and save as JPEG
+            // Use sharp to negate (fix inversion) AND flatten transparency (white bg)
             await sharp(image)
+                .negate({ alpha: false })
                 .flatten({ background: '#ffffff' })
                 .jpeg({ quality: 80 })
                 .toFile(thumbnailPath);
