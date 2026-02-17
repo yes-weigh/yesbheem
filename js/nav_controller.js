@@ -483,6 +483,11 @@ class NavigationController {
                 // We compare against the resolved source
                 if (existingScript.getAttribute('src') === resolvedSrc || existingScript.src === resolvedSrc || existingScript.src.endsWith(resolvedSrc)) {
                     console.log(`Script ${fileName} already loaded with same version. Skipping.`);
+                    // Special handling for B2BLeadsManager re-init if skipped
+                    if (fileName.includes('b2b_leads_manager.js') && window.b2bLeadsManager) {
+                        console.log('Re-initializing B2BLeadsManager from NavController');
+                        window.b2bLeadsManager.init();
+                    }
                     resolve();
                     return;
                 }

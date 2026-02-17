@@ -106,14 +106,23 @@ if (!window.B2BLeadsManager) {
         }
 
         setupEventListeners() {
+            this.attachDOMListeners();
+            if (!this.globalListenersAttached) {
+                this.attachGlobalListeners();
+                this.globalListenersAttached = true;
+            }
+        }
+
+        attachDOMListeners() {
             // Search
             const searchInput = document.getElementById('lead-search');
             if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
+                // Remove old listener if any (cleaner, though strictly not necessary if element is new)
+                searchInput.oninput = (e) => {
                     this.searchQuery = e.target.value.toLowerCase();
                     this.currentPage = 1; // Reset page on search
                     this.applyFilters();
-                });
+                };
             }
 
             // Select All
@@ -124,7 +133,27 @@ if (!window.B2BLeadsManager) {
                 });
             }
 
-            // Filters (Delegated)
+            // Close modals on overlay click (delegate - these are new elements)
+            document.querySelectorAll('.modal-overlay').forEach(overlay => {
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) {
+                        this.closeModal();
+                        this.closeAudienceModal();
+                        this.closeBulkKAMModal();
+                    }
+                });
+            });
+
+            // Move Modals to Body (Stacking Context Fix)
+            const kamModal = document.getElementById('bulk-kam-modal');
+            if (kamModal && kamModal.parentElement !== document.body) document.body.appendChild(kamModal);
+
+            const audModal = document.getElementById('save-audience-modal');
+            if (audModal && audModal.parentElement !== document.body) document.body.appendChild(audModal);
+        }
+
+        attachGlobalListeners() {
+            // Filters (Delegated on document)
             document.addEventListener('change', (e) => {
                 // state-selector handles its own events via callback
                 if (['filter-district', 'filter-status', 'filter-kam'].includes(e.target.id)) {
@@ -138,16 +167,6 @@ if (!window.B2BLeadsManager) {
                     this.currentPage = 1; // Reset page on filter
                     this.applyFilters();
                 }
-            });
-
-            // Close modals on overlay click (delegate)
-            document.querySelectorAll('.modal-overlay').forEach(overlay => {
-                overlay.addEventListener('click', (e) => {
-                    if (e.target === overlay) {
-                        this.closeModal();
-                        this.closeAudienceModal();
-                    }
-                });
             });
         }
 
@@ -212,6 +231,8 @@ if (!window.B2BLeadsManager) {
             // Ensure it's visible
             if (wrapper) wrapper.style.display = 'flex';
         }
+
+
 
         applyFilters() {
             this.filteredLeads = this.leads.filter(lead => {
@@ -1132,14 +1153,91 @@ if (!window.B2BLeadsManager) {
             }
         }
 
+        // --- BULK KAM ASSIGNMENT ---
+
+        bulkAssignKAM() {
+            if (this.selectedLeads.size === 0) return;
+
+            const modal = document.getElementById('bulk-kam-modal');
+            const select = document.getElementById('bulk-kam-select');
+            const countEl = document.getElementById('bulk-kam-count');
+
+            if (!modal || !select) return;
+
+            // Populate KAMs
+            if (this.dataManager && this.dataManager.generalSettings && this.dataManager.generalSettings.key_accounts) {
+                let html = '<option value="">Not Assigned</option>';
+                this.dataManager.generalSettings.key_accounts.forEach(kam => {
+                    const name = typeof kam === 'object' ? kam.name : kam;
+                    html += `<option value="${name}">${name}</option>`;
+                });
+                select.innerHTML = html;
+            }
+
+            if (countEl) countEl.textContent = this.selectedLeads.size;
+
+            modal.style.display = 'flex';
+            // Force reflow
+            void modal.offsetWidth;
+            modal.classList.add('active');
+        }
+
+        closeBulkKAMModal() {
+            const modal = document.getElementById('bulk-kam-modal');
+            if (modal) {
+                modal.classList.remove('active');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 200);
+            }
+        }
+
+        async confirmBulkAssign() {
+            const select = document.getElementById('bulk-kam-select');
+            if (!select) return;
+
+            const kam = select.value;
+            const ids = Array.from(this.selectedLeads);
+
+            if (ids.length === 0) return;
+
+            this.closeBulkKAMModal();
+
+            if (Toast) Toast.info(`Assigning KAM to ${ids.length} leads...`);
+
+            try {
+                const updates = ids.map(id => this.service.updateLead(id, { kam: kam }));
+                await Promise.all(updates);
+
+                // Update local data
+                ids.forEach(id => {
+                    const lead = this.leads.find(l => l.id === id);
+                    if (lead) lead.kam = kam;
+                });
+
+                this.clearSelection();
+                this.applyFilters(); // Refresh view
+
+                if (Toast) Toast.success(`Successfully assigned KAM to ${ids.length} leads`);
+            } catch (error) {
+                console.error('Bulk assign failed:', error);
+                if (Toast) Toast.error('Failed to assign KAM: ' + error.message);
+                this.applyFilters(); // Refresh anyway
+            }
+        }
+
         // --- AUDIENCE ACTIONS ---
 
         openAudienceModal() {
+            console.log('openAudienceModal called');
             this.audienceModal = document.getElementById('save-audience-modal');
             this.audienceNameInput = document.getElementById('audience-name-input');
             this.audienceCountPreview = document.getElementById('audience-count-preview');
 
-            if (!this.audienceModal) return;
+            if (!this.audienceModal) {
+                console.error('Audience modal not found!');
+                return;
+            }
 
             // Reset inputs
             this.audienceNameInput.value = '';
@@ -1150,6 +1248,10 @@ if (!window.B2BLeadsManager) {
             // Update preview
             this.updateAudiencePreview();
 
+            // Ensure display is set (override inline styles)
+            this.audienceModal.style.display = 'flex';
+            // Force reflow
+            void this.audienceModal.offsetWidth;
             this.audienceModal.classList.add('active');
 
             if (this.audienceNameInput) setTimeout(() => this.audienceNameInput.focus(), 100);
@@ -1158,6 +1260,9 @@ if (!window.B2BLeadsManager) {
         closeAudienceModal() {
             if (this.audienceModal) {
                 this.audienceModal.classList.remove('active');
+                setTimeout(() => {
+                    this.audienceModal.style.display = 'none';
+                }, 200);
             }
         }
 

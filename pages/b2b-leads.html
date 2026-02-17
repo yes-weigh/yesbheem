@@ -962,6 +962,23 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         z-index: 100;
     }
+
+    .bulk-actions-bar.visible {
+        display: flex;
+        animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translate(-50%, 20px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translate(-50%, 0);
+            opacity: 1;
+        }
+    }
 </style>
 
 <div class="page-title-bar">
@@ -1052,9 +1069,44 @@
         <span style="color:var(--text-muted);">Selected</span>
     </div>
     <div style="display:flex; gap:10px;">
-        <!-- Add more bulk actions later -->
-        <button class="btn-secondary" onclick="window.b2bLeadsManager.clearSelection()">Clear Selection</button>
-        <button class="btn-primary" onclick="window.b2bLeadsManager.openAudienceModal()">Save as Audience</button>
+        <button type="button" class="btn-primary"
+            onclick="event.stopPropagation(); window.b2bLeadsManager.bulkAssignKAM()"
+            style="background: var(--accent-color); color: white;">Assign KAM</button>
+        <button type="button" class="btn-primary"
+            onclick="event.stopPropagation(); window.b2bLeadsManager.openAudienceModal()"
+            style="background: var(--accent-color); color: white;">Save as Audience</button>
+        <button type="button" class="btn-secondary"
+            onclick="event.stopPropagation(); window.b2bLeadsManager.clearSelection()">Clear</button>
+        <button type="button" class="btn-secondary"
+            style="border-color: #f87171; color: #f87171; background: rgba(239, 68, 68, 0.1);"
+            onclick="event.stopPropagation(); window.b2bLeadsManager.bulkDelete()">
+            Delete Selected
+        </button>
+    </div>
+</div>
+
+<!-- Bulk KAM Modal -->
+<div id="bulk-kam-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-container" style="max-width: 400px;">
+        <div style="margin-bottom: 20px;">
+            <h3 style="margin-bottom: 8px; color: var(--text-main);">Assign KAM</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Assign a Key Account Manager to <span
+                    id="bulk-kam-count" style="font-weight: bold; color: var(--text-main);">0</span> selected
+                leads.</p>
+        </div>
+        <div style="margin-bottom: 24px;">
+            <label style="display: block; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 6px;">Select
+                KAM</label>
+            <select id="bulk-kam-select" class="filter-select" style="width: 100%; background: var(--bg-primary);">
+                <option value="">Not Assigned</option>
+            </select>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+            <button class="btn-secondary" onclick="window.b2bLeadsManager.closeBulkKAMModal()">Cancel</button>
+            <button class="btn-primary"
+                style="background: var(--accent-color); border-color: var(--accent-color); color: white;"
+                onclick="window.b2bLeadsManager.confirmBulkAssign()">Confirm Assignment</button>
+        </div>
     </div>
 </div>
 
