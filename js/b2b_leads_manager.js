@@ -9,6 +9,8 @@ import { DealerValidator } from './components/dealer-validator.js'; // Import Va
 import FormatUtils from './utils/format-utils.js';
 import { Toast } from './utils/toast.js';
 
+import { StateSelector } from './components/state-selector.js'; // Import StateSelector
+
 if (!window.B2BLeadsManager) {
     window.B2BLeadsManager = class B2BLeadsManager {
         constructor() {
@@ -20,9 +22,20 @@ if (!window.B2BLeadsManager) {
             this.dataManager = new DataManager();
             this.validator = new DealerValidator(); // Initialize Validator
 
+            // Components
+            this.stateSelector = new StateSelector({
+                containerId: 'state-selector-container',
+                onChange: (selectedStates) => {
+                    this.stateFilter = selectedStates;
+                    this.currentPage = 1;
+                    this.updateDistrictFilter();
+                    this.applyFilters();
+                }
+            });
+
             // Filters
             this.searchQuery = '';
-            this.stateFilter = 'all';
+            this.stateFilter = []; // Array for multi-select
             this.districtFilter = 'all';
             this.statusFilter = 'all';
             this.kamFilter = 'all';
@@ -69,8 +82,8 @@ if (!window.B2BLeadsManager) {
                 });
 
                 this.renderKPICards(); // Render cards with correct sorting based on counts
+                this.renderFilters(); // Setup filters first (populates state selector)
                 this.applyFilters();
-                this.renderFilters();
             } catch (error) {
                 console.error('Failed to load leads:', error);
                 this.showErrorState(error.message);
@@ -111,13 +124,11 @@ if (!window.B2BLeadsManager) {
                 });
             }
 
-            // Filters
+            // Filters (Delegated)
             document.addEventListener('change', (e) => {
-                if (['filter-state', 'filter-district', 'filter-status', 'filter-kam'].includes(e.target.id)) {
-                    if (e.target.id === 'filter-state') {
-                        this.stateFilter = e.target.value;
-                        this.updateDistrictFilter();
-                    } else if (e.target.id === 'filter-district') {
+                // state-selector handles its own events via callback
+                if (['filter-district', 'filter-status', 'filter-kam'].includes(e.target.id)) {
+                    if (e.target.id === 'filter-district') {
                         this.districtFilter = e.target.value;
                     } else if (e.target.id === 'filter-status') {
                         this.statusFilter = e.target.value;
@@ -141,14 +152,11 @@ if (!window.B2BLeadsManager) {
         }
 
         renderFilters() {
-            // Populate State Filter
+            // Populate State Filter via Component
             const states = [...new Set(this.leads.map(l => l.state).filter(Boolean))].sort();
-            const stateSelect = document.getElementById('filter-state');
-            if (stateSelect) {
-                let html = '<option value="all">All States</option>';
-                states.forEach(s => html += `<option value="${s}">${s}</option>`);
-                stateSelect.innerHTML = html;
-                stateSelect.value = this.stateFilter;
+            if (this.stateSelector) {
+                this.stateSelector.setStates(states);
+                // this.stateSelector.setValue(this.stateFilter); // Default is empty/all
             }
 
             this.updateDistrictFilter();
@@ -178,26 +186,39 @@ if (!window.B2BLeadsManager) {
             if (!districtSelect) return;
 
             const wrapper = districtSelect.closest('.filter-wrapper');
-            if (this.stateFilter === 'all') {
-                if (wrapper) wrapper.style.display = 'none';
-                this.districtFilter = 'all';
-                return;
-            }
-            if (wrapper) wrapper.style.display = 'flex';
+            // Show district filter if at least one state is selected (or if we want to show all districts when no state is selected, but usually dependent)
+            // Dealer logic: shows all districts if no state selected? Or hides?
+            // "if (this.stateFilter === 'all')" logic in old code.
+            // New logic: if array is empty, show all? Or hide?
+            // DealerManager shows all states districts if empty.
 
-            const relevantLeads = this.leads.filter(l => l.state === this.stateFilter);
+            let relevantLeads = this.leads;
+            if (this.stateFilter.length > 0) {
+                relevantLeads = this.leads.filter(l => this.stateFilter.includes(l.state));
+            }
+
             const districts = [...new Set(relevantLeads.map(l => l.district).filter(Boolean))].sort();
 
             let html = '<option value="all">All Districts</option>';
             districts.forEach(d => html += `<option value="${d}">${d}</option>`);
             districtSelect.innerHTML = html;
+
+            // Reset selection if current district is not in new list
+            if (this.districtFilter !== 'all' && !districts.includes(this.districtFilter)) {
+                this.districtFilter = 'all';
+            }
             districtSelect.value = this.districtFilter;
+
+            // Ensure it's visible
+            if (wrapper) wrapper.style.display = 'flex';
         }
 
         applyFilters() {
             this.filteredLeads = this.leads.filter(lead => {
                 const matchesSearch = !this.searchQuery || lead.searchString.includes(this.searchQuery);
-                const matchesState = this.stateFilter === 'all' || (lead.state && lead.state.toLowerCase() === this.stateFilter.toLowerCase());
+                // Multi-state check
+                const matchesState = this.stateFilter.length === 0 || (lead.state && this.stateFilter.includes(lead.state));
+
                 const matchesDistrict = this.districtFilter === 'all' || (lead.district && lead.district.toLowerCase() === this.districtFilter.toLowerCase());
                 const matchesStatus = this.statusFilter === 'all' || lead.status === this.statusFilter;
                 const matchesKam = this.kamFilter === 'all' || lead.kam === this.kamFilter;
@@ -208,6 +229,108 @@ if (!window.B2BLeadsManager) {
             this.sortLeads();
             this.renderTable();
             this.updateStats();
+            this.renderActiveFilters(); // Update chips
+        }
+
+        renderActiveFilters() {
+            const container = document.getElementById('active-filters-list');
+            const bar = document.getElementById('active-filter-bar');
+
+            if (!container || !bar) return;
+
+            container.innerHTML = '';
+            let hasFilters = false;
+
+            const createChip = (label, value, type, originalValue) => {
+                hasFilters = true;
+                const chip = document.createElement('div');
+                chip.className = 'filter-chip';
+                chip.innerHTML = `
+                    <span class="filter-chip-label">${label}:</span>
+                    <span>${value}</span>
+                    <button class="filter-chip-remove" title="Remove filter">×</button>
+                `;
+                chip.querySelector('.filter-chip-remove').addEventListener('click', () => {
+                    this.removeFilter(type, originalValue);
+                });
+                container.appendChild(chip);
+            };
+
+            if (this.searchQuery) {
+                createChip('Search', this.searchQuery, 'search');
+            }
+            // State Chips
+            if (this.stateFilter.length > 0) {
+                this.stateFilter.forEach(state => {
+                    createChip('State', state, 'state', state);
+                });
+            }
+
+            if (this.districtFilter && this.districtFilter !== 'all') {
+                createChip('District', this.districtFilter, 'district');
+            }
+            if (this.statusFilter && this.statusFilter !== 'all') {
+                createChip('Status', this.statusFilter, 'status');
+            }
+            if (this.kamFilter && this.kamFilter !== 'all') {
+                createChip('KAM', this.kamFilter, 'kam');
+            }
+
+            // Show/Hide bar based on filters
+            bar.style.display = hasFilters ? 'flex' : 'none';
+        }
+
+        removeFilter(type, value) {
+            if (type === 'search') {
+                this.searchQuery = '';
+                const searchInput = document.getElementById('lead-search');
+                if (searchInput) searchInput.value = '';
+            } else if (type === 'state') {
+                // Remove specific state from array
+                this.stateFilter = this.stateFilter.filter(s => s !== value);
+                if (this.stateSelector) this.stateSelector.setValue(this.stateFilter);
+                this.updateDistrictFilter();
+            } else if (type === 'district') {
+                this.districtFilter = 'all';
+            } else if (type === 'status') {
+                this.statusFilter = 'all';
+            } else if (type === 'kam') {
+                this.kamFilter = 'all';
+            }
+
+            // Update UI selectors (standard ones)
+            this.updateFilterSelectors();
+            this.applyFilters();
+        }
+
+        clearAllFilters() {
+            this.searchQuery = '';
+            this.stateFilter = [];
+            this.districtFilter = 'all';
+            this.statusFilter = 'all';
+            this.kamFilter = 'all';
+
+            const searchInput = document.getElementById('lead-search');
+            if (searchInput) searchInput.value = '';
+
+            if (this.stateSelector) this.stateSelector.reset();
+
+            this.updateFilterSelectors();
+            this.applyFilters();
+        }
+
+        updateFilterSelectors() {
+            const setVal = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.value = val;
+            };
+            // setVal('filter-state', this.stateFilter); // Handled by component now
+            setVal('filter-district', this.districtFilter);
+            setVal('filter-status', this.statusFilter);
+            setVal('filter-kam', this.kamFilter);
+
+            this.updateDistrictFilter();
+            setVal('filter-district', this.districtFilter);
         }
 
         sortLeads() {

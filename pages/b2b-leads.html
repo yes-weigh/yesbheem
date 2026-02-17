@@ -589,10 +589,8 @@
         </div>
 
         <div class="control-group">
-            <div class="filter-wrapper">
-                <select id="filter-state" class="filter-select">
-                    <option value="all">All States</option>
-                </select>
+            <div class="filter-wrapper" id="state-selector-container">
+                <!-- State Selector Component Injected Here -->
             </div>
             <div class="filter-wrapper">
                 <select id="filter-district" class="filter-select">
@@ -614,6 +612,15 @@
                 </select>
             </div>
         </div>
+    </div>
+
+    <!-- Active Filters Section -->
+    <div class="active-filter-bar" id="active-filter-bar" style="display: none;">
+        <div class="active-filters-list" id="active-filters-list">
+            <!-- Chips injected here -->
+        </div>
+        <button id="clear-all-filters" class="clear-all-btn" onclick="window.b2bLeadsManager.clearAllFilters()">Clear
+            All</button>
     </div>
 
     <div class="leads-table-container">
