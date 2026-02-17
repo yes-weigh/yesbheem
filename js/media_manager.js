@@ -634,6 +634,19 @@ class MediaManager {
             // Hide loading indicator
             if (loadingDiv) loadingDiv.style.display = 'none';
 
+            // Hybrid: Upload generated thumbnail to Firebase
+            // This ensures next time it loads fast from server URL
+            canvas.toBlob(async (blob) => {
+                if (!blob) return;
+                try {
+                    console.log(`Uploading generated thumbnail for ${itemId}...`);
+                    await this.service.uploadThumbnail(itemId, blob);
+                    console.log(`Thumbnail uploaded and linked for ${itemId}`);
+                } catch (err) {
+                    console.error('Failed to upload background thumbnail:', err);
+                }
+            }, 'image/jpeg', 0.85);
+
         } catch (e) {
             console.error('PDF thumbnail render error:', e);
             // Keep loading placeholder if render fails

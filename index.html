@@ -212,6 +212,15 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
+    <!-- PDF.js Library (Local) -->
+    <script src="/js/libs/pdf.min.js"></script>
+    <script>
+        // Configure PDF.js worker
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = '/js/libs/pdf.worker.min.js';
+        }
+    </script>
+
     <!-- Configuration (must load first) -->
     <script src="/js/config.js"></script>
     <!-- Theme Manager -->

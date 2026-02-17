@@ -109,6 +109,38 @@ class MediaService {
         }
     }
 
+
+    /**
+     * Upload a generated thumbnail blob and update the media record
+     * @param {string} id Media ID
+     * @param {Blob} blob Image blob
+     */
+    async uploadThumbnail(id, blob) {
+        if (!window.firebaseContext) throw new Error('Firebase context missing');
+        const { db, storage } = window.firebaseContext;
+        const { ref, uploadBytes, getDownloadURL } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
+        const { doc, updateDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+
+        try {
+            const storagePath = `media/thumbnails/${id}_thumb.jpg`;
+            const storageRef = ref(storage, storagePath);
+
+            const snapshot = await uploadBytes(storageRef, blob);
+            const downloadURL = await getDownloadURL(snapshot.ref);
+
+            const docRef = doc(db, 'media_library', id);
+            await updateDoc(docRef, {
+                thumbnailUrl: downloadURL,
+                updatedAt: serverTimestamp()
+            });
+
+            return downloadURL;
+        } catch (e) {
+            console.error('Service: Thumbnail upload failed', e);
+            throw e;
+        }
+    }
+
     /**
      * Delete media from Storage and Firestore
      */
