@@ -65,6 +65,7 @@ if (!window.B2BLeadsManager) {
                     searchString: `${lead.name || ''} ${lead.phone || ''} ${lead.business_name || ''} ${lead.state || ''} ${lead.district || ''}`.toLowerCase()
                 }));
 
+                this.renderKPICards(); // Render cards with correct sorting based on counts
                 this.applyFilters();
                 this.renderFilters();
             } catch (error) {
@@ -356,54 +357,112 @@ if (!window.B2BLeadsManager) {
             if (!container) return;
 
             // Default stages if settings not loaded
-            const stages = this.dataManager?.generalSettings?.lead_stages || ['New', 'Contacted', 'Converted', 'Lost'];
+            let stages = this.dataManager?.generalSettings?.lead_stages || ['New', 'Contacted', 'Converted', 'Lost'];
 
-            // Colors to cycle through
-            const colors = ['card-blue', 'card-teal', 'card-indigo', 'card-green', 'card-red', 'card-yellow', 'card-purple', 'card-orange', 'card-pink'];
+            // Calculate counts for sorting (using ALL leads to allow stable sort)
+            // If data not loaded yet, counts are 0, order is default.
+            const counts = { total: (this.leads || []).length };
+
+            // Initialize counts
+            stages.forEach(stage => counts[stage] = 0);
+
+            // Count all leads
+            (this.leads || []).forEach(lead => {
+                const status = lead.status || 'New';
+                // Case-insensitive match? For now, exact or capitalize first letter
+                // In loadData we normalized status to capitalized
+                if (counts.hasOwnProperty(status)) {
+                    counts[status]++;
+                }
+            });
+
+            // Create array for sorting
+            // Total is special, handle separately or inclusion?
+            // User wants decreasing order. Total is max.
+            // Let's create card objects
+            let cards = [];
+
+            // Add Stage Cards
+            stages.forEach(stage => {
+                if (stage.toLowerCase() === 'all' || stage.toLowerCase() === 'total') return;
+                cards.push({
+                    type: 'stage',
+                    label: stage,
+                    count: counts[stage] || 0,
+                    filter: stage,
+                    color: '' // assign later
+                });
+            });
+
+            // Sort Stage Cards by Count Descending
+            cards.sort((a, b) => b.count - a.count);
+
+            // Define Total Card
+            const totalCard = {
+                type: 'total',
+                label: 'TOTAL',
+                count: counts.total,
+                filter: 'all',
+                color: 'card-blue'
+            };
+
+            // Combine: Total First, then sorted stages
+            // Or if strictly decreasing, Total is first anyway. 
+            // Let's keep Total pinned first for UX consistency, then other stages sorted by volume.
+            const finalCards = [totalCard, ...cards];
+
+            // Colors to cycle through for stages
+            const colors = ['card-teal', 'card-indigo', 'card-green', 'card-red', 'card-yellow', 'card-purple', 'card-orange', 'card-pink'];
 
             let html = '';
+            finalCards.forEach((card, index) => {
+                let colorClass = card.color;
+                if (!colorClass) {
+                    // Assign color based on index (skipping 0 which is Total's blue if we used it, but here we manage 'colors' array separately)
+                    // We want stable colors for stages? Or colors dependent on rank?
+                    // Request is "arranged in decreasing order". 
+                    // If we use rank-based colors, "New" (highest) gets 'card-teal'.
+                    // If we want fixed colors per stage, we need a map. 
+                    // Current code: `colors[(index + 1) % colors.length]`. This assigns color based on *position*.
+                    // Let's stick to position-based coloring for the gradient effect.
+                    colorClass = colors[(index - 1) % colors.length];
+                }
 
-            // 1. Total Card (Always first)
-            html += `
-                <div class="kpi-card card-blue" onclick="window.b2bLeadsManager.setStatusFilter('all')" style="cursor: pointer;">
+                const safeId = card.type === 'total' ? 'total' : `stage-${card.label.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+                const label = card.type === 'total' ? 'TOTAL' : card.label.toUpperCase();
+
+                html += `
+                <div class="kpi-card ${colorClass}" onclick="window.b2bLeadsManager.setStatusFilter('${card.filter}')" style="cursor: pointer;">
                     <div class="kpi-content">
-                        <span class="kpi-value" id="stats-total">0</span>
+                        <span class="kpi-value" id="stats-${safeId}">${card.count}</span>
                     </div>
                     <div class="kpi-header">
-                        <span class="kpi-label">TOTAL</span>
+                        <span class="kpi-label">${label}</span>
                     </div>
                 </div>
             `;
-
-            // 2. Dynamic Stage Cards
-            stages.forEach((stage, index) => {
-                // Skip 'Total' or 'All' if they somehow got into settings
-                if (stage.toLowerCase() === 'all' || stage.toLowerCase() === 'total') return;
-
-                const colorClass = colors[(index + 1) % colors.length]; // Offset by 1 to skip blue used for Total
-                const safeId = stage.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-
-                html += `
-                    <div class="kpi-card ${colorClass}" onclick="window.b2bLeadsManager.setStatusFilter('${stage}')" style="cursor: pointer;">
-                        <div class="kpi-content">
-                            <span class="kpi-value" id="stats-stage-${safeId}">0</span>
-                        </div>
-                        <div class="kpi-header">
-                            <span class="kpi-label">${stage.toUpperCase()}</span>
-                        </div>
-                    </div>
-                `;
             });
 
             container.innerHTML = html;
-
-            // Update grid columns based on count (Total + stages)
             container.style.gridTemplateColumns = `repeat(auto-fit, minmax(180px, 1fr))`;
         }
 
         updateHeaderStats() {
+            // If cards not rendered yet (e.g. first load), render them
+            // But renderKPICards now depends on data. 
+            // We should call renderKPICards in loadData AFTER data fetch.
+            // updateHeaderStats just updates values for *filtered* view?
+            // Wait, if we sorted by Total, but updateStats shows *Filtered* counts...
+            // Then the order might not match the displayed numbers (e.g. Total=10, New=10, Lost=0. Filter by Lost -> Total=0, New=0, Lost=0?)
+            // Actually updateStats updates with `this.filteredLeads.length`.
+
+            // If I filter by "Lost", filtered leads = 0 (if valid lost leads).
+            // If I use the search bar, counts change.
+
+            // Let's just update the numbers. The Order remains fixed based on Global Volume (calculated at load time).
+            // This is standard. "Most popular stages first".
+
             if (!document.getElementById('stats-total')) {
-                // If cards not rendered yet (e.g. first load), render them
                 this.renderKPICards();
             }
 
@@ -418,12 +477,15 @@ if (!window.B2BLeadsManager) {
             // Count
             this.filteredLeads.forEach(l => {
                 const status = l.status || 'New';
-                // Find matching stage (case-insensitive check might be needed if data is messy, but let's assume exact match from dropdown)
-                if (stats.hasOwnProperty(status)) {
-                    stats[status]++;
+                // Normalize status to match stage keys if needed (Capitalized)
+                // We assume l.status is clean or we normalized it in loadData
+                // But let's be safe: find case-insensitive match
+                const match = stages.find(s => s.toLowerCase() === status.toLowerCase());
+                if (match) {
+                    stats[match]++;
                 } else {
-                    // If status isn't in settings, maybe count it under closest match or ignore? 
-                    // For now, only count known stages to match cards.
+                    // Fallback?
+                    if (stats.hasOwnProperty(status)) stats[status]++;
                 }
             });
 
@@ -432,11 +494,10 @@ if (!window.B2BLeadsManager) {
                 const el = document.getElementById(id);
                 if (el) {
                     // Small animation effect
-                    const current = parseInt(el.textContent) || 0;
-                    if (current !== val) {
+                    // Check if value changed to avoid DOM thrashing?
+                    // Text content check is cheap.
+                    if (el.textContent !== val.toString()) {
                         el.textContent = val;
-                        el.style.transform = 'scale(1.2)';
-                        setTimeout(() => el.style.transform = 'scale(1)', 200);
                     }
                 }
             };
@@ -452,7 +513,7 @@ if (!window.B2BLeadsManager) {
             const countDisplay = document.getElementById('lead-count-display');
             if (countDisplay) {
                 countDisplay.textContent = `${stats.total} Lead${stats.total !== 1 ? 's' : ''}`;
-                countDisplay.style.color = 'var(--text-main)'; // Remove muted color
+                countDisplay.style.color = 'var(--text-main)';
             }
         }
 
