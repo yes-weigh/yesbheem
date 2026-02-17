@@ -203,7 +203,6 @@ if (!window.B2BLeadsManager) {
 
             this.sortLeads();
             this.renderTable();
-            this.renderPagination();
             this.updateStats();
         }
 
@@ -251,7 +250,7 @@ if (!window.B2BLeadsManager) {
         // --- Pagination ---
 
         renderPagination() {
-            const container = document.getElementById('pagination-controls');
+            const container = document.getElementById('pagination-container');
             if (!container) return;
 
             const totalItems = this.filteredLeads.length;
@@ -264,18 +263,21 @@ if (!window.B2BLeadsManager) {
             let infoText = '';
             let controlsHtml = '';
 
-            const totalPages = Math.ceil(totalItems / this.itemsPerPage);
+            // Default to enabled if not set
+            if (this.isPaginationEnabled === undefined) this.isPaginationEnabled = true;
 
-            // Adjust current page if out of bounds
-            if (this.currentPage > totalPages) this.currentPage = Math.max(1, totalPages);
+            if (this.isPaginationEnabled) {
+                const totalPages = Math.ceil(totalItems / this.itemsPerPage);
 
-            const startIdx = (this.currentPage - 1) * this.itemsPerPage + 1;
-            const endIdx = Math.min(this.currentPage * this.itemsPerPage, totalItems);
+                // Ensure current page is valid
+                if (this.currentPage > totalPages) this.currentPage = totalPages;
+                if (this.currentPage < 1) this.currentPage = 1;
 
-            infoText = `<div class="pagination-info">Showing ${startIdx}-${endIdx} of ${totalItems}</div>`;
+                const startItem = (this.currentPage - 1) * this.itemsPerPage + 1;
+                const endItem = Math.min(this.currentPage * this.itemsPerPage, totalItems);
 
-            controlsHtml = `
-                <div class="pagination-actions">
+                infoText = `Showing ${startItem}-${endItem} of ${totalItems}`;
+                controlsHtml = `
                     <button class="page-btn" ${this.currentPage === 1 ? 'disabled' : ''} onclick="window.b2bLeadsManager.changePage(${this.currentPage - 1})">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
                         Prev
@@ -285,15 +287,41 @@ if (!window.B2BLeadsManager) {
                         Next
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
                     </button>
-                    <div class="pagination-divider"></div>
-                     <!-- Optional: View All Toggle or Items Per Page -->
+                `;
+            } else {
+                infoText = `Showing all ${totalItems} leads`;
+                controlsHtml = '';
+            }
+
+            const toggleBtnText = this.isPaginationEnabled ? 'View All' : 'Paginate';
+
+            container.innerHTML = `
+                <div class="pagination-controls" style="display: flex; align-items: center; padding: 1rem 1.5rem; border-top: 1px solid #334155; background: rgba(30, 41, 59, 0.5); color: #94a3b8; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
+                     <div class="pagination-info" style="flex: 1;">
+                        ${infoText}
+                    </div>
+                    <div class="pagination-actions" style="display: flex; align-items: center; gap: 8px;">
+                        ${controlsHtml}
+                        <div style="width: 1px; height: 16px; background: #475569; margin: 0 10px;"></div>
+                        <button class="page-btn" onclick="window.b2bLeadsManager.togglePagination()">
+                            ${toggleBtnText}
+                        </button>
+                    </div>
                 </div>
             `;
+        }
 
-            container.innerHTML = infoText + controlsHtml;
+        togglePagination() {
+            this.isPaginationEnabled = !this.isPaginationEnabled;
+            if (this.isPaginationEnabled) {
+                this.currentPage = 1;
+            }
+            this.renderTable();
         }
 
         changePage(newPage) {
+            if (!this.isPaginationEnabled) return;
+
             const totalItems = this.filteredLeads.length;
             const totalPages = Math.ceil(totalItems / this.itemsPerPage);
 
@@ -301,10 +329,14 @@ if (!window.B2BLeadsManager) {
 
             this.currentPage = newPage;
             this.renderTable();
-            this.renderPagination();
+
             // Scroll to top of table
             const tableContainer = document.querySelector('.leads-table-container');
             if (tableContainer) tableContainer.scrollTop = 0;
+            else {
+                const table = document.getElementById('leads-table');
+                if (table) table.scrollIntoView({ behavior: 'smooth' });
+            }
         }
 
 
@@ -366,10 +398,6 @@ if (!window.B2BLeadsManager) {
             container.innerHTML = html;
 
             // Update grid columns based on count (Total + stages)
-            const cardCount = 1 + stages.length;
-            container.style.gridTemplateColumns = `repeat(${cardCount}, 1fr)`;
-            // If too many cards, perhaps wrap? "repeat(auto-fit, minmax(200px, 1fr))" might be safer but user asked for specificity.
-            // Let's stick to auto-fit for robustness if many stages.
             container.style.gridTemplateColumns = `repeat(auto-fit, minmax(180px, 1fr))`;
         }
 
@@ -449,12 +477,22 @@ if (!window.B2BLeadsManager) {
                         </td>
                     </tr>
                 `;
+                this.renderPagination();
                 return;
             }
 
             // Slice for pagination
-            const startIdx = (this.currentPage - 1) * this.itemsPerPage;
-            const pageData = this.filteredLeads.slice(startIdx, startIdx + this.itemsPerPage);
+            let startIdx = 0;
+            let pageData = this.filteredLeads;
+
+            if (this.isPaginationEnabled) {
+                // Ensure current page is valid
+                const totalPages = Math.ceil(this.filteredLeads.length / this.itemsPerPage);
+                if (this.currentPage > totalPages) this.currentPage = Math.max(1, totalPages);
+
+                startIdx = (this.currentPage - 1) * this.itemsPerPage;
+                pageData = this.filteredLeads.slice(startIdx, startIdx + this.itemsPerPage);
+            }
 
             tbody.innerHTML = pageData.map((lead, index) => `
                 <tr class="lead-row" onclick="window.b2bLeadsManager.openEditModal('${lead.id}')">
@@ -491,6 +529,9 @@ if (!window.B2BLeadsManager) {
                 selectAll.checked = allSelected;
                 selectAll.indeterminate = !allSelected && this.selectedLeads.size > 0;
             }
+
+            // Update pagination controls
+            this.renderPagination();
         }
 
         toggleSelection(id, checked) {
