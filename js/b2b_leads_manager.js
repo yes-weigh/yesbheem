@@ -5,6 +5,7 @@
 import { B2BLeadsService } from './services/b2b_leads_service.js';
 import { AudienceService } from './services/audience_service.js';
 import { DataManager } from './data_manager.js';
+import { DealerValidator } from './components/dealer-validator.js'; // Import Validator
 import FormatUtils from './utils/format-utils.js';
 import { Toast } from './utils/toast.js';
 
@@ -13,13 +14,11 @@ if (!window.B2BLeadsManager) {
         constructor() {
             this.leads = [];
             this.filteredLeads = []; // Total results after filter
-            this.leads = this.leads.map(lead => ({
-                ...lead,
-                searchString: `${lead.name || ''} ${lead.phone || ''} ${lead.business_name || ''} ${lead.state || ''} ${lead.district || ''}`.toLowerCase()
-            }));
+
             this.service = new B2BLeadsService();
             this.audienceService = new AudienceService();
             this.dataManager = new DataManager();
+            this.validator = new DealerValidator(); // Initialize Validator
 
             // Filters
             this.searchQuery = '';
@@ -59,11 +58,15 @@ if (!window.B2BLeadsManager) {
             this.showLoadingState();
             try {
                 this.leads = await this.service.getAllLeads();
-                // Normalize data if needed
-                this.leads = this.leads.map(lead => ({
-                    ...lead,
-                    searchString: `${lead.name || ''} ${lead.phone || ''} ${lead.business_name || ''} ${lead.state || ''} ${lead.district || ''}`.toLowerCase()
-                }));
+                // Normalize data
+                this.leads = this.leads.map(lead => {
+                    const normState = this.validator ? this.validator.normalizeState(lead.state) : (lead.state || '');
+                    return {
+                        ...lead,
+                        state: normState, // Apply normalization
+                        searchString: `${lead.name || ''} ${lead.phone || ''} ${lead.business_name || ''} ${normState || ''} ${lead.district || ''}`.toLowerCase()
+                    };
+                });
 
                 this.renderKPICards(); // Render cards with correct sorting based on counts
                 this.applyFilters();
@@ -1269,11 +1272,16 @@ if (!window.B2BLeadsManager) {
 
                     // Default Status to 'New' if missing or empty
                     if (!lead.status || !lead.status.trim()) {
-                        lead.status = 'new';
+                        lead.status = 'New';
                     }
+
                     // Normalize case just in case
                     lead.status = lead.status.charAt(0).toUpperCase() + lead.status.slice(1).toLowerCase();
 
+                    // Normalize State
+                    if (lead.state && this.validator) {
+                        lead.state = this.validator.normalizeState(lead.state);
+                    }
 
                     newImportPhones.add(norm);
                     validLeads.push(lead);
