@@ -827,33 +827,7 @@ if (!window.B2BLeadsManager) {
             if (modal) modal.remove();
         }
 
-        toggleEditField(btn) {
-            const container = btn.parentElement;
-            // .floating-input or .edit-field-input
-            const input = container.querySelector('.floating-input, .edit-field-input');
-            if (input) {
-                if (input.hasAttribute('readonly') || input.disabled) {
-                    input.removeAttribute('readonly');
-                    input.disabled = false;
-                    input.focus();
-                    btn.classList.add('active');
-                    btn.style.color = 'var(--accent-color, #3b82f6)';
-                    btn.style.opacity = '1';
-                } else {
-                    input.setAttribute('readonly', 'true');
-                    input.disabled = true; // Use disabled for select
-                    // For input text, restore readonly? Actually dealer page sets disabled=true for inputs?
-                    // Dealer page uses disabled for input too in toggleEditField logic (lines 2100 in dealer_manager.js)
-                    // But floating input render uses readonly for text and disabled for select.
-                    // Let's stick to what renderer does.
-                    if (input.tagName === 'INPUT') input.setAttribute('readonly', 'true');
-
-                    btn.classList.remove('active');
-                    btn.style.color = '';
-                    btn.style.opacity = '0.5';
-                }
-            }
-        }
+        // toggleEditField removed as fields are directly editable.
 
         async handlePopupZipChange(inputField) {
             const zipCode = inputField.value.trim();
@@ -961,32 +935,9 @@ if (!window.B2BLeadsManager) {
 
         // --- LOGS TAB MANAGEMENT ---
 
-        switchEditModalTab(tabName) {
-            const modal = document.querySelector('.dealer-modal');
-            if (!modal) return;
+        // --- LOGS SECTION MANAGEMENT ---
 
-            // Update tab buttons
-            modal.querySelectorAll('.tab-btn').forEach(btn => {
-                if (btn.textContent.toLowerCase().includes(tabName)) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-
-            // Update content visibility
-            modal.querySelectorAll('.dealer-modal-content').forEach(content => {
-                if (content.id === `modal-tab-${tabName}`) {
-                    if (tabName === 'logs') {
-                        content.style.display = 'flex';
-                    } else {
-                        content.style.display = 'block';
-                    }
-                } else {
-                    content.style.display = 'none';
-                }
-            });
-        }
+        // switchEditModalTab removed as tabs are no longer used.
 
         renderLogsList(leadId) {
             const container = document.getElementById('b2b-logs-list');

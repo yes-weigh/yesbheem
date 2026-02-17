@@ -743,7 +743,7 @@ class UIRenderer {
         };
 
         // Helper: Render Floating Label Input
-        const renderFloatingInput = (label, field, type = 'text', readonly = true, extraAttrs = '') => `
+        const renderFloatingInput = (label, field, type = 'text', readonly = false, extraAttrs = '') => `
             <div class="floating-group">
                 <input type="${type}" 
                        class="floating-input" 
@@ -751,8 +751,7 @@ class UIRenderer {
                        data-field="${field}" 
                        value="${v(lead[field])}" 
                        placeholder=" "
-                       ${readonly ? 'readonly tabindex="-1"' : ''}
-                       ${extraAttrs}>
+                       ${extraAttrs} autocomplete="off">
                 <label class="floating-label" for="inp_${field}">${label}</label>
                 ${field === 'pincode' ? `
                     <svg class="zip-loading-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none; position: absolute; right: 10px; top: 12px; animation: spin 1s linear infinite; color: var(--color-info);">
@@ -760,16 +759,11 @@ class UIRenderer {
                         <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path>
                     </svg>
                 ` : ''}
-                ${readonly ? `
-                <button onclick="window.b2bLeadsManager.toggleEditField(this)" class="edit-toggle-btn" title="Edit ${label}">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                </button>
-                ` : ''}
             </div>
         `;
 
         // Helper: Render Floating Select
-        const renderFloatingSelect = (label, field, options, readonly = true) => {
+        const renderFloatingSelect = (label, field, options, readonly = false) => {
             const current = v(lead[field]);
             // Handle both object {name, phone} and string formats
             const opts = options.map(o => {
@@ -779,16 +773,11 @@ class UIRenderer {
 
             return `
                 <div class="floating-group">
-                    <select class="floating-input" id="inp_${field}" data-field="${field}" ${readonly ? 'disabled' : ''}>
+                    <select class="floating-input" id="inp_${field}" data-field="${field}">
                         <option value="" ${current === '' ? 'selected' : ''}>Select...</option>
                         ${opts}
                     </select>
                     <label class="floating-label" for="inp_${field}">${label}</label>
-                    ${readonly ? `
-                    <button onclick="window.b2bLeadsManager.toggleEditField(this)" class="edit-toggle-btn" title="Edit ${label}">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                    </button>
-                    ` : ''}
                 </div>
             `;
         };
@@ -839,43 +828,46 @@ class UIRenderer {
                         </div>
                     </div>
 
-                    <!-- Tabs -->
-                    <div class="dealer-modal-tabs">
-                        <button class="tab-btn active" onclick="window.b2bLeadsManager.switchEditModalTab('logs')">Logs</button>
-                        <button class="tab-btn" onclick="window.b2bLeadsManager.switchEditModalTab('overview')">Overview</button>
-                    </div>
-
-                    <!-- Body -->
-                    
-                     <!-- Logs Tab (Default) -->
-                    <div class="dealer-modal-content" id="modal-tab-logs" style="display: flex; flex-direction: column; gap: 16px;">
-                        <!-- Add Log Form -->
-                        <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
-                            <div style="display: flex; gap: 12px; mb-3;">
-                                <div class="floating-group" style="flex: 1; max-width: 200px;">
-                                    <input type="date" id="new-log-date" class="floating-input" value="${new Date().toISOString().split('T')[0]}">
-                                    <label class="floating-label">Date</label>
+                    <!-- Body: 3-Column Layout -->
+                    <div class="dealer-modal-content" style="display: grid; grid-template-columns: 350px 1fr 400px; gap: 24px; padding: 24px; overflow: hidden; height: 100%;">
+                        
+                        <!-- Column 1: Log Creation -->
+                        <div class="modal-column" style="display: flex; flex-direction: column; gap: 16px; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 24px;">
+                            <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Log Creation</h3>
+                            
+                            <div style="background: rgba(255,255,255,0.03); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                                <div style="margin-bottom: 16px;">
+                                    <label class="floating-label" style="position: static; display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.8rem;">Date</label>
+                                    <input type="date" id="new-log-date" class="floating-input" value="${new Date().toISOString().split('T')[0]}" style="height: 40px;">
                                 </div>
-                                <div style="flex: 1; display: flex; align-items: center; justify-content: flex-end;">
-                                    <button class="btn-save" onclick="window.b2bLeadsManager.addLog('${lead.id || ''}')" style="padding: 8px 16px; font-size: 0.85rem;">Add Log</button>
+                                <div style="margin-bottom: 16px;">
+                                    <label class="floating-label" style="position: static; display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.8rem;">Log Note</label>
+                                    <textarea id="new-log-content" class="floating-input" style="height: 120px; resize: vertical; padding-top: 12px;" placeholder="Enter log details..."></textarea>
                                 </div>
-                            </div>
-                            <div class="floating-group" style="margin-bottom: 0;">
-                                <textarea id="new-log-content" class="floating-input" style="height: 80px; resize: vertical;" placeholder=" "></textarea>
-                                <label class="floating-label">Log Note</label>
+                                <div style="display: flex; justify-content: flex-end;">
+                                    <button class="btn-save" onclick="window.b2bLeadsManager.addLog('${lead.id || ''}')" style="width: 100%; justify-content: center;">Add Log</button>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Logs List -->
-                        <div id="b2b-logs-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 0 4px;">
-                            <!-- Populated by JS -->
-                            <div style="text-align: center; color: var(--text-muted); padding: 20px; font-style: italic;">No logs recorded yet.</div>
+                        <!-- Column 2: Log History -->
+                        <div class="modal-column" style="display: flex; flex-direction: column; gap: 16px; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 24px; overflow: hidden;">
+                            <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Log History</h3>
+                            
+                            <div id="b2b-logs-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 4px; padding-right: 8px;">
+                                <!-- Populated by JS -->
+                                <div style="text-align: center; color: var(--text-muted); padding: 40px; font-style: italic; opacity: 0.7;">No logs recorded yet.</div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <!-- Overview Tab (Hidden) -->
-                    <div class="dealer-modal-content" id="modal-tab-overview" style="display: none;">
-                        ${overviewHtml}
+
+                        <!-- Column 3: Overview/Edit -->
+                        <div class="modal-column" style="display: flex; flex-direction: column; gap: 16px; overflow-y: auto;">
+                            <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Basic Details</h3>
+                            
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 20px;">
+                                ${overviewHtml.replace(/grid-col/g, 'edit-group').replace(/compact-grid/g, 'edit-stack')} 
+                            </div>
+                        </div>
                     </div>
                 
                     <!-- Footer -->
@@ -894,26 +886,51 @@ class UIRenderer {
             <style>
                 .dealer-modal-overlay {
                     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                    background: var(--modal-overlay-bg, rgba(0, 0, 0, 0.75));
-                    backdrop-filter: blur(8px);
+                    background: var(--modal-overlay-bg, rgba(0, 0, 0, 0.85)); /* Darker overlay */
+                    backdrop-filter: blur(12px);
                     z-index: 10000;
                     display: flex; align-items: center; justify-content: center;
                     animation: fadeIn 0.1s ease-out;
                 }
                 .dealer-modal {
                     background: var(--modal-bg-gradient, #0f172a);
-                    width: 900px;
-                    max-width: 95vw;
-                    min-height: 700px;
-                    max-height: 90vh;
-                    border-radius: 16px;
-                    border: var(--modal-border, 1px solid rgba(255,255,255,0.1));
-                    box-shadow: var(--modal-shadow, 0 25px 50px -12px rgba(0, 0, 0, 0.5));
+                    width: 95vw;
+                    height: 90vh;
+                    max-width: 1600px; /* Max constraint for ultra wide */
+                    border-radius: 20px;
+                    border: var(--modal-border, 1px solid rgba(255,255,255,0.08));
+                    box-shadow: var(--modal-shadow, 0 50px 100px -20px rgba(0, 0, 0, 0.7));
                     color: var(--modal-input-text, #e2e8f0);
                     display: flex; flex-direction: column;
                     overflow: hidden;
                     animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
                 }
+                
+                /* Override overview styles for stacked column */
+                .edit-stack {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+                .edit-group {
+                    /* No specific styles needed, just container */
+                }
+                
+                /* Scrollbar for internally scrolling columns */
+                .modal-column::-webkit-scrollbar,
+                #b2b-logs-list::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .modal-column::-webkit-scrollbar-track,
+                #b2b-logs-list::-webkit-scrollbar-track {
+                    background: rgba(0,0,0,0.1);
+                }
+                .modal-column::-webkit-scrollbar-thumb,
+                #b2b-logs-list::-webkit-scrollbar-thumb {
+                    background: rgba(255,255,255,0.1);
+                    border-radius: 3px;
+                }
+
                 
                 @keyframes scaleUp {
                     from { transform: scale(0.95) translateY(10px); opacity: 0; }
