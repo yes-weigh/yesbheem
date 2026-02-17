@@ -814,6 +814,11 @@ if (!window.B2BLeadsManager) {
             const html = window.UIRenderer.renderB2BLeadModal(lead, settings);
             document.body.insertAdjacentHTML('beforeend', html);
             this.isModalOpen = true;
+            this.currentEditingLogId = null; // Reset edit state
+
+            if (isEdit) {
+                this.renderLogsList(leadId);
+            }
         }
 
         closeEditModal() {
@@ -951,6 +956,172 @@ if (!window.B2BLeadsManager) {
             } catch (error) {
                 console.error(error);
                 if (Toast) Toast.error('Failed to delete lead');
+            }
+        }
+
+        // --- LOGS TAB MANAGEMENT ---
+
+        switchEditModalTab(tabName) {
+            const modal = document.querySelector('.dealer-modal');
+            if (!modal) return;
+
+            // Update tab buttons
+            modal.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.textContent.toLowerCase().includes(tabName)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Update content visibility
+            modal.querySelectorAll('.dealer-modal-content').forEach(content => {
+                if (content.id === `modal-tab-${tabName}`) {
+                    if (tabName === 'logs') {
+                        content.style.display = 'flex';
+                    } else {
+                        content.style.display = 'block';
+                    }
+                } else {
+                    content.style.display = 'none';
+                }
+            });
+        }
+
+        renderLogsList(leadId) {
+            const container = document.getElementById('b2b-logs-list');
+            if (!container) return;
+
+            const lead = this.leads.find(l => l.id === leadId);
+            // Ensure logs array exists
+            if (!lead.logs) {
+                lead.logs = [];
+            }
+
+            if (lead.logs.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px; font-style: italic;">No logs recorded yet.</div>';
+                return;
+            }
+
+            // Sort logs: newest date first
+            const logs = [...lead.logs].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            container.innerHTML = logs.map(log => `
+                <div class="log-item" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.8rem; color: var(--color-info); font-weight: 600;">${new Date(log.date).toLocaleDateString()}</span>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="window.b2bLeadsManager.editLog('${leadId}', '${log.id}')" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 2px; transition: color 0.2s;" title="Edit" onmouseover="this.style.color='var(--accent-color)'" onmouseout="this.style.color='var(--text-muted)'">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                            </button>
+                            <button onclick="window.b2bLeadsManager.deleteLog('${leadId}', '${log.id}')" style="background: none; border: none; cursor: pointer; color: #f87171; padding: 2px; transition: opacity 0.2s;" title="Delete" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.9rem; color: var(--modal-input-text); white-space: pre-wrap;">${log.content.replace(/</g, '&lt;')}</div>
+                </div>
+            `).join('');
+        }
+
+        async addLog(leadId) {
+            const dateInput = document.getElementById('new-log-date');
+            const contentInput = document.getElementById('new-log-content');
+            const addBtn = document.querySelector('#modal-tab-logs .btn-save');
+
+            if (!dateInput || !contentInput) return;
+
+            const date = dateInput.value;
+            const content = contentInput.value.trim();
+
+            if (!content) {
+                if (Toast) Toast.warning('Please enter log content.');
+                return;
+            }
+
+            // Find Lead
+            const lead = this.leads.find(l => l.id === leadId);
+            if (!lead) return;
+            if (!lead.logs) lead.logs = [];
+
+            if (this.currentEditingLogId) {
+                // UPDATE EXISTING LOG
+                const logIndex = lead.logs.findIndex(l => l.id === this.currentEditingLogId);
+                if (logIndex !== -1) {
+                    lead.logs[logIndex].date = date;
+                    lead.logs[logIndex].content = content;
+                    lead.logs[logIndex].updatedAt = new Date().toISOString();
+                }
+                this.currentEditingLogId = null;
+                if (addBtn) addBtn.textContent = 'Add Log';
+            } else {
+                // CREATE NEW LOG
+                const newLog = {
+                    id: 'log_' + Date.now(),
+                    date: date,
+                    content: content,
+                    createdAt: new Date().toISOString()
+                };
+                lead.logs.push(newLog);
+            }
+
+            // Optimistic Update
+            this.renderLogsList(leadId);
+
+            // Clear Inputs
+            contentInput.value = '';
+            dateInput.value = new Date().toISOString().split('T')[0];
+
+            // API Save
+            try {
+                await this.service.updateLead(leadId, { logs: lead.logs });
+                if (Toast) Toast.success('Log saved successfully');
+            } catch (error) {
+                console.error('Failed to save log:', error);
+                if (Toast) Toast.error('Failed to save log');
+                // Revert? For now assume success or user will retry.
+            }
+        }
+
+        editLog(leadId, logId) {
+            const lead = this.leads.find(l => l.id === leadId);
+            if (!lead || !lead.logs) return;
+
+            const log = lead.logs.find(l => l.id === logId);
+            if (!log) return;
+
+            const dateInput = document.getElementById('new-log-date');
+            const contentInput = document.getElementById('new-log-content');
+            const addBtn = document.querySelector('#modal-tab-logs .btn-save');
+
+            if (dateInput) dateInput.value = log.date;
+            if (contentInput) {
+                contentInput.value = log.content;
+                contentInput.focus();
+            }
+
+            this.currentEditingLogId = logId;
+            if (addBtn) addBtn.textContent = 'Update Log';
+        }
+
+        async deleteLog(leadId, logId) {
+            if (!confirm('Delete this log?')) return;
+
+            const lead = this.leads.find(l => l.id === leadId);
+            if (!lead || !lead.logs) return;
+
+            lead.logs = lead.logs.filter(l => l.id !== logId);
+
+            // Optimistic Update
+            this.renderLogsList(leadId);
+
+            // API Save
+            try {
+                await this.service.updateLead(leadId, { logs: lead.logs });
+                if (Toast) Toast.success('Log deleted');
+            } catch (error) {
+                console.error('Failed to delete log:', error);
+                if (Toast) Toast.error('Failed to delete log');
             }
         }
 

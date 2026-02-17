@@ -839,14 +839,41 @@ class UIRenderer {
                         </div>
                     </div>
 
-                    <!-- Tabs (Simplified for B2B - just Overview for now, maybe History later) -->
+                    <!-- Tabs -->
                     <div class="dealer-modal-tabs">
-                        <button class="tab-btn active">Overview</button>
+                        <button class="tab-btn active" onclick="window.b2bLeadsManager.switchEditModalTab('overview')">Overview</button>
+                        <button class="tab-btn" onclick="window.b2bLeadsManager.switchEditModalTab('logs')">Logs</button>
                     </div>
 
                     <!-- Body -->
-                    <div class="dealer-modal-content">
+                    <div class="dealer-modal-content" id="modal-tab-overview">
                         ${overviewHtml}
+                    </div>
+
+                    <!-- Logs Tab -->
+                    <div class="dealer-modal-content" id="modal-tab-logs" style="display: none; flex-direction: column; gap: 16px;">
+                        <!-- Add Log Form -->
+                        <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                            <div style="display: flex; gap: 12px; mb-3;">
+                                <div class="floating-group" style="flex: 1; max-width: 200px;">
+                                    <input type="date" id="new-log-date" class="floating-input" value="${new Date().toISOString().split('T')[0]}">
+                                    <label class="floating-label">Date</label>
+                                </div>
+                                <div style="flex: 1; display: flex; align-items: center; justify-content: flex-end;">
+                                    <button class="btn-save" onclick="window.b2bLeadsManager.addLog('${lead.id || ''}')" style="padding: 8px 16px; font-size: 0.85rem;">Add Log</button>
+                                </div>
+                            </div>
+                            <div class="floating-group" style="margin-bottom: 0;">
+                                <textarea id="new-log-content" class="floating-input" style="height: 80px; resize: vertical;" placeholder=" "></textarea>
+                                <label class="floating-label">Log Note</label>
+                            </div>
+                        </div>
+
+                        <!-- Logs List -->
+                        <div id="b2b-logs-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; max-height: 400px; padding-right: 4px;">
+                            <!-- Populated by JS -->
+                            <div style="text-align: center; color: var(--text-muted); padding: 20px; font-style: italic;">No logs recorded yet.</div>
+                        </div>
                     </div>
                 
                     <!-- Footer -->
