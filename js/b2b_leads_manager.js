@@ -1104,27 +1104,150 @@ if (!window.B2BLeadsManager) {
             reader.onload = async (e) => {
                 const text = e.target.result;
                 const rows = text.split('\n').map(r => r.trim()).filter(r => r);
+                if (rows.length < 2) {
+                    if (Toast) Toast.error('CSV file is empty or missing headers');
+                    return;
+                }
+
                 const headers = rows[0].split(',').map(h => h.trim().toLowerCase());
 
-                const leads = [];
+                // Helper to normalize phone
+                const normalizePhone = (p) => {
+                    if (!p) return '';
+                    return p.toString().replace(/\D/g, '').slice(-10); // Last 10 digits
+                };
+
+                // 1. Fetch existing data for deduplication
+                this.showLoadingState();
+                // We need to keep the table loading while we process, but showLoadingState replaced content. 
+                // Maybe better to run this before asking confirmation? 
+                // Let's do it inside the confirmation flow or before. 
+
+                // Fetch Dealers
+                let dealers = [];
+                try {
+                    // Try to get from DataManager if available globally or fetch fresh
+                    if (window.dataManager) {
+                        // DataManager typically fetches sheet data. 
+                        // If we are on B2B page, DataManager might not have loaded "Dealers" report yet unless we force it.
+                        // Let's try to use the raw fetch if internal API exists, or fallback to FirestoreService.
+                        // Assuming valid "ALL_REPORTS" fetch or similar.
+                        // For safety/speed, let's assume we can fetch "Dealers" collection if it existed as a simple collection,
+                        // but here it seems Dealers come from "Reports".
+
+                        // Strategy: We'll fetch ALL sheet data via DataManager to be safe, 
+                        // matching how DealerManager does it.
+                        dealers = await window.dataManager.fetchSheetData();
+                    }
+                } catch (err) {
+                    console.error('Error fetching dealers for dedup:', err);
+                    // Continue? Risk of duplication. better warn.
+                    if (!confirm('Could not fetch existing Dealers for deduplication. Import anyway?')) {
+                        this.renderTable();
+                        return;
+                    }
+                }
+
+                const existingDealerPhones = new Set(dealers.map(d => normalizePhone(d.phone)).filter(p => p.length === 10));
+                const existingLeadPhones = new Set(this.leads.map(l => normalizePhone(l.phone)).filter(p => p.length === 10));
+                const newImportPhones = new Set();
+
+                const validLeads = [];
+                let duplicatesInFile = 0;
+                let existingInB2B = 0;
+                let existingInDealers = 0;
+                let noPhone = 0;
+
                 for (let i = 1; i < rows.length; i++) {
+                    // Handle potential comma inside quotes? Simple split for now as per previous code.
                     const values = rows[i].split(',').map(v => v.trim());
                     if (values.length < 1) continue;
 
                     const lead = {};
                     headers.forEach((h, index) => {
-                        lead[h] = values[index];
+                        // Remove quotes if present
+                        let val = values[index] || '';
+                        if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
+                        lead[h] = val;
                     });
 
-                    if (lead.phone) leads.push(lead);
+                    // 1. Check Phone Existence
+                    if (!lead.phone) {
+                        noPhone++;
+                        continue;
+                    }
+
+                    const rawPhone = lead.phone;
+                    const norm = normalizePhone(rawPhone);
+
+                    if (norm.length < 10) {
+                        // Invalid phone length? Treat as no phone or invalid
+                        noPhone++;
+                        continue;
+                    }
+
+                    // 2. Check Duplicates in File
+                    if (newImportPhones.has(norm)) {
+                        duplicatesInFile++;
+                        continue;
+                    }
+
+                    // 3. Check Existing B2B
+                    if (existingLeadPhones.has(norm)) {
+                        existingInB2B++;
+                        continue;
+                    }
+
+                    // 4. Check Existing Dealers
+                    if (existingDealerPhones.has(norm)) {
+                        existingInDealers++;
+                        continue;
+                    }
+
+                    // Valid
+
+                    // Default Status to 'New' if missing or empty
+                    if (!lead.status || !lead.status.trim()) {
+                        lead.status = 'new';
+                    }
+                    // Normalize case just in case
+                    lead.status = lead.status.charAt(0).toUpperCase() + lead.status.slice(1).toLowerCase();
+
+
+                    newImportPhones.add(norm);
+                    validLeads.push(lead);
                 }
 
-                if (confirm(`Ready to import ${leads.length} leads?`)) {
+                // Restore validation state (remove loading)
+                this.renderTable();
+
+                const summary = `
+Import Summary:
+----------------
+Total Rows: ${rows.length - 1}
+Valid New Leads: ${validLeads.length}
+
+Ignored:
+- No Phone/Invalid: ${noPhone}
+- Duplicate in File: ${duplicatesInFile}
+- Existing B2B Lead: ${existingInB2B}
+- Existing Dealer: ${existingInDealers}
+
+Proceed with import?
+                `.trim();
+
+                if (validLeads.length === 0) {
+                    if (Toast) Toast.warning('No valid new leads found to import.');
+                    // alert(summary); // Fallback if toast missed
+                    return;
+                }
+
+                if (confirm(summary)) {
                     try {
                         this.showLoadingState();
-                        await this.service.importLeads(leads);
+                        await this.service.importLeads(validLeads);
                         await this.loadData(); // Reload all
-                        if (Toast) Toast.success(`Imported ${leads.length} leads successfully`);
+                        if (Toast) Toast.success(`Imported ${validLeads.length} leads successfully`);
                     } catch (err) {
                         if (Toast) Toast.error('Import failed: ' + err.message);
                         this.renderTable(); // Restore view
@@ -1132,6 +1255,22 @@ if (!window.B2BLeadsManager) {
                 }
             };
             reader.readAsText(file);
+        }
+
+        downloadImportTemplate() {
+            const headers = ['name', 'phone', 'business_name', 'state', 'district', 'status', 'kam'];
+            const sampleRow = ['John Doe', '9876543210', 'Doe Traders', 'Kerala', 'Ernakulam', 'New', ''];
+
+            const csvContent = [
+                headers.join(','),
+                sampleRow.join(',')
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `b2b_leads_import_template.csv`;
+            link.click();
         }
 
         exportCSV() {

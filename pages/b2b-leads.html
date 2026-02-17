@@ -550,14 +550,22 @@
         <div class="page-title">B2B Leads Management</div>
         <div class="header-actions">
             <span id="lead-count-display" class="lead-count">Loading...</span>
-            <button class="btn-secondary" onclick="window.b2bLeadsManager.openImportModal()">
-                <span class="icon">📥</span> Import
-            </button>
-            <button class="btn-secondary" onclick="window.b2bLeadsManager.exportCSV()">
-                <span class="icon">📤</span> Export
-            </button>
-            <button class="btn-primary" onclick="event.stopPropagation(); window.b2bLeadsManager.openAddModal()">
+            <button class="btn-primary" onclick="window.b2bLeadsManager.openAddModal()"
+                style="padding: 0.5rem 1rem; font-size: 0.85rem;">
                 + Add Lead
+            </button>
+            <div style="width: 1px; height: 24px; background: var(--border-light); margin: 0 4px;"></div>
+            <button class="btn-secondary" onclick="window.b2bLeadsManager.downloadImportTemplate()"
+                style="padding: 0.5rem 1rem; font-size: 0.85rem;" title="Download CSV Template">
+                Template
+            </button>
+            <button class="btn-secondary" onclick="window.b2bLeadsManager.openImportModal()"
+                style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                Import
+            </button>
+            <button class="btn-secondary" onclick="window.b2bLeadsManager.exportCSV()"
+                style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                Export
             </button>
         </div>
     </div>
