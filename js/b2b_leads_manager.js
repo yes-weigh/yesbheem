@@ -531,7 +531,7 @@ if (!window.B2BLeadsManager) {
 
             // Add Stage Cards
             stages.forEach(stage => {
-                if (stage.toLowerCase() === 'all' || stage.toLowerCase() === 'total') return;
+                if (stage.toLowerCase() === 'all' || stage.toLowerCase() === 'total' || stage.toLowerCase() === 'cold') return;
                 cards.push({
                     type: 'stage',
                     label: stage,
@@ -999,29 +999,44 @@ if (!window.B2BLeadsManager) {
             }
 
             if (lead.logs.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px; font-style: italic;">No logs recorded yet.</div>';
+                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px; font-style: italic; opacity: 0.7;">No logs recorded yet.</div>';
                 return;
             }
 
             // Sort logs: newest date first
             const logs = [...lead.logs].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-            container.innerHTML = logs.map(log => `
-                <div class="log-item" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.8rem; color: var(--color-info); font-weight: 600;">${new Date(log.date).toLocaleDateString()}</span>
-                        <div style="display: flex; gap: 8px;">
-                            <button onclick="window.b2bLeadsManager.editLog('${leadId}', '${log.id}')" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 2px; transition: color 0.2s;" title="Edit" onmouseover="this.style.color='var(--accent-color)'" onmouseout="this.style.color='var(--text-muted)'">
+            container.innerHTML = logs.map(log => {
+                const dateObj = new Date(log.date);
+                const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+                return `
+                <div class="log-item" style="position: relative; padding-left: 24px; border-left: 2px solid rgba(255,255,255,0.1); padding-bottom: 24px;">
+                    <div style="position: absolute; left: -5px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--accent-color); box-shadow: 0 0 0 4px var(--modal-bg-gradient);"></div>
+                    
+                    <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-start;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${dateStr}</span>
+                        
+                        <div class="log-actions" style="opacity: 0.7; transition: opacity 0.2s; display: flex; gap: 8px;">
+                            <button onclick="window.b2bLeadsManager.editLog('${leadId}', '${log.id}')" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; border-radius: 4px; transition: all 0.2s;" title="Edit">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                             </button>
-                            <button onclick="window.b2bLeadsManager.deleteLog('${leadId}', '${log.id}')" style="background: none; border: none; cursor: pointer; color: #f87171; padding: 2px; transition: opacity 0.2s;" title="Delete" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                            <button onclick="window.b2bLeadsManager.deleteLog('${leadId}', '${log.id}')" style="background: none; border: none; cursor: pointer; color: #f87171; padding: 4px; border-radius: 4px; transition: all 0.2s;" title="Delete">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                             </button>
                         </div>
                     </div>
-                    <div style="font-size: 0.9rem; color: var(--modal-input-text); white-space: pre-wrap;">${log.content.replace(/</g, '&lt;')}</div>
+                    
+                    <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; font-size: 0.95rem; color: var(--modal-input-text); line-height: 1.6; white-space: pre-wrap; border: 1px solid rgba(255,255,255,0.05);">${log.content.replace(/</g, '&lt;')}</div>
                 </div>
-            `).join('');
+            `}).join('') + `
+            <style>
+                .log-item:last-child { border-left-color: transparent; padding-bottom: 0; }
+                .log-item:hover .log-actions { opacity: 1; }
+                .log-actions button:hover { background: rgba(255,255,255,0.1); color: var(--modal-h2-color); }
+                .log-actions button:nth-child(2):hover { background: rgba(239, 68, 68, 0.1); color: #f87171; }
+            </style>
+            `;
         }
 
         async addLog(leadId) {

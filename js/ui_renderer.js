@@ -841,17 +841,14 @@ class UIRenderer {
 
                     <!-- Tabs -->
                     <div class="dealer-modal-tabs">
-                        <button class="tab-btn active" onclick="window.b2bLeadsManager.switchEditModalTab('overview')">Overview</button>
-                        <button class="tab-btn" onclick="window.b2bLeadsManager.switchEditModalTab('logs')">Logs</button>
+                        <button class="tab-btn active" onclick="window.b2bLeadsManager.switchEditModalTab('logs')">Logs</button>
+                        <button class="tab-btn" onclick="window.b2bLeadsManager.switchEditModalTab('overview')">Overview</button>
                     </div>
 
                     <!-- Body -->
-                    <div class="dealer-modal-content" id="modal-tab-overview">
-                        ${overviewHtml}
-                    </div>
-
-                    <!-- Logs Tab -->
-                    <div class="dealer-modal-content" id="modal-tab-logs" style="display: none; flex-direction: column; gap: 16px;">
+                    
+                     <!-- Logs Tab (Default) -->
+                    <div class="dealer-modal-content" id="modal-tab-logs" style="display: flex; flex-direction: column; gap: 16px;">
                         <!-- Add Log Form -->
                         <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
                             <div style="display: flex; gap: 12px; mb-3;">
@@ -870,10 +867,15 @@ class UIRenderer {
                         </div>
 
                         <!-- Logs List -->
-                        <div id="b2b-logs-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; max-height: 400px; padding-right: 4px;">
+                        <div id="b2b-logs-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 0 4px;">
                             <!-- Populated by JS -->
                             <div style="text-align: center; color: var(--text-muted); padding: 20px; font-style: italic;">No logs recorded yet.</div>
                         </div>
+                    </div>
+                    
+                    <!-- Overview Tab (Hidden) -->
+                    <div class="dealer-modal-content" id="modal-tab-overview" style="display: none;">
+                        ${overviewHtml}
                     </div>
                 
                     <!-- Footer -->
@@ -900,8 +902,10 @@ class UIRenderer {
                 }
                 .dealer-modal {
                     background: var(--modal-bg-gradient, #0f172a);
-                    width: 750px;
-                    max-width: 95%;
+                    width: 900px;
+                    max-width: 95vw;
+                    min-height: 700px;
+                    max-height: 90vh;
                     border-radius: 16px;
                     border: var(--modal-border, 1px solid rgba(255,255,255,0.1));
                     box-shadow: var(--modal-shadow, 0 25px 50px -12px rgba(0, 0, 0, 0.5));
