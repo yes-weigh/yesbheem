@@ -11,6 +11,7 @@ export class SettingsController {
         this.keyAccounts = [];
         this.dealerStages = [];
         this.leadStages = [];
+        this.logActivities = [];
         this.dealerCategories = [];
         this.instanceGroups = [];
         this.isLoading = false;
@@ -21,6 +22,7 @@ export class SettingsController {
         this.addDealerStageInput = null;
         this.addLeadStageInput = null;
         this.addCategoryInput = null;
+        this.addLogActivityInput = null;
         this.addGroupInput = null;
 
         this.init();
@@ -72,6 +74,7 @@ export class SettingsController {
 
                 this.dealerStages = data.dealer_stages || [];
                 this.leadStages = data.lead_stages || [];
+                this.logActivities = data.log_activities || [];
                 this.dealerCategories = data.dealer_categories || [];
                 this.instanceGroups = data.instance_groups || [];
                 this.templateLanguages = data.template_languages || [];
@@ -85,6 +88,7 @@ export class SettingsController {
                 this.keyAccounts = [];
                 this.dealerStages = ['Contacted', 'Interested', 'Negotiation', 'Closed'];
                 this.leadStages = ['New', 'Contacted', 'Converted', 'Lost'];
+                this.logActivities = ['Call', 'Meeting', 'Email', 'Note'];
                 this.dealerCategories = [];
                 this.instanceGroups = [];
                 this.templateLanguages = ['English', 'Malayalam', 'Hindi', 'Tamil', 'Telugu'];
@@ -95,6 +99,7 @@ export class SettingsController {
                     key_accounts: this.keyAccounts,
                     dealer_stages: this.dealerStages,
                     lead_stages: this.leadStages,
+                    log_activities: this.logActivities,
                     dealer_categories: this.dealerCategories,
                     instance_groups: this.instanceGroups,
                     template_languages: this.templateLanguages,
@@ -120,6 +125,7 @@ export class SettingsController {
             this.keyAccounts = [];
             this.dealerStages = [];
             this.leadStages = [];
+            this.logActivities = [];
             this.dealerCategories = [];
         } finally {
             this.setLoading(false);
@@ -428,6 +434,15 @@ export class SettingsController {
             this.renderTemplateCategories();
             this.updateBadges();
             await this.persistItem(listName, value, 'add');
+        } else if (listName === 'logActivities') {
+            if (this.logActivities.includes(value)) {
+                alert('This activity already exists!');
+                return;
+            }
+            this.logActivities.push(value);
+            this.renderLogActivities();
+            this.updateBadges();
+            await this.persistItem(listName, value, 'add');
         }
 
         inputElement.value = '';
@@ -443,6 +458,7 @@ export class SettingsController {
         if (listName === 'keyAccounts') fieldName = 'key_account_manager';
         else if (listName === 'dealerStages') fieldName = 'dealer_stage';
         else if (listName === 'leadStages') fieldName = 'status'; // B2B Lead Status
+        else if (listName === 'logActivities') fieldName = 'activity_type';
         else if (listName === 'dealerCategories') fieldName = 'categories';
 
         // 1. Remove from List
@@ -551,6 +567,14 @@ export class SettingsController {
                 if (idx !== -1) {
                     this.templateCategories[idx] = trimmedValue;
                     this.renderTemplateCategories();
+                    await this.persistRename(listName, oldValue, trimmedValue);
+                }
+            } else if (listName === 'logActivities') {
+                if (this.logActivities.includes(trimmedValue)) { alert('Activity already exists'); return; }
+                const idx = this.logActivities.indexOf(oldValue);
+                if (idx !== -1) {
+                    this.logActivities[idx] = trimmedValue;
+                    this.renderLogActivities();
                     await this.persistRename(listName, oldValue, trimmedValue);
                 }
             }
@@ -770,6 +794,7 @@ export class SettingsController {
         if (listName === 'keyAccounts') firestoreField = 'key_accounts';
         else if (listName === 'dealerStages') firestoreField = 'dealer_stages';
         else if (listName === 'leadStages') firestoreField = 'lead_stages';
+        else if (listName === 'logActivities') firestoreField = 'log_activities';
 
         else if (listName === 'dealerCategories') firestoreField = 'dealer_categories';
         else if (listName === 'instanceGroups') {
@@ -859,6 +884,13 @@ export class SettingsController {
             btnId = 'add-lead-stage-btn';
             renderMethod = 'renderLeadStages';
             placeholder = 'Enter stage name...';
+        } else if (type === 'logActivities') {
+            title = 'Manage Log Activities';
+            listId = 'log-activities-list';
+            inputId = 'add-log-activity-input';
+            btnId = 'add-log-activity-btn';
+            renderMethod = 'renderLogActivities';
+            placeholder = 'Enter activity name...';
         } else if (type === 'dealerCategories') {
             title = 'Manage Dealer Categories';
             listId = 'dealer-categories-list';
@@ -955,6 +987,11 @@ export class SettingsController {
             this.addLeadStageInput = document.getElementById(inputId);
             document.getElementById(btnId).onclick = () => this.handleAddItem('leadStages', this.addLeadStageInput);
             this.addLeadStageInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('leadStages', this.addLeadStageInput); };
+        } else if (type === 'logActivities') {
+            this.logActivitiesList = document.getElementById(listId);
+            this.addLogActivityInput = document.getElementById(inputId);
+            document.getElementById(btnId).onclick = () => this.handleAddItem('logActivities', this.addLogActivityInput);
+            this.addLogActivityInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('logActivities', this.addLogActivityInput); };
         } else if (type === 'dealerCategories') {
             this.dealerCategoriesList = document.getElementById(listId);
             this.addCategoryInput = document.getElementById(inputId);
@@ -999,7 +1036,9 @@ export class SettingsController {
         this.renderDealerStages();
         this.renderDealerCategories();
         this.renderDealerStages();
+        this.renderDealerStages();
         this.renderLeadStages();
+        this.renderLogActivities();
         this.renderDealerCategories();
         this.renderDeactivatedDealers();
         this.renderInstanceGroups();
@@ -1131,6 +1170,26 @@ export class SettingsController {
         `).join('');
     }
 
+    renderLogActivities() {
+        if (!this.logActivitiesList) return;
+        this.logActivitiesList.innerHTML = this.logActivities.map(activity => `
+            <div class="list-item">
+                <span class="item-text">${this.escapeHtml(activity)}</span>
+                <div class="actions">
+                    <button class="edit-btn" onclick="window.settingsController.handleRenameItem('logActivities', '${this.escapeHtml(activity)}')" title="Rename">
+                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                    </button>
+                    <button class="delete-btn" onclick="window.settingsController.handleRemoveItem('logActivities', '${this.escapeHtml(activity)}')" title="Delete">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
     renderInstanceGroups() {
         if (!this.instanceGroupsList) return;
         this.instanceGroupsList.innerHTML = this.instanceGroups.map(group => `
@@ -1240,6 +1299,13 @@ export class SettingsController {
             if (leadStagesBadge) {
                 const count = this.leadStages.length;
                 leadStagesBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+            }
+
+            // Update Log Activities badge
+            const logActivitiesBadge = document.getElementById('log-activities-count');
+            if (logActivitiesBadge) {
+                const count = this.logActivities.length;
+                logActivitiesBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
             }
 
             const kamCount = document.getElementById('kam-count');

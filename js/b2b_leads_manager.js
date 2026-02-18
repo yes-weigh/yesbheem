@@ -960,13 +960,21 @@ if (!window.B2BLeadsManager) {
             container.innerHTML = logs.map(log => {
                 const dateObj = new Date(log.date);
                 const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const type = log.activityType || 'Log';
 
                 return `
                 <div class="log-item" style="position: relative; padding-left: 24px; border-left: 2px solid rgba(255,255,255,0.1); padding-bottom: 24px;">
                     <div style="position: absolute; left: -5px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--accent-color); box-shadow: 0 0 0 4px var(--modal-bg-gradient);"></div>
                     
                     <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-start;">
-                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${dateStr}</span>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${dateStr}</span>
+                            <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                                ${(log.activityType || 'Log').split(',').map(t => t.trim()).filter(Boolean).map(t =>
+                    `<span style="font-size: 0.65rem; padding: 2px 6px; background: rgba(255,255,255,0.1); border-radius: 4px; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.05em;">${t}</span>`
+                ).join('')}
+                            </div>
+                        </div>
                         
                         <div class="log-actions" style="opacity: 0.7; transition: opacity 0.2s; display: flex; gap: 8px;">
                             <button onclick="window.b2bLeadsManager.editLog('${leadId}', '${log.id}')" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; border-radius: 4px; transition: all 0.2s;" title="Edit">
@@ -978,7 +986,7 @@ if (!window.B2BLeadsManager) {
                         </div>
                     </div>
                     
-                    <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; font-size: 0.95rem; color: var(--modal-input-text); line-height: 1.6; white-space: pre-wrap; border: 1px solid rgba(255,255,255,0.05);">${log.content.replace(/</g, '&lt;')}</div>
+                    <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; font-size: 0.95rem; color: var(--modal-input-text); line-height: 1.6; white-space: pre-wrap; border: 1px solid rgba(255,255,255,0.05);">${this.escapeHtml(log.content)}</div>
                 </div>
             `}).join('') + `
             <style>
@@ -998,6 +1006,9 @@ if (!window.B2BLeadsManager) {
             if (!dateInput || !contentInput) return;
 
             const date = dateInput.value;
+            const activeChips = document.querySelectorAll('.activity-chip.active');
+            const types = Array.from(activeChips).map(c => c.getAttribute('data-value'));
+            const type = types.length > 0 ? types.join(', ') : 'Log';
             const content = contentInput.value.trim();
 
             if (!content) {
@@ -1015,6 +1026,7 @@ if (!window.B2BLeadsManager) {
                 const logIndex = lead.logs.findIndex(l => l.id === this.currentEditingLogId);
                 if (logIndex !== -1) {
                     lead.logs[logIndex].date = date;
+                    lead.logs[logIndex].activityType = type;
                     lead.logs[logIndex].content = content;
                     lead.logs[logIndex].updatedAt = new Date().toISOString();
                 }
@@ -1025,6 +1037,7 @@ if (!window.B2BLeadsManager) {
                 const newLog = {
                     id: 'log_' + Date.now(),
                     date: date,
+                    activityType: type,
                     content: content,
                     createdAt: new Date().toISOString()
                 };
@@ -1037,6 +1050,7 @@ if (!window.B2BLeadsManager) {
             // Clear Inputs
             contentInput.value = '';
             dateInput.value = new Date().toISOString().split('T')[0];
+            document.querySelectorAll('.activity-chip').forEach(c => c.classList.remove('active'));
 
             // API Save
             try {
@@ -1061,6 +1075,14 @@ if (!window.B2BLeadsManager) {
             const addBtn = document.querySelector('#modal-tab-logs .btn-save');
 
             if (dateInput) dateInput.value = log.date;
+
+            // Populate Chips
+            const types = (log.activityType || 'Log').split(',').map(t => t.trim());
+            document.querySelectorAll('.activity-chip').forEach(c => {
+                if (types.includes(c.getAttribute('data-value'))) c.classList.add('active');
+                else c.classList.remove('active');
+            });
+
             if (contentInput) {
                 contentInput.value = log.content;
                 contentInput.focus();
@@ -1722,6 +1744,16 @@ Proceed with import?
             link.href = URL.createObjectURL(blob);
             link.download = `b2b_leads_export_${new Date().toISOString().slice(0, 10)}.csv`;
             link.click();
+        }
+
+        escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
     }
 }

@@ -789,7 +789,6 @@ class UIRenderer {
                 <!-- Col 1: Identity -->
                 <div class="grid-col">
                     <h5 class="col-title">Identity</h5>
-                    ${renderFloatingSelect('Status', 'status', statusOptions)}
                     ${renderFloatingSelect('KAM', 'kam', settings.key_accounts || [])}
                     ${renderFloatingInput('Business Name', 'business_name')}
                 </div>
@@ -833,9 +832,89 @@ class UIRenderer {
                         
                         <!-- Column 1: Log Creation -->
                         <div class="modal-column" style="display: flex; flex-direction: column; gap: 16px; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 24px;">
+                            
+                            <!-- Status moved here -->
+                             <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                                <label class="floating-label" style="position: static; display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.8rem;">Status</label>
+                                <input type="hidden" id="inp_status" data-field="status" value="${lead.status || ''}">
+                                <div class="status-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                    ${statusOptions.map(s => `
+                                        <button type="button" class="status-chip ${s === lead.status ? 'active' : ''}" onclick="
+                                            document.getElementById('inp_status').value = '${s}';
+                                            this.parentElement.querySelectorAll('.status-chip').forEach(c => c.classList.remove('active'));
+                                            this.classList.add('active');
+                                        " style="
+                                            padding: 6px 12px;
+                                            border-radius: 20px;
+                                            border: 1px solid rgba(255, 255, 255, 0.1);
+                                            background: rgba(255, 255, 255, 0.05);
+                                            color: var(--text-muted);
+                                            cursor: pointer;
+                                            transition: all 0.2s;
+                                            font-size: 0.85rem;
+                                            display: flex;
+                                            align-items: center;
+                                            gap: 6px;
+                                            outline: none;
+                                        ">
+                                            ${s}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                                <style>
+                                    .status-chip:hover {
+                                        background: rgba(255, 255, 255, 0.1) !important;
+                                        border-color: rgba(255, 255, 255, 0.2) !important;
+                                    }
+                                    .status-chip.active {
+                                        background: var(--primary-color, #3b82f6) !important;
+                                        border-color: var(--primary-color, #3b82f6) !important;
+                                        color: white !important;
+                                        font-weight: 600;
+                                        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+                                    }
+                                </style>
+                            </div>
+
                             <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Log Creation</h3>
                             
                             <div style="background: rgba(255,255,255,0.03); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                                <div style="margin-bottom: 16px;">
+                                    <label class="floating-label" style="position: static; display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.8rem;">Activity Type</label>
+                                    <div class="activity-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                        ${(settings.log_activities || ['Call', 'Meeting', 'Email', 'Note']).map(a => `
+                                            <button type="button" class="activity-chip" onclick="this.classList.toggle('active')" data-value="${a}" style="
+                                                padding: 6px 12px;
+                                                border-radius: 20px;
+                                                border: 1px solid rgba(255, 255, 255, 0.1);
+                                                background: rgba(255, 255, 255, 0.05);
+                                                color: var(--text-muted);
+                                                cursor: pointer;
+                                                transition: all 0.2s;
+                                                font-size: 0.85rem;
+                                                display: flex;
+                                                align-items: center;
+                                                gap: 6px;
+                                                outline: none;
+                                            ">
+                                                ${a}
+                                            </button>
+                                        `).join('')}
+                                    </div>
+                                    <style>
+                                        .activity-chip:hover {
+                                            background: rgba(255, 255, 255, 0.1) !important;
+                                            border-color: rgba(255, 255, 255, 0.2) !important;
+                                        }
+                                        .activity-chip.active {
+                                            background: var(--accent-color, #3b82f6) !important;
+                                            border-color: var(--accent-color, #3b82f6) !important;
+                                            color: white !important;
+                                            font-weight: 600;
+                                            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+                                        }
+                                    </style>
+                                </div>
                                 <div style="margin-bottom: 16px;">
                                     <label class="floating-label" style="position: static; display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.8rem;">Date</label>
                                     <input type="date" id="new-log-date" class="floating-input" value="${new Date().toISOString().split('T')[0]}" style="height: 40px;">
