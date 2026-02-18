@@ -958,32 +958,36 @@ if (!window.B2BLeadsManager) {
             const logs = [...lead.logs].sort((a, b) => new Date(b.date) - new Date(a.date));
 
             container.innerHTML = logs.map(log => {
-                const dateObj = new Date(log.date);
-                const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const dateObj = new Date(log.date); // Manual (Due) Date
+                const createdAtObj = log.createdAt ? new Date(log.createdAt) : null;
                 const type = log.activityType || 'Log';
+
+                // Format Manual Date (Due Date)
+                const dueDateTimeStr = dateObj.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+                // Format Created At
+                const createdStr = createdAtObj ? createdAtObj.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
                 return `
                 <div class="log-item" style="position: relative; padding-left: 24px; border-left: 2px solid rgba(255,255,255,0.1); padding-bottom: 24px;">
                     <div style="position: absolute; left: -5px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--accent-color); box-shadow: 0 0 0 4px var(--modal-bg-gradient);"></div>
                     
                     <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div style="display:flex; gap:8px; align-items:center;">
-                            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${dateStr}</span>
-                            <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                                ${(log.activityType || 'Log').split(',').map(t => t.trim()).filter(Boolean).map(t =>
-                    `<span style="font-size: 0.65rem; padding: 2px 6px; background: rgba(255,255,255,0.1); border-radius: 4px; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.05em;">${t}</span>`
-                ).join('')}
+                        <div style="display:flex; flex-direction: column; gap: 4px;">
+                            <!-- Top Row: Created Date + Badge -->
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                ${createdStr ? `<span style="font-size: 0.75rem; color: var(--text-muted); opacity: 0.7;">Logged: ${createdStr}</span>` : ''}
+                                <span style="font-size: 0.65rem; padding: 2px 8px; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 4px; color: #60a5fa; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">${type}</span>
+                            </div>
+                            
+                            <!-- Second Row: Due Date (Prominent) -->
+                            <div style="display:flex; align-items: center; gap: 6px; color: var(--text-main); font-weight: 600; font-size: 0.85rem;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.8;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                Due: ${dueDateTimeStr}
                             </div>
                         </div>
                         
-                        <div class="log-actions" style="opacity: 0.7; transition: opacity 0.2s; display: flex; gap: 8px;">
-                            <button onclick="window.b2bLeadsManager.editLog('${leadId}', '${log.id}')" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; border-radius: 4px; transition: all 0.2s;" title="Edit">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                            </button>
-                            <button onclick="window.b2bLeadsManager.deleteLog('${leadId}', '${log.id}')" style="background: none; border: none; cursor: pointer; color: #f87171; padding: 4px; border-radius: 4px; transition: all 0.2s;" title="Delete">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                            </button>
-                        </div>
+                        <!-- Actions removed (Read only) -->
                     </div>
                     
                     <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; font-size: 0.95rem; color: var(--modal-input-text); line-height: 1.6; white-space: pre-wrap; border: 1px solid rgba(255,255,255,0.05);">${this.escapeHtml(log.content)}</div>
@@ -991,28 +995,29 @@ if (!window.B2BLeadsManager) {
             `}).join('') + `
             <style>
                 .log-item:last-child { border-left-color: transparent; padding-bottom: 0; }
-                .log-item:hover .log-actions { opacity: 1; }
-                .log-actions button:hover { background: rgba(255,255,255,0.1); color: var(--modal-h2-color); }
-                .log-actions button:nth-child(2):hover { background: rgba(239, 68, 68, 0.1); color: #f87171; }
             </style>
             `;
         }
 
         async addLog(leadId) {
             const dateInput = document.getElementById('new-log-date');
+            const timeInput = document.getElementById('new-log-time');
             const contentInput = document.getElementById('new-log-content');
-            const addBtn = document.querySelector('#modal-tab-logs .btn-save');
 
             if (!dateInput || !contentInput) return;
 
-            const date = dateInput.value;
-            const activeChips = document.querySelectorAll('.activity-chip.active');
-            const types = Array.from(activeChips).map(c => c.getAttribute('data-value'));
-            const type = types.length > 0 ? types.join(', ') : 'Log';
+            const dateVal = dateInput.value;
+            const timeVal = timeInput ? timeInput.value : '00:00';
+
+            // Combine Date and Time
+            const dateTime = new Date(`${dateVal}T${timeVal}`).toISOString();
+
+            const activeChip = document.querySelector('.activity-chip.active');
+            const type = activeChip ? activeChip.getAttribute('data-value') : 'Log';
             const content = contentInput.value.trim();
 
             if (!content) {
-                if (Toast) Toast.warning('Please enter log content.');
+                if (Toast) Toast.warning('Please enter notes.');
                 return;
             }
 
@@ -1021,28 +1026,18 @@ if (!window.B2BLeadsManager) {
             if (!lead) return;
             if (!lead.logs) lead.logs = [];
 
-            if (this.currentEditingLogId) {
-                // UPDATE EXISTING LOG
-                const logIndex = lead.logs.findIndex(l => l.id === this.currentEditingLogId);
-                if (logIndex !== -1) {
-                    lead.logs[logIndex].date = date;
-                    lead.logs[logIndex].activityType = type;
-                    lead.logs[logIndex].content = content;
-                    lead.logs[logIndex].updatedAt = new Date().toISOString();
-                }
-                this.currentEditingLogId = null;
-                if (addBtn) addBtn.textContent = 'Add Log';
-            } else {
-                // CREATE NEW LOG
-                const newLog = {
-                    id: 'log_' + Date.now(),
-                    date: date,
-                    activityType: type,
-                    content: content,
-                    createdAt: new Date().toISOString()
-                };
-                lead.logs.push(newLog);
-            }
+            // Remove Edit Mode logic as logs are now read-only history
+            this.currentEditingLogId = null;
+
+            // CREATE NEW LOG
+            const newLog = {
+                id: 'log_' + Date.now(),
+                date: dateTime, // Combined manual timestamp
+                activityType: type,
+                content: content,
+                createdAt: new Date().toISOString()
+            };
+            lead.logs.push(newLog);
 
             // Optimistic Update
             this.renderLogsList(leadId);
@@ -1050,6 +1045,7 @@ if (!window.B2BLeadsManager) {
             // Clear Inputs
             contentInput.value = '';
             dateInput.value = new Date().toISOString().split('T')[0];
+            if (timeInput) timeInput.value = new Date().toTimeString().split(' ')[0].substring(0, 5);
             document.querySelectorAll('.activity-chip').forEach(c => c.classList.remove('active'));
 
             // API Save
@@ -1063,55 +1059,6 @@ if (!window.B2BLeadsManager) {
             }
         }
 
-        editLog(leadId, logId) {
-            const lead = this.leads.find(l => l.id === leadId);
-            if (!lead || !lead.logs) return;
-
-            const log = lead.logs.find(l => l.id === logId);
-            if (!log) return;
-
-            const dateInput = document.getElementById('new-log-date');
-            const contentInput = document.getElementById('new-log-content');
-            const addBtn = document.querySelector('#modal-tab-logs .btn-save');
-
-            if (dateInput) dateInput.value = log.date;
-
-            // Populate Chips
-            const types = (log.activityType || 'Log').split(',').map(t => t.trim());
-            document.querySelectorAll('.activity-chip').forEach(c => {
-                if (types.includes(c.getAttribute('data-value'))) c.classList.add('active');
-                else c.classList.remove('active');
-            });
-
-            if (contentInput) {
-                contentInput.value = log.content;
-                contentInput.focus();
-            }
-
-            this.currentEditingLogId = logId;
-            if (addBtn) addBtn.textContent = 'Update Log';
-        }
-
-        async deleteLog(leadId, logId) {
-            if (!confirm('Delete this log?')) return;
-
-            const lead = this.leads.find(l => l.id === leadId);
-            if (!lead || !lead.logs) return;
-
-            lead.logs = lead.logs.filter(l => l.id !== logId);
-
-            // Optimistic Update
-            this.renderLogsList(leadId);
-
-            // API Save
-            try {
-                await this.service.updateLead(leadId, { logs: lead.logs });
-                if (Toast) Toast.success('Log deleted');
-            } catch (error) {
-                console.error('Failed to delete log:', error);
-                if (Toast) Toast.error('Failed to delete log');
-            }
-        }
 
         // --- Inline Editing ---
 

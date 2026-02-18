@@ -787,25 +787,11 @@ class UIRenderer {
         const overviewHtml = `
             <div class="compact-grid">
                 <!-- Col 1: Identity -->
+                <!-- Col 1: Identity -->
                 <div class="grid-col">
                     <h5 class="col-title">Identity</h5>
                     ${renderFloatingSelect('KAM', 'kam', settings.key_accounts || [])}
                     ${renderFloatingInput('Business Name', 'business_name')}
-                </div>
-
-                <!-- Col 2: Contact -->
-                <div class="grid-col">
-                    <h5 class="col-title">Contact</h5>
-                    ${renderFloatingInput('Name', 'name')}
-                    ${renderFloatingInput('Phone', 'phone')}
-                </div>
-
-                <!-- Col 3: Location -->
-                <div class="grid-col">
-                    <h5 class="col-title">Location</h5>
-                    ${renderFloatingInput('Pincode', 'pincode', 'text', true, 'onchange="window.b2bLeadsManager.handlePopupZipChange(this)"')}
-                    ${renderFloatingInput('District', 'district', 'text', true)}
-                    ${renderFloatingInput('State', 'state', 'text', true)}
                 </div>
             </div>
         `;
@@ -820,7 +806,7 @@ class UIRenderer {
                             <h2>${lead.id ? 'Edit Lead' : 'Add New Lead'}</h2>
                         </div>
                         <div class="header-actions">
-                            ${lead.status ? `<span class="badge stage-badge stage-${(lead.status || '').toLowerCase()}">${lead.status}</span>` : ''}
+                            <!-- Badge removed as per request -->
                             <button class="close-btn" onclick="window.b2bLeadsManager.closeEditModal()">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
@@ -833,9 +819,9 @@ class UIRenderer {
                         <!-- Column 1: Log Creation -->
                         <div class="modal-column" style="display: flex; flex-direction: column; gap: 16px; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 24px;">
                             
-                            <!-- Status moved here -->
+                            <!-- Lead Stage (formerly Status) -->
                              <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                                <label class="floating-label" style="position: static; display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.8rem;">Status</label>
+                                <label class="floating-label" style="position: static; display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.8rem;">Lead Stage</label>
                                 <input type="hidden" id="inp_status" data-field="status" value="${lead.status || ''}">
                                 <div class="status-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
                                     ${statusOptions.map(s => `
@@ -861,19 +847,6 @@ class UIRenderer {
                                         </button>
                                     `).join('')}
                                 </div>
-                                <style>
-                                    .status-chip:hover {
-                                        background: rgba(255, 255, 255, 0.1) !important;
-                                        border-color: rgba(255, 255, 255, 0.2) !important;
-                                    }
-                                    .status-chip.active {
-                                        background: var(--primary-color, #3b82f6) !important;
-                                        border-color: var(--primary-color, #3b82f6) !important;
-                                        color: white !important;
-                                        font-weight: 600;
-                                        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
-                                    }
-                                </style>
                             </div>
 
                             <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Log Creation</h3>
@@ -883,7 +856,10 @@ class UIRenderer {
                                     <label class="floating-label" style="position: static; display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.8rem;">Activity Type</label>
                                     <div class="activity-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
                                         ${(settings.log_activities || ['Call', 'Meeting', 'Email', 'Note']).map(a => `
-                                            <button type="button" class="activity-chip" onclick="this.classList.toggle('active')" data-value="${a}" style="
+                                            <button type="button" class="activity-chip" onclick="
+                                                this.parentElement.querySelectorAll('.activity-chip').forEach(c => c.classList.remove('active'));
+                                                this.classList.add('active');
+                                            " data-value="${a}" style="
                                                 padding: 6px 12px;
                                                 border-radius: 20px;
                                                 border: 1px solid rgba(255, 255, 255, 0.1);
@@ -902,29 +878,35 @@ class UIRenderer {
                                         `).join('')}
                                     </div>
                                     <style>
-                                        .activity-chip:hover {
+                                        .status-chip:hover, .activity-chip:hover {
                                             background: rgba(255, 255, 255, 0.1) !important;
                                             border-color: rgba(255, 255, 255, 0.2) !important;
                                         }
-                                        .activity-chip.active {
-                                            background: var(--accent-color, #3b82f6) !important;
-                                            border-color: var(--accent-color, #3b82f6) !important;
+                                        .status-chip.active, .activity-chip.active {
+                                            background: var(--primary-color, #3b82f6) !important;
+                                            border-color: var(--primary-color, #3b82f6) !important;
                                             color: white !important;
                                             font-weight: 600;
                                             box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
                                         }
                                     </style>
                                 </div>
-                                <div style="margin-bottom: 16px;">
-                                    <label class="floating-label" style="position: static; display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.8rem;">Date</label>
-                                    <input type="date" id="new-log-date" class="floating-input" value="${new Date().toISOString().split('T')[0]}" style="height: 40px;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                                    <div>
+                                        <label class="floating-label" style="position: static; display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.8rem;">Date</label>
+                                        <input type="date" id="new-log-date" class="floating-input" value="${new Date().toISOString().split('T')[0]}" style="height: 40px;">
+                                    </div>
+                                    <div>
+                                        <label class="floating-label" style="position: static; display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.8rem;">Time</label>
+                                        <input type="time" id="new-log-time" class="floating-input" value="${new Date().toTimeString().split(' ')[0].substring(0, 5)}" style="height: 40px;">
+                                    </div>
                                 </div>
                                 <div style="margin-bottom: 16px;">
-                                    <label class="floating-label" style="position: static; display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.8rem;">Log Note</label>
-                                    <textarea id="new-log-content" class="floating-input" style="height: 120px; resize: vertical; padding-top: 12px;" placeholder="Enter log details..."></textarea>
+                                    <label class="floating-label" style="position: static; display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.8rem;">Notes</label>
+                                    <textarea id="new-log-content" class="floating-input" style="height: 120px; resize: vertical; padding-top: 12px;" placeholder="Enter notes..."></textarea>
                                 </div>
                                 <div style="display: flex; justify-content: flex-end;">
-                                    <button class="btn-save" onclick="window.b2bLeadsManager.addLog('${lead.id || ''}')" style="width: 100%; justify-content: center;">Add Log</button>
+                                    <button class="btn-save" onclick="window.b2bLeadsManager.addLog('${lead.id || ''}')" style="width: 100%; justify-content: center;">Save</button>
                                 </div>
                             </div>
                         </div>
@@ -939,12 +921,22 @@ class UIRenderer {
                             </div>
                         </div>
 
-                        <!-- Column 3: Overview/Edit -->
+                        <!-- Column 3: Lead Details -->
                         <div class="modal-column" style="display: flex; flex-direction: column; gap: 16px; overflow-y: auto;">
-                            <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Basic Details</h3>
+                            <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Lead Details</h3>
                             
                             <div style="flex: 1; display: flex; flex-direction: column; gap: 20px;">
-                                ${overviewHtml.replace(/grid-col/g, 'edit-group').replace(/compact-grid/g, 'edit-stack')} 
+                                <div class="edit-stack">
+                                    <!-- Reordered Fields -->
+                                    ${renderFloatingInput('Name', 'name')}
+                                    ${renderFloatingInput('Business Name', 'business_name')}
+                                    ${renderFloatingInput('Phone', 'phone')}
+                                    ${renderFloatingSelect('KAM', 'kam', settings.key_accounts || [])}
+                                    ${renderFloatingInput('Pincode', 'pincode', 'text', true, 'onchange="window.b2bLeadsManager.handlePopupZipChange(this)"')}
+                                    ${renderFloatingInput('State', 'state', 'text', true)}
+                                    ${renderFloatingInput('District', 'district', 'text', true)}
+                                    ${renderFloatingInput('City', 'city', 'text', true)}
+                                </div>
                             </div>
                         </div>
                     </div>
