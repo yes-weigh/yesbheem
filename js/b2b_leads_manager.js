@@ -54,7 +54,31 @@ if (!window.B2BLeadsManager) {
             // Modal state
             this.isModalOpen = false;
 
+            this.isModalOpen = false;
+
+            // Expose migration tool
+            window.startB2BDataMigration = () => this.runMigration();
+
             this.init();
+        }
+
+        async runMigration() {
+            if (confirm('Start B2B Data Migration? This will convert 5000+ docs to shards and DELETE legacy docs. This cannot be undone.')) {
+                try {
+                    console.log('Starting Migration UI...');
+                    // Optional: Show loading UI
+                    const result = await this.service.migrateData();
+                    if (result) {
+                        alert('Migration Successful! Reloading data...');
+                        this.loadData();
+                    } else {
+                        alert('Migration Failed or Aborted. Check console.');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('Error: ' + e.message);
+                }
+            }
         }
 
         async init() {
@@ -68,22 +92,29 @@ if (!window.B2BLeadsManager) {
         }
 
         async loadData() {
+            const startLoad = performance.now();
+            console.log('[Performance] Starting B2B Data Load...');
             this.showLoadingState();
             try {
                 this.leads = await this.service.getAllLeads();
-                // Normalize data
+
+                // Normalization
                 this.leads = this.leads.map(lead => {
                     const normState = this.validator ? this.validator.normalizeState(lead.state) : (lead.state || '');
                     return {
                         ...lead,
-                        state: normState, // Apply normalization
+                        state: normState,
                         searchString: `${lead.name || ''} ${lead.phone || ''} ${lead.business_name || ''} ${normState || ''} ${lead.district || ''}`.toLowerCase()
                     };
                 });
 
-                this.renderKPICards(); // Render cards with correct sorting based on counts
-                this.renderFilters(); // Setup filters first (populates state selector)
+                this.renderKPICards();
+                this.renderFilters();
                 this.applyFilters();
+
+                const endLoad = performance.now();
+                console.log(`[Performance] Total B2B Page Load took: ${(endLoad - startLoad).toFixed(2)}ms`);
+
             } catch (error) {
                 console.error('Failed to load leads:', error);
                 this.showErrorState(error.message);

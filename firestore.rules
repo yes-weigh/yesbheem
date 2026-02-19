@@ -151,6 +151,11 @@ service cloud.firestore {
       allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
     }
 
+    // B2B Leads Aggregated (Sharded)
+    match /b2b_leads_aggregated/{shardId} {
+      allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
+    }
+
     // Broad fallback for other collections (Be careful here, usually better to start with specific)
     // For now, let's enforce Active + Trusted for anything else the app might use
     // match /{path=**}/documents {
