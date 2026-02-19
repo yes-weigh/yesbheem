@@ -10,6 +10,8 @@ import FormatUtils from './utils/format-utils.js';
 import { Toast } from './utils/toast.js';
 
 import { StateSelector } from './components/state-selector.js'; // Import StateSelector
+import { db } from './services/firebase_config.js';
+import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 if (!window.B2BLeadsManager) {
     window.B2BLeadsManager = class B2BLeadsManager {
@@ -850,6 +852,7 @@ if (!window.B2BLeadsManager) {
             if (isEdit) {
                 this.renderLogsList(leadId);
             }
+            this.loadWhatsAppInstances();
         }
 
         closeEditModal() {
@@ -920,29 +923,68 @@ if (!window.B2BLeadsManager) {
 
             try {
                 if (leadId) {
-                    await this.service.updateLead(leadId, data);
-                    // Update local state
+                    // --- OPTIMISTIC UPDATE ---
+                    const startTime = performance.now();
                     const index = this.leads.findIndex(l => l.id === leadId);
+
                     if (index !== -1) {
+                        // 1. Capture previous state for rollback
+                        const previousState = { ...this.leads[index] };
+
+                        // 2. Update Local State Immediately
                         this.leads[index] = { ...this.leads[index], ...data };
-                        // Update search string too
                         this.leads[index].searchString = `${this.leads[index].name || ''} ${this.leads[index].phone || ''} ${this.leads[index].business_name || ''} ${this.leads[index].state || ''} ${this.leads[index].district || ''}`.toLowerCase();
+
+                        // 3. Update UI Immediately
+                        if (Toast) Toast.info('Updating in background...');
+                        this.closeEditModal();
+                        this.applyFilters(); // Re-render table
+
+                        // 4. Perform Background Sync
+                        // We use a separate async execution flow here? No, we just await it but UI is already unblocked?
+                        // Actually, if we await here, the function saveLeadDetails doesn't return.
+                        // But since we closed the modal, the user doesn't care. 
+                        // The button spinner was on the modal which is now gone.
+
+                        try {
+                            const shardId = previousState._shardId;
+                            console.log(`[Debug] Background Sync - LeadId: ${leadId}, ShardId: ${shardId}`);
+
+                            await this.service.updateLead(leadId, data, shardId);
+
+                            const duration = (performance.now() - startTime).toFixed(2);
+                            console.log(`[Performance] Background Update took: ${duration}ms`);
+                            if (Toast) Toast.success(`Synced successfully (${duration}ms)`);
+                        } catch (syncError) {
+                            console.error('Background Sync Failed:', syncError);
+                            // Revert Local State
+                            this.leads[index] = previousState;
+                            this.applyFilters();
+                            if (Toast) Toast.error('Sync Failed: ' + syncError.message);
+                            alert('Failed to save changes to server. The lead has been reverted.');
+                        }
                     }
-                    if (Toast) Toast.success('Lead updated successfully');
                 } else {
+                    // Create New Lead - Keep standard await flow for now to get ID
+                    const startTime = performance.now();
                     const newLead = await this.service.addLead(data);
+
+                    const duration = (performance.now() - startTime).toFixed(2);
+                    console.log(`[Performance] Lead Create took: ${duration}ms`);
+
                     // Add to local state
                     newLead.searchString = `${newLead.name || ''} ${newLead.phone || ''} ${newLead.business_name || ''} ${newLead.state || ''} ${newLead.district || ''}`.toLowerCase();
                     this.leads.unshift(newLead); // Add to top
-                    if (Toast) Toast.success('Lead added successfully');
-                }
 
-                this.closeEditModal();
-                this.applyFilters();
+                    if (Toast) Toast.success(`Lead added successfully (${duration}ms)`);
+                    this.closeEditModal();
+                    this.applyFilters();
+                }
             } catch (error) {
-                if (Toast) Toast.error('Error saving lead: ' + error.message);
+                console.error('Error in saveLeadDetails:', error);
+                if (Toast) Toast.error('Error saving: ' + error.message);
                 if (saveBtn) {
-                    saveBtn.disabled = false; // Re-enable
+                    saveBtn.disabled = false;
                     saveBtn.textContent = leadId ? 'Save Changes' : 'Create Lead';
                 }
             }
@@ -1090,6 +1132,116 @@ if (!window.B2BLeadsManager) {
             }
         }
 
+
+        // --- WhatsApp Integration ---
+
+        async loadWhatsAppInstances() {
+            const select = document.getElementById('wa-instance-select');
+            if (!select) return;
+
+            try {
+                // Parallel fetch: API for status, Firestore for names
+                const [apiRes, firestoreSnap] = await Promise.all([
+                    fetch(`${window.appConfig.apiUrl}/api/auth/sessions`).then(r => r.json()),
+                    getDocs(collection(db, 'whatsapp_instances'))
+                ]);
+
+                // Map Firestore data: sessionId -> name
+                const instanceNames = {};
+                firestoreSnap.forEach(doc => {
+                    const data = doc.data();
+                    instanceNames[doc.id] = data.name || doc.id;
+                });
+
+                if (apiRes.success && Array.isArray(apiRes.sessions)) {
+                    const connectedSessions = apiRes.sessions.filter(s => s.status === 'authenticated' || s.connected);
+
+                    if (connectedSessions.length === 0) {
+                        select.innerHTML = '<option value="">No connected instances</option>';
+                        return;
+                    }
+
+                    select.innerHTML = '<option value="">Select Instance...</option>' +
+                        connectedSessions.map(s => {
+                            const sId = s.sessionId || s.id;
+                            const name = instanceNames[sId] || sId; // Use name from Firestore or fallback to ID
+                            const phone = s.phone ? `(${s.phone})` : '';
+                            return `<option value="${sId}">${name} ${phone}</option>`;
+                        }).join('');
+
+                    // Select first one by default if available
+                    if (connectedSessions.length > 0) {
+                        select.value = connectedSessions[0].sessionId || connectedSessions[0].id; // Default to first
+                    }
+                } else {
+                    select.innerHTML = '<option value="">Failed to load</option>';
+                }
+            } catch (e) {
+                console.error('Error loading instances:', e);
+                select.innerHTML = '<option value="">Error loading</option>';
+            }
+        }
+
+        async sendWhatsAppMessage(leadId) {
+            // Find lead locally if id provided
+            const lead = this.leads.find(l => l.id === leadId);
+            if (!lead && !leadId) return; // Should have lead context
+
+            const instanceId = document.getElementById('wa-instance-select').value;
+            const message = document.getElementById('wa-message-body').value.trim();
+            const phone = lead ? lead.phone : document.getElementById('inp_phone').value; // Fallback to input
+
+            if (!instanceId) { alert('Please select a WhatsApp instance'); return; }
+            if (!message) { alert('Please enter a message'); return; }
+            if (!phone) { alert('Lead has no phone number'); return; }
+
+            // Format Phone Number (User Request: Add +91 to 10-digit numbers)
+            const formattedPhone = FormatUtils.formatPhoneNumber(phone) || phone;
+
+            const btn = document.querySelector(`button[onclick="window.b2bLeadsManager.sendWhatsAppMessage('${leadId}')"]`);
+            const originalText = btn ? btn.innerHTML : 'Send';
+            if (btn) {
+                btn.innerHTML = 'Sending...';
+                btn.disabled = true;
+            }
+
+            try {
+                const response = await fetch(`${window.appConfig.apiUrl}/api/messages/text`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: instanceId,
+                        to: formattedPhone,
+                        text: message
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Determine if Toaster is available, else alert
+                    if (window.Toast) window.Toast.success('Message sent successfully');
+                    else alert('Message sent successfully');
+
+                    document.getElementById('wa-message-body').value = ''; // Clear input
+
+                    // Optional: Add to log (UX Enhancement)
+                    // We can construct a log entry or just leave it. 
+                    // Let's add a log if we can.
+                    // this.addLog(leadId, 'Message', `Sent via WhatsApp: ${message}`); // Requires refactoring addLog to accept params without UI reads
+                } else {
+                    throw new Error(result.message || 'Failed to send');
+                }
+            } catch (e) {
+                console.error('Send Error:', e);
+                alert('Failed to send message: ' + e.message);
+            } finally {
+                if (btn) {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            }
+        }
 
         // --- Inline Editing ---
 

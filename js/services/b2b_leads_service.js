@@ -3,7 +3,7 @@
  * Handles Firestore operations for B2B Leads
  */
 import { db, app } from './firebase_config.js';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, writeBatch, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, writeBatch, setDoc, getDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 export class B2BLeadsService {
     constructor() {
@@ -115,7 +115,7 @@ export class B2BLeadsService {
             // Since we just fetched, race condition is possible but low risk for this internal app.
             // Using arrayUnion
             await updateDoc(shardRef, {
-                items: window.firebase.firestore.FieldValue.arrayUnion(newLead)
+                items: arrayUnion(newLead)
             }).catch(async (err) => {
                 // If doc doesn't exist (new shard), set it
                 if (err.code === 'not-found') {
