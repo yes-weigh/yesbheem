@@ -3,7 +3,7 @@
  * Handles Firestore operations for B2B Leads
  */
 import { db, app } from './firebase_config.js';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, writeBatch, setDoc, getDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, writeBatch, setDoc, getDoc, arrayUnion, deleteField } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 export class B2BLeadsService {
     constructor() {
@@ -46,9 +46,17 @@ export class B2BLeadsService {
             let allLeads = [];
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
+                let items = [];
+
                 if (Array.isArray(data.items)) {
+                    items = data.items;
+                } else if (data.items && typeof data.items === 'object') {
+                    items = Object.values(data.items);
+                }
+
+                if (items.length > 0) {
                     // Tag items with shard ID for updates
-                    const itemsWithShard = data.items.map(item => ({
+                    const itemsWithShard = items.map(item => ({
                         ...item,
                         _shardId: doc.id // Internal use for updates
                     }));
@@ -97,7 +105,14 @@ export class B2BLeadsService {
                 shards.sort((a, b) => a.id.localeCompare(b.id)); // shard_000, shard_001
 
                 const lastShard = shards[shards.length - 1];
-                if (lastShard.items && lastShard.items.length < this.shardSize) {
+                let currentSize = 0;
+                if (Array.isArray(lastShard.items)) {
+                    currentSize = lastShard.items.length;
+                } else if (lastShard.items) {
+                    currentSize = Object.keys(lastShard.items).length;
+                }
+
+                if (currentSize < this.shardSize) {
                     targetShardId = lastShard.id;
                     targetShardData = lastShard;
                 } else {
@@ -114,16 +129,36 @@ export class B2BLeadsService {
             // We need to re-fetch to be safe? Firestore arrayUnion is safe but doesn't check size limit.
             // Since we just fetched, race condition is possible but low risk for this internal app.
             // Using arrayUnion
-            await updateDoc(shardRef, {
-                items: arrayUnion(newLead)
-            }).catch(async (err) => {
-                // If doc doesn't exist (new shard), set it
-                if (err.code === 'not-found') {
-                    await setDoc(shardRef, { items: [newLead] });
+            // Add to items
+            // Check target shard format to decide how to write
+            if (targetShardData.items && !Array.isArray(targetShardData.items)) {
+                // Target is Map -> Use Dot Notation
+                await updateDoc(shardRef, {
+                    [`items.${newId}`]: newLead
+                });
+            } else {
+                // Target is Array or New -> Use ArrayUnion (Legacy) or Set (New)
+                // If it's a new shard (targetShardData.items is empty/undefined), we can start it as a Map!
+                // But let's stick to Array for new shards for now unless we switch default?
+                // Actually, let's start NEW shards as Maps for performance!
+                if (!targetShardData.items) {
+                    // New Shard -> Create as Map
+                    await setDoc(shardRef, {
+                        items: { [newId]: newLead }
+                    });
                 } else {
-                    throw err;
+                    // Existing Array Shard -> Use ArrayUnion
+                    await updateDoc(shardRef, {
+                        items: arrayUnion(newLead)
+                    }).catch(async (err) => {
+                        if (err.code === 'not-found') {
+                            await setDoc(shardRef, { items: { [newId]: newLead } }); // Fallback create as Map
+                        } else {
+                            throw err;
+                        }
+                    });
                 }
-            });
+            }
 
             console.log('[B2BLeadsService] Lead added to', targetShardId);
             return { ...newLead, _shardId: targetShardId };
@@ -131,6 +166,87 @@ export class B2BLeadsService {
         } catch (error) {
             console.error('[B2BLeadsService] Error adding lead:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Admin Tool: Scan and migrate ALL existing shards to Map format
+     */
+    async migrateAllShards() {
+        console.log('[B2BLeadsService] Starting Full Migration...');
+        const shardsSnap = await getDocs(collection(this.db, this.collectionName));
+        let count = 0;
+
+        for (const docSnap of shardsSnap.docs) {
+            const data = docSnap.data();
+            if (Array.isArray(data.items)) {
+                console.log(`[B2BLeadsService] Found Legacy Shard: ${docSnap.id}. Migrating...`);
+                await this.migrateShard(docSnap.id, data);
+                count++;
+            }
+        }
+        console.log(`[B2BLeadsService] Full Migration Complete. Migrated ${count} shards.`);
+        return `Migrated ${count} shards.`;
+    }
+
+    /**
+     * Internal method to migrate a single shard from Array to Map
+     * Handles simple migration and split migration if too large.
+     */
+    async migrateShard(shardId, currentData) {
+        console.log(`[B2BLeadsService] Starting migration for ${shardId}...`);
+        const shardRef = doc(this.db, this.collectionName, shardId);
+        const rawItems = currentData.items || [];
+
+        if (!Array.isArray(rawItems)) {
+            console.log(`[B2BLeadsService] Shard ${shardId} is already a Map. Skipping.`);
+            return;
+        }
+
+        try {
+            // STRATEGY 1: Simple Convert
+            const itemsMap = {};
+            rawItems.forEach(item => itemsMap[item.id] = item);
+
+            await updateDoc(shardRef, { items: itemsMap });
+            console.log(`[B2BLeadsService] Successfully migrated ${shardId} to Map.`);
+
+        } catch (error) {
+            console.warn(`[B2BLeadsService] Simple migration failed for ${shardId}. Reason:`, error);
+            console.log(`[B2BLeadsService] Initiating SPLIT MIGRATION for ${shardId} (Fallback strategy)...`);
+
+            // STRATEGY 2: Split (Fallback for ANY error during simple migration)
+            try {
+                const CHUNK_SIZE = 800;
+                const chunks = [];
+                for (let i = 0; i < rawItems.length; i += CHUNK_SIZE) {
+                    const chunkArray = rawItems.slice(i, i + CHUNK_SIZE);
+                    const chunkMap = {};
+                    chunkArray.forEach(item => chunkMap[item.id] = item);
+                    chunks.push(chunkMap);
+                }
+
+                // Find next IDs
+                const shardsSnap = await getDocs(collection(this.db, this.collectionName));
+                const existingIds = shardsSnap.docs.map(d => d.id).sort();
+                const lastId = existingIds[existingIds.length - 1];
+                let nextIndex = parseInt(lastId.split('_')[1]) + 1;
+
+                const batch = writeBatch(this.db);
+                chunks.forEach(chunkMap => {
+                    const newShardId = `shard_${String(nextIndex).padStart(3, '0')}`;
+                    const newRef = doc(this.db, this.collectionName, newShardId);
+                    batch.set(newRef, { items: chunkMap });
+                    nextIndex++;
+                });
+
+                batch.delete(shardRef);
+                await batch.commit();
+                console.log(`[B2BLeadsService] Successfully split and migrated ${shardId}.`);
+            } catch (splitError) {
+                console.error(`[B2BLeadsService] CRITICAL: Split migration also failed for ${shardId}.`, splitError);
+                throw splitError;
+            }
         }
     }
 
@@ -143,42 +259,75 @@ export class B2BLeadsService {
     async updateLead(id, updates, shardId = null) {
         try {
             if (!shardId) {
-                // Need to find which shard it's in. Expensive!
-                // We should ensure UI passes _shardId.
+                // Legacy scan - kept for fallback
                 console.warn('[B2BLeadsService] No shardId provided for update. Scanning all shards...');
                 const shardsSnap = await getDocs(collection(this.db, this.collectionName));
                 let found = false;
 
                 for (const docSnap of shardsSnap.docs) {
                     const data = docSnap.data();
-                    const index = data.items.findIndex(i => i.id === id);
-                    if (index !== -1) {
-                        shardId = docSnap.id;
-                        found = true;
-                        break;
+                    if (Array.isArray(data.items)) {
+                        const index = data.items.findIndex(i => i.id === id);
+                        if (index !== -1) { shardId = docSnap.id; found = true; break; }
+                    } else if (data.items && data.items[id]) {
+                        shardId = docSnap.id; found = true; break;
                     }
                 }
                 if (!found) throw new Error('Lead not found in any shard');
             }
 
             const shardRef = doc(this.db, this.collectionName, shardId);
+
+            const tRead = performance.now();
             const shardSnap = await getDoc(shardRef);
+            console.log(`[Performance] Read Shard (${shardId}) took: ${(performance.now() - tRead).toFixed(2)}ms`);
 
             if (!shardSnap.exists()) throw new Error(`Shard ${shardId} not found`);
 
-            const items = shardSnap.data().items || [];
-            const itemIndex = items.findIndex(i => i.id === id);
+            const data = shardSnap.data();
+            const rawItems = data.items || {};
 
-            if (itemIndex === -1) throw new Error('Lead not found in specified shard');
+            // CHECK DATA STRUCTURE
+            // CHECK DATA STRUCTURE
+            if (Array.isArray(rawItems)) {
+                console.log(`[B2BLeadsService] Array structure detected in ${shardId}. Triggering migration before update...`);
+                try {
+                    await this.migrateShard(shardId, data);
+                    // Migration successful (either converted or split)
+                    // Now recurse to perform the actual update on the new structure
+                    console.log('[B2BLeadsService] Migration complete. Retrying update on new structure...');
+                    return this.updateLead(id, updates, null); // Pass null to re-discover location
+                } catch (err) {
+                    console.warn('[B2BLeadsService] Migration failed. Falling back to Legacy Array Update.', err);
+                    // Fallback to Legacy Update logic here directly
+                    const foundIndex = rawItems.findIndex(i => i.id === id);
+                    if (foundIndex === -1) throw new Error('Lead not found in specified shard');
 
-            // Update item
-            items[itemIndex] = {
-                ...items[itemIndex],
-                ...updates,
-                updatedAt: new Date().toISOString()
-            };
+                    rawItems[foundIndex] = { ...rawItems[foundIndex], ...updates, updatedAt: new Date().toISOString() };
+                    const tWrite = performance.now();
+                    await updateDoc(shardRef, { items: rawItems });
+                    console.log(`[Performance] Fallback Array Write (${shardId}) took: ${(performance.now() - tWrite).toFixed(2)}ms`);
+                }
+            } else {
+                // --- STRATEGY 2: FAST ATOMIC UPDATE (Map) ---
 
-            await updateDoc(shardRef, { items });
+                if (!rawItems[id]) throw new Error('Lead not found in specified shard');
+
+                const existingItem = rawItems[id];
+                const updatedItem = {
+                    ...existingItem,
+                    ...updates,
+                    updatedAt: new Date().toISOString()
+                };
+
+                const tWrite = performance.now();
+                // Use Dot Notation for nested update
+                await updateDoc(shardRef, {
+                    [`items.${id}`]: updatedItem
+                });
+                console.log(`[Performance] FAST Atomic Write Shard (${shardId}) took: ${(performance.now() - tWrite).toFixed(2)}ms`);
+            }
+
             console.log('[B2BLeadsService] Lead updated in', shardId);
 
         } catch (error) {
