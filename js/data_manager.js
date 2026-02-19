@@ -51,7 +51,7 @@ export class DataManager {
         this.reportDataCache = new Map();
 
         // Initialize ZipCodeResolver with cache and invalid zips
-        this.zipResolver = new ZipCodeResolver(this.zipCache, this.invalidZips);
+        this.zipResolver = new ZipCodeResolver(this.firestoreService, this.zipCache, this.invalidZips);
 
         // Initialize by loading zip sheet
         this.dealerOverrides = {};
@@ -91,16 +91,13 @@ export class DataManager {
                 ...overrides
             };
 
-            // Update Firestore
-            const docRef = doc(db, "settings", "dealer_overrides");
-            await setDoc(docRef, {
-                [dealerName]: this.dealerOverrides[dealerName]
-            }, { merge: true });
+            // Update Firestore via Service (handles cache invalidation)
+            await this.firestoreService.updateDealerOverride(dealerName, overrides);
 
             console.log('Dealer override saved to Firestore.');
         } catch (e) {
             console.error('Failed to save dealer override:', e);
-            // Retry logic or error handling if needed, but setDoc with merge is robust.
+            // Retry logic or error handling if needed
         }
     }
 
@@ -153,9 +150,8 @@ export class DataManager {
 
         if (modified) {
             try {
-                // Save to Firestore (replace entire map to ensure deletions propagate)
-                const docRef = doc(db, "settings", "dealer_overrides");
-                await setDoc(docRef, this.dealerOverrides);
+                // Save to Firestore via Service (handles cache invalidation)
+                await this.firestoreService.bulkUpdateDealerOverrides(this.dealerOverrides);
                 console.log('Bulk update saved to Firestore.');
 
                 // If we delete a property, we might leave an empty object for a dealer.
@@ -191,28 +187,13 @@ export class DataManager {
      */
     async loadGeneralSettings() {
         try {
-            console.log('Fetching general settings from Firestore...');
-            const docRef = doc(db, "settings", "general");
-            const docSnap = await getDoc(docRef);
+            this.generalSettings = await this.firestoreService.loadGeneralSettings();
 
-            if (docSnap.exists()) {
-                this.generalSettings = docSnap.data();
-                // Ensure defaults
-                if (!this.generalSettings.key_accounts) this.generalSettings.key_accounts = [];
-                if (!this.generalSettings.dealer_stages) this.generalSettings.dealer_stages = [];
-                if (!this.generalSettings.lead_stages) this.generalSettings.lead_stages = ['New', 'Contacted', 'Converted', 'Lost'];
-                if (!this.generalSettings.dealer_categories) this.generalSettings.dealer_categories = [];
-                console.log('Loaded General Settings:', this.generalSettings);
-            } else {
-                const defaults = {
-                    key_accounts: [],
-                    dealer_stages: [],
-                    lead_stages: ['New', 'Contacted', 'Converted', 'Lost'],
-                    dealer_categories: []
-                };
-                await setDoc(docRef, defaults);
-                this.generalSettings = defaults;
-            }
+            // Ensure defaults (handled in Service too, but double check for safety in usage)
+            if (!this.generalSettings.key_accounts) this.generalSettings.key_accounts = [];
+            if (!this.generalSettings.dealer_stages) this.generalSettings.dealer_stages = [];
+            if (!this.generalSettings.lead_stages) this.generalSettings.lead_stages = ['New', 'Contacted', 'Converted', 'Lost'];
+            if (!this.generalSettings.dealer_categories) this.generalSettings.dealer_categories = [];
         } catch (e) {
             console.warn('Failed to load general settings:', e);
             this.generalSettings = {
@@ -252,6 +233,33 @@ export class DataManager {
         }
     }
 
+
+    /**
+     * Load district stats cache from localStorage
+     */
+    loadDistrictsFromStorage() {
+        try {
+            const cached = localStorage.getItem('districtStatsCache');
+            if (cached) {
+                return JSON.parse(cached);
+            }
+        } catch (e) {
+            console.warn('Failed to load district stats from localStorage:', e);
+        }
+        return null;
+    }
+
+    /**
+     * Save district stats cache to localStorage
+     */
+    saveDistrictsToStorage(stats) {
+        try {
+            localStorage.setItem('districtStatsCache', JSON.stringify(stats));
+        } catch (e) {
+            console.warn('Failed to save district stats to localStorage:', e);
+        }
+    }
+
     /**
      * Fetch sheet data - now from Firestore or aggregated reports
      */
@@ -274,10 +282,10 @@ export class DataManager {
         }
 
         // currentCSVUrl now contains the report ID instead of URL
-        console.log('Loading report data from Firestore:', this.currentCSVUrl);
+        // console.log('Loading report data from Firestore:', this.currentCSVUrl);
         try {
             const parsed = await this.loadReportDataFromFirestore(this.currentCSVUrl);
-            console.log(`Loaded ${parsed.length} rows from Firestore.`);
+            // console.log(`Loaded ${parsed.length} rows from Firestore.`);
 
             // CACHE RAW DATA FOR EXTERNAL USE (e.g. DealerManager)
             this.rawData = parsed;
@@ -290,7 +298,7 @@ export class DataManager {
     }
 
     async fetchAllReportsAndAggregate() {
-        console.log('Starting Aggregation of ALL Reports...');
+        // console.log('Starting Aggregation of ALL Reports...');
         try {
             const reports = await this.listReports();
             if (!reports || reports.length === 0) return [];
@@ -329,7 +337,7 @@ export class DataManager {
             });
 
             const aggregated = Array.from(mergedMap.values());
-            console.log(`Aggregated Data: ${aggregated.length} unique customers from ${reports.length} reports.`);
+            // console.log(`Aggregated Data: ${aggregated.length} unique customers from ${reports.length} reports.`);
             return aggregated;
 
         } catch (e) {
@@ -448,9 +456,9 @@ export class DataManager {
             this.currentCSVUrl = csvUrl;
         }
 
-        console.log(`Starting data load for ${stateName}...`);
+        // console.log(`Starting data load for ${stateName}...`);
         const rawData = await this.fetchSheetData();
-        console.log(`Fetched ${rawData.length} rows from sheet.`);
+        // console.log(`Fetched ${rawData.length} rows from sheet.`);
 
         // AUTOMATICALLY RESOLVE ALL INDIA DEALER DISTRICTS
         await this.resolveMissingDistricts(rawData);
@@ -477,7 +485,7 @@ export class DataManager {
             return bState.includes(stateLower) || sState.includes(stateLower);
         });
 
-        console.log(`Filtered to ${stateData.length} ${stateName} entries.`);
+        // console.log(`Filtered to ${stateData.length} ${stateName} entries.`);
 
         const districtStats = {};
 
@@ -582,7 +590,7 @@ export class DataManager {
             // No need to format here: stats.currentSales = stats.currentSales.toFixed(2);
         }
 
-        console.log("Data processing complete:", districtStats);
+        // console.log("Data processing complete:", districtStats);
 
         // Store the loaded data for dealer page to access
         this.rawData = stateData;
@@ -628,7 +636,7 @@ export class DataManager {
      * @returns {Promise<object>} Aggregated state data
      */
     async getStateData(stateId) {
-        console.log('[DataManager] Using DataLayer for state data:', stateId);
+        // console.log('[DataManager] Using DataLayer for state data:', stateId);
         return this.dataLayer.getDashboardData(stateId, false);
     }
     /**
@@ -637,7 +645,7 @@ export class DataManager {
      * @returns {Promise<object>} Aggregated country data
      */
     async getCountryData() {
-        console.log('[DataManager] Using DataLayer for country data');
+        // console.log('[DataManager] Using DataLayer for country data');
         return this.dataLayer.getDashboardData(null, false);
     }
 
@@ -927,4 +935,10 @@ export class DataManager {
 }
 
 // Attach to window for global access
+// Attach to window for global access
 window.DataManager = DataManager;
+
+// Immediate Initialization
+// This ensures DataManager starts loading (zips, settings) as soon as the script parses,
+// parallel to the rest of the page loading.
+window.dataManager = new DataManager();

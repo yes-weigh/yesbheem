@@ -33,7 +33,7 @@ export class DataMergeService {
             overrides = {};
         }
 
-        console.log(`[DataMergeService] Merging ${reportData.length} dealers with ${Object.keys(overrides).length} overrides`);
+        // console.log(`[DataMergeService] Merging ${reportData.length} dealers with ${Object.keys(overrides).length} overrides`);
 
         // Filter out YesCloud dealers
         const filteredData = reportData
@@ -56,7 +56,7 @@ export class DataMergeService {
                 const name = dealer.customer_name || dealer['customer_name'];
                 return !deactivatedSet.has(name);
             });
-            console.log(`[DataMergeService] Filtered out ${beforeCount - consolidatedData.length} deactivated dealers`);
+            // console.log(`[DataMergeService] Filtered out ${beforeCount - consolidatedData.length} deactivated dealers`);
         }
 
         return consolidatedData.map(dealer => {

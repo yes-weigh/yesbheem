@@ -22,6 +22,26 @@ export class FirestoreService {
                 unsubscribe();
             });
         });
+
+        // Cache and Promise containers for deduplication
+        this.cache = {
+            kpi: null,
+            zip: null,
+            overrides: null,
+            settings: null,
+            deactivated: null
+        };
+
+        this.promises = {
+            kpi: null,
+            zip: null,
+            overrides: null,
+            settings: null,
+            deactivated: null
+        };
+
+        // Report cache (existing)
+        this.reportCache = new Map();
     }
 
     /**
@@ -50,47 +70,67 @@ export class FirestoreService {
      */
     async fetchKPIData(kpiAppsScriptUrl) {
         try {
-            console.log('Fetching KPI data...');
-            await this.waitForAuth();
-            const docRef = doc(this.db, "settings", "kpi_data");
-            const docSnap = await getDoc(docRef);
+            // Check cache first
+            if (this.cache.kpi) {
+                // console.log('[FirestoreService] Returning cached KPI data');
+                return this.cache.kpi;
+            }
 
-            if (docSnap.exists()) {
-                console.log('KPI Data loaded from Firestore.');
-                return docSnap.data();
-            } else {
-                console.log('KPI Data not found in Firestore. Fetching from legacy Apps Script for migration...');
-                // Fallback / Migration logic
-                const response = await fetch(kpiAppsScriptUrl, {
-                    method: 'POST',
-                    mode: 'cors',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8',
-                    },
-                    body: JSON.stringify({ action: 'download' })
-                });
+            // Check if request is already in flight
+            if (this.promises.kpi) {
+                return this.promises.kpi;
+            }
 
-                const result = await response.json();
-                if (result.status === 'success') {
-                    // Index by normalized name for easy lookup
-                    const dataToSave = {};
-                    result.data.forEach(item => {
-                        const key = this.normalizeKey(item.name);
-                        dataToSave[key] = item;
+            // Start new request
+            this.promises.kpi = (async () => {
+                await this.waitForAuth();
+                const docRef = doc(this.db, "settings", "kpi_data");
+                const docSnap = await getDoc(docRef);
+
+                let data = {};
+                if (docSnap.exists()) {
+                    // console.log('KPI Data loaded from Firestore.');
+                    data = docSnap.data();
+                } else {
+                    console.log('KPI Data not found in Firestore. Fetching from legacy Apps Script for migration...');
+                    // Fallback / Migration logic
+                    const response = await fetch(kpiAppsScriptUrl, {
+                        method: 'POST',
+                        mode: 'cors',
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8',
+                        },
+                        body: JSON.stringify({ action: 'download' })
                     });
 
-                    // Save to Firestore
-                    console.log('Migrating KPI Data to Firestore...');
-                    await setDoc(docRef, dataToSave);
-                    console.log('KPI Data migration complete.');
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        // Index by normalized name for easy lookup
+                        const dataToSave = {};
+                        result.data.forEach(item => {
+                            const key = this.normalizeKey(item.name);
+                            dataToSave[key] = item;
+                        });
 
-                    return dataToSave;
+                        // Save to Firestore
+                        console.log('Migrating KPI Data to Firestore...');
+                        await setDoc(docRef, dataToSave);
+                        console.log('KPI Data migration complete.');
+
+                        data = dataToSave;
+                    }
                 }
-            }
+
+                this.cache.kpi = data;
+                this.promises.kpi = null;
+                return data;
+            })();
+
+            return this.promises.kpi;
         } catch (e) {
             console.warn('Failed to fetch KPI data:', e);
+            return {};
         }
-        return {};
     }
 
     /**
@@ -99,24 +139,56 @@ export class FirestoreService {
      */
     async loadZipCacheFromFirebase() {
         try {
-            console.log('Fetching zip_codes from Firestore...');
-            await this.waitForAuth();
-            const docRef = doc(this.db, "settings", "zip_codes");
-            const docSnap = await getDoc(docRef);
+            // Check cache
+            if (this.cache.zip) return this.cache.zip;
+            if (this.promises.zip) return this.promises.zip;
 
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                console.log(`Loaded ${Object.keys(data).length} zip codes from Firestore into cache.`);
+            this.promises.zip = (async () => {
+                // console.log('Fetching zip_codes from Firestore...');
+                await this.waitForAuth();
+                const docRef = doc(this.db, "settings", "zip_codes");
+                const docSnap = await getDoc(docRef);
+
+                let data = {};
+                if (docSnap.exists()) {
+                    data = docSnap.data();
+                    // console.log(`Loaded ${Object.keys(data).length} zip codes from Firestore into cache.`);
+                } else {
+                    console.log("No zip_codes document found in Firestore. Creating empty...");
+                    await setDoc(docRef, {});
+                }
+
+                this.cache.zip = data;
+                this.promises.zip = null;
                 return data;
-            } else {
-                console.log("No zip_codes document found in Firestore. Creating empty...");
-                // Create if not exists so writes don't fail later
-                await setDoc(docRef, {});
-                return {};
-            }
+            })();
+
+            return this.promises.zip;
         } catch (e) {
             console.warn('Failed to load zip_codes from Firestore:', e);
             return {};
+        }
+    }
+
+    /**
+     * Update a zip code mapping in Firestore
+     * @param {string} zip - Zip code
+     * @param {string} district - District name
+     */
+    async updateZipCode(zip, district) {
+        try {
+            // console.log(`[FirestoreService] Updating zip code: ${zip} -> ${district}`);
+            const docRef = doc(this.db, "settings", "zip_codes");
+
+            await setDoc(docRef, { [zip]: district }, { merge: true });
+
+            // Invalidate cache
+            this.cache.zip = null;
+
+            // console.log(`[FirestoreService] Zip code updated`);
+        } catch (error) {
+            console.error('[FirestoreService] Failed to update zip code:', error);
+            throw error;
         }
     }
 
@@ -135,24 +207,55 @@ export class FirestoreService {
      */
     async getDealerOverrides() {
         try {
-            console.log('[FirestoreService] Fetching dealer_overrides...');
-            await this.waitForAuth();
-            const docRef = doc(this.db, "settings", "dealer_overrides");
-            const docSnap = await getDoc(docRef);
+            // Check cache
+            if (this.cache.overrides) return this.cache.overrides;
+            if (this.promises.overrides) return this.promises.overrides;
 
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                console.log(`[FirestoreService] Loaded overrides for ${Object.keys(data).length} dealers.`);
+            this.promises.overrides = (async () => {
+                await this.waitForAuth();
+                const docRef = doc(this.db, "settings", "dealer_overrides");
+                const docSnap = await getDoc(docRef);
+
+                let data = {};
+                if (docSnap.exists()) {
+                    data = docSnap.data();
+                    // console.log(`[FirestoreService] Loaded overrides for ${Object.keys(data).length} dealers.`);
+                } else {
+                    console.log('[FirestoreService] No overrides found, creating empty document');
+                    await setDoc(docRef, {});
+                }
+
+                this.cache.overrides = data;
+                this.promises.overrides = null;
+
                 return data;
-            } else {
-                // Create empty if needed
-                console.log('[FirestoreService] No overrides found, creating empty document');
-                await setDoc(docRef, {});
-                return {};
-            }
+            })();
+
+            return this.promises.overrides;
         } catch (e) {
             console.warn('[FirestoreService] Failed to load dealer_overrides:', e);
             return {};
+        }
+    }
+
+    /**
+     * Batch update dealer overrides
+     * @param {Object} overridesMap - The complete map of overrides to save
+     */
+    async bulkUpdateDealerOverrides(overridesMap) {
+        try {
+            console.log(`[FirestoreService] Bulk updating overrides`);
+            const docRef = doc(this.db, "settings", "dealer_overrides");
+
+            await setDoc(docRef, overridesMap);
+
+            // Invalidate cache
+            this.cache.overrides = null;
+
+            // console.log(`[FirestoreService] Bulk update complete`);
+        } catch (error) {
+            console.error('[FirestoreService] Failed to bulk update overrides:', error);
+            throw error;
         }
     }
 
@@ -175,6 +278,10 @@ export class FirestoreService {
             updateData[customerName] = updates;
 
             await setDoc(docRef, updateData, { merge: true });
+
+            // Invalidate cache
+            this.cache.overrides = null;
+
             console.log(`[FirestoreService] Override updated successfully`);
         } catch (error) {
             console.error('[FirestoreService] Failed to update dealer override:', error);
@@ -197,6 +304,10 @@ export class FirestoreService {
             updateData[customerName] = deleteField();
 
             await updateDoc(docRef, updateData);
+
+            // Invalidate cache
+            this.cache.overrides = null;
+
             console.log(`[FirestoreService] Override deleted successfully`);
         } catch (error) {
             console.error('[FirestoreService] Failed to delete dealer override:', error);
@@ -216,7 +327,7 @@ export class FirestoreService {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 if (data.items && Array.isArray(data.items)) {
-                    console.log(`Loaded ${data.items.length} reports from Firestore.`);
+                    // console.log(`Loaded ${data.items.length} reports from Firestore.`);
                     return data.items;
                 }
             }
@@ -263,14 +374,14 @@ export class FirestoreService {
         }
 
         try {
-            console.log(`[FirestoreService] Fetching report data from Network: ${reportId}`);
+            // console.log(`[FirestoreService] Fetching report data from Network: ${reportId}`);
             await this.waitForAuth();
             const docRef = doc(this.db, 'reports_data', reportId);
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
                 const reportData = docSnap.data();
-                console.log(`[FirestoreService] Loaded ${reportData.rowCount} rows for report "${reportData.name}"`);
+                // console.log(`[FirestoreService] Loaded ${reportData.rowCount} rows for report "${reportData.name}"`);
 
                 // Freeze to prevent accidental modification
                 const data = reportData.data || reportData.rows || [];
@@ -303,7 +414,7 @@ export class FirestoreService {
      */
     async getAggregatedReportData() {
         try {
-            console.log('[FirestoreService] Fetching aggregated report data');
+            // console.log('[FirestoreService] Fetching aggregated report data');
             const reports = await this.listReports();
 
             if (!reports || reports.length === 0) {
@@ -326,7 +437,7 @@ export class FirestoreService {
             const results = await Promise.all(fetchPromises);
             results.forEach(data => allData.push(...data));
 
-            console.log(`[FirestoreService] Aggregated ${allData.length} rows from ${reports.length} reports`);
+            // console.log(`[FirestoreService] Aggregated ${allData.length} rows from ${reports.length} reports`);
             return Object.freeze(allData);
         } catch (error) {
             console.error('[FirestoreService] Error loading aggregated data:', error);
@@ -364,20 +475,30 @@ export class FirestoreService {
      */
     async loadGeneralSettings() {
         try {
-            console.log('[FirestoreService] Fetching general settings...');
-            await this.waitForAuth();
-            const docRef = doc(this.db, "settings", "general");
-            const docSnap = await getDoc(docRef);
+            // Check cache
+            if (this.cache.settings) return this.cache.settings;
+            if (this.promises.settings) return this.promises.settings;
 
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                console.log('[FirestoreService] General settings loaded');
+            this.promises.settings = (async () => {
+                await this.waitForAuth();
+                const docRef = doc(this.db, "settings", "general");
+                const docSnap = await getDoc(docRef);
+
+                let data = {};
+                if (docSnap.exists()) {
+                    data = docSnap.data();
+                    // console.log('[FirestoreService] General settings loaded');
+                } else {
+                    console.log('[FirestoreService] No general settings found, creating empty');
+                    await setDoc(docRef, {});
+                }
+
+                this.cache.settings = data;
+                this.promises.settings = null;
                 return data;
-            } else {
-                console.log('[FirestoreService] No general settings found, creating empty');
-                await setDoc(docRef, {});
-                return {};
-            }
+            })();
+
+            return this.promises.settings;
         } catch (e) {
             console.warn('[FirestoreService] Failed to load general settings:', e);
             return {};
@@ -390,21 +511,31 @@ export class FirestoreService {
      */
     async getDeactivatedDealers() {
         try {
-            console.log('[FirestoreService] Fetching deactivated dealers...');
-            await this.waitForAuth();
-            const docRef = doc(this.db, "settings", "deactivated_dealers");
-            const docSnap = await getDoc(docRef);
+            // Check cache
+            if (this.cache.deactivated) return this.cache.deactivated;
+            if (this.promises.deactivated) return this.promises.deactivated;
 
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                const items = data.items || [];
-                console.log(`[FirestoreService] Loaded ${items.length} deactivated dealers.`);
+            this.promises.deactivated = (async () => {
+                await this.waitForAuth();
+                const docRef = doc(this.db, "settings", "deactivated_dealers");
+                const docSnap = await getDoc(docRef);
+
+                let items = [];
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    items = data.items || [];
+                    // console.log(`[FirestoreService] Loaded ${items.length} deactivated dealers.`);
+                } else {
+                    console.log('[FirestoreService] No deactivated dealers list found, creating empty');
+                    await setDoc(docRef, { items: [] });
+                }
+
+                this.cache.deactivated = items;
+                this.promises.deactivated = null;
                 return items;
-            } else {
-                console.log('[FirestoreService] No deactivated dealers list found, creating empty');
-                await setDoc(docRef, { items: [] });
-                return [];
-            }
+            })();
+
+            return this.promises.deactivated;
         } catch (e) {
             console.error('[FirestoreService] Failed to load deactivated dealers:', e);
             return [];
@@ -420,6 +551,10 @@ export class FirestoreService {
             console.log(`[FirestoreService] Updating deactivated dealers list (${fullList.length} items)`);
             const docRef = doc(this.db, "settings", "deactivated_dealers");
             await setDoc(docRef, { items: fullList }, { merge: true });
+
+            // Invalidate cache
+            this.cache.deactivated = null;
+
             console.log('[FirestoreService] Deactivated dealers list updated');
         } catch (e) {
             console.error('[FirestoreService] Failed to update deactivated dealers:', e);

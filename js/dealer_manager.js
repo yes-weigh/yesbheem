@@ -60,34 +60,15 @@ if (!window.DealerManager) {
         }
 
         async init() {
-            console.log('DealerManager initializing...');
+            // console.log('DealerManager initializing...');
             this.showLoadingState();
 
             try {
                 // Ensure DataManager exists and is loaded
                 if (!window.dataManager) {
-                    console.log('DataManager instance not found, creating new instance...');
-                    if (typeof window.DataManager === 'function') {
-                        window.dataManager = new window.DataManager();
-                        // We must trigger data loading since we just created it
-                        await window.dataManager.loadGeneralSettings();
-                        // Trigger main load - defaulting to Kerala for now as per dashboard logic
-                        // We need to know which report to load... DataManager defaults might be empty if not told.
-                        // Dashboard logic loads reports list then loads first report.
-                        // We should replicate that or expose a helper in DataManager to "Initialize Default".
-
-                        // For now, let's try to list reports and load first one like Dashboard does.
-                        const reports = await window.dataManager.listReports();
-                        if (reports && reports.length > 0) {
-                            const reportId = reports[0].id; // Use report ID instead of URL
-                            console.log('DealerManager loading default report:', reportId);
-                            await window.dataManager.loadData('', [], reportId); // Empty state = all dealers
-                        } else {
-                            console.warn('No reports found to load.');
-                        }
-                    } else {
-                        throw new Error('DataManager Class not available. Script missing?');
-                    }
+                    console.error('DataManager should have been initialized by data_manager.js');
+                    // Fallback just in case
+                    window.dataManager = new window.DataManager();
                 }
 
                 await this.waitForDataManager();
@@ -216,7 +197,7 @@ if (!window.DealerManager) {
         async handleReportChange(url) {
             if (!url) return;
             this.showLoadingState();
-            console.log('Switching to report:', url);
+            // console.log('Switching to report:', url);
 
             try {
                 // Set active report in data layer
@@ -248,12 +229,60 @@ if (!window.DealerManager) {
                 return;
             }
 
+            // STALE-WHILE-REVALIDATE: Try to load from cache first for instant render
+            if (!forceRefresh) {
+                // console.log('[DealerManager] Checking local cache for mergedDealersCache...');
+                try {
+                    const cachedDealers = localStorage.getItem('mergedDealersCache');
+                    if (cachedDealers) {
+                        const parsed = JSON.parse(cachedDealers);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            console.log(`[DealerManager] Cache HIT! Rendering ${parsed.length} cached dealers.`);
+
+                            // Render cached data immediately
+                            this.dealers = parsed;
+                            this.filteredDealers = [...this.dealers];
+
+                            // We need to ensure settings are loaded for filters to work, 
+                            // but we can try rendering what we have.
+                            this.generalSettings = window.dataManager.generalSettings || {};
+
+                            this.updateKAMFilter();
+                            this.updateDistrictFilter();
+                            this.updateStateFilter();
+                            this.updateStageFilter();
+
+                            const allCategories = new Set();
+                            this.dealers.forEach(d => {
+                                if (Array.isArray(d.categories)) {
+                                    d.categories.forEach(c => allCategories.add(c));
+                                }
+                            });
+                            if (this.categorySelector) {
+                                this.categorySelector.setCategories(Array.from(allCategories));
+                            }
+
+                            this.applyFilters();
+                            // Mark as loading in background? Optional.
+                        } else {
+                            console.log('[DealerManager] Cache MISS (Empty or Invalid)');
+                        }
+                    } else {
+                        console.log('[DealerManager] Cache MISS (No Key)');
+                    }
+                } catch (e) {
+                    console.warn('Failed to load cached dealers:', e);
+                }
+            }
+
+
             console.log('[DealerManager] Loading dealer data from DataLayer...');
+            const dataFetchStart = performance.now();
 
             try {
                 // Use DataLayer to get merged dealer data (with optional cache bypass)
                 const mergedDealers = await window.dataManager.dataLayer.getDealerManagementData(forceRefresh);
-                console.log(`[DealerManager] Loaded ${mergedDealers.length} dealers from DataLayer`);
+                // console.log(`[DealerManager] Loaded ${mergedDealers.length} dealers from DataLayer`);
 
                 // Process dealers for table display
                 this.dealers = mergedDealers.map((d, index) => {
@@ -282,6 +311,14 @@ if (!window.DealerManager) {
                     };
                 });
 
+                // Update Cache
+                try {
+                    localStorage.setItem('mergedDealersCache', JSON.stringify(this.dealers));
+                    console.log(`[DealerManager] Saved ${this.dealers.length} dealers to cache.`);
+                } catch (e) {
+                    console.warn('Failed to save merged dealers to cache:', e);
+                }
+
                 this.generalSettings = window.dataManager.generalSettings || {};
 
                 // Initialize filteredDealers to all dealers
@@ -304,7 +341,10 @@ if (!window.DealerManager) {
                     this.categorySelector.setCategories(Array.from(allCategories));
                 }
 
-                console.log(`[DealerManager] Processed ${this.dealers.length} dealers, ${this.filteredDealers.length} filtered`);
+                // console.log(`[DealerManager] Processed ${this.dealers.length} dealers, ${this.filteredDealers.length} filtered`);
+                const dataFetchEnd = performance.now();
+                console.log(`[Performance] Data Fetch & Process: ${(dataFetchEnd - dataFetchStart).toFixed(2)} ms`);
+                console.log(`[Performance] Total Page Load (from Nav Start): ${dataFetchEnd.toFixed(2)} ms`);
             } catch (error) {
                 console.error('[DealerManager] Failed to load data from DataLayer:', error);
                 throw error;

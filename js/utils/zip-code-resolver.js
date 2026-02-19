@@ -11,7 +11,8 @@ import { doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.
  * Manages zip code resolution with caching and API integration
  */
 export class ZipCodeResolver {
-    constructor(zipCache = {}, invalidZips = new Set()) {
+    constructor(firestoreService, zipCache = {}, invalidZips = new Set()) {
+        this.firestoreService = firestoreService;
         this.zipApiUrl = 'https://api.postalpincode.in/pincode/';
         this.zipCache = zipCache;
         this.invalidZips = invalidZips;
@@ -72,20 +73,14 @@ export class ZipCodeResolver {
      */
     async writeZipToFirebase(zip, district) {
         try {
-            console.log(`[Debug] Writing zip to Firestore: ${zip}, ${district}`);
-            const docRef = doc(db, "settings", "zip_codes");
-
-            // Use updateDoc to add/merge a specific field
-            await updateDoc(docRef, {
-                [zip]: district
-            });
-            console.log(`[Debug] Saved zip ${zip} to Firestore.`);
+            if (this.firestoreService) {
+                await this.firestoreService.updateZipCode(zip, district);
+                console.log(`[Debug] Saved zip ${zip} to Firestore via Service.`);
+            } else {
+                console.warn('[Debug] FirestoreService not available in ZipCodeResolver');
+            }
         } catch (e) {
             console.warn('[Debug] Failed to write zip to Firestore:', e);
-            // If document doesn't exist (edge case if creation failed), try setDoc with merge
-            if (e.code === 'not-found') {
-                await setDoc(doc(db, "settings", "zip_codes"), { [zip]: district }, { merge: true });
-            }
         }
     }
 
