@@ -800,157 +800,143 @@ class UIRenderer {
         return `
             <div class="dealer-modal-overlay" onclick="window.b2bLeadsManager.closeEditModal()">
                 <div class="dealer-modal" onclick="event.stopPropagation()">
-                    <!-- Header: Title + Profile Quick Edit -->
-                    <div class="dealer-modal-header" style="padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; height: auto;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h2 style="margin: 0; font-size: 1.25rem;">${lead.id ? 'Edit Lead' : 'Add New Lead'}</h2>
-                            <button class="close-btn" onclick="window.b2bLeadsManager.closeEditModal()">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                            </button>
+                    <!-- Header: Title + Controls + Profile -->
+                    <div class="dealer-modal-header" style="padding: 16px 24px; display: flex; flex-direction: column; gap: 16px; height: auto; border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.1);">
+                        <!-- Top Bar: Title, Status, Actions -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 24px;">
+                            <div style="display: flex; align-items: center; gap: 16px;">
+                                <h2 style="margin: 0; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); opacity: 0.8;">${lead.id ? 'Edit Lead' : 'Add New Lead'}</h2>
+                            </div>
+                            
+                            <!-- Stage Chips (Prominent) -->
+                             <div style="flex: 1; display: flex; justify-content: center; align-items: center; gap: 10px;">
+                                <input type="hidden" id="inp_status" data-field="status" value="${lead.status || ''}">
+                                ${(statusOptions || []).map(s => `
+                                    <button type="button" class="status-chip ${s === lead.status ? 'active' : ''}" onclick="
+                                        document.getElementById('inp_status').value = '${s}';
+                                        this.parentElement.querySelectorAll('.status-chip').forEach(c => c.classList.remove('active'));
+                                        this.classList.add('active');
+                                    " style="
+                                        padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.12);
+                                        background: rgba(255, 255, 255, 0.05); color: var(--text-muted); cursor: pointer; 
+                                        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); font-size: 0.85rem; font-weight: 500; outline: none; white-space: nowrap;
+                                    ">
+                                        ${s}
+                                    </button>
+                                `).join('')}
+                            </div>
+
+                            <!-- Primary Actions -->
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <button class="btn-cancel" onclick="window.b2bLeadsManager.closeEditModal()" style="
+                                    background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--text-muted); padding: 8px 16px; font-size: 0.85rem; border-radius: 8px; font-weight: 500;
+                                ">Cancel</button>
+                                <button class="btn-save" onclick="window.b2bLeadsManager.saveLeadDetails('${lead.id || ''}')" style="
+                                    background: var(--accent-color); border: none; color: white; padding: 8px 24px; font-size: 0.9rem; border-radius: 8px; font-weight: 700; box-shadow: 0 4px 12px var(--accent-color-alpha, rgba(59, 130, 246, 0.3));
+                                ">Save Changes</button>
+                                <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.1); margin: 0 12px;"></div>
+                                <button class="close-btn" onclick="window.b2bLeadsManager.closeEditModal()" style="border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.05); color: var(--text-muted);">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
                         </div>
                         
-                        <!-- Profile Row -->
-                        <div class="header-profile-row" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                            <div style="flex: 1.5; min-width: 150px;">${renderFloatingInput('Name', 'name')}</div>
-                            <div style="flex: 2; min-width: 200px;">${renderFloatingInput('Business Name', 'business_name')}</div>
-                            <div style="flex: 1.2; min-width: 130px;">${renderFloatingInput('Phone', 'phone')}</div>
+                        <!-- Profile Row (Bottom Bar) -->
+                        <div class="header-profile-row" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                            <div style="flex: 1.5; min-width: 140px;">${renderFloatingInput('Name', 'name')}</div>
+                            <div style="flex: 2; min-width: 180px;">${renderFloatingInput('Business Name', 'business_name')}</div>
+                            <div style="flex: 1.2; min-width: 120px;">${renderFloatingInput('Phone', 'phone')}</div>
                             <div style="flex: 0.8; min-width: 80px;">${renderFloatingInput('Pincode', 'pincode', 'text', true, 'onchange="window.b2bLeadsManager.handlePopupZipChange(this)"')}</div>
-                            <div style="flex: 1; min-width: 100px;">${renderFloatingInput('State', 'state', 'text', true)}</div>
-                            <div style="flex: 1; min-width: 100px;">${renderFloatingInput('District', 'district', 'text', true)}</div>
-                            <div style="flex: 1; min-width: 100px;">${renderFloatingInput('City', 'city', 'text', true)}</div>
+                            <div style="flex: 1; min-width: 90px;">${renderFloatingInput('State', 'state', 'text', true)}</div>
+                            <div style="flex: 1; min-width: 90px;">${renderFloatingInput('District', 'district', 'text', true)}</div>
+                            <div style="flex: 1; min-width: 90px;">${renderFloatingInput('City', 'city', 'text', true)}</div>
                         </div>
                     </div>
 
-                    <!-- Body: 3-Column Creative Layout (Timeline | Creation | Actions) -->
-                    <div class="dealer-modal-content" style="display: grid; grid-template-columns: 340px 1fr 340px; gap: 24px; padding: 24px; overflow: hidden; height: 100%;">
+                    <!-- Body: 3-Column Balanced Layout (Wide Timeline | Compact Creation | Actions) -->
+                    <div class="dealer-modal-content" style="display: grid; grid-template-columns: 500px 320px 1fr; gap: 24px; padding: 24px; overflow: hidden; height: 100%;">
                         
-                        <!-- Column 1: TIMELINE (The Story) -->
+                        <!-- Column 1: TIMELINE (Main Area) -->
                         <div class="modal-column" style="display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 24px; overflow: hidden;">
-                            <h3 style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7; margin-bottom: 16px;">Activity Timeline</h3>
+                            <h3 style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7; margin-bottom: 16px;">Activity Timeline</h3>
                             
                             <!-- Scrollable History -->
                             <div id="b2b-logs-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px;">
                                 <!-- Populated by JS -->
-                                <div style="text-align: center; color: var(--text-muted); padding: 40px; font-style: italic; opacity: 0.5;">No logs recorded yet.</div>
                             </div>
                         </div>
 
-                        <!-- Column 2: LOG CREATION (Mid Panel) -->
-                        <div class="modal-column" style="display: flex; flex-direction: column; gap: 20px; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 24px; overflow-y: auto;">
-                            <h3 style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7;">Create Activity Log</h3>
+                        <!-- Column 2: LOG CREATION (Compact Mid) -->
+                        <div class="modal-column" style="display: flex; flex-direction: column; gap: 16px; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 24px; overflow-y: auto;">
+                            <h3 style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7;">Add Log</h3>
                             
-                            <div style="background: rgba(255,255,255,0.03); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); height: fit-content;">
-                                <div class="activity-chips-container" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+                            <div style="background: rgba(255,255,255,0.02); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); height: fit-content;">
+                                <div class="activity-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
                                     ${(settings.log_activities || ['Call', 'Meeting', 'Email', 'Note']).map(a => `
                                         <button type="button" class="activity-chip" onclick="
                                             this.parentElement.querySelectorAll('.activity-chip').forEach(c => c.classList.remove('active'));
                                             this.classList.add('active');
                                         " data-value="${a}" style="
-                                            padding: 6px 14px;
-                                            border-radius: 20px;
-                                            border: 1px solid rgba(255, 255, 255, 0.1);
-                                            background: rgba(255, 255, 255, 0.05);
-                                            color: var(--text-muted);
-                                            cursor: pointer;
-                                            font-size: 0.8rem;
-                                            transition: all 0.2s;
+                                            padding: 4px 10px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);
+                                            background: rgba(255, 255, 255, 0.05); color: var(--text-muted); cursor: pointer; font-size: 0.75rem;
                                         ">
                                             ${a}
                                         </button>
                                     `).join('')}
                                 </div>
 
-                                <div style="margin-bottom: 12px;">
-                                    <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">
+                                <div style="margin-bottom: 10px;">
+                                    <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-muted); cursor: pointer;">
                                         <input type="checkbox" id="toggle-due-date" onchange="
                                             const container = document.getElementById('due-date-container');
                                             container.style.display = this.checked ? 'flex' : 'none';
                                         " style="accent-color: var(--accent-color);">
-                                        Set Due Date & Time
+                                        Set Due Date
                                     </label>
                                 </div>
 
-                                <div id="due-date-container" style="display: none; gap: 12px; margin-bottom: 16px;">
-                                    <div style="flex: 1;">
-                                        <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">Date</label>
-                                        <input type="date" id="new-log-date" class="floating-input" value="${new Date().toISOString().split('T')[0]}" style="height: 40px; padding: 0 12px;">
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">Time</label>
-                                        <input type="time" id="new-log-time" class="floating-input" value="${new Date().toTimeString().split(' ')[0].substring(0, 5)}" style="height: 40px; padding: 0 12px;">
-                                    </div>
+                                <div id="due-date-container" style="display: none; gap: 8px; margin-bottom: 12px; flex-direction: column;">
+                                    <input type="date" id="new-log-date" class="floating-input" value="${new Date().toISOString().split('T')[0]}" style="height: 32px; padding: 0 8px; font-size: 0.8rem;">
+                                    <input type="time" id="new-log-time" class="floating-input" value="${new Date().toTimeString().split(' ')[0].substring(0, 5)}" style="height: 32px; padding: 0 8px; font-size: 0.8rem;">
                                 </div>
                                 
-                                <textarea id="new-log-content" class="floating-input" style="width: 100%; height: 120px; min-height: 100px; resize: vertical; padding: 16px; font-size: 0.95rem; margin-bottom: 16px;" placeholder="What happened? Detailed notes go here..."></textarea>
+                                <textarea id="new-log-content" class="floating-input" style="width: 100%; height: 100px; min-height: 80px; resize: vertical; padding: 12px; font-size: 0.9rem; margin-bottom: 12px;" placeholder="Details..."></textarea>
                                 
-                                <div style="display: flex; justify-content: flex-end;">
-                                    <button class="btn-save" onclick="window.b2bLeadsManager.addLog('${lead.id || ''}')" style="padding: 10px 24px; font-size: 0.9rem; border-radius: 8px;">Post Activity Log</button>
-                                </div>
+                                <button class="btn-save" onclick="window.b2bLeadsManager.addLog('${lead.id || ''}')" style="width: 100%; padding: 8px; font-size: 0.85rem; border-radius: 6px;">Post Entry</button>
                             </div>
                         </div>
 
-                        <!-- Column 3: ACTIONS (Engagement & Status) -->
-                        <div class="modal-column" style="display: flex; flex-direction: column; gap: 24px; overflow-y: auto;">
-                            <h3 style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7;">Actions</h3>
+                        <!-- Column 3: ACTIONS (Engagement) -->
+                        <div class="modal-column" style="display: flex; flex-direction: column; gap: 20px; overflow-y: auto;">
+                            <h3 style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7;">Ownership & Engagement</h3>
                             
                             <!-- WhatsApp Section -->
                             <div style="background: rgba(37, 211, 102, 0.05); padding: 16px; border-radius: 12px; border: 1px solid rgba(37, 211, 102, 0.1);">
-                                <h4 style="font-size: 0.85rem; font-weight: 600; color: #25d366; margin: 0 0 12px 0; display: flex; align-items: center; gap: 6px;">
-                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-                                    Send WhatsApp
+                                <h4 style="font-size: 0.85rem; font-weight: 600; color: #25d366; margin: 0 0 10px 0; display: flex; align-items: center; gap: 6px;">
+                                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                                    WhatsApp
                                 </h4>
-                                <div id="wa-instance-status" style="margin-bottom: 12px; padding: 10px; border-radius: 8px; font-size: 0.85rem; background: rgba(0,0,0,0.2); color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
-                                    <span class="loading-spinner" style="width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite;"></span>
-                                    <span>Syncing with KAM...</span>
+                                <div id="wa-instance-status" style="margin-bottom: 10px; padding: 8px; border-radius: 6px; font-size: 0.75rem; background: rgba(0,0,0,0.2); color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                                    <span class="loading-spinner" style="width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.2); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite;"></span>
+                                    <span>Syncing...</span>
                                 </div>
-                                <div style="margin-bottom: 12px;">
-                                    <textarea id="wa-message-body" class="floating-input" style="height: 70px; resize: vertical; padding-top: 8px; font-size: 0.85rem;" placeholder="Type your message..."></textarea>
-                                </div>
+                                <textarea id="wa-message-body" class="floating-input" style="height: 60px; font-size: 0.8rem; margin-bottom: 10px;" placeholder="Message..."></textarea>
                                 <button onclick="window.b2bLeadsManager.sendWhatsAppMessage('${lead.id || ''}')" style="
-                                    width: 100%; padding: 8px; background: #25d366; border: none; border-radius: 6px; color: white;
-                                    font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+                                    width: 100%; padding: 6px; background: #25d366; border: none; border-radius: 6px; color: white;
+                                    font-weight: 600; font-size: 0.8rem; cursor: pointer;
                                 ">
                                     Send
                                 </button>
                              </div>
 
-                            <!-- Lead Stage -->
-                             <div>
-                                <h4 style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Current Stage</h4>
-                                <input type="hidden" id="inp_status" data-field="status" value="${lead.status || ''}">
-                                <div class="status-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                    ${statusOptions.map(s => `
-                                        <button type="button" class="status-chip ${s === lead.status ? 'active' : ''}" onclick="
-                                            document.getElementById('inp_status').value = '${s}';
-                                            this.parentElement.querySelectorAll('.status-chip').forEach(c => c.classList.remove('active'));
-                                            this.classList.add('active');
-                                        " style="
-                                            padding: 6px 12px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1);
-                                            background: rgba(255, 255, 255, 0.05); color: var(--text-muted); cursor: pointer; 
-                                            transition: all 0.2s; font-size: 0.85rem; outline: none;
-                                        ">
-                                            ${s}
-                                        </button>
-                                    `).join('')}
-                                </div>
-                            </div>
-
                             <!-- Internal (KAM) -->
-                            <div>
-                                <h4 style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Internal Ownership</h4>
+                            <div style="background: rgba(255,255,255,0.02); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                                <h4 style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                    Internal Owner
+                                </h4>
                                 ${renderFloatingSelect('KAM', 'kam', settings.key_accounts || [], false, 'onchange="window.b2bLeadsManager.updateWhatsAppInterface(this.value)"')}
                             </div>
-                        </div>
-                    </div>
-                
-                    <!-- Footer -->
-                    <div class="dealer-modal-footer">
-                        <div class="footer-note">
-                            <!-- <span style="color:var(--color-info);">*</span> Auto-saved -->
-                        </div>
-                        <div class="footer-actions">
-                            <button class="btn-cancel" onclick="window.b2bLeadsManager.closeEditModal()">Cancel</button>
-                            <button class="btn-save" onclick="window.b2bLeadsManager.saveLeadDetails('${lead.id || ''}')">${lead.id ? 'Save Changes' : 'Create Lead'}</button>
                         </div>
                     </div>
                 </div>
