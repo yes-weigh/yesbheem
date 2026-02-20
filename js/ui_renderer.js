@@ -802,14 +802,23 @@ class UIRenderer {
                 <div class="dealer-modal" onclick="event.stopPropagation()">
                     <!-- Header: Title + Controls + Profile -->
                     <div class="dealer-modal-header" style="padding: 16px 24px; display: flex; flex-direction: column; gap: 16px; height: auto; border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.1);">
-                        <!-- Top Bar: Title, Status, Actions -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 24px; position: relative;">
+                        <!-- Absolute Close Button Relocated -->
+                        <button class="close-btn" onclick="window.b2bLeadsManager.closeEditModal()" style="
+                            position: absolute; top: 12px; right: 12px; border-radius: 50%; width: 36px; height: 36px; 
+                            display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); 
+                            border: 1px solid rgba(255,255,255,0.08); color: var(--text-muted); cursor: pointer; transition: all 0.2s; z-index: 100;
+                        " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white';" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='var(--text-muted)';">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+
+                        <!-- Top Bar: Title, Status -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 24px;">
                             <div style="display: flex; align-items: center; gap: 16px;">
                                 <h2 style="margin: 0; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); opacity: 0.8;">${lead.id ? 'Edit Lead' : 'Add New Lead'}</h2>
                             </div>
                             
-                            <!-- Stage Chips (Prominent) -->
-                             <div style="flex: 1; display: flex; justify-content: center; align-items: center; gap: 10px;">
+                            <!-- Stage Chips (Prominent & Centered) -->
+                             <div style="flex: 1; display: flex; justify-content: center; align-items: center; gap: 10px; padding-right: 40px;">
                                 <input type="hidden" id="inp_status" data-field="status" value="${lead.status || ''}">
                                 ${(statusOptions || []).map(s => `
                                     <button type="button" class="status-chip ${s === lead.status ? 'active' : ''}" onclick="
@@ -825,74 +834,85 @@ class UIRenderer {
                                     </button>
                                 `).join('')}
                             </div>
-
-                            <!-- Absolute Close Button -->
-                            <button class="close-btn" onclick="window.b2bLeadsManager.closeEditModal()" style="
-                                position: absolute; top: -4px; right: -8px; border-radius: 50%; width: 36px; height: 36px; 
-                                display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); 
-                                border: 1px solid rgba(255,255,255,0.05); color: var(--text-muted); cursor: pointer; transition: all 0.2s;
-                            " onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                            </button>
                         </div>
 
-                        <!-- Bottom Bar: Profile Fields Strip -->
-                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
-                            <div style="display: flex; flex: 1; align-items: center; gap: 12px; overflow-x: auto;">
-                                ${renderFloatingInput('Name', 'name')}
-                                ${renderFloatingInput('Business Name', 'business_name')}
-                                ${renderFloatingInput('Phone', 'phone')}
-                                ${renderFloatingInput('Pincode', 'pincode', 'text', true, 'onchange="window.b2bLeadsManager.handlePopupZipChange(this)"')}
-                                ${renderFloatingInput('State', 'state', 'text', true)}
-                                ${renderFloatingInput('District', 'district', 'text', true)}
-                                ${renderFloatingInput('City', 'city', 'text', true)}
+                        <!-- Bottom Bar: Profile Fields Strip (Iconic Style) -->
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px; box-shadow: inset 0 1px 1px rgba(255,255,255,0.05);">
+                            <div style="display: flex; flex: 1; align-items: center; gap: 16px; overflow-x: auto; padding: 2px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span title="Name" style="opacity: 0.6; font-size: 1.1rem;">👤</span>
+                                    ${renderFloatingInput('', 'name', 'text', false, '', 'width: 160px;')}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span title="Business" style="opacity: 0.6; font-size: 1.1rem;">🏢</span>
+                                    ${renderFloatingInput('', 'business_name', 'text', false, '', 'width: 200px;')}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span title="Phone" style="opacity: 0.6; font-size: 1.1rem;">📞</span>
+                                    ${renderFloatingInput('', 'phone', 'text', false, '', 'width: 140px;')}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
+                                    <span title="Location" style="opacity: 0.6; font-size: 1.1rem;">📍</span>
+                                    ${renderFloatingInput('Code', 'pincode', 'text', true, 'onchange="window.b2bLeadsManager.handlePopupZipChange(this)"', 'width: 80px;')}
+                                    ${renderFloatingInput('State', 'state', 'text', true, '', 'width: 100px;')}
+                                    ${renderFloatingInput('District', 'district', 'text', true, '', 'width: 110px;')}
+                                    ${renderFloatingInput('City', 'city', 'text', true, '', 'width: 110px;')}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
+                                    <span title="Internal Owner" style="opacity: 0.6; font-size: 1.1rem;">👔</span>
+                                    ${renderFloatingSelect('KAM', 'kam', settings.key_accounts || [], false, 'onchange="window.b2bLeadsManager.updateWhatsAppInterface(this.value)"', 'width: 180px;')}
+                                </div>
                             </div>
                             
-                            <!-- Save button relocated here -->
+                            <!-- Save button -->
                             <button class="btn-save" onclick="window.b2bLeadsManager.saveLeadDetails('${lead.id || ''}')" style="
-                                background: var(--accent-color); border: none; color: white; padding: 10px 24px; font-size: 0.9rem; 
-                                border-radius: 10px; font-weight: 700; box-shadow: 0 4px 12px var(--accent-color-alpha, rgba(59, 130, 246, 0.3));
-                                cursor: pointer; transition: all 0.2s; white-space: nowrap;
-                            " onmouseover="this.style.opacity='0.9'; this.style.transform='translateY(-1px)'" onmouseout="this.style.opacity='1'; this.style.transform='none'">
+                                background: linear-gradient(135deg, var(--accent-color), #2563eb); border: none; color: white; padding: 10px 24px; font-size: 0.9rem; 
+                                border-radius: 10px; font-weight: 700; box-shadow: 0 4px 15px var(--accent-color-alpha, rgba(59, 130, 246, 0.4));
+                                cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap;
+                            " onmouseover="this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 6px 20px var(--accent-color-alpha, rgba(59, 130, 246, 0.5))';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 15px var(--accent-color-alpha, rgba(59, 130, 246, 0.4))'">
                                 Save Changes
                             </button>
                         </div>
                     </div>
 
-                    <!-- Body: 3-Column Balanced Layout (Wide Timeline | Compact Creation | Actions) -->
-                    <div class="dealer-modal-content" style="display: grid; grid-template-columns: 500px 320px 1fr; gap: 24px; padding: 24px; overflow: hidden; height: 100%;">
-                        
-                        <!-- Column 1: TIMELINE (Main Area) -->
-                        <div class="modal-column" style="display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 24px; overflow: hidden;">
-                            <h3 style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7; margin-bottom: 16px;">Activity Timeline</h3>
+                    <div class="dealer-modal-content" style="display: grid; grid-template-columns: 500px 320px 1fr; gap: 0; overflow: hidden; height: 100%;">
+                        <!-- Column 1: TIMELINE (The Story) -->
+                        <div class="modal-column column-timeline" style="display: flex; flex-direction: column; height: 100%; border-right: 1px solid rgba(255,255,255,0.06); padding: 24px; overflow: hidden; position: relative; background: rgba(255,255,255,0.01);">
+                            <h3 style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; opacity: 0.6; margin-bottom: 20px;">Activity History</h3>
                             
-                            <!-- Scrollable History -->
-                            <div id="b2b-logs-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px;">
-                                <!-- Populated by JS -->
+                            <!-- Scrollable History with Thread Line -->
+                            <div style="position: relative; flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+                                <!-- The vertical track line -->
+                                <div style="position: absolute; left: 5px; top: 10px; bottom: 10px; width: 1px; background: linear-gradient(to bottom, rgba(59, 130, 246, 0.3), rgba(255, 255, 255, 0.05));"></div>
+                                
+                                <div id="b2b-logs-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-left: 20px;">
+                                    <!-- Populated by JS -->
+                                    <div style="text-align: center; color: var(--text-muted); padding: 40px; font-style: italic; opacity: 0.5;">No history recorded.</div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Column 2: LOG CREATION (Compact Mid) -->
-                        <div class="modal-column" style="display: flex; flex-direction: column; gap: 16px; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 24px; overflow-y: auto;">
-                            <h3 style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7;">Add Log</h3>
+                        <!-- Column 2: ADD LOG (Quick Entry) -->
+                        <div class="modal-column column-entry" style="display: flex; flex-direction: column; height: 100%; border-right: 1px solid rgba(255,255,255,0.06); padding: 24px; overflow-y: auto; background: rgba(0,0,0,0.1);">
+                            <h3 style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; opacity: 0.6; margin-bottom: 20px;">Add Log</h3>
                             
-                            <div style="background: rgba(255,255,255,0.02); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); height: fit-content;">
-                                <div class="activity-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
-                                    ${(settings.log_activities || ['Call', 'Meeting', 'Email', 'Note']).map(a => `
+                            <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                                <div class="activity-chips-container" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
+                                    ${(settings.log_activities || ['Call', 'Visit', 'Message', 'Followup']).map(a => `
                                         <button type="button" class="activity-chip" onclick="
                                             this.parentElement.querySelectorAll('.activity-chip').forEach(c => c.classList.remove('active'));
                                             this.classList.add('active');
                                         " data-value="${a}" style="
-                                            padding: 4px 10px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);
-                                            background: rgba(255, 255, 255, 0.05); color: var(--text-muted); cursor: pointer; font-size: 0.75rem;
+                                            padding: 5px 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08);
+                                            background: rgba(255, 255, 255, 0.04); color: var(--text-muted); cursor: pointer; font-size: 0.75rem; transition: all 0.2s;
                                         ">
                                             ${a}
                                         </button>
                                     `).join('')}
                                 </div>
 
-                                <div style="margin-bottom: 10px;">
-                                    <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-muted); cursor: pointer;">
+                                <div style="margin-bottom: 12px;">
+                                    <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; user-select: none; opacity: 0.8;">
                                         <input type="checkbox" id="toggle-due-date" onchange="
                                             const container = document.getElementById('due-date-container');
                                             container.style.display = this.checked ? 'flex' : 'none';
@@ -901,47 +921,60 @@ class UIRenderer {
                                     </label>
                                 </div>
 
-                                <div id="due-date-container" style="display: none; gap: 8px; margin-bottom: 12px; flex-direction: column;">
-                                    <input type="date" id="new-log-date" class="floating-input" value="${new Date().toISOString().split('T')[0]}" style="height: 32px; padding: 0 8px; font-size: 0.8rem;">
-                                    <input type="time" id="new-log-time" class="floating-input" value="${new Date().toTimeString().split(' ')[0].substring(0, 5)}" style="height: 32px; padding: 0 8px; font-size: 0.8rem;">
+                                <div id="due-date-container" style="display: none; gap: 10px; margin-bottom: 16px;">
+                                    <input type="date" id="new-log-date" class="floating-input" style="flex: 1.2; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; padding: 6px;">
+                                    <input type="time" id="new-log-time" class="floating-input" style="flex: 1; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; padding: 6px;">
                                 </div>
-                                
-                                <textarea id="new-log-content" class="floating-input" style="width: 100%; height: 100px; min-height: 80px; resize: vertical; padding: 12px; font-size: 0.9rem; margin-bottom: 12px;" placeholder="Details..."></textarea>
-                                
-                                <button class="btn-save" onclick="window.b2bLeadsManager.addLog('${lead.id || ''}')" style="width: 100%; padding: 8px; font-size: 0.85rem; border-radius: 6px;">Post Entry</button>
-                            </div>
-                        </div>
 
-                        <!-- Column 3: ACTIONS (Engagement) -->
-                        <div class="modal-column" style="display: flex; flex-direction: column; gap: 20px; overflow-y: auto;">
-                            <h3 style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7;">Ownership & Engagement</h3>
-                            
-                            <!-- WhatsApp Section -->
-                            <div style="background: rgba(37, 211, 102, 0.05); padding: 16px; border-radius: 12px; border: 1px solid rgba(37, 211, 102, 0.1);">
-                                <h4 style="font-size: 0.85rem; font-weight: 600; color: #25d366; margin: 0 0 10px 0; display: flex; align-items: center; gap: 6px;">
-                                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-                                    WhatsApp
-                                </h4>
-                                <div id="wa-instance-status" style="margin-bottom: 10px; padding: 8px; border-radius: 6px; font-size: 0.75rem; background: rgba(0,0,0,0.2); color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
-                                    <span class="loading-spinner" style="width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.2); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite;"></span>
-                                    <span>Syncing...</span>
+                                <!-- Quick Log Macros -->
+                                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; opacity: 0.7;">
+                                    ${['Not Picked', 'Interested', 'Call Later', 'Wrong No'].map(m => `
+                                        <span onclick="document.getElementById('new-log-content').value = '${m}'" style="font-size: 0.65rem; background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                                            + ${m}
+                                        </span>
+                                    `).join('')}
                                 </div>
-                                <textarea id="wa-message-body" class="floating-input" style="height: 60px; font-size: 0.8rem; margin-bottom: 10px;" placeholder="Message..."></textarea>
-                                <button onclick="window.b2bLeadsManager.sendWhatsAppMessage('${lead.id || ''}')" style="
-                                    width: 100%; padding: 6px; background: #25d366; border: none; border-radius: 6px; color: white;
-                                    font-weight: 600; font-size: 0.8rem; cursor: pointer;
-                                ">
-                                    Send
+
+                                <textarea id="new-log-content" placeholder="Details..." style="
+                                    width: 100%; height: 100px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); 
+                                    border-radius: 12px; color: white; padding: 12px; font-size: 0.85rem; resize: none; margin-bottom: 16px; line-height: 1.5;
+                                "></textarea>
+
+                                <button type="button" onclick="window.b2bLeadsManager.addLog('${lead.id}')" style="
+                                    width: 100%; padding: 12px; border-radius: 12px; background: var(--accent-color); color: white; 
+                                    font-weight: 700; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                                " onmouseover="this.style.opacity='0.9'; this.style.transform='translateY(-1px)'" onmouseout="this.style.opacity='1'; this.style.transform='none'">
+                                    Post Entry
                                 </button>
                              </div>
+                        </div>
 
-                            <!-- Internal (KAM) -->
-                            <div style="background: rgba(255,255,255,0.02); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                                <h4 style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                                    Internal Owner
-                                </h4>
-                                ${renderFloatingSelect('KAM', 'kam', settings.key_accounts || [], false, 'onchange="window.b2bLeadsManager.updateWhatsAppInterface(this.value)"')}
+                        <!-- Column 3: ENGAGEMENT (The Connection) -->
+                        <div class="modal-column column-engagement" style="display: flex; flex-direction: column; height: 100%; padding: 24px; overflow-y: auto; background: rgba(255,255,255,0.015);">
+                            <h3 style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; opacity: 0.6; margin-bottom: 20px;">Ownership & Engagement</h3>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 24px;">
+                                <!-- WhatsApp Card -->
+                                <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.1); border-radius: 16px; padding: 16px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; color: #10b981;">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .004 5.41.001 12.045a11.811 11.811 0 001.592 5.967L0 24l6.135-1.609a11.808 11.808 0 005.91 1.579h.005c6.637 0 12.05-5.411 12.053-12.047a11.801 11.801 0 00-3.536-8.509z"/></svg>
+                                        <h4 style="margin: 0; font-size: 0.85rem; font-weight: 700;">WhatsApp</h4>
+                                    </div>
+                                    <div id="wa-instance-status" style="background: rgba(0,0,0,0.15); font-size: 0.75rem; padding: 10px; border-radius: 8px; color: var(--text-muted); text-align: center; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; justify-content: center;">
+                                        Initialising connection...
+                                    </div>
+                                    <textarea id="wa-message-body" placeholder="Type WhatsApp message..." style="
+                                        width: 100%; height: 80px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); 
+                                        border-radius: 12px; color: white; padding: 12px; font-size: 0.85rem; resize: none; margin-bottom: 12px; line-height: 1.5;
+                                    "></textarea>
+                                    <button onclick="window.b2bLeadsManager.sendWhatsAppMessage('${lead.id}')" style="
+                                        width: 100%; padding: 10px; border-radius: 10px; background: #10b981; color: white; 
+                                        font-weight: 700; border: none; cursor: pointer; transition: all 0.2s;
+                                    " onmouseover="this.style.opacity='0.9'; this.style.transform='translateY(-1px)'" onmouseout="this.style.opacity='1'; this.style.transform='none'">
+                                        Send Message
+                                    </button>
+                                </div>
+
                             </div>
                         </div>
                     </div>
@@ -958,6 +991,7 @@ class UIRenderer {
                     animation: fadeIn 0.1s ease-out;
                 }
                 .dealer-modal {
+                    position: relative;
                     background: var(--modal-bg-gradient, #0f172a);
                     width: 95vw;
                     height: 90vh;
