@@ -1058,48 +1058,49 @@ if (!window.B2BLeadsManager) {
             });
 
             container.innerHTML = logs.map(log => {
-                // Determine if we have a specific due/activity date
                 const hasDueDate = !!log.date;
-                const dateObj = hasDueDate ? new Date(log.date) : null;
-                const createdAtObj = log.createdAt ? new Date(log.createdAt) : null;
                 const type = log.activityType || 'Log';
+                const createdAtObj = log.createdAt ? new Date(log.createdAt) : null;
+                const dateObj = hasDueDate ? new Date(log.date) : null;
 
-                // Format Due Date (if exists)
-                let dueDateTimeStr = '';
-                if (dateObj) {
-                    dueDateTimeStr = dateObj.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                }
+                // Color mapping for activities
+                const colors = {
+                    'Call': '#3b82f6',    // Blue
+                    'Meeting': '#a855f7', // Purple
+                    'Visit': '#a855f7',   // Purple
+                    'Message': '#22c55e', // Green
+                    'Email': '#22c55e',   // Green
+                    'Followup': '#f59e0b',// Orange
+                    'Note': '#64748b'     // Gray
+                };
+                const themeColor = colors[type] || colors['Note'];
 
-                // Format Created At
-                const createdStr = createdAtObj ? createdAtObj.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                const createdStr = createdAtObj ? createdAtObj.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+                const dueStr = dateObj ? dateObj.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '';
 
                 return `
-                <div class="log-item" style="position: relative; padding-left: 24px; border-left: 2px solid rgba(255,255,255,0.1); padding-bottom: 24px;">
-                    <div style="position: absolute; left: -5px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--accent-color); box-shadow: 0 0 0 4px var(--modal-bg-gradient);"></div>
+                <div class="log-thread-item" style="position: relative; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem;">
+                    <!-- Timeline Dot -->
+                    <div style="position: absolute; left: -4px; top: 4px; width: 7px; height: 7px; border-radius: 50%; background: ${themeColor}; box-shadow: 0 0 8px ${themeColor}66;"></div>
                     
-                    <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div style="display:flex; flex-direction: column; gap: 4px;">
-                            <!-- Top Row: Created Date + Badge -->
-                            <div style="display:flex; gap:8px; align-items:center;">
-                                ${createdStr ? `<span style="font-size: 0.75rem; color: var(--text-muted); opacity: 0.7;">Logged: ${createdStr}</span>` : ''}
-                                <span style="font-size: 0.65rem; padding: 2px 8px; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 4px; color: #60a5fa; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">${type}</span>
-                            </div>
-                            
-                            <!-- Second Row: Due Date (Conditional) -->
-                            ${hasDueDate ? `
-                            <div style="display:flex; align-items: center; gap: 6px; color: var(--text-main); font-weight: 600; font-size: 0.85rem;">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.8;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                                Due: ${dueDateTimeStr}
-                            </div>
-                            ` : ''}
-                        </div>
+                    <!-- Metadata Header (Single Compact Row) -->
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;">
+                        <span style="font-weight: 700; color: ${themeColor}; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">${type}</span>
+                        <span style="color: var(--text-muted); opacity: 0.6; font-size: 0.75rem;">${createdStr}</span>
+                        ${hasDueDate ? `
+                            <span style="display: flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; padding: 1px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 500;">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                Due: ${dueStr}
+                            </span>
+                        ` : ''}
                     </div>
                     
-                    <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; font-size: 0.95rem; color: var(--modal-input-text); line-height: 1.6; white-space: pre-wrap; border: 1px solid rgba(255,255,255,0.05);">${this.escapeHtml(log.content)}</div>
+                    <!-- Content (Direct Flow) -->
+                    <div style="color: var(--text-main); line-height: 1.5; white-space: pre-wrap; opacity: 0.9;">${this.escapeHtml(log.content)}</div>
                 </div>
             `}).join('') + `
             <style>
-                .log-item:last-child { border-left-color: transparent; padding-bottom: 0; }
+                .log-thread-item:last-child { border-left-color: transparent; margin-bottom: 0; }
             </style>
             `;
         }

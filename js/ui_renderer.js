@@ -800,103 +800,91 @@ class UIRenderer {
         return `
             <div class="dealer-modal-overlay" onclick="window.b2bLeadsManager.closeEditModal()">
                 <div class="dealer-modal" onclick="event.stopPropagation()">
-                    <!-- Header -->
-                    <div class="dealer-modal-header">
-                        <div class="header-left">
-                            <h2>${lead.id ? 'Edit Lead' : 'Add New Lead'}</h2>
-                        </div>
-                        <div class="header-actions">
-                            <!-- Badge removed as per request -->
+                    <!-- Header: Title + Profile Quick Edit -->
+                    <div class="dealer-modal-header" style="padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; height: auto;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h2 style="margin: 0; font-size: 1.25rem;">${lead.id ? 'Edit Lead' : 'Add New Lead'}</h2>
                             <button class="close-btn" onclick="window.b2bLeadsManager.closeEditModal()">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
                         </div>
+                        
+                        <!-- Profile Row -->
+                        <div class="header-profile-row" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                            <div style="flex: 1.5; min-width: 150px;">${renderFloatingInput('Name', 'name')}</div>
+                            <div style="flex: 2; min-width: 200px;">${renderFloatingInput('Business Name', 'business_name')}</div>
+                            <div style="flex: 1.2; min-width: 130px;">${renderFloatingInput('Phone', 'phone')}</div>
+                            <div style="flex: 0.8; min-width: 80px;">${renderFloatingInput('Pincode', 'pincode', 'text', true, 'onchange="window.b2bLeadsManager.handlePopupZipChange(this)"')}</div>
+                            <div style="flex: 1; min-width: 100px;">${renderFloatingInput('State', 'state', 'text', true)}</div>
+                            <div style="flex: 1; min-width: 100px;">${renderFloatingInput('District', 'district', 'text', true)}</div>
+                            <div style="flex: 1; min-width: 100px;">${renderFloatingInput('City', 'city', 'text', true)}</div>
+                        </div>
                     </div>
 
-                    <!-- Body: 3-Column Creative Layout (Profile | Timeline | Actions) -->
-                    <div class="dealer-modal-content" style="display: grid; grid-template-columns: 300px 1fr 340px; gap: 24px; padding: 24px; overflow: hidden; height: 100%;">
+                    <!-- Body: 3-Column Creative Layout (Timeline | Creation | Actions) -->
+                    <div class="dealer-modal-content" style="display: grid; grid-template-columns: 340px 1fr 340px; gap: 24px; padding: 24px; overflow: hidden; height: 100%;">
                         
-                        <!-- Column 1: PROFILE (Identity & Location) -->
-                        <div class="modal-column" style="display: flex; flex-direction: column; gap: 20px; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 24px; overflow-y: auto;">
-                            <h3 style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7;">Profile</h3>
-                            
-                            <div class="edit-stack">
-                                ${renderFloatingInput('Name', 'name')}
-                                ${renderFloatingInput('Business Name', 'business_name')}
-                                ${renderFloatingInput('Phone', 'phone')}
-                                <div style="height: 12px;"></div> <!-- Spacer -->
-                                <h4 style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Location</h4>
-                                ${renderFloatingInput('Pincode', 'pincode', 'text', true, 'onchange="window.b2bLeadsManager.handlePopupZipChange(this)"')}
-                                ${renderFloatingInput('State', 'state', 'text', true)}
-                                ${renderFloatingInput('District', 'district', 'text', true)}
-                                ${renderFloatingInput('City', 'city', 'text', true)}
-                            </div>
-                        </div>
-
-                        <!-- Column 2: TIMELINE (The Story) -->
-                        <div class="modal-column" style="display: flex; flex-direction: column; height: 100%; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 24px; overflow: hidden; position: relative;">
+                        <!-- Column 1: TIMELINE (The Story) -->
+                        <div class="modal-column" style="display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 24px; overflow: hidden;">
                             <h3 style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7; margin-bottom: 16px;">Activity Timeline</h3>
                             
                             <!-- Scrollable History -->
-                            <div id="b2b-logs-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding-bottom: 20px; mask-image: linear-gradient(to bottom, black 95%, transparent 100%);">
+                            <div id="b2b-logs-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px;">
                                 <!-- Populated by JS -->
                                 <div style="text-align: center; color: var(--text-muted); padding: 40px; font-style: italic; opacity: 0.5;">No logs recorded yet.</div>
                             </div>
+                        </div>
 
-                            <!-- Fixed Input Area (Chat Style) -->
-                            <div style="margin-top: auto; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.05);">
-                                <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                                    <div class="activity-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
-                                        ${(settings.log_activities || ['Call', 'Meeting', 'Email', 'Note']).map(a => `
-                                            <button type="button" class="activity-chip" onclick="
-                                                this.parentElement.querySelectorAll('.activity-chip').forEach(c => c.classList.remove('active'));
-                                                this.classList.add('active');
-                                            " data-value="${a}" style="
-                                                padding: 4px 10px;
-                                                border-radius: 16px;
-                                                border: 1px solid rgba(255, 255, 255, 0.1);
-                                                background: rgba(255, 255, 255, 0.05);
-                                                color: var(--text-muted);
-                                                cursor: pointer;
-                                                font-size: 0.75rem;
-                                                transition: all 0.2s;
-                                            ">
-                                                ${a}
-                                            </button>
-                                        `).join('')}
-                                    </div>
+                        <!-- Column 2: LOG CREATION (Mid Panel) -->
+                        <div class="modal-column" style="display: flex; flex-direction: column; gap: 20px; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 24px; overflow-y: auto;">
+                            <h3 style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7;">Create Activity Log</h3>
+                            
+                            <div style="background: rgba(255,255,255,0.03); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); height: fit-content;">
+                                <div class="activity-chips-container" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+                                    ${(settings.log_activities || ['Call', 'Meeting', 'Email', 'Note']).map(a => `
+                                        <button type="button" class="activity-chip" onclick="
+                                            this.parentElement.querySelectorAll('.activity-chip').forEach(c => c.classList.remove('active'));
+                                            this.classList.add('active');
+                                        " data-value="${a}" style="
+                                            padding: 6px 14px;
+                                            border-radius: 20px;
+                                            border: 1px solid rgba(255, 255, 255, 0.1);
+                                            background: rgba(255, 255, 255, 0.05);
+                                            color: var(--text-muted);
+                                            cursor: pointer;
+                                            font-size: 0.8rem;
+                                            transition: all 0.2s;
+                                        ">
+                                            ${a}
+                                        </button>
+                                    `).join('')}
+                                </div>
 
-                                    <div style="margin-top: 12px; margin-bottom: 8px;">
-                                        <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; user-select: none;">
-                                            <input type="checkbox" id="toggle-due-date" onchange="
-                                                const container = document.getElementById('due-date-container');
-                                                if (this.checked) {
-                                                    container.style.display = 'flex';
-                                                    container.style.animation = 'fadeIn 0.2s';
-                                                } else {
-                                                    container.style.display = 'none';
-                                                }
-                                            " style="accent-color: var(--accent-color);">
-                                            Set Due Date & Time
-                                        </label>
-                                    </div>
+                                <div style="margin-bottom: 12px;">
+                                    <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">
+                                        <input type="checkbox" id="toggle-due-date" onchange="
+                                            const container = document.getElementById('due-date-container');
+                                            container.style.display = this.checked ? 'flex' : 'none';
+                                        " style="accent-color: var(--accent-color);">
+                                        Set Due Date & Time
+                                    </label>
+                                </div>
 
-                                    <div id="due-date-container" style="display: none; gap: 12px; margin-bottom: 12px;">
-                                        <div style="flex: 1;">
-                                            <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Date</label>
-                                            <input type="date" id="new-log-date" class="floating-input" value="${new Date().toISOString().split('T')[0]}" style="height: 36px; padding: 0 8px; font-size: 0.85rem;">
-                                        </div>
-                                        <div style="flex: 1;">
-                                            <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Time</label>
-                                            <input type="time" id="new-log-time" class="floating-input" value="${new Date().toTimeString().split(' ')[0].substring(0, 5)}" style="height: 36px; padding: 0 8px; font-size: 0.85rem;">
-                                        </div>
+                                <div id="due-date-container" style="display: none; gap: 12px; margin-bottom: 16px;">
+                                    <div style="flex: 1;">
+                                        <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">Date</label>
+                                        <input type="date" id="new-log-date" class="floating-input" value="${new Date().toISOString().split('T')[0]}" style="height: 40px; padding: 0 12px;">
                                     </div>
-                                    
-                                    <textarea id="new-log-content" class="floating-input" style="width: 100%; height: 60px; min-height: 60px; resize: vertical; padding: 12px; font-size: 0.9rem; margin-bottom: 8px;" placeholder="What happened?"></textarea>
-                                    
-                                    <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
-                                        <button class="btn-save" onclick="window.b2bLeadsManager.addLog('${lead.id || ''}')" style="padding: 6px 16px; font-size: 0.85rem;">Post Activity</button>
+                                    <div style="flex: 1;">
+                                        <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">Time</label>
+                                        <input type="time" id="new-log-time" class="floating-input" value="${new Date().toTimeString().split(' ')[0].substring(0, 5)}" style="height: 40px; padding: 0 12px;">
                                     </div>
+                                </div>
+                                
+                                <textarea id="new-log-content" class="floating-input" style="width: 100%; height: 120px; min-height: 100px; resize: vertical; padding: 16px; font-size: 0.95rem; margin-bottom: 16px;" placeholder="What happened? Detailed notes go here..."></textarea>
+                                
+                                <div style="display: flex; justify-content: flex-end;">
+                                    <button class="btn-save" onclick="window.b2bLeadsManager.addLog('${lead.id || ''}')" style="padding: 10px 24px; font-size: 0.9rem; border-radius: 8px;">Post Activity Log</button>
                                 </div>
                             </div>
                         </div>
