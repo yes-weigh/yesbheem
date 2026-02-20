@@ -866,13 +866,33 @@ class UIRenderer {
                                         `).join('')}
                                     </div>
 
-                                    <div style="display: flex; gap: 12px;">
-                                        <textarea id="new-log-content" class="floating-input" style="flex: 1; height: 48px; min-height: 48px; resize: vertical; padding: 12px; font-size: 0.9rem;" placeholder="What happened?"></textarea>
-                                        <div style="display: flex; flex-direction: column; gap: 6px; width: 100px;">
-                                            <input type="date" id="new-log-date" class="floating-input" value="${new Date().toISOString().split('T')[0]}" style="height: 32px; padding: 0 8px; font-size: 0.75rem;">
-                                            <input type="time" id="new-log-time" class="floating-input" value="${new Date().toTimeString().split(' ')[0].substring(0, 5)}" style="height: 32px; padding: 0 8px; font-size: 0.75rem;">
+                                    <div style="margin-top: 12px; margin-bottom: 8px;">
+                                        <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="toggle-due-date" onchange="
+                                                const container = document.getElementById('due-date-container');
+                                                if (this.checked) {
+                                                    container.style.display = 'flex';
+                                                    container.style.animation = 'fadeIn 0.2s';
+                                                } else {
+                                                    container.style.display = 'none';
+                                                }
+                                            " style="accent-color: var(--accent-color);">
+                                            Set Due Date & Time
+                                        </label>
+                                    </div>
+
+                                    <div id="due-date-container" style="display: none; gap: 12px; margin-bottom: 12px;">
+                                        <div style="flex: 1;">
+                                            <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Date</label>
+                                            <input type="date" id="new-log-date" class="floating-input" value="${new Date().toISOString().split('T')[0]}" style="height: 36px; padding: 0 8px; font-size: 0.85rem;">
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Time</label>
+                                            <input type="time" id="new-log-time" class="floating-input" value="${new Date().toTimeString().split(' ')[0].substring(0, 5)}" style="height: 36px; padding: 0 8px; font-size: 0.85rem;">
                                         </div>
                                     </div>
+                                    
+                                    <textarea id="new-log-content" class="floating-input" style="width: 100%; height: 60px; min-height: 60px; resize: vertical; padding: 12px; font-size: 0.9rem; margin-bottom: 8px;" placeholder="What happened?"></textarea>
                                     
                                     <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
                                         <button class="btn-save" onclick="window.b2bLeadsManager.addLog('${lead.id || ''}')" style="padding: 6px 16px; font-size: 0.85rem;">Post Activity</button>
@@ -1155,6 +1175,13 @@ class UIRenderer {
                 }
                 .btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4); }
                 .btn-save:active { transform: translateY(0); }
+
+                /* Chip Active States */
+                .activity-chip.active, .status-chip.active {
+                    background: rgba(59, 130, 246, 0.2) !important;
+                    border-color: var(--color-info, #3b82f6) !important;
+                    color: var(--color-info, #3b82f6) !important;
+                }
             </style>
         `;
     }
