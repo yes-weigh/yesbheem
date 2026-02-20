@@ -935,10 +935,7 @@ export class DataManager {
 }
 
 // Attach to window for global access
-// Attach to window for global access
 window.DataManager = DataManager;
 
-// Immediate Initialization
-// This ensures DataManager starts loading (zips, settings) as soon as the script parses,
-// parallel to the rest of the page loading.
-window.dataManager = new DataManager();
+// DataManager is now initialised by nav_controller.js after user authentication
+// to prevent "Insufficient Permissions" errors from premature Firestore calls.

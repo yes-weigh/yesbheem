@@ -97,8 +97,12 @@ class SecurityOverlay {
                     return;
                 }
 
-                console.warn("[SecurityOverlay] Unauthenticated access. Redirecting...");
-                window.location.href = '/login.html';
+                console.warn('[SecurityOverlay] Unauthenticated access. Showing login...');
+                if (window.navController && typeof window.navController.showLogin === 'function') {
+                    window.navController.showLogin();
+                } else {
+                    window.location.href = '/';
+                }
             }
         });
 
@@ -133,7 +137,11 @@ class SecurityOverlay {
 
         document.getElementById('force-logout-btn').addEventListener('click', () => {
             signOut(auth).then(() => {
-                window.location.href = '/login.html';
+                if (window.navController && typeof window.navController.showLogin === 'function') {
+                    window.navController.showLogin();
+                } else {
+                    window.location.href = '/';
+                }
             });
         });
     }
@@ -275,14 +283,22 @@ class SecurityOverlay {
                     <p style="margin-top: 20px; font-size: 0.9rem;">Redirecting to login...</p>
                 </div>
             `;
-            // Note: LogoutHandler will redirect, but we set a backup timeout
+            // Note: LogoutHandler will call showLogin, but set a backup timeout
             setTimeout(() => {
-                window.location.href = '/login.html';
+                if (window.navController && typeof window.navController.showLogin === 'function') {
+                    window.navController.showLogin();
+                } else {
+                    window.location.href = '/';
+                }
             }, 3000);
         }).catch((error) => {
             console.error('[SecurityOverlay] Terminate failed:', error);
-            // Force redirect even if cleanup fails
-            window.location.href = '/login.html';
+            // Force show login even if cleanup fails
+            if (window.navController && typeof window.navController.showLogin === 'function') {
+                window.navController.showLogin();
+            } else {
+                window.location.href = '/';
+            }
         });
     }
 }

@@ -15,7 +15,7 @@ export class SettingsDataController {
         this.reportsList = null;
         this.statusDiv = null;
 
-        this.init();
+        // init() is called by nav_controller.js after the page HTML is injected
     }
 
     async init() {

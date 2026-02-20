@@ -38,7 +38,7 @@ class BoardController {
             onSaveTask: (data, isEdit) => this.saveTaskFull(data, isEdit)
         });
 
-        this.init();
+        // Note: init() is called by nav_controller.js after the page DOM is ready
     }
 
     init() {
@@ -229,5 +229,5 @@ class BoardController {
     }
 }
 
-// Initialize
-new BoardController();
+// Export class to global scope for SPA initialization via nav_controller.js
+window.BoardController = BoardController;

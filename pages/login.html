@@ -1,0 +1,221 @@
+<!-- Login Page — SPA Fragment (no html/head/body wrappers) -->
+<style>
+    /* Login overlay fills the full viewport over the app shell */
+    #login-overlay {
+        position: fixed;
+        inset: 0;
+        background: var(--bg-primary, #050505);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9000;
+        animation: loginFadeIn 0.35s ease-out;
+    }
+
+    @keyframes loginFadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .login-card {
+        width: 400px;
+        padding: 3rem;
+        background: var(--modal-bg-gradient);
+        border-radius: 24px;
+        box-shadow: var(--modal-shadow);
+        border: 1px solid var(--modal-border);
+        text-align: center;
+        backdrop-filter: blur(12px);
+        position: relative;
+        overflow: hidden;
+        animation: loginCardIn 0.4s ease-out;
+    }
+
+    @keyframes loginCardIn {
+        from {
+            opacity: 0;
+            transform: translateY(16px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .brand-logo {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #60A5FA, #A78BFA);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .brand-subtitle {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .login-input-group {
+        margin-bottom: 1.5rem;
+        text-align: left;
+    }
+
+    .login-input-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .login-modern-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        background: var(--modal-input-bg);
+        border: 1px solid var(--modal-border);
+        border-radius: 12px;
+        color: var(--text-primary);
+        font-size: 1rem;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    .login-modern-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        background: var(--surface-card);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+
+    .login-btn-primary {
+        width: 100%;
+        padding: 0.875rem;
+        background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-top: 1rem;
+    }
+
+    .login-btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .login-btn-primary:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .login-hidden {
+        display: none !important;
+    }
+
+    .login-otp-container {
+        display: flex;
+        gap: 15px;
+    }
+
+    .login-otp-field {
+        flex: 1;
+    }
+
+    .login-otp-field input {
+        text-align: center;
+        letter-spacing: 2px;
+        font-family: monospace;
+        font-size: 1.2rem;
+    }
+
+    .login-loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: loginSpin 1s ease-in-out infinite;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+
+    @keyframes loginSpin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .login-toast-msg {
+        margin-top: 1rem;
+        font-size: 0.85rem;
+        min-height: 1.2em;
+        color: var(--text-secondary);
+    }
+
+    .login-text-error {
+        color: #EF4444;
+    }
+
+    .login-text-success {
+        color: #10B981;
+    }
+</style>
+
+<div id="login-overlay">
+    <div class="login-card">
+        <div class="brand-logo">YesWeigh</div>
+        <div class="brand-subtitle">Secure Access Portal</div>
+
+        <!-- Stage 1: Email / Phone -->
+        <div id="login-stage1">
+            <div class="login-input-group">
+                <label>Email Address</label>
+                <input type="email" id="login-email" class="login-modern-input" placeholder="name@company.com">
+            </div>
+            <div class="login-input-group">
+                <label>Phone Number</label>
+                <input type="text" id="login-phone" class="login-modern-input" placeholder="91XXXXXXXXXX">
+            </div>
+            <button id="login-initBtn" class="login-btn-primary">Continue</button>
+        </div>
+
+        <!-- Stage 2: OTP Verification -->
+        <div id="login-stage2" class="login-hidden">
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px;">
+                Enter the security codes sent to your devices.
+            </p>
+            <div class="login-otp-container">
+                <div class="login-otp-field">
+                    <label style="font-size: 0.75rem; color: #10B981; margin-bottom: 5px; display:block;">WhatsApp
+                        Code</label>
+                    <input type="text" id="login-otpA" class="login-modern-input" maxlength="6" placeholder="000000">
+                </div>
+                <div class="login-otp-field">
+                    <label style="font-size: 0.75rem; color: #3B82F6; margin-bottom: 5px; display:block;">Email
+                        Code</label>
+                    <input type="text" id="login-otpB" class="login-modern-input" maxlength="6" placeholder="000000">
+                </div>
+            </div>
+            <button id="login-verifyBtn" class="login-btn-primary">Verify & Login</button>
+            <button id="login-backBtn"
+                style="background:none;border:none;color:var(--text-secondary);margin-top:15px;cursor:pointer;font-size:0.85rem;">Back</button>
+        </div>
+
+        <div id="login-statusMsg" class="login-toast-msg"></div>
+    </div>
+</div>
+
+<!-- Login logic initialized by nav_controller.js via window.initLoginPage() -->

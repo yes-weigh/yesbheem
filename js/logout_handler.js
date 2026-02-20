@@ -19,9 +19,9 @@ export class LogoutHandler {
         const user = auth.currentUser;
 
         if (!user) {
-            // Already logged out, just redirect
-            console.log('[LogoutHandler] No user logged in, redirecting to login');
-            window.location.href = '/login.html';
+            // Already logged out — show login within SPA
+            console.log('[LogoutHandler] No user logged in, showing login');
+            LogoutHandler._showLogin();
             return;
         }
 
@@ -60,9 +60,9 @@ export class LogoutHandler {
             localStorage.removeItem('deviceFingerprint');
             console.log('[LogoutHandler] Cleared localStorage data');
 
-            // Redirect to login
-            console.log('[LogoutHandler] Redirecting to login page...');
-            window.location.href = '/login.html';
+            // Show login within SPA
+            console.log('[LogoutHandler] Showing login page...');
+            LogoutHandler._showLogin();
 
         } catch (error) {
             console.error('[LogoutHandler] Logout error:', error);
@@ -80,8 +80,20 @@ export class LogoutHandler {
                 console.error('[LogoutHandler] Force signOut also failed:', signOutError);
             }
 
-            // Always redirect to login
-            window.location.href = '/login.html';
+            // Always show login (stay in SPA)
+            LogoutHandler._showLogin();
+        }
+    }
+
+    /**
+     * Show login within the SPA shell without a full page redirect.
+     */
+    static _showLogin() {
+        if (window.navController && typeof window.navController.showLogin === 'function') {
+            window.navController.showLogin();
+        } else {
+            // Fallback: hard reload to root which will trigger auth check → showLogin
+            window.location.href = '/';
         }
     }
 

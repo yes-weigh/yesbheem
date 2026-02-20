@@ -122,3 +122,6 @@ export class AuthFortress {
         return signOut(auth);
     }
 }
+
+// Expose globally for SPA login controller
+window.AuthFortress = AuthFortress;

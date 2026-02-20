@@ -18,28 +18,27 @@ class MediaManager {
         this.uploadFile = null;
         this.editingMediaId = null;
 
-        // UI Refs
+        // Note: init() is called by nav_controller.js after the page DOM is ready
+    }
+
+    async init() {
+        console.log('MediaManager Initializing...');
+
+        // Cache DOM elements here (after page HTML is injected by nav_controller)
         this.gridContainer = document.getElementById('media-grid-container');
         this.modal = document.getElementById('upload-modal');
+        this.progressContainer = document.getElementById('upload-progress-container');
+        this.progressBar = document.getElementById('upload-progress-bar');
+        this.statusText = document.getElementById('upload-status-text');
 
         // Move modal to body to avoid stacking context issues
         if (this.modal && this.modal.parentElement !== document.body) {
             document.body.appendChild(this.modal);
         }
-
         if (this.modal) {
-            this.modal.style.display = 'none'; // Ensure hidden initially
+            this.modal.style.display = 'none';
         }
 
-        this.progressContainer = document.getElementById('upload-progress-container');
-        this.progressBar = document.getElementById('upload-progress-bar');
-        this.statusText = document.getElementById('upload-status-text');
-
-        this.init();
-    }
-
-    async init() {
-        console.log('MediaManager Initializing...');
         this.setupEventListeners();
 
         try {
@@ -52,7 +51,9 @@ class MediaManager {
 
         } catch (e) {
             console.error('MediaManager Init Failed', e);
-            this.gridContainer.innerHTML = `<div class="text-danger">Failed to load media: ${e.message}</div>`;
+            if (this.gridContainer) {
+                this.gridContainer.innerHTML = `<div class="text-danger">Failed to load media: ${e.message}</div>`;
+            }
         }
     }
 

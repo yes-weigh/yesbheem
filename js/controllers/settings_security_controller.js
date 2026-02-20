@@ -284,3 +284,6 @@ export class SettingsSecurityController {
             .replace(/'/g, "&#039;");
     }
 }
+
+// Attach to window for global access (needed for SPA initialization)
+window.SettingsSecurityController = SettingsSecurityController;

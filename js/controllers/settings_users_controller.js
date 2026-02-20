@@ -339,3 +339,6 @@ export class SettingsUsersController {
             .replace(/'/g, "&#039;");
     }
 }
+
+// Attach to window for global access (needed for SPA initialization)
+window.SettingsUsersController = SettingsUsersController;

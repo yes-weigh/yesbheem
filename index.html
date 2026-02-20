@@ -212,23 +212,70 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <!-- PDF.js Library (Local) -->
+    <!-- ═══════════════════════════════════════════════════════════════════
+         § 1 — LIBRARIES  (third-party, no Firebase deps)
+         ═══════════════════════════════════════════════════════════════════ -->
+    <!-- PDF.js for thumbnail generation in media page -->
     <script src="/js/libs/pdf.min.js"></script>
     <script>
-        // Configure PDF.js worker
         if (typeof pdfjsLib !== 'undefined') {
             pdfjsLib.GlobalWorkerOptions.workerSrc = '/js/libs/pdf.worker.min.js';
         }
     </script>
 
-    <!-- Configuration (must load first) -->
+    <!-- ═══════════════════════════════════════════════════════════════════
+         § 2 — CONFIG & THEME  (must load before any manager)
+         ═══════════════════════════════════════════════════════════════════ -->
     <script src="/js/config.js"></script>
-    <!-- Theme Manager -->
     <script src="/js/theme_manager.js"></script>
-    <!-- Navigation Controller -->
-    <script src="/js/nav_controller.js?v=8"></script>
 
-    <!-- SYSTEM SECURITY LAYER -->
+    <!-- ═══════════════════════════════════════════════════════════════════
+         § 3 — SHARED SERVICES  (non-module helpers used by managers below)
+         ═══════════════════════════════════════════════════════════════════ -->
+    <script src="/js/services/template_service.js"></script>
+    <script src="/js/services/media_service.js"></script>
+    <script src="/js/components/media_selector.js"></script>
+    <script src="/js/renderers/template_renderer.js"></script>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         § 4 — PAGE MANAGERS  (ES modules — expose classes on window.*)
+              Loaded here once; instantiated by PAGE_REGISTRY on each nav.
+         ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Shared renderers -->
+    <script type="module" src="/js/ui_renderer.js"></script>
+    <script type="module" src="/js/data_manager.js"></script>
+    <script type="module" src="/js/services/b2b_leads_service.js"></script>
+
+    <!-- Per-page managers -->
+    <script type="module" src="/js/b2b_leads_manager.js"></script>
+    <script type="module" src="/js/dealer_manager.js"></script>
+    <script type="module" src="/js/controllers/dashboard_controller.js"></script>
+    <script src="/js/template_manager.js"></script>
+    <script type="module" src="/js/campaign_manager.js"></script>
+    <script type="module" src="/js/instance_manager.js"></script>
+    <script src="/js/media_manager.js"></script>
+    <script type="module" src="/js/controllers/board_controller.js"></script>
+
+    <!-- Settings (4 controllers for the settings page) -->
+    <script type="module" src="/js/controllers/settings_controller.js"></script>
+    <script type="module" src="/js/controllers/settings_data_controller.js"></script>
+    <script type="module" src="/js/controllers/settings_users_controller.js"></script>
+    <script type="module" src="/js/controllers/settings_security_controller.js"></script>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         § 5 — AUTH & LOGIN  (must come before nav_controller)
+         ═══════════════════════════════════════════════════════════════════ -->
+    <script type="module" src="/js/auth_fortress.js"></script>
+    <script src="/js/login_controller.js"></script>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         § 6 — NAVIGATION  (bootstraps the SPA — must be last)
+         ═══════════════════════════════════════════════════════════════════ -->
+    <script src="/js/nav_controller.js?v=10"></script>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         § 7 — SECURITY LAYER  (runs after nav; monitors auth state)
+         ═══════════════════════════════════════════════════════════════════ -->
     <script type="module" src="/js/security_overlay.js"></script>
 </body>
 

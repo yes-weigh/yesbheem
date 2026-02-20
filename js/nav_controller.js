@@ -1,8 +1,96 @@
 // Navigation Controller - Manages page switching and sidebar state
+
+// ---------------------------------------------------------------------------
+// PAGE REGISTRY
+// Maps page IDs to their SPA initialiser functions.
+// To add a new page: add one entry here — nothing else needs to change.
+// ---------------------------------------------------------------------------
+
+/**
+ * Safely resolve a global class/instance, log a friendly error if missing.
+ * @param {string} name - window property name
+ * @returns {*} the value or null
+ */
+function resolveGlobal(name) {
+    const val = window[name];
+    if (!val) console.error(`[SPA] '${name}' not found in global scope`);
+    return val || null;
+}
+
+/**
+ * Standard factory helper: instantiate a class and call .init() on it.
+ * Stores the instance at `window[instanceKey]`.
+ */
+function initManager(classKey, instanceKey) {
+    const Cls = resolveGlobal(classKey);
+    if (!Cls) return;
+    const mgr = new Cls();
+    window[instanceKey] = mgr;
+    if (typeof mgr.init === 'function') mgr.init();
+}
+
+const PAGE_REGISTRY = {
+    // ── Data-heavy pages ────────────────────────────────────────────────────
+    'dashboard': () => initManager('DashboardManager', 'dashboardManager'),
+    'dealer': () => initManager('DealerManager', 'dealerManager'),
+    'b2b-leads': () => initManager('B2BLeadsManager', 'b2bLeadsManager'),
+    'campaign': () => initManager('CampaignManager', 'campaignManager'),
+    'instance': () => initManager('InstanceManager', 'instanceManager'),
+    'media': () => initManager('MediaManager', 'mediaMgr'),
+    'template': () => initManager('TemplateManager', 'tmplMgr'),
+    'discussions': () => initManager('BoardController', 'boardController'),
+
+    // ── Settings (multi-controller) ─────────────────────────────────────────
+    'settings': () => {
+        // SettingsController auto-calls init() in its constructor
+        const sc = resolveGlobal('SettingsController');
+        if (sc) window.settingsController = new sc();
+
+        // SettingsDataController needs explicit init() call
+        const sdc = resolveGlobal('SettingsDataController');
+        if (sdc) {
+            window.settingsDataController = new sdc();
+            window.settingsDataController.init();
+        }
+
+        const suc = resolveGlobal('SettingsUsersController');
+        if (suc) window.settingsUsersController = new suc();
+
+        const ssc = resolveGlobal('SettingsSecurityController');
+        if (ssc) window.settingsSecurityController = new ssc();
+    },
+
+    // ── Map page (lazy-loads its own scripts) ───────────────────────────────
+    'map': async () => {
+        const basePath = (window.appConfig && window.appConfig.getBasePath()) || '/';
+        // Lazy-import map modules; they self-initialise on import
+        await import(`${basePath}js/pan_zoom_controller.js`).catch(e => console.error('[SPA] pan_zoom_controller load failed', e));
+        await import(`${basePath}js/map_interactions.js`).catch(e => console.error('[SPA] map_interactions load failed', e));
+        await import(`${basePath}js/view_controller.js`).catch(e => console.error('[SPA] view_controller load failed', e));
+    },
+
+    // ── Stub pages — pure HTML, no JS init needed ───────────────────────────
+    'login': null,
+    'welcome': null,
+    'chatbot': null,
+    'broadcast': null,
+    'contacts': null,
+    'groupgrabber': null,
+    'report': null,
+    'integration': null,
+    'pricelist': null,
+    'product': null,
+    'yesbheem': null,
+};
+
+// ---------------------------------------------------------------------------
+
 class NavigationController {
     constructor() {
         this.currentPage = 'dashboard';
         this.sidebarCollapsed = false;
+        this._firstNavDone = false;
+        this._showingLogin = false;
         this.pages = [
             { id: 'dashboard', name: 'Dashboard', icon: '📊' },
             { id: 'discussions', name: 'Tasks', icon: '📋' },
@@ -54,39 +142,9 @@ class NavigationController {
             });
             return;
         }
-        let initialPage = 'dashboard';
-
-        // Check if path corresponds to a valid page
-        // We strip leading/trailing slashes and get the first segment
-        const cleanPath = path.replace(/^\/+|\/+$/g, '');
-        const segments = cleanPath.split('/');
-
-        // If we are in a subdirectory like /dealer/index.html, we might need to be careful
-        // But with our new setup, we expect /dealer or /dashboard
-        // If empty, default to dashboard
-
-        if (cleanPath) {
-            // Check if the last segment matches a page ID
-            const pageId = segments[segments.length - 1]; // e.g. "dealer" from "folder/dealer" or just "dealer"
-            const foundPage = this.pages.find(p => p.id === pageId);
-            if (foundPage) {
-                initialPage = pageId;
-            }
-        }
-
-        // Listen for browser back/forward buttons
-        window.addEventListener('popstate', (event) => {
-            if (event.state && event.state.pageId) {
-                this.handleNavigation(event.state.pageId, false);
-            } else {
-                // Fallback or root
-                this.handleNavigation('dashboard', false);
-            }
-        });
-
-        // Replace current state for the initial load so back button works correctly
-        history.replaceState({ pageId: initialPage }, '', window.location.pathname);
-        this.handleNavigation(initialPage, false);
+        // Auth hasn't resolved yet — do NOT load any page content here.
+        // handleNavigation('dashboard') will be called from checkAccess() once
+        // Firebase confirms the user is authenticated.
 
         // Check Access Control
         this.checkAccess();
@@ -163,13 +221,27 @@ class NavigationController {
                         this.navigateTo('dashboard');
                     }
 
-                } else {
-                    // Not logged in - Strict Redirect
-                    console.warn('User not authenticated. Redirecting to login...');
+                    // Initialize DataManager once auth is confirmed
+                    if (!window.dataManager && window.DataManager) {
+                        console.log('[SPA] Initializing DataManager after authentication');
+                        window.dataManager = new window.DataManager();
+                    }
 
-                    // Do NOT remove the loader. 
-                    // Redirect immediately.
-                    window.location.href = '/login.html';
+                    // Navigate to dashboard on first auth confirmation
+                    if (!this._firstNavDone) {
+                        this._firstNavDone = true;
+                        this.handleNavigation('dashboard', false);
+                    }
+
+                } else {
+                    // Not logged in — show login inside the SPA (no page navigation)
+                    console.warn('User not authenticated. Showing login...');
+
+                    // Remove the loader so the login card is visible
+                    const authLoader = document.getElementById('initial-loader');
+                    if (authLoader) authLoader.remove();
+
+                    this.showLogin();
                     return;
                 }
                 // Hide initial loader ONLY if authenticated
@@ -183,9 +255,7 @@ class NavigationController {
             });
         } catch (e) {
             console.error('Error in checkAccess:', e);
-            // In case of error (e.g. auth service down), we might want to redirect too
-            // But for now, let's just log it. The loader might stay endlessly, which is better than leaking UI.
-            window.location.href = '/login.html';
+            this.showLogin();
         }
     }
 
@@ -326,25 +396,49 @@ class NavigationController {
         }
     }
 
+    /**
+     * showLogin() — Load the login page INSIDE the SPA shell.
+     * Keeps the URL as "/" and overlays the login card on top
+     * of the existing app shell (sidebar etc. are hidden by the overlay).
+     */
+    async showLogin() {
+        if (this._showingLogin) return;
+        this._showingLogin = true;
+
+        try {
+            const basePath = (window.appConfig && window.appConfig.getBasePath()) || '/';
+            const response = await fetch(`${basePath}pages/login.html`);
+            if (!response.ok) throw new Error(`Failed to fetch login page: ${response.status}`);
+            const html = await response.text();
+
+            const pageContent = document.getElementById('page-content');
+            if (!pageContent) return;
+
+            // Inject the HTML (overlay sits on top of everything)
+            pageContent.innerHTML = html;
+
+            // Wire up the login form via the globally-loaded login_controller.js
+            if (typeof window.initLoginPage === 'function') {
+                window.initLoginPage();
+            } else {
+                console.error('[NavController] window.initLoginPage not available');
+            }
+        } catch (err) {
+            console.error('[NavController] showLogin failed:', err);
+            // Hard fallback
+            window.location.href = '/login.html';
+        }
+    }
+
+
     navigateTo(pageId) {
         if (pageId === this.currentPage) return;
-
-        // Push state to history
-        // Construct new URL: /pageId
-        // We need to respect the base path if we are hosted? 
-        // For now, assuming root.
-
-        let newUrl = '/' + pageId;
-        // Check if we are already at this URL to avoid duplicate states?
-        // simple pushState is fine.
-
-        history.pushState({ pageId: pageId }, '', newUrl);
-
         this.handleNavigation(pageId, true);
     }
 
     handleNavigation(pageId, autoCollapse) {
         this.currentPage = pageId;
+        this._showingLogin = false; // Reset guard if we navigate (e.g. after login)
         this.updateActiveNavItem(pageId);
         this.loadPage(pageId);
 
@@ -380,75 +474,23 @@ class NavigationController {
 
             const html = await response.text();
 
-            // Create a temporary container to parse the HTML
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html;
-
-            // Extract and remove script tags
-            const scripts = tempDiv.querySelectorAll('script');
-            const scriptContents = [];
-            scripts.forEach(script => {
-                // Do NOT append timestamp here. Let loadExternalScript handle versioning checks if needed.
-                // Appending timestamp forces loadExternalScript to treat it as a new file (and re-execute),
-                // which causes "Identifier already declared" errors for global classes.
-                let src = script.src;
-
-                const scriptInfo = {
-                    type: script.src ? 'src' : 'inline',
-                    content: src || script.textContent,
-                    isModule: script.type === 'module'
-                };
-                scriptContents.push(scriptInfo);
-                script.remove();
-            });
-
-            // Insert the HTML without scripts
-            contentArea.innerHTML = tempDiv.innerHTML;
+            // Insert HTML
+            contentArea.innerHTML = html;
 
             // Trigger animation
             contentArea.classList.remove('page-enter');
             void contentArea.offsetWidth; // Force reflow
             contentArea.classList.add('page-enter');
 
-            // Now execute the scripts in order
-            for (const script of scriptContents) {
-                if (script.type === 'src') {
-                    // Load external script
-                    await this.loadExternalScript(script.content, script.isModule);
-                } else {
-                    // Execute inline script
-                    if (script.isModule) {
-                        // Append inline modules to body to execute them
-                        await this.loadInlineModule(script.content);
-                    } else {
-                        try {
-                            // Check if script content defines a class that already exists
-                            // This is a basic check for common patterns like "class X" or "const X ="
-                            const classMatch = script.content.match(/class\s+(\w+)/);
-                            if (classMatch && window[classMatch[1]]) {
-                                console.log(`Skipping inline script defining ${classMatch[1]} as it's already defined.`);
-                                continue;
-                            }
+            // --- SPA INITIALIZATION ---
+            // Call the globally loaded manager for this page
 
-                            // Use Function constructor for better error handling
-                            const scriptFunc = new Function(script.content);
-                            scriptFunc();
-                        } catch (err) {
-                            // Ignore specific syntax errors related to redeclaration
-                            if (err.name === 'SyntaxError' && err.message.includes('has already been declared')) {
-                                console.log('Skipping script execution: Identifier already declared.');
-                            } else {
-                                console.error('Error executing inline script:', err);
-                            }
-                        }
-                    }
-                }
+            // Dispatch page initialiser from the registry
+            const init = PAGE_REGISTRY[pageId];
+            if (init) {
+                await init();
             }
 
-            // If dashboard page, log success
-            if (pageId === 'dashboard') {
-                console.log('Dashboard loaded with map functionality');
-            }
         } catch (error) {
             console.error('Error loading page:', error);
             contentArea.innerHTML = `
@@ -458,70 +500,6 @@ class NavigationController {
                 </div>
             `;
         }
-    }
-
-    loadExternalScript(src, isModule = false) {
-        return new Promise((resolve, reject) => {
-            // Check if script is already loaded by src
-            // Because we append timestamp, we perform a partial match or check global registry if we had one.
-            // Simplified check: check if any script tag ends with the base filename
-
-            // Resolve the path using the base path configuration
-            let resolvedSrc = src;
-            if (window.appConfig && !src.startsWith('http') && !src.startsWith('//')) {
-                // Only resolve relative paths, not absolute URLs
-                resolvedSrc = window.appConfig.resolvePath(src);
-            }
-
-            // Check if script is already loaded by filename
-            const cleanSrc = src.split('?')[0];
-            const fileName = cleanSrc.substring(cleanSrc.lastIndexOf('/') + 1);
-
-            const existingScript = document.querySelector(`script[src*="${fileName}"]`);
-            if (existingScript) {
-                // Check if the source is exactly the same (including query params)
-                // We compare against the resolved source
-                if (existingScript.getAttribute('src') === resolvedSrc || existingScript.src === resolvedSrc || existingScript.src.endsWith(resolvedSrc)) {
-                    console.log(`Script ${fileName} already loaded with same version. Skipping.`);
-                    // Special handling for B2BLeadsManager re-init if skipped
-                    if (fileName.includes('b2b_leads_manager.js') && window.b2bLeadsManager) {
-                        console.log('Re-initializing B2BLeadsManager from NavController');
-                        window.b2bLeadsManager.init();
-                    }
-                    resolve();
-                    return;
-                }
-
-                // If different, verify if we should reload (e.g. timestamp changed)
-                console.log(`Script ${fileName} found but version changed. Reloading...`);
-                existingScript.remove();
-            }
-
-            const script = document.createElement('script');
-            script.src = resolvedSrc;
-            if (isModule) script.type = 'module';
-            script.onload = resolve;
-            script.onerror = (error) => {
-                console.error('Failed to load script:', resolvedSrc, error);
-
-                // Allow proceeding even if script fails, to not block the page load completely
-                // but log it clearly.
-                resolve();
-            };
-            document.body.appendChild(script);
-        });
-    }
-
-    loadInlineModule(content) {
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.type = 'module';
-            script.textContent = content;
-            document.body.appendChild(script);
-            // Inline modules execute immediately but asynchronously. 
-            // We resolve immediately as we can't easily track completion without dispatching events.
-            resolve();
-        });
     }
 
     renderPublicCertificate(certId) {

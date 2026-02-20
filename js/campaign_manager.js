@@ -21,7 +21,7 @@ class CampaignManager {
         // View State
         this.audienceViewMode = localStorage.getItem('audienceViewMode') || 'grid';
 
-        this.init();
+        // Note: init() is called by nav_controller.js after the page DOM is ready
     }
 
     async init() {
@@ -1419,13 +1419,5 @@ class CampaignManager {
     }
 }
 
-// Auto-start or reinitialize
-if (window.campaignManager) {
-    // Page was revisited - reinitialize the existing instance
-    console.log('CampaignManager: Reinitializing existing instance');
-    window.campaignManager.init();
-} else {
-    // First time loading - create new instance
-    const campaignManager = new CampaignManager();
-    window.campaignManager = campaignManager;
-}
+// Export class to global scope for SPA initialization via nav_controller.js
+window.CampaignManager = CampaignManager;

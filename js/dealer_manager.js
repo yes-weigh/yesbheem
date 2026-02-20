@@ -56,7 +56,7 @@ if (!window.DealerManager) {
             // Bulk Selection
             this.selectedDealers = new Set();
 
-            this.init();
+            // this.init(); // Defer init until view is loaded
         }
 
         async init() {
@@ -375,18 +375,18 @@ if (!window.DealerManager) {
             }
 
             // Filters (delegated if they are dynamically rendered, or direct)
-            document.addEventListener('change', (e) => {
-                // Stage filter is now handled by StageSelector component
-                // KAM filter is now handled by KAMSelector component
-                if (e.target.id === 'filter-district') {
-                    this.districtFilter = e.target.value;
-                    this.applyFilters();
-                }
-                if (e.target.id === 'filter-district') {
-                    this.districtFilter = e.target.value;
-                    this.applyFilters();
-                }
-            });
+            // Filters (delegated if they are dynamically rendered, or direct)
+            if (!this.globalListenersAttached) {
+                document.addEventListener('change', (e) => {
+                    // Stage filter is now handled by StageSelector component
+                    // KAM filter is now handled by KAMSelector component
+                    if (e.target.id === 'filter-district') {
+                        this.districtFilter = e.target.value;
+                        this.applyFilters();
+                    }
+                });
+                this.globalListenersAttached = true;
+            }
 
             // Clear All Button Logic (New)
             const clearAllBtn = document.getElementById('clear-all-filters');
@@ -2475,9 +2475,4 @@ if (!window.DealerManager) {
     };
 }
 
-// Global hook for the refresh hack
-// Always create or re-init
-if (window.DealerManager) {
-    // Always create new instance to ensure code updates apply
-    window.dealerManager = new window.DealerManager();
-}
+// DealerManager is initialised by nav_controller PAGE_REGISTRY when the dealer page is loaded.

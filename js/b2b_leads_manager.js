@@ -24,16 +24,8 @@ if (!window.B2BLeadsManager) {
             this.dataManager = new DataManager();
             this.validator = new DealerValidator(); // Initialize Validator
 
-            // Components
-            this.stateSelector = new StateSelector({
-                containerId: 'state-selector-container',
-                onChange: (selectedStates) => {
-                    this.stateFilter = selectedStates;
-                    this.currentPage = 1;
-                    this.updateDistrictFilter();
-                    this.applyFilters();
-                }
-            });
+            // Components — deferred to init() to ensure DOM is ready
+            this.stateSelector = null;
 
             // Filters
             this.searchQuery = '';
@@ -61,7 +53,7 @@ if (!window.B2BLeadsManager) {
             // Expose migration tool
             window.startB2BDataMigration = () => this.runMigration();
 
-            this.init();
+            // this.init(); // Defer init until view is loaded by nav_controller
         }
 
         async runMigration() {
@@ -85,6 +77,18 @@ if (!window.B2BLeadsManager) {
 
         async init() {
             console.log('B2BLeadsManager initializing...');
+
+            // Instantiate StateSelector here — DOM for b2b-leads page is ready by now
+            this.stateSelector = new StateSelector({
+                containerId: 'state-selector-container',
+                onChange: (selectedStates) => {
+                    this.stateFilter = selectedStates;
+                    this.currentPage = 1;
+                    this.updateDistrictFilter();
+                    this.applyFilters();
+                }
+            });
+
             this.setupEventListeners();
             if (this.dataManager) {
                 await this.dataManager.loadGeneralSettings();
@@ -178,6 +182,15 @@ if (!window.B2BLeadsManager) {
             });
 
             // Move Modals to Body (Stacking Context Fix)
+            // Move Modals to Body (Stacking Context Fix)
+            // Cleanup stale modals from body first to avoid duplicates
+            const cleanStale = (id) => {
+                const stale = document.body.querySelector(`body > #${id}`);
+                if (stale) stale.remove();
+            };
+            cleanStale('bulk-kam-modal');
+            cleanStale('save-audience-modal');
+
             const kamModal = document.getElementById('bulk-kam-modal');
             if (kamModal && kamModal.parentElement !== document.body) document.body.appendChild(kamModal);
 
@@ -1994,14 +2007,4 @@ Proceed with import?
     }
 }
 
-if (window.B2BLeadsManager) {
-    if (!window.b2bLeadsManager) {
-        window.b2bLeadsManager = new window.B2BLeadsManager();
-        // Export to global for debug
-        window.b2bLeadsManagerInstance = window.b2bLeadsManager;
-    } else {
-        // Re-initialize existing instance to attach to new DOM elements from fresh page load
-        console.log('Re-using existing B2BLeadsManager instance');
-        window.b2bLeadsManager.init();
-    }
-}
+// B2BLeadsManager is initialised by nav_controller PAGE_REGISTRY when the b2b-leads page is loaded.

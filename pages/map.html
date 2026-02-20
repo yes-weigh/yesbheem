@@ -111,8 +111,8 @@
         </main>
     </div>
 
-    <!-- Scripts -->
-    <!-- Order matters for dependency injection -->
+    <!-- Scripts loaded by nav_controller PAGE_REGISTRY when in SPA mode -->
+    <!-- Standalone access: scripts below are retained purposely for non-SPA use -->
     <script src="../js/pan_zoom_controller.js?v=20251219_GDP_FIX"></script>
     <script type="module" src="../js/data_manager.js?v=20251219_GDP_FIX"></script>
     <script type="module" src="../js/ui_renderer.js?v=20251219_GDP_FIX"></script>
@@ -120,5 +120,6 @@
     <script type="module" src="../js/view_controller.js?v=20251219_GDP_FIX"></script>
     <script src="../js/theme_manager.js?v=20251219_GDP_FIX"></script>
 </body>
+
 
 </html>

@@ -8,25 +8,6 @@ class InstanceManager {
         console.log(`InstanceManager ${this.VERSION}: Initializing...`);
         this.apiBase = window.appConfig.apiUrl + '/api/auth';
 
-        // UI Elements
-        this.container = document.getElementById('instance-list');
-        this.qrModal = document.getElementById('qr-modal');
-        this.setupModal = document.getElementById('setup-modal');
-        this.editModal = document.getElementById('edit-modal');
-        this.qrContainer = document.getElementById('qr-container');
-
-        // Setup Inputs
-        this.nameInput = document.getElementById('new-instance-name');
-        this.kamSelect = document.getElementById('new-instance-kam');
-        this.groupsContainer = document.getElementById('new-instance-groups-container');
-
-
-        // Edit Inputs
-        this.editNameInput = document.getElementById('edit-instance-name');
-        this.editKamSelect = document.getElementById('edit-instance-kam');
-        this.editGroupsContainer = document.getElementById('edit-instance-groups-container');
-
-
         this.pollInterval = null;
         this.pendingSessionId = null; // Store ID during setup process
         this.editingSessionId = null; // Store ID during edit
@@ -38,7 +19,6 @@ class InstanceManager {
 
         // Search & Filter state
         this.searchQuery = '';
-        this.filterKAM = '';
         this.filterKAM = 'all';
         this.filterGroup = '';
         this.filterStatus = '';
@@ -52,16 +32,30 @@ class InstanceManager {
         this.pageSize = 10;
         this.viewAll = false;
 
+        // Note: init() is called by nav_controller.js after the page DOM is ready
+    }
+
+    async init() {
+        console.log(`InstanceManager ${this.VERSION}: Calling init...`);
+
+        // Cache DOM elements here (after page HTML is injected by nav_controller)
+        this.container = document.getElementById('instance-list');
+        this.qrModal = document.getElementById('qr-modal');
+        this.setupModal = document.getElementById('setup-modal');
+        this.editModal = document.getElementById('edit-modal');
+        this.qrContainer = document.getElementById('qr-container');
+        this.nameInput = document.getElementById('new-instance-name');
+        this.kamSelect = document.getElementById('new-instance-kam');
+        this.groupsContainer = document.getElementById('new-instance-groups-container');
+        this.editNameInput = document.getElementById('edit-instance-name');
+        this.editKamSelect = document.getElementById('edit-instance-kam');
+        this.editGroupsContainer = document.getElementById('edit-instance-groups-container');
+
         if (!this.container || !this.qrModal || !this.setupModal || !this.editModal) {
             console.error(`InstanceManager ${this.VERSION}: Critical elements not found`);
             return;
         }
 
-        this.init();
-    }
-
-    async init() {
-        console.log(`InstanceManager ${this.VERSION}: Calling init...`);
         this.setupEventListeners();
         this.setupViewToggle(); // Setup view mode toggle
         this.setupFilters(); // Setup search and filters
@@ -1252,5 +1246,5 @@ class InstanceManager {
     }
 }
 
-// Instantiate
-new InstanceManager();
+// Export class to global scope for SPA initialization via nav_controller.js
+window.InstanceManager = InstanceManager;

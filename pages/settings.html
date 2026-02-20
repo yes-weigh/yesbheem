@@ -368,15 +368,4 @@
     </div>
 
 
-    <script type="module">
-        import { SettingsController } from '/js/controllers/settings_controller.js';
-        import { SettingsDataController } from '/js/controllers/settings_data_controller.js';
-        import { SettingsUsersController } from '/js/controllers/settings_users_controller.js';
-        import { SettingsSecurityController } from '/js/controllers/settings_security_controller.js';
-
-        // Initialize controllers
-        window.settingsController = new SettingsController();
-        window.settingsDataController = new SettingsDataController();
-        window.settingsUsersController = new SettingsUsersController();
-        window.settingsSecurityController = new SettingsSecurityController();
-    </script>
+    <!-- Controllers initialized by nav_controller.js after page HTML is injected -->

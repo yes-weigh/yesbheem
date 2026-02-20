@@ -1,14 +1,16 @@
 import FormatUtils from '../utils/format-utils.js';
 
-class DashboardController {
+// FormatUtils imported at top of file
+window.DashboardManager = class DashboardManager {
     constructor() {
         this.lastReceivedStats = null;
         this.initialized = false;
-        this.init();
-        this.setupEventListeners();
+        this.listenerAttached = false;
     }
 
-    async init() {
+    init() {
+        console.log('DashboardManager initializing...');
+
         // Show skeleton initially
         const skeleton = document.getElementById('dashboard-skeleton');
         const stats = document.getElementById('dashboard-stats');
@@ -16,8 +18,14 @@ class DashboardController {
         if (skeleton) skeleton.style.display = ''; // Use CSS default (grid)
         if (stats) stats.style.display = 'none';
 
+        this.setupEventListeners();
+
+        // If we have cached stats, render them immediately to avoid flicker
+        if (this.lastReceivedStats) {
+            this.renderStats(this.lastReceivedStats);
+        }
+
         this.initialized = true;
-        console.log('Dashboard Controller initialized, waiting for stats from iframe...');
     }
 
     normalizeName(name) {
@@ -219,15 +227,15 @@ class DashboardController {
     }
 
     setupEventListeners() {
-        window.addEventListener('message', (event) => {
-            if (event.data.type === 'STATS_UPDATE') {
-                this.renderStats(event.data.data);
-            }
-        });
+        if (!this.listenerAttached) {
+            window.addEventListener('message', (event) => {
+                if (event.data.type === 'STATS_UPDATE') {
+                    this.renderStats(event.data.data);
+                }
+            });
+            this.listenerAttached = true;
+        }
     }
 }
 
-// Initialize on load
-new DashboardController();
-
-export default DashboardController;
+// DashboardManager is initialised by nav_controller PAGE_REGISTRY when the dashboard page is loaded.
