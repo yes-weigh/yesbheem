@@ -1091,6 +1091,184 @@ if (!window.B2BLeadsManager) {
             `;
         }
 
+        // --- WHATSAPP INTEGRATION ---
+
+        async loadWhatsAppInstances() {
+            try {
+                // 1. Fetch live sessions
+                let liveSessions = [];
+                try {
+                    const response = await fetch(`${window.appConfig.apiUrl}/api/auth/sessions`);
+                    const data = await response.json();
+                    if (data.success && Array.isArray(data.sessions)) {
+                        liveSessions = data.sessions;
+                    }
+                } catch (e) {
+                    console.warn('[WhatsApp] Backend fetch failed:', e);
+                }
+
+                // 2. Fetch metadata from Firestore
+                const metaDocs = [];
+                try {
+                    // Check if getDocs/collection/db are available in scope, otherwise try window imports
+                    const _getDocs = typeof getDocs !== 'undefined' ? getDocs : window.getDocs;
+                    const _collection = typeof collection !== 'undefined' ? collection : window.collection;
+                    const _db = typeof db !== 'undefined' ? db : window.db;
+
+                    if (_getDocs && _collection && _db) {
+                        const firestoreSnap = await _getDocs(_collection(_db, "whatsapp_instances"));
+                        firestoreSnap.forEach(doc => metaDocs.push({ ...doc.data(), id: doc.id }));
+                    } else {
+                        console.warn('[WhatsApp] Firestore SDK not available in scope');
+                    }
+                } catch (e) {
+                    console.warn('[WhatsApp] Firestore metadata fetch failed:', e);
+                }
+
+                // 3. Merge Strategies
+                if (liveSessions.length > 0) {
+                    this.whatsappInstances = liveSessions.map(session => {
+                        const meta = metaDocs.find(m => m.sessionId === (session.id || session.sessionId));
+                        return {
+                            ...session,
+                            id: session.id || session.sessionId,
+                            name: meta ? meta.name : (session.name || 'Unnamed'),
+                            kam: meta ? meta.kam : null,
+                            tier: meta ? meta.tier : 'standard',
+                            connected: true // Assumed since returned by sessions API
+                        };
+                    });
+                } else {
+                    // Fallback to Metadata if backend is unreachable (or no sessions active)
+                    this.whatsappInstances = metaDocs.map(meta => ({
+                        id: meta.sessionId,
+                        name: meta.name || 'Unnamed Instance',
+                        kam: meta.kam,
+                        connected: false // Unknown/Offline
+                    }));
+                }
+
+                console.log('[WhatsApp] Loaded Instances:', this.whatsappInstances);
+
+            } catch (e) {
+                console.error('[WhatsApp] Error loading instances:', e);
+                this.whatsappInstances = []; // Reset on error
+            }
+        }
+
+        updateWhatsAppInterface(kamName) {
+            const statusEl = document.getElementById('wa-instance-status');
+            const sendBtn = document.querySelector('#wa-message-body')?.parentElement.nextElementSibling; // The Send Button
+
+            if (!statusEl) return;
+
+            // 1. Handle "No KAM Selected"
+            if (!kamName) {
+                statusEl.innerHTML = `
+                    <span style="color: var(--text-muted);">Select a KAM to enable messaging</span>
+                `;
+                statusEl.style.background = 'rgba(255,255,255,0.05)';
+                if (sendBtn) sendBtn.disabled = true;
+                return;
+            }
+
+            // 2. Find Instance for KAM
+            // Normalize names for comparison
+            const instance = (this.whatsappInstances || []).find(i => (i.kam || '').toLowerCase() === kamName.toLowerCase());
+
+            if (!instance) {
+                // 3. No Instance Found
+                statusEl.innerHTML = `
+                    <span style="color: #ef4444; font-weight: 600;">No WhatsApp Session</span>
+                `;
+                statusEl.style.background = 'rgba(239, 68, 68, 0.1)';
+                statusEl.title = `No instance assigned to KAM: ${kamName}`;
+                if (sendBtn) sendBtn.disabled = true;
+            } else if (!instance.connected && !instance.status === 'authenticated') {
+                // 4. Instance Found but Disconnected
+                statusEl.innerHTML = `
+                    <span style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%;"></span>
+                    <span style="color: #ef4444;">${instance.name} (Disconnected)</span>
+                `;
+                statusEl.style.background = 'rgba(239, 68, 68, 0.1)';
+                if (sendBtn) sendBtn.disabled = true;
+            } else {
+                // 5. Connected & Ready
+                statusEl.innerHTML = `
+                    <span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 8px #22c55e;"></span>
+                    <span style="color: #fff; font-weight: 500;">Via: ${instance.name}</span>
+                `;
+                statusEl.style.background = 'rgba(34, 197, 94, 0.15)';
+                if (sendBtn) sendBtn.disabled = false;
+            }
+        }
+
+        async sendWhatsAppMessage(leadId) {
+            const messageBody = document.getElementById('wa-message-body').value.trim();
+            const kamName = document.getElementById('inp_kam').value;
+
+            if (!kamName) {
+                if (window.Toast) window.Toast.warning('Please select a KAM first.');
+                return;
+            }
+
+            if (!messageBody) {
+                if (window.Toast) window.Toast.warning('Please enter a message.');
+                return;
+            }
+
+            // Resolve Instance
+            const instance = (this.whatsappInstances || []).find(i => (i.kam || '').toLowerCase() === kamName.toLowerCase());
+
+            if (!instance) {
+                if (window.Toast) window.Toast.error('No WhatsApp instance found for this KAM.');
+                return;
+            }
+
+            // Find Lead for Phone Number
+            const lead = this.leads.find(l => l.id === leadId);
+            if (!lead || !lead.phone) {
+                if (window.Toast) window.Toast.error('Lead has no phone number.');
+                return;
+            }
+
+            // Format Phone (Simple check)
+            let phone = lead.phone.replace(/\D/g, '');
+            if (phone.length === 10) phone = '91' + phone;
+
+            const sendBtn = document.querySelector('#wa-message-body').parentElement.nextElementSibling;
+            const originalText = sendBtn.innerHTML;
+            sendBtn.innerHTML = '<span class="loading-spinner" style="width: 14px; height: 14px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span> Sending...';
+            sendBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${window.appConfig.apiUrl}/api/messages/text`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: instance.id,
+                        to: phone,
+                        text: messageBody
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    if (window.Toast) window.Toast.success('Message sent!');
+                    document.getElementById('wa-message-body').value = ''; // Clear input
+                } else {
+                    throw new Error(result.error || 'Failed to send');
+                }
+            } catch (error) {
+                console.error('[WhatsApp] Send Failed:', error);
+                if (window.Toast) window.Toast.error('Failed to send message: ' + error.message);
+            } finally {
+                sendBtn.innerHTML = originalText;
+                sendBtn.disabled = false;
+            }
+        }
+
         async addLog(leadId) {
             const toggleWrapper = document.getElementById('toggle-due-date');
             const dateInput = document.getElementById('new-log-date');
