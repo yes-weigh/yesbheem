@@ -102,7 +102,6 @@ class NavigationController {
             { id: 'product', name: 'Product', icon: '📦' },
             { id: 'instance', name: 'Instance', icon: '🖥️' },
             { id: 'yesbheem', name: 'Yes Bheem', icon: '⚡' },
-            { id: 'welcome', name: 'Welcome', icon: '👋' },
             { id: 'chatbot', name: 'Chatbot', icon: '🤖' },
             { id: 'integration', name: 'Integration', icon: '🔌' },
             { id: 'settings', name: 'Settings', icon: '⚙️' }
