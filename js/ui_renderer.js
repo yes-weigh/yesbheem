@@ -803,7 +803,7 @@ class UIRenderer {
                     <!-- Header: Title + Controls + Profile -->
                     <div class="dealer-modal-header" style="padding: 16px 24px; display: flex; flex-direction: column; gap: 16px; height: auto; border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.1);">
                         <!-- Top Bar: Title, Status, Actions -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 24px; position: relative;">
                             <div style="display: flex; align-items: center; gap: 16px;">
                                 <h2 style="margin: 0; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); opacity: 0.8;">${lead.id ? 'Edit Lead' : 'Add New Lead'}</h2>
                             </div>
@@ -826,30 +826,36 @@ class UIRenderer {
                                 `).join('')}
                             </div>
 
-                            <!-- Primary Actions -->
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <button class="btn-cancel" onclick="window.b2bLeadsManager.closeEditModal()" style="
-                                    background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--text-muted); padding: 8px 16px; font-size: 0.85rem; border-radius: 8px; font-weight: 500;
-                                ">Cancel</button>
-                                <button class="btn-save" onclick="window.b2bLeadsManager.saveLeadDetails('${lead.id || ''}')" style="
-                                    background: var(--accent-color); border: none; color: white; padding: 8px 24px; font-size: 0.9rem; border-radius: 8px; font-weight: 700; box-shadow: 0 4px 12px var(--accent-color-alpha, rgba(59, 130, 246, 0.3));
-                                ">Save Changes</button>
-                                <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.1); margin: 0 12px;"></div>
-                                <button class="close-btn" onclick="window.b2bLeadsManager.closeEditModal()" style="border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.05); color: var(--text-muted);">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                </button>
-                            </div>
+                            <!-- Absolute Close Button -->
+                            <button class="close-btn" onclick="window.b2bLeadsManager.closeEditModal()" style="
+                                position: absolute; top: -4px; right: -8px; border-radius: 50%; width: 36px; height: 36px; 
+                                display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); 
+                                border: 1px solid rgba(255,255,255,0.05); color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+                            " onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
                         </div>
-                        
-                        <!-- Profile Row (Bottom Bar) -->
-                        <div class="header-profile-row" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
-                            <div style="flex: 1.5; min-width: 140px;">${renderFloatingInput('Name', 'name')}</div>
-                            <div style="flex: 2; min-width: 180px;">${renderFloatingInput('Business Name', 'business_name')}</div>
-                            <div style="flex: 1.2; min-width: 120px;">${renderFloatingInput('Phone', 'phone')}</div>
-                            <div style="flex: 0.8; min-width: 80px;">${renderFloatingInput('Pincode', 'pincode', 'text', true, 'onchange="window.b2bLeadsManager.handlePopupZipChange(this)"')}</div>
-                            <div style="flex: 1; min-width: 90px;">${renderFloatingInput('State', 'state', 'text', true)}</div>
-                            <div style="flex: 1; min-width: 90px;">${renderFloatingInput('District', 'district', 'text', true)}</div>
-                            <div style="flex: 1; min-width: 90px;">${renderFloatingInput('City', 'city', 'text', true)}</div>
+
+                        <!-- Bottom Bar: Profile Fields Strip -->
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                            <div style="display: flex; flex: 1; align-items: center; gap: 12px; overflow-x: auto;">
+                                ${renderFloatingInput('Name', 'name')}
+                                ${renderFloatingInput('Business Name', 'business_name')}
+                                ${renderFloatingInput('Phone', 'phone')}
+                                ${renderFloatingInput('Pincode', 'pincode', 'text', true, 'onchange="window.b2bLeadsManager.handlePopupZipChange(this)"')}
+                                ${renderFloatingInput('State', 'state', 'text', true)}
+                                ${renderFloatingInput('District', 'district', 'text', true)}
+                                ${renderFloatingInput('City', 'city', 'text', true)}
+                            </div>
+                            
+                            <!-- Save button relocated here -->
+                            <button class="btn-save" onclick="window.b2bLeadsManager.saveLeadDetails('${lead.id || ''}')" style="
+                                background: var(--accent-color); border: none; color: white; padding: 10px 24px; font-size: 0.9rem; 
+                                border-radius: 10px; font-weight: 700; box-shadow: 0 4px 12px var(--accent-color-alpha, rgba(59, 130, 246, 0.3));
+                                cursor: pointer; transition: all 0.2s; white-space: nowrap;
+                            " onmouseover="this.style.opacity='0.9'; this.style.transform='translateY(-1px)'" onmouseout="this.style.opacity='1'; this.style.transform='none'">
+                                Save Changes
+                            </button>
                         </div>
                     </div>
 
