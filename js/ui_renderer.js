@@ -1004,7 +1004,21 @@ class UIRenderer {
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                                        Send WhatsApp
                                     </button>
-                                </div>
+
+                                     <!-- Chat History Section -->
+                                     <div class="wa-chat-history-section" style="margin-top: 24px; display: none;">
+                                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px;">
+                                             <h4 style="margin: 0; font-size: 0.75rem; font-weight: 800; color: #10b981; text-transform: uppercase; letter-spacing: 0.1em;">Previous Chat</h4>
+                                             <button onclick="window.b2bLeadsManager.refreshChatHistory('${lead.phone}')" style="background: none; border: none; color: #10b981; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 600; opacity: 0.8;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
+                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                                                 Refresh
+                                             </button>
+                                         </div>
+                                         <div id="wa-chat-history" class="wa-chat-history-container">
+                                             <div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">Loading chat history...</div>
+                                         </div>
+                                     </div>
+                                 </div>
 
 
                             </div>
@@ -1414,6 +1428,47 @@ class UIRenderer {
                     color: white !important;
                     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
                     font-weight: 700;
+                }
+
+                /* Chat History Styles */
+                .wa-chat-history-container {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    max-height: 400px;
+                    overflow-y: auto;
+                    padding: 4px;
+                    scrollbar-width: thin;
+                }
+                .wa-msg {
+                    max-width: 85%;
+                    padding: 8px 12px;
+                    border-radius: 12px;
+                    font-size: 0.85rem;
+                    line-height: 1.4;
+                    position: relative;
+                }
+                .wa-msg.inbound {
+                    align-self: flex-start;
+                    background: rgba(255, 255, 255, 0.05);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    color: #e2e8f0;
+                    border-bottom-left-radius: 2px;
+                }
+                .wa-msg.outbound {
+                    align-self: flex-end;
+                    background: rgba(16, 185, 129, 0.1);
+                    border: 1px solid rgba(16, 185, 129, 0.2);
+                    color: #f8fafc;
+                    border-bottom-right-radius: 2px;
+                }
+                .wa-msg-content { white-space: pre-wrap; word-break: break-word; }
+                .wa-msg-time {
+                    display: block;
+                    font-size: 0.65rem;
+                    opacity: 0.5;
+                    margin-top: 4px;
+                    text-align: right;
                 }
             </style>
         `;

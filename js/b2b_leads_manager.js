@@ -1486,6 +1486,12 @@ if (!window.B2BLeadsManager) {
                     <span style="color: #fff; font-weight: 600;">Via: ${instance.name}</span>
                 `;
                 if (sendBtn) sendBtn.disabled = false;
+
+                // Load Chat History
+                const phone = document.getElementById('inp_phone')?.value;
+                if (phone) {
+                    this.loadChatHistory(phone, instance.id);
+                }
             }
         }
 
@@ -2348,6 +2354,75 @@ Proceed with import?
             link.href = URL.createObjectURL(blob);
             link.download = `b2b_leads_export_${new Date().toISOString().slice(0, 10)}.csv`;
             link.click();
+        }
+
+        async refreshChatHistory(phone) {
+            const kamName = document.getElementById('inp_kam')?.value;
+            const instance = (this.whatsappInstances || []).find(i => (i.kam || '').toLowerCase() === kamName?.toLowerCase());
+
+            if (instance && instance.connected) {
+                await this.loadChatHistory(phone, instance.id);
+            } else {
+                if (Toast) Toast.warning('WhatsApp instance not connected.');
+            }
+        }
+
+        async loadChatHistory(phone, sessionId) {
+            const container = document.getElementById('wa-chat-history');
+            const section = document.querySelector('.wa-chat-history-section');
+            if (!container || !section) return;
+
+            section.style.display = 'block';
+            container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">Loading chat...</div>';
+
+            try {
+                // Formatting phone to JID if needed, but backend handles it
+                const response = await fetch(`${window.appConfig.apiUrl}/api/chats/${phone}/messages?limit=10&sessionId=${sessionId}`);
+                const result = await response.json();
+
+                if (result.success && Array.isArray(result.data)) {
+                    this.renderChatHistory(result.data);
+                } else {
+                    container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">No messages found.</div>';
+                }
+            } catch (e) {
+                console.error('[WhatsApp] Chat history fetch failed:', e);
+                container.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px; font-style: italic; font-size: 0.8rem;">Failed to load chat.</div>';
+            }
+        }
+
+        renderChatHistory(messages) {
+            const container = document.getElementById('wa-chat-history');
+            if (!container) return;
+
+            if (!messages || messages.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">No messages found.</div>';
+                return;
+            }
+
+            // Invert to show oldest first at top, newest at bottom (for chat flow)
+            // Firestore returned them desc by timestamp
+            const sortedMessages = [...messages].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+            container.innerHTML = sortedMessages.map(msg => {
+                const isMe = msg.direction === 'outbound' || msg.from === 'me';
+                const content = msg.content?.text || msg.content?.caption || 'Media Message';
+
+                const timestamp = msg.timestamp;
+                const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+                return `
+                    <div class="wa-msg ${isMe ? 'outbound' : 'inbound'}">
+                        <div class="wa-msg-content">${this.escapeHtml(content)}</div>
+                        <span class="wa-msg-time">${timeStr}</span>
+                    </div>
+                `;
+            }).join('');
+
+            // Scroll to bottom
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 100);
         }
 
         escapeHtml(unsafe) {
