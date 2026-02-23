@@ -964,50 +964,48 @@ class UIRenderer {
                             
                             <div style="display: flex; flex-direction: column; gap: 24px;">
                                 <!-- WhatsApp Card -->
-                                <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.1); border-radius: 16px; padding: 16px;">
-                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; color: #10b981;">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .004 5.41.001 12.045a11.811 11.811 0 001.592 5.967L0 24l6.135-1.609a11.808 11.808 0 005.91 1.579h.005c6.637 0 12.05-5.411 12.053-12.047a11.801 11.801 0 00-3.536-8.509z"/></svg>
-                                        <h4 style="margin: 0; font-size: 0.85rem; font-weight: 700;">WhatsApp</h4>
-                                    </div>
-                                    <div id="wa-instance-status" style="background: rgba(0,0,0,0.15); font-size: 0.75rem; padding: 10px; border-radius: 8px; color: var(--text-muted); text-align: center; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; justify-content: center;">
-                                        Initialising connection...
-                                    </div>
-
-                                    <!-- Template & Media Actions -->
-                                    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
-                                        <select id="wa-template-select" onchange="window.b2bLeadsManager.handleWATemplateChange(this.value)" style="
-                                            width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); 
-                                            border-radius: 8px; color: white; padding: 8px; font-size: 0.8rem; outline: none;
-                                        ">
-                                            <option value="">Select Template...</option>
-                                        </select>
-
-                                        <div style="display: flex; gap: 8px;">
-                                            <button onclick="window.b2bLeadsManager.openMediaGallery()" style="flex: 1; padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                                <span>🖼️</span> Gallery
-                                            </button>
-                                            <button onclick="document.getElementById('wa-file-upload').click()" style="flex: 1; padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                                <span>📤</span> Upload
-                                            </button>
-                                            <input type="file" id="wa-file-upload" style="display: none;" onchange="window.b2bLeadsManager.handleWAMediaUpload(this.files[0])">
+                                <div class="whatsapp-modern-card">
+                                    <div class="whatsapp-header-group">
+                                        <div class="whatsapp-title-wrapper">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .004 5.41.001 12.045a11.811 11.811 0 001.592 5.967L0 24l6.135-1.609a11.808 11.808 0 005.91 1.579h.005c6.637 0 12.05-5.411 12.053-12.047a11.801 11.801 0 00-3.536-8.509z"/></svg>
+                                            <h4>WhatsApp</h4>
+                                        </div>
+                                        <div id="wa-instance-status" class="wa-status-pill">
+                                            <span class="wa-status-dot"></span>
+                                            Initializing...
                                         </div>
                                     </div>
 
-                                    <!-- Media Preview Area -->
-                                    <div id="wa-media-preview" style="display: none; margin-bottom: 12px; position: relative; border-radius: 12px; overflow: hidden; background: rgba(0,0,0,0.3); border: 1px solid rgba(16, 185, 129, 0.2);">
-                                        <!-- Content injected by manager -->
+                                    <div class="wa-modern-select-wrapper">
+                                        <select id="wa-template-select" class="wa-modern-select" onchange="window.b2bLeadsManager.handleWATemplateChange(this.value)">
+                                            <option value="">Select Template</option>
+                                        </select>
                                     </div>
-                                    <textarea id="wa-message-body" placeholder="Type WhatsApp message..." style="
-                                        width: 100%; height: 80px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); 
-                                        border-radius: 12px; color: white; padding: 12px; font-size: 0.85rem; resize: none; margin-bottom: 12px; line-height: 1.5;
-                                    "></textarea>
-                                    <button onclick="window.b2bLeadsManager.sendWhatsAppMessage('${lead.id}')" style="
-                                        width: 100%; padding: 10px; border-radius: 10px; background: #10b981; color: white; 
-                                        font-weight: 700; border: none; cursor: pointer; transition: all 0.2s;
-                                    " onmouseover="this.style.opacity='0.9'; this.style.transform='translateY(-1px)'" onmouseout="this.style.opacity='1'; this.style.transform='none'">
-                                        Send Message
+
+                                    <div class="wa-action-grid">
+                                        <button class="wa-action-btn" onclick="window.b2bLeadsManager.openMediaGallery()">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                            Gallery
+                                        </button>
+                                        <button class="wa-action-btn" onclick="document.getElementById('wa-file-upload').click()">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                            Upload
+                                        </button>
+                                        <input type="file" id="wa-file-upload" style="display: none;" onchange="window.b2bLeadsManager.handleWAMediaUpload(this.files[0])">
+                                    </div>
+
+                                    <div id="wa-media-preview" class="wa-preview-container" style="display: none;"></div>
+
+                                    <div class="wa-message-composer">
+                                        <textarea id="wa-message-body" placeholder="Type message..."></textarea>
+                                    </div>
+
+                                    <button class="wa-send-btn" onclick="window.b2bLeadsManager.sendWhatsAppMessage('${lead.id}')">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                       Send WhatsApp
                                     </button>
                                 </div>
+
 
                             </div>
                         </div>
@@ -1099,6 +1097,191 @@ class UIRenderer {
                     cursor: pointer; transition: all 0.2s; 
                 }
                 .close-btn:hover { background: rgba(100,100,255,0.1); color: var(--modal-h2-color); transform: rotate(90deg); }
+
+                /* Modernized WhatsApp Section */
+                .whatsapp-modern-card {
+                    background: rgba(16, 185, 129, 0.03);
+                    border: 1px solid rgba(16, 185, 129, 0.1);
+                    border-radius: 20px;
+                    padding: 20px;
+                    position: relative;
+                    overflow: hidden;
+                    backdrop-filter: blur(5px);
+                }
+                .whatsapp-header-group {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    margin-bottom: 20px;
+                }
+                .whatsapp-title-wrapper {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    color: #10b981;
+                }
+                .whatsapp-title-wrapper h4 {
+                    margin: 0;
+                    font-size: 0.9rem;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }
+                .wa-status-pill {
+                    padding: 6px 12px;
+                    border-radius: 20px;
+                    font-size: 0.7rem;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    background: rgba(0, 0, 0, 0.2);
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                }
+                .wa-status-dot {
+                    width: 6px;
+                    height: 6px;
+                    border-radius: 50%;
+                    position: relative;
+                    background: #475569;
+                }
+                .wa-status-pill.connected {
+                    background: rgba(16, 185, 129, 0.1);
+                    border-color: rgba(16, 185, 129, 0.2);
+                    color: #f8fafc;
+                }
+                .wa-status-pill.connected .wa-status-dot {
+                    background: #10b981;
+                    box-shadow: 0 0 8px #10b981;
+                }
+                .wa-status-pill.connected .wa-status-dot::after {
+                    content: '';
+                    position: absolute;
+                    inset: -2px;
+                    border: 1px solid #10b981;
+                    border-radius: 50%;
+                    animation: ripple 2s infinite;
+                }
+                @keyframes ripple {
+                    0% { transform: scale(1); opacity: 0.8; }
+                    100% { transform: scale(2.5); opacity: 0; }
+                }
+                .wa-action-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 10px;
+                    margin-bottom: 15px;
+                }
+                .wa-action-btn {
+                    background: rgba(255, 255, 255, 0.03);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 12px;
+                    padding: 10px;
+                    color: #94a3b8;
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    transition: all 0.2s;
+                }
+                .wa-action-btn:hover {
+                    background: rgba(255, 255, 255, 0.08);
+                    border-color: rgba(255, 255, 255, 0.15);
+                    color: #f8fafc;
+                    transform: translateY(-1px);
+                }
+                .wa-action-btn svg { width: 18px; height: 18px; }
+                .wa-modern-select-wrapper {
+                    position: relative;
+                    margin-bottom: 15px;
+                }
+                .wa-modern-select {
+                    width: 100%;
+                    background: rgba(0, 0, 0, 0.25);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 12px;
+                    padding: 12px 16px;
+                    color: #f8fafc;
+                    font-size: 0.85rem;
+                    outline: none;
+                    appearance: none;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .wa-modern-select:focus {
+                    border-color: rgba(16, 185, 129, 0.4);
+                    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+                }
+                .wa-modern-select option { background: #0f172a; color: #f8fafc; }
+                .wa-modern-select-wrapper::after {
+                    content: '▾';
+                    position: absolute;
+                    right: 16px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    color: #64748b;
+                    pointer-events: none;
+                    font-size: 0.7rem;
+                }
+                .wa-message-composer {
+                    background: rgba(0, 0, 0, 0.2);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 16px;
+                    padding: 4px;
+                    margin-bottom: 20px;
+                    transition: border-color 0.2s;
+                }
+                .wa-message-composer:focus-within { border-color: rgba(16, 185, 129, 0.3); }
+                .wa-message-composer textarea {
+                    width: 100%;
+                    min-height: 80px;
+                    background: transparent;
+                    border: none;
+                    color: #f1f5f9;
+                    padding: 12px;
+                    font-size: 0.9rem;
+                    resize: none;
+                    outline: none;
+                    line-height: 1.5;
+                }
+                .wa-send-btn {
+                    width: 100%;
+                    padding: 14px;
+                    border-radius: 14px;
+                    background: linear-gradient(135deg, #10b981, #059669);
+                    color: white;
+                    font-weight: 700;
+                    font-size: 0.9rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    border: none;
+                    cursor: pointer;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+                    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+                }
+                .wa-send-btn:hover:not(:disabled) {
+                    transform: translateY(-2px) scale(1.01);
+                    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+                }
+                .wa-send-btn:disabled {
+                    background: rgba(255, 255, 255, 0.05);
+                    color: #475569;
+                    box-shadow: none;
+                    cursor: not-allowed;
+                    opacity: 0.5;
+                }
+                .wa-preview-container {
+                    margin-bottom: 15px; border-radius: 16px; overflow: hidden;
+                    background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(16, 185, 129, 0.1);
+                }
 
                 /* Tabs */
                 .dealer-modal-tabs {

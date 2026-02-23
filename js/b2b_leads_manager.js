@@ -1406,26 +1406,26 @@ if (!window.B2BLeadsManager) {
             let previewElement = '';
             if (isVideo) {
                 if (media.thumbnailUrl) {
-                    previewElement = `<img src="${media.thumbnailUrl}" style="width: 100%; height: 120px; object-fit: cover;">`;
+                    previewElement = `<img src="${media.thumbnailUrl}" style="width: 100%; height: 100px; object-fit: cover;">`;
                 } else {
-                    previewElement = `<video src="${media.url}" style="width: 100%; height: 120px; object-fit: cover; opacity: 0.8;" muted></video>`;
+                    previewElement = `<video src="${media.url}" style="width: 100%; height: 100px; object-fit: cover; opacity: 0.8;" muted></video>`;
                 }
             } else if (isDoc) {
                 previewElement = `
-                    <div style="width: 100%; height: 120px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; flex-direction: column; font-size: 2.5rem;">
-                        📄
+                    <div style="width: 100%; height: 100px; background: rgba(255,255,255,0.03); display: flex; align-items: center; justify-content: center; flex-direction: column; font-size: 2rem;">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 0.5; color: #10b981;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     </div>
                 `;
             } else {
-                previewElement = `<img src="${media.url}" style="width: 100%; height: 120px; object-fit: cover; opacity: 0.8;">`;
+                previewElement = `<img src="${media.url}" style="width: 100%; height: 100px; object-fit: cover;">`;
             }
 
             container.innerHTML = `
-                <div style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; z-index: 10;" onclick="window.b2bLeadsManager.clearMediaSelection()">
+                <div style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; z-index: 10; font-size: 14px; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1);" onclick="window.b2bLeadsManager.clearMediaSelection()">
                     &times;
                 </div>
                 ${previewElement}
-                <div style="padding: 6px 10px; font-size: 0.7rem; color: #10b981; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <div style="padding: 8px 12px; font-size: 0.75rem; color: #10b981; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(16, 185, 129, 0.1);">
                     ${media.name || 'Selected Media'}
                 </div>
             `;
@@ -1442,47 +1442,49 @@ if (!window.B2BLeadsManager) {
 
         updateWhatsAppInterface(kamName) {
             const statusEl = document.getElementById('wa-instance-status');
-            const sendBtn = document.querySelector('#wa-message-body')?.parentElement.nextElementSibling; // The Send Button
+            const sendBtn = document.querySelector('.wa-send-btn');
 
             if (!statusEl) return;
+
+            // Reset state
+            statusEl.classList.remove('connected');
+            statusEl.style.background = ''; // Clear old inline styles
 
             // 1. Handle "No KAM Selected"
             if (!kamName) {
                 statusEl.innerHTML = `
-                    <span style="color: var(--text-muted);">Select a KAM to enable messaging</span>
+                    <span class="wa-status-dot"></span>
+                    <span style="color: var(--text-muted); opacity: 0.5;">Select KAM</span>
                 `;
-                statusEl.style.background = 'rgba(255,255,255,0.05)';
                 if (sendBtn) sendBtn.disabled = true;
                 return;
             }
 
             // 2. Find Instance for KAM
-            // Normalize names for comparison
             const instance = (this.whatsappInstances || []).find(i => (i.kam || '').toLowerCase() === kamName.toLowerCase());
 
             if (!instance) {
                 // 3. No Instance Found
                 statusEl.innerHTML = `
-                    <span style="color: #ef4444; font-weight: 600;">No WhatsApp Session</span>
+                    <span class="wa-status-dot" style="background: #ef4444;"></span>
+                    <span style="color: #ef4444; opacity: 0.8;">No Session</span>
                 `;
-                statusEl.style.background = 'rgba(239, 68, 68, 0.1)';
                 statusEl.title = `No instance assigned to KAM: ${kamName}`;
                 if (sendBtn) sendBtn.disabled = true;
             } else if (!instance.connected && !instance.status === 'authenticated') {
                 // 4. Instance Found but Disconnected
                 statusEl.innerHTML = `
-                    <span style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%;"></span>
-                    <span style="color: #ef4444;">${instance.name} (Disconnected)</span>
+                    <span class="wa-status-dot" style="background: #ef4444;"></span>
+                    <span style="color: #ef4444; opacity: 0.8;">${instance.name} (OFF)</span>
                 `;
-                statusEl.style.background = 'rgba(239, 68, 68, 0.1)';
                 if (sendBtn) sendBtn.disabled = true;
             } else {
                 // 5. Connected & Ready
+                statusEl.classList.add('connected');
                 statusEl.innerHTML = `
-                    <span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 8px #22c55e;"></span>
-                    <span style="color: #fff; font-weight: 500;">Via: ${instance.name}</span>
+                    <span class="wa-status-dot"></span>
+                    <span style="color: #fff; font-weight: 600;">Via: ${instance.name}</span>
                 `;
-                statusEl.style.background = 'rgba(34, 197, 94, 0.15)';
                 if (sendBtn) sendBtn.disabled = false;
             }
         }
