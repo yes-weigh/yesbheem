@@ -2376,8 +2376,10 @@ Proceed with import?
             container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">Loading chat...</div>';
 
             try {
-                // Formatting phone to JID if needed, but backend handles it
-                const response = await fetch(`${window.appConfig.apiUrl}/api/chats/${phone}/messages?limit=10&sessionId=${sessionId}`);
+                // Strip non-digit chars (e.g. '+' prefix) to match stored JID format
+                const cleanPhone = phone.replace(/\D/g, '');
+                const response = await fetch(`${window.appConfig.apiUrl}/api/chats/${cleanPhone}/messages?limit=10&sessionId=${sessionId}`);
+
                 const result = await response.json();
 
                 if (result.success && Array.isArray(result.data)) {
