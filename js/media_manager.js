@@ -13,7 +13,9 @@ class MediaManager {
         this.filter = {
             search: '',
             language: '',
-            category: ''
+            category: '',
+            type: '',
+            sort: 'newest'
         };
         this.uploadFile = null;
         this.editingMediaId = null;
@@ -162,10 +164,32 @@ class MediaManager {
         this.currentRenderId = renderId;
 
         const filtered = this.media.filter(m => {
-            const matchesSearch = !this.filter.search || m.name.toLowerCase().includes(this.filter.search.toLowerCase());
+            const matchesSearch = !this.filter.search ||
+                m.name.toLowerCase().includes(this.filter.search.toLowerCase()) ||
+                (m.category && m.category.toLowerCase().includes(this.filter.search.toLowerCase())) ||
+                (m.language && m.language.toLowerCase().includes(this.filter.search.toLowerCase()));
+
             const matchesLang = !this.filter.language || m.language === this.filter.language;
             const matchesCat = !this.filter.category || m.category === this.filter.category;
-            return matchesSearch && matchesLang && matchesCat;
+            const matchesType = !this.filter.type || m.type === this.filter.type || (this.filter.type === 'document' && m.mimeType === 'application/pdf');
+
+            return matchesSearch && matchesLang && matchesCat && matchesType;
+        });
+
+        // Sorting
+        filtered.sort((a, b) => {
+            if (this.filter.sort === 'newest') {
+                const dateA = a.updatedAt?.seconds || (a.updatedAt ? new Date(a.updatedAt).getTime() / 1000 : 0);
+                const dateB = b.updatedAt?.seconds || (b.updatedAt ? new Date(b.updatedAt).getTime() / 1000 : 0);
+                return dateB - dateA;
+            }
+            if (this.filter.sort === 'oldest') {
+                const dateA = a.updatedAt?.seconds || (a.updatedAt ? new Date(a.updatedAt).getTime() / 1000 : 0);
+                const dateB = b.updatedAt?.seconds || (b.updatedAt ? new Date(b.updatedAt).getTime() / 1000 : 0);
+                return dateA - dateB;
+            }
+            if (this.filter.sort === 'name') return a.name.localeCompare(b.name);
+            return 0;
         });
 
         if (filtered.length === 0) {
@@ -175,12 +199,20 @@ class MediaManager {
 
         this.gridContainer.innerHTML = filtered.map(m => this.createCardHtml(m)).join('');
 
-        // Generate PDF thumbnails only for PDFs without server thumbnails
+        // Generate PDF thumbnails
         const pdfsNeedingClientRendering = filtered.filter(m =>
             (m.type === 'document' || m.mimeType === 'application/pdf') && !m.thumbnailUrl
         );
         if (pdfsNeedingClientRendering.length > 0) {
             this.generatePdfThumbnails(pdfsNeedingClientRendering, renderId);
+        }
+
+        // Generate Video thumbnails
+        const videosNeedingThumbnails = filtered.filter(m =>
+            (m.type === 'video' || m.mimeType?.startsWith('video')) && !m.thumbnailUrl
+        );
+        if (videosNeedingThumbnails.length > 0) {
+            this.generateVideoThumbnails(videosNeedingThumbnails, renderId);
         }
     }
 
@@ -188,7 +220,17 @@ class MediaManager {
         let previewHtml = '';
         let badgeHtml = '';
         if (m.type === 'video' || m.mimeType?.startsWith('video')) {
-            previewHtml = `<video src="${m.url}" style="width: 100%; height: 100%; object-fit: cover;"></video>`;
+            if (m.thumbnailUrl) {
+                previewHtml = `<img src="${m.thumbnailUrl}" alt="${this.escapeHtml(m.name)}" style="width: 100%; height: 100%; object-fit: cover;">`;
+            } else {
+                previewHtml = `
+                    <div id="video-placeholder-${m.id}" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); color: var(--text-muted);">
+                        <div class="loading-spinner-sm" style="margin-bottom: 0.5rem;"></div>
+                        <span style="font-size: 0.6rem;">GENERATING THUMB...</span>
+                    </div>
+                    <canvas id="video-thumb-${m.id}" class="hidden" style="width: 100%; height: 100%; object-fit: cover;"></canvas>
+                `;
+            }
             badgeHtml = 'VIDEO';
         } else if (m.type === 'image' || m.mimeType?.startsWith('image')) {
             previewHtml = `<img src="${m.url}" alt="${this.escapeHtml(m.name)}" style="width: 100%; height: 100%; object-fit: cover;">`;
@@ -274,6 +316,11 @@ class MediaManager {
             this.renderFilteredGrid();
         });
 
+        safeAddListener('filter-type', 'change', (e) => {
+            this.filter.type = e.target.value;
+            this.renderFilteredGrid();
+        });
+
         safeAddListener('filter-language', 'change', (e) => {
             this.filter.language = e.target.value;
             this.renderFilteredGrid();
@@ -281,6 +328,11 @@ class MediaManager {
 
         safeAddListener('filter-category', 'change', (e) => {
             this.filter.category = e.target.value;
+            this.renderFilteredGrid();
+        });
+
+        safeAddListener('sort-media', 'change', (e) => {
+            this.filter.sort = e.target.value;
             this.renderFilteredGrid();
         });
 
@@ -602,6 +654,87 @@ class MediaManager {
                 console.warn(`Failed to generate thumbnail for ${item.name}:`, e);
             }
         }
+    }
+
+    async generateVideoThumbnails(videos, renderId) {
+        if (videos.length === 0) return;
+
+        for (const video of videos) {
+            if (this.currentRenderId !== renderId) {
+                console.log('Stopped obsolete Video thumbnail generation');
+                break;
+            }
+            try {
+                await this.renderVideoThumbnail(video.id, video.url);
+            } catch (e) {
+                console.warn(`Failed video thumb for ${video.name}:`, e);
+            }
+        }
+    }
+
+    async renderVideoThumbnail(itemId, url) {
+        return new Promise((resolve, reject) => {
+            const video = document.createElement('video');
+            video.src = url;
+            video.crossOrigin = 'anonymous'; // Crucial for canvas access
+            video.muted = true;
+            video.preload = 'metadata';
+
+            // Timeout to prevent hanging
+            const timeout = setTimeout(() => {
+                video.src = '';
+                reject(new Error('Video thumb timeout'));
+            }, 10000);
+
+            video.onloadeddata = () => {
+                video.currentTime = 0.5; // Seek a bit to avoid black frame
+            };
+
+            video.onseeked = async () => {
+                clearTimeout(timeout);
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    // Update UI immediately (if placeholder still exists)
+                    const placeholder = document.getElementById(`video-placeholder-${itemId}`);
+                    const cardCanvas = document.getElementById(`video-thumb-${itemId}`);
+                    if (placeholder && cardCanvas) {
+                        cardCanvas.width = canvas.width;
+                        cardCanvas.height = canvas.height;
+                        const cardCtx = cardCanvas.getContext('2d');
+                        cardCtx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        cardCanvas.classList.remove('hidden');
+                        placeholder.classList.add('hidden');
+                    }
+
+                    // Background upload for persistence
+                    canvas.toBlob(async (blob) => {
+                        if (blob) {
+                            try {
+                                await this.service.uploadThumbnail(itemId, blob);
+                                console.log(`Persisted video thumbnail for ${itemId}`);
+                            } catch (err) {
+                                console.error('Failed to persist video thumbnail:', err);
+                            }
+                        }
+                    }, 'image/jpeg', 0.8);
+
+                    video.src = ''; // Cleanup
+                    resolve();
+                } catch (e) {
+                    reject(e);
+                }
+            };
+
+            video.onerror = (e) => {
+                clearTimeout(timeout);
+                reject(new Error('Video load error'));
+            };
+        });
     }
 
     async renderPdfThumbnail(itemId, url) {

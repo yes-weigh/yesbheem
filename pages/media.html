@@ -18,8 +18,16 @@
             </button>
         </div>
 
-        <div class="controls-middle">
-            <input type="text" id="search-media" class="search-input" placeholder="🔍 Search media...">
+        <div class="controls-middle" style="flex: 1; display: flex; gap: 0.8rem; justify-content: center;">
+            <input type="text" id="search-media" class="search-input" placeholder="🔍 Search media..."
+                style="min-width: 200px;">
+
+            <select id="filter-type" class="filter-select">
+                <option value="">All Types</option>
+                <option value="image">Images</option>
+                <option value="video">Videos</option>
+                <option value="document">PDFs</option>
+            </select>
 
             <select id="filter-language" class="filter-select">
                 <option value="">All Languages</option>
@@ -27,6 +35,12 @@
 
             <select id="filter-category" class="filter-select">
                 <option value="">All Categories</option>
+            </select>
+
+            <select id="sort-media" class="filter-select">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="name">Name A-Z</option>
             </select>
         </div>
 

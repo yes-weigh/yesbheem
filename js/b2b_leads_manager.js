@@ -1218,59 +1218,157 @@ if (!window.B2BLeadsManager) {
             if (!this.mediaService) return;
             try {
                 const mediaItems = await this.mediaService.getMedia();
+                this.cachedMedia = mediaItems;
+                this.galleryFilter = { search: '', type: '', sort: 'newest' };
 
                 const modalHtml = `
-                    <div id="gallery-picker-modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
-                        <div style="background: #1a1b1e; width: 650px; max-height: 80vh; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-                            <div style="padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02);">
+                    <div id="gallery-picker-modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(12px);">
+                        <div style="background: #1a1b1e; width: 800px; max-height: 90vh; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.6);">
+                            <div style="padding: 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02);">
                                 <div>
-                                    <h3 style="margin: 0; color: white;">Media Gallery</h3>
-                                    <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--text-muted);">Select an asset to attach</p>
+                                    <h3 style="margin: 0; color: white; font-size: 1.25rem;">Media Gallery</h3>
+                                    <p style="margin: 4px 0 0; font-size: 0.85rem; color: var(--text-muted);">Select an asset to attach</p>
                                 </div>
-                                <button onclick="this.closest('#gallery-picker-modal').remove()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='none'">&times;</button>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div style="position: relative;">
+                                        <input type="text" id="gallery-search" placeholder="Search gallery..." 
+                                            style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 12px; color: white; font-size: 0.85rem; width: 200px; outline: none;"
+                                            oninput="window.b2bLeadsManager.applyGalleryFilters()">
+                                    </div>
+                                    <select id="gallery-filter-type" onchange="window.b2bLeadsManager.applyGalleryFilters()"
+                                        style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; color: white; font-size: 0.85rem; outline: none;">
+                                        <option value="">All Types</option>
+                                        <option value="image">Images</option>
+                                        <option value="video">Videos</option>
+                                        <option value="document">PDFs</option>
+                                    </select>
+                                    <button onclick="this.closest('#gallery-picker-modal').remove()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.8rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
+                                </div>
                             </div>
-                            <div style="flex: 1; overflow-y: auto; padding: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-                                ${mediaItems.map(m => {
-                    const isVideo = (m.type === 'video' || (m.mimeType || '').startsWith('video/'));
-                    const isDoc = (m.type === 'document' || (m.mimeType || '').startsWith('application/'));
-
-                    let previewHtml = '';
-                    if (m.thumbnailUrl) {
-                        previewHtml = `<img src="${m.thumbnailUrl}" style="width: 100%; height: 100%; object-fit: cover;">`;
-                    } else if (m.type === 'image') {
-                        previewHtml = `<img src="${m.url}" style="width: 100%; height: 100%; object-fit: cover;">`;
-                    } else {
-                        // Placeholder for missing thumbnails
-                        const icon = isVideo ? '🎬' : (isDoc ? '📄' : '📁');
-                        previewHtml = `
-                                            <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #2a2b2e; color: #666;">
-                                                <span style="font-size: 2rem; margin-bottom: 8px;">${icon}</span>
-                                                <span style="font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px;">${m.type || 'Media'}</span>
-                                            </div>
-                                        `;
-                    }
-
-                    return `
-                                        <div onclick="window.b2bLeadsManager.selectMediaFromGallery('${m.id}')" 
-                                             title="${m.name}"
-                                             style="aspect-ratio: 1; background: #000; border-radius: 12px; cursor: pointer; overflow: hidden; border: 2px solid transparent; transition: 0.2s; position: relative;" 
-                                             onmouseover="this.style.borderColor='var(--accent-color)'; this.style.transform='scale(1.02)'" 
-                                             onmouseout="this.style.borderColor='transparent'; this.style.transform='scale(1)'">
-                                            ${previewHtml}
-                                            <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 8px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); font-size: 0.65rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                ${m.name || 'Untitled'}
-                                            </div>
-                                        </div>
-                                    `;
-                }).join('')}
+                            <div id="gallery-grid" style="flex: 1; overflow-y: auto; padding: 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+                                <!-- Grid content rendered via applyGalleryFilters -->
                             </div>
                         </div>
                     </div>
                 `;
                 document.body.insertAdjacentHTML('beforeend', modalHtml);
-                this.cachedMedia = mediaItems;
+                this.applyGalleryFilters();
             } catch (e) {
                 console.error('[WhatsApp] Gallery load failed', e);
+            }
+        }
+
+        applyGalleryFilters() {
+            const search = document.getElementById('gallery-search')?.value.toLowerCase() || '';
+            const type = document.getElementById('gallery-filter-type')?.value || '';
+
+            const filtered = this.cachedMedia.filter(m => {
+                const matchesSearch = !search || m.name.toLowerCase().includes(search) ||
+                    (m.category && m.category.toLowerCase().includes(search));
+                const matchesType = !type || m.type === type || (type === 'document' && m.mimeType === 'application/pdf');
+                return matchesSearch && matchesType;
+            });
+
+            // Re-render grid
+            const grid = document.getElementById('gallery-grid');
+            if (!grid) return;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">No media found matching filters.</div>`;
+                return;
+            }
+
+            const renderId = Date.now();
+            this.currentGalleryRenderId = renderId;
+
+            grid.innerHTML = filtered.map(m => {
+                const isVideo = (m.type === 'video' || (m.mimeType || '').startsWith('video/'));
+                const isDoc = (m.type === 'document' || (m.mimeType || '').startsWith('application/'));
+
+                let previewHtml = '';
+                if (m.thumbnailUrl) {
+                    previewHtml = `<img src="${m.thumbnailUrl}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                } else if (m.type === 'image') {
+                    previewHtml = `<img src="${m.url}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                } else {
+                    const icon = isVideo ? '🎬' : (isDoc ? '📄' : '📁');
+                    const label = isVideo ? 'GENERATING THUMB...' : (m.type || 'Media');
+                    const placeholderId = isVideo ? `gallery-placeholder-${m.id}` : '';
+                    const canvasId = isVideo ? `gallery-canvas-${m.id}` : '';
+
+                    previewHtml = `
+                        <div id="${placeholderId}" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #2a2b2e; color: #666;">
+                            <span style="font-size: 2rem; margin-bottom: 8px;">${icon}</span>
+                            <span style="font-size: 0.5rem; text-transform: uppercase; letter-spacing: 1px; padding: 0 4px; text-align: center;">${label}</span>
+                        </div>
+                        ${isVideo ? `<canvas id="${canvasId}" style="width: 100%; height: 100%; object-fit: cover; display: none;"></canvas>` : ''}
+                    `;
+                }
+
+                return `
+                    <div onclick="window.b2bLeadsManager.selectMediaFromGallery('${m.id}')" 
+                         title="${this.escapeHtml(m.name)}"
+                         style="aspect-ratio: 1; background: #000; border-radius: 16px; cursor: pointer; overflow: hidden; border: 2px solid transparent; transition: 0.2s; position: relative; box-shadow: 0 4px 12px rgba(0,0,0,0.2);" 
+                         onmouseover="this.style.borderColor='var(--accent-color)'; this.style.transform='translateY(-4px)'" 
+                         onmouseout="this.style.borderColor='transparent'; this.style.transform='translateY(0)'">
+                        ${previewHtml}
+                        <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 10px; background: linear-gradient(transparent, rgba(0,0,0,0.9)); font-size: 0.7rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">
+                            ${m.name || 'Untitled'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Trigger video thumbnail generation for those needing it
+            const videosNeedThumb = filtered.filter(m => (m.type === 'video' || (m.mimeType || '').startsWith('video/')) && !m.thumbnailUrl);
+            if (videosNeedThumb.length > 0) {
+                this.generateGalleryVideoThumbnails(videosNeedThumb, renderId);
+            }
+        }
+
+        async generateGalleryVideoThumbnails(videos, renderId) {
+            for (const video of videos) {
+                if (this.currentGalleryRenderId !== renderId) break;
+                try {
+                    await new Promise((resolve, reject) => {
+                        const v = document.createElement('video');
+                        v.src = video.url;
+                        v.crossOrigin = 'anonymous';
+                        v.muted = true;
+                        v.preload = 'metadata';
+
+                        const timeout = setTimeout(() => { v.src = ''; reject(); }, 10000);
+
+                        v.onloadeddata = () => { v.currentTime = 0.5; };
+                        v.onseeked = async () => {
+                            clearTimeout(timeout);
+                            const canvas = document.createElement('canvas');
+                            canvas.width = v.videoWidth;
+                            canvas.height = v.videoHeight;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+
+                            // Update UI if still in view
+                            const placeholder = document.getElementById(`gallery-placeholder-${video.id}`);
+                            const cardCanvas = document.getElementById(`gallery-canvas-${video.id}`);
+                            if (placeholder && cardCanvas) {
+                                cardCanvas.width = canvas.width;
+                                cardCanvas.height = canvas.height;
+                                cardCanvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
+                                cardCanvas.style.display = 'block';
+                                placeholder.style.display = 'none';
+                            }
+
+                            // Persistence
+                            canvas.toBlob(async (blob) => {
+                                if (blob) try { await this.mediaService.uploadThumbnail(video.id, blob); } catch (e) { }
+                            }, 'image/jpeg', 0.8);
+
+                            v.src = ''; resolve();
+                        };
+                        v.onerror = () => { clearTimeout(timeout); reject(); };
+                    });
+                } catch (e) { }
             }
         }
 
@@ -1307,7 +1405,11 @@ if (!window.B2BLeadsManager) {
 
             let previewElement = '';
             if (isVideo) {
-                previewElement = `<video src="${media.url}" style="width: 100%; height: 120px; object-fit: cover; opacity: 0.8;" muted></video>`;
+                if (media.thumbnailUrl) {
+                    previewElement = `<img src="${media.thumbnailUrl}" style="width: 100%; height: 120px; object-fit: cover;">`;
+                } else {
+                    previewElement = `<video src="${media.url}" style="width: 100%; height: 120px; object-fit: cover; opacity: 0.8;" muted></video>`;
+                }
             } else if (isDoc) {
                 previewElement = `
                     <div style="width: 100%; height: 120px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; flex-direction: column; font-size: 2.5rem;">
