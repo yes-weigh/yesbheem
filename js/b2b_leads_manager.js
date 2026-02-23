@@ -1523,7 +1523,11 @@ if (!window.B2BLeadsManager) {
             let phone = lead.phone.replace(/\D/g, '');
             if (phone.length === 10) phone = '91' + phone;
 
-            const sendBtn = document.querySelector('#wa-message-body').parentElement.querySelector('button[onclick*="sendWhatsAppMessage"]');
+            const sendBtn = document.querySelector('.wa-send-btn');
+            if (!sendBtn) {
+                console.error('[WhatsApp] Send button not found in DOM');
+                return;
+            }
             const originalText = sendBtn.innerHTML;
             sendBtn.innerHTML = '<span class="loading-spinner"></span> Sending...';
             sendBtn.disabled = true;
