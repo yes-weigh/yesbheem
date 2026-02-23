@@ -1489,6 +1489,31 @@ if (!window.B2BLeadsManager) {
             }
         }
 
+        async createAutomatedLog(leadId, content) {
+            const lead = this.leads.find(l => l.id === leadId);
+            if (!lead) return;
+            if (!lead.logs) lead.logs = [];
+
+            const newLog = {
+                id: 'log_' + Date.now(),
+                activityType: 'WhatsApp',
+                content: content,
+                createdAt: new Date().toISOString()
+            };
+
+            lead.logs.push(newLog);
+
+            // Only render if we are currently looking at this lead's logs
+            const logList = document.getElementById('b2b-logs-list');
+            if (logList) this.renderLogsList(leadId);
+
+            try {
+                await this.service.updateLead(leadId, { logs: lead.logs });
+            } catch (error) {
+                console.error('[WhatsApp Log] Failed to save automated log:', error);
+            }
+        }
+
         async sendWhatsAppMessage(leadId) {
             const messageBody = document.getElementById('wa-message-body').value.trim();
             const kamName = document.getElementById('inp_kam').value;
@@ -1576,10 +1601,27 @@ if (!window.B2BLeadsManager) {
 
                 if (result.success) {
                     if (window.Toast) window.Toast.success('Message sent!');
+
+                    // Create Automated Log
+                    let logContent = '';
+                    if (templateId) {
+                        const templateSelect = document.getElementById('wa-template-select');
+                        const templateName = templateSelect.options[templateSelect.selectedIndex]?.text || templateId;
+                        logContent = `WhatsApp Template: ${templateName}`;
+                    } else if (this.selectedMedia) {
+                        logContent = `WhatsApp Media: ${this.selectedMedia.name || 'document'}${messageBody ? ` | ${messageBody}` : ''}`;
+                    } else {
+                        logContent = `WhatsApp: ${messageBody}`;
+                    }
+
+                    // Save log asynchronously (don't block UI cleanup)
+                    this.createAutomatedLog(leadId, logContent);
+
                     document.getElementById('wa-message-body').value = '';
                     this.clearMediaSelection();
                     document.getElementById('wa-template-select').value = '';
-                } else {
+                }
+                else {
                     throw new Error(result.error || result.message || 'Failed to send');
                 }
             } catch (error) {
