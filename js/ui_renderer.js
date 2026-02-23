@@ -841,15 +841,15 @@ class UIRenderer {
                             <div style="display: flex; flex: 1; align-items: center; gap: 16px; overflow-x: auto; padding: 2px;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span title="Name" style="opacity: 0.6; font-size: 1.1rem;">👤</span>
-                                    ${renderFloatingInput('', 'name', 'text', false, '', 'width: 160px;')}
+                                    ${renderFloatingInput('Name', 'name', 'text', false, '', 'width: 160px;')}
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span title="Business" style="opacity: 0.6; font-size: 1.1rem;">🏢</span>
-                                    ${renderFloatingInput('', 'business_name', 'text', false, '', 'width: 200px;')}
+                                    ${renderFloatingInput('Business', 'business_name', 'text', false, '', 'width: 200px;')}
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span title="Phone" style="opacity: 0.6; font-size: 1.1rem;">📞</span>
-                                    ${renderFloatingInput('', 'phone', 'text', false, '', 'width: 140px;')}
+                                    ${renderFloatingInput('Phone', 'phone', 'text', false, '', 'width: 140px;')}
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
                                     <span title="Location" style="opacity: 0.6; font-size: 1.1rem;">📍</span>
@@ -911,13 +911,22 @@ class UIRenderer {
                                     `).join('')}
                                 </div>
 
-                                <div style="margin-bottom: 12px;">
-                                    <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; user-select: none; opacity: 0.8;">
-                                        <input type="checkbox" id="toggle-due-date" onchange="
-                                            const container = document.getElementById('due-date-container');
-                                            container.style.display = this.checked ? 'flex' : 'none';
-                                        " style="accent-color: var(--accent-color);">
-                                        Set Due Date
+                                <div style="margin: 14px 0;">
+                                    <label style="display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;">
+                                        <div style="position: relative; width: 34px; height: 18px;">
+                                            <input type="checkbox" id="toggle-due-date" onchange="
+                                                const container = document.getElementById('due-date-container');
+                                                const handle = this.parentElement.querySelector('.toggle-handle');
+                                                const bg = this.parentElement.querySelector('.toggle-bg');
+                                                container.style.display = this.checked ? 'flex' : 'none';
+                                                handle.style.transform = this.checked ? 'translateX(16px)' : 'translateX(0)';
+                                                bg.style.background = this.checked ? 'var(--accent-color)' : 'rgba(0,0,0,0.3)';
+                                                bg.style.borderColor = this.checked ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)';
+                                            " style="opacity: 0; width: 0; height: 0; position: absolute;">
+                                            <div class="toggle-bg" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); transition: 0.2s;"></div>
+                                            <div class="toggle-handle" style="position: absolute; height: 12px; width: 12px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>
+                                        </div>
+                                        <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted); opacity: 0.9;">Set Due Date</span>
                                     </label>
                                 </div>
 
@@ -962,6 +971,31 @@ class UIRenderer {
                                     </div>
                                     <div id="wa-instance-status" style="background: rgba(0,0,0,0.15); font-size: 0.75rem; padding: 10px; border-radius: 8px; color: var(--text-muted); text-align: center; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; justify-content: center;">
                                         Initialising connection...
+                                    </div>
+
+                                    <!-- Template & Media Actions -->
+                                    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+                                        <select id="wa-template-select" onchange="window.b2bLeadsManager.handleWATemplateChange(this.value)" style="
+                                            width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); 
+                                            border-radius: 8px; color: white; padding: 8px; font-size: 0.8rem; outline: none;
+                                        ">
+                                            <option value="">Select Template...</option>
+                                        </select>
+
+                                        <div style="display: flex; gap: 8px;">
+                                            <button onclick="window.b2bLeadsManager.openMediaGallery()" style="flex: 1; padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                                <span>🖼️</span> Gallery
+                                            </button>
+                                            <button onclick="document.getElementById('wa-file-upload').click()" style="flex: 1; padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                                <span>📤</span> Upload
+                                            </button>
+                                            <input type="file" id="wa-file-upload" style="display: none;" onchange="window.b2bLeadsManager.handleWAMediaUpload(this.files[0])">
+                                        </div>
+                                    </div>
+
+                                    <!-- Media Preview Area -->
+                                    <div id="wa-media-preview" style="display: none; margin-bottom: 12px; position: relative; border-radius: 12px; overflow: hidden; background: rgba(0,0,0,0.3); border: 1px solid rgba(16, 185, 129, 0.2);">
+                                        <!-- Content injected by manager -->
                                     </div>
                                     <textarea id="wa-message-body" placeholder="Type WhatsApp message..." style="
                                         width: 100%; height: 80px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); 
@@ -1192,9 +1226,11 @@ class UIRenderer {
 
                 /* Chip Active States */
                 .activity-chip.active, .status-chip.active {
-                    background: rgba(59, 130, 246, 0.2) !important;
+                    background: var(--color-info, #3b82f6) !important;
                     border-color: var(--color-info, #3b82f6) !important;
-                    color: var(--color-info, #3b82f6) !important;
+                    color: white !important;
+                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+                    font-weight: 700;
                 }
             </style>
         `;

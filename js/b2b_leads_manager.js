@@ -24,6 +24,12 @@ if (!window.B2BLeadsManager) {
             this.dataManager = new DataManager();
             this.validator = new DealerValidator(); // Initialize Validator
 
+            // Services for WhatsApp Expansion
+            this.templateService = window.TemplateService ? new window.TemplateService() : null;
+            this.mediaService = window.MediaService ? new window.MediaService() : null;
+            this.templates = [];
+            this.selectedMedia = null;
+
             // Components — deferred to init() to ensure DOM is ready
             this.stateSelector = null;
 
@@ -842,7 +848,8 @@ if (!window.B2BLeadsManager) {
             this.openEditModal(null);
         }
 
-        openEditModal(leadId) {
+        async openEditModal(leadId) {
+            console.log('Opening Edit Modal for:', leadId);
             const isEdit = !!leadId;
             const lead = isEdit ? this.leads.find(l => l.id === leadId) : {};
 
@@ -851,26 +858,34 @@ if (!window.B2BLeadsManager) {
                 return;
             }
 
-            // Close correct modal
-            this.closeEditModal();
-
-            // Load settings? Assuming dataManager has them
-            const settings = this.dataManager ? this.dataManager.generalSettings : {};
-
-            const html = window.UIRenderer.renderB2BLeadModal(lead, settings);
-            document.body.insertAdjacentHTML('beforeend', html);
-            this.isModalOpen = true;
+            this.selectedMedia = null; // Reset selection
+            this.isModalOpen = true; // Set modal state
             this.currentEditingLogId = null; // Reset edit state
 
-            if (isEdit) {
-                this.renderLogsList(leadId);
-            }
+            // Render Modal
+            const settings = this.dataManager ? this.dataManager.generalSettings : {};
+            const html = window.UIRenderer.renderB2BLeadModal(lead, settings);
+
+            // Clean up existing modal
+            const existing = document.querySelector('.dealer-modal-overlay');
+            if (existing) existing.remove();
+
+            document.body.insertAdjacentHTML('beforeend', html);
+
+            // Background Load WhatsApp Instances
             this.loadWhatsAppInstances().then(() => {
                 if (this.isModalOpen) {
                     const kam = document.getElementById('inp_kam')?.value || lead.kam;
                     this.updateWhatsAppInterface(kam);
                 }
             });
+
+            // Load Templates
+            this.loadWATemplates();
+
+            if (isEdit) {
+                this.renderLogsList(leadId);
+            }
         }
 
         closeEditModal() {
@@ -1124,7 +1139,6 @@ if (!window.B2BLeadsManager) {
                 // 2. Fetch metadata from Firestore
                 const metaDocs = [];
                 try {
-                    // Check if getDocs/collection/db are available in scope, otherwise try window imports
                     const _getDocs = typeof getDocs !== 'undefined' ? getDocs : window.getDocs;
                     const _collection = typeof collection !== 'undefined' ? collection : window.collection;
                     const _db = typeof db !== 'undefined' ? db : window.db;
@@ -1132,14 +1146,11 @@ if (!window.B2BLeadsManager) {
                     if (_getDocs && _collection && _db) {
                         const firestoreSnap = await _getDocs(_collection(_db, "whatsapp_instances"));
                         firestoreSnap.forEach(doc => metaDocs.push({ ...doc.data(), id: doc.id }));
-                    } else {
-                        console.warn('[WhatsApp] Firestore SDK not available in scope');
                     }
                 } catch (e) {
                     console.warn('[WhatsApp] Firestore metadata fetch failed:', e);
                 }
 
-                // 3. Merge Strategies
                 if (liveSessions.length > 0) {
                     this.whatsappInstances = liveSessions.map(session => {
                         const meta = metaDocs.find(m => m.sessionId === (session.id || session.sessionId));
@@ -1149,24 +1160,181 @@ if (!window.B2BLeadsManager) {
                             name: meta ? meta.name : (session.name || 'Unnamed'),
                             kam: meta ? meta.kam : null,
                             tier: meta ? meta.tier : 'standard',
-                            connected: true // Assumed since returned by sessions API
+                            connected: true
                         };
                     });
                 } else {
-                    // Fallback to Metadata if backend is unreachable (or no sessions active)
                     this.whatsappInstances = metaDocs.map(meta => ({
                         id: meta.sessionId,
                         name: meta.name || 'Unnamed Instance',
                         kam: meta.kam,
-                        connected: false // Unknown/Offline
+                        connected: false
                     }));
                 }
-
-                console.log('[WhatsApp] Loaded Instances:', this.whatsappInstances);
-
             } catch (e) {
                 console.error('[WhatsApp] Error loading instances:', e);
-                this.whatsappInstances = []; // Reset on error
+                this.whatsappInstances = [];
+            }
+        }
+
+        async loadWATemplates() {
+            if (!this.templateService) return;
+            try {
+                this.templates = await this.templateService.getTemplates();
+                const select = document.getElementById('wa-template-select');
+                if (select) {
+                    select.innerHTML = '<option value="">Select Template...</option>';
+                    this.templates.forEach(t => {
+                        const opt = document.createElement('option');
+                        opt.value = t.id;
+                        opt.textContent = t.name;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (e) {
+                console.error('[WhatsApp] Template load failed', e);
+            }
+        }
+
+        handleWATemplateChange(templateId) {
+            const template = this.templates.find(t => t.id === templateId);
+            const textarea = document.getElementById('wa-message-body');
+            if (!template || !textarea) return;
+
+            // Extract content (Standard logic from TemplateRenderer/CampaignManager)
+            let content = '';
+            if (Array.isArray(template.components)) {
+                const body = template.components.find(c => c.type === 'BODY');
+                content = body ? body.text : (template.components.find(c => c.type === 'HEADER')?.text || '');
+            } else if (template.content) {
+                if (typeof template.content === 'string') content = template.content;
+                else content = template.content.body || template.content.text || template.content.caption || '';
+            }
+
+            textarea.value = content;
+        }
+
+        async openMediaGallery() {
+            if (!this.mediaService) return;
+            try {
+                const mediaItems = await this.mediaService.getMedia();
+
+                const modalHtml = `
+                    <div id="gallery-picker-modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+                        <div style="background: #1a1b1e; width: 650px; max-height: 80vh; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+                            <div style="padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02);">
+                                <div>
+                                    <h3 style="margin: 0; color: white;">Media Gallery</h3>
+                                    <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--text-muted);">Select an asset to attach</p>
+                                </div>
+                                <button onclick="this.closest('#gallery-picker-modal').remove()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='none'">&times;</button>
+                            </div>
+                            <div style="flex: 1; overflow-y: auto; padding: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                                ${mediaItems.map(m => {
+                    const isVideo = (m.type === 'video' || (m.mimeType || '').startsWith('video/'));
+                    const isDoc = (m.type === 'document' || (m.mimeType || '').startsWith('application/'));
+
+                    let previewHtml = '';
+                    if (m.thumbnailUrl) {
+                        previewHtml = `<img src="${m.thumbnailUrl}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                    } else if (m.type === 'image') {
+                        previewHtml = `<img src="${m.url}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                    } else {
+                        // Placeholder for missing thumbnails
+                        const icon = isVideo ? '🎬' : (isDoc ? '📄' : '📁');
+                        previewHtml = `
+                                            <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #2a2b2e; color: #666;">
+                                                <span style="font-size: 2rem; margin-bottom: 8px;">${icon}</span>
+                                                <span style="font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px;">${m.type || 'Media'}</span>
+                                            </div>
+                                        `;
+                    }
+
+                    return `
+                                        <div onclick="window.b2bLeadsManager.selectMediaFromGallery('${m.id}')" 
+                                             title="${m.name}"
+                                             style="aspect-ratio: 1; background: #000; border-radius: 12px; cursor: pointer; overflow: hidden; border: 2px solid transparent; transition: 0.2s; position: relative;" 
+                                             onmouseover="this.style.borderColor='var(--accent-color)'; this.style.transform='scale(1.02)'" 
+                                             onmouseout="this.style.borderColor='transparent'; this.style.transform='scale(1)'">
+                                            ${previewHtml}
+                                            <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 8px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); font-size: 0.65rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                ${m.name || 'Untitled'}
+                                            </div>
+                                        </div>
+                                    `;
+                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                this.cachedMedia = mediaItems;
+            } catch (e) {
+                console.error('[WhatsApp] Gallery load failed', e);
+            }
+        }
+
+        selectMediaFromGallery(mediaId) {
+            const media = this.cachedMedia.find(m => m.id === mediaId);
+            if (media) {
+                this.updateMediaPreview(media);
+                document.getElementById('gallery-picker-modal')?.remove();
+            }
+        }
+
+        async handleWAMediaUpload(file) {
+            if (!file || !this.mediaService) return;
+            try {
+                Toast.info('Uploading media...');
+                const result = await this.mediaService.uploadMedia(file, { name: file.name });
+                this.updateMediaPreview(result);
+                Toast.success('Media uploaded!');
+            } catch (e) {
+                console.error('[WhatsApp] Upload failed', e);
+                Toast.error('Upload failed: ' + e.message);
+            }
+        }
+
+        updateMediaPreview(media) {
+            this.selectedMedia = media;
+            const container = document.getElementById('wa-media-preview');
+            if (!container) return;
+
+            const isVideo = (media.type === 'video' || (media.mimeType || '').startsWith('video/'));
+            const isDoc = (media.type === 'document' || (media.mimeType || '').startsWith('application/pdf'));
+
+            container.style.display = 'block';
+
+            let previewElement = '';
+            if (isVideo) {
+                previewElement = `<video src="${media.url}" style="width: 100%; height: 120px; object-fit: cover; opacity: 0.8;" muted></video>`;
+            } else if (isDoc) {
+                previewElement = `
+                    <div style="width: 100%; height: 120px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; flex-direction: column; font-size: 2.5rem;">
+                        📄
+                    </div>
+                `;
+            } else {
+                previewElement = `<img src="${media.url}" style="width: 100%; height: 120px; object-fit: cover; opacity: 0.8;">`;
+            }
+
+            container.innerHTML = `
+                <div style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; z-index: 10;" onclick="window.b2bLeadsManager.clearMediaSelection()">
+                    &times;
+                </div>
+                ${previewElement}
+                <div style="padding: 6px 10px; font-size: 0.7rem; color: #10b981; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    ${media.name || 'Selected Media'}
+                </div>
+            `;
+        }
+
+        clearMediaSelection() {
+            this.selectedMedia = null;
+            const container = document.getElementById('wa-media-preview');
+            if (container) {
+                container.style.display = 'none';
+                container.innerHTML = '';
             }
         }
 
@@ -1220,14 +1388,16 @@ if (!window.B2BLeadsManager) {
         async sendWhatsAppMessage(leadId) {
             const messageBody = document.getElementById('wa-message-body').value.trim();
             const kamName = document.getElementById('inp_kam').value;
+            const templateId = document.getElementById('wa-template-select').value;
 
             if (!kamName) {
                 if (window.Toast) window.Toast.warning('Please select a KAM first.');
                 return;
             }
 
-            if (!messageBody) {
-                if (window.Toast) window.Toast.warning('Please enter a message.');
+            // Must have either body, template, or media
+            if (!messageBody && !templateId && !this.selectedMedia) {
+                if (window.Toast) window.Toast.warning('Please enter a message or select media/template.');
                 return;
             }
 
@@ -1239,44 +1409,74 @@ if (!window.B2BLeadsManager) {
                 return;
             }
 
-            // Find Lead for Phone Number
+            // Find Lead
             const lead = this.leads.find(l => l.id === leadId);
             if (!lead || !lead.phone) {
                 if (window.Toast) window.Toast.error('Lead has no phone number.');
                 return;
             }
 
-            // Format Phone (Simple check)
             let phone = lead.phone.replace(/\D/g, '');
             if (phone.length === 10) phone = '91' + phone;
 
-            const sendBtn = document.querySelector('#wa-message-body').parentElement.nextElementSibling;
+            const sendBtn = document.querySelector('#wa-message-body').parentElement.querySelector('button[onclick*="sendWhatsAppMessage"]');
             const originalText = sendBtn.innerHTML;
-            sendBtn.innerHTML = '<span class="loading-spinner" style="width: 14px; height: 14px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span> Sending...';
+            sendBtn.innerHTML = '<span class="loading-spinner"></span> Sending...';
             sendBtn.disabled = true;
 
             try {
-                const response = await fetch(`${window.appConfig.apiUrl}/api/messages/text`, {
+                let payload = {
+                    sessionId: instance.id,
+                    to: phone
+                };
+
+                let endpoint = '/messages/text';
+
+                // Case 1: Template selected (priority)
+                if (templateId) {
+                    endpoint = '/messages/template';
+                    payload.templateId = templateId;
+                    payload.variables = {}; // Future: Add lead-specific variables mapping
+                }
+                // Case 2: Media Attachment
+                else if (this.selectedMedia) {
+                    const mediaType = this.selectedMedia.type || 'image';
+                    endpoint = '/messages/interactive';
+
+                    // Format for Baileys fork (top level type, nested url + meta)
+                    payload.content = {
+                        [mediaType]: {
+                            url: this.selectedMedia.url,
+                            mimetype: this.selectedMedia.mimeType,
+                            fileName: this.selectedMedia.name
+                        },
+                        caption: messageBody
+                    };
+                }
+                // Case 3: Plain Text
+                else {
+                    payload.text = messageBody;
+                }
+
+                const response = await fetch(`${window.appConfig.apiUrl}/api${endpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sessionId: instance.id,
-                        to: phone,
-                        text: messageBody
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
                     if (window.Toast) window.Toast.success('Message sent!');
-                    document.getElementById('wa-message-body').value = ''; // Clear input
+                    document.getElementById('wa-message-body').value = '';
+                    this.clearMediaSelection();
+                    document.getElementById('wa-template-select').value = '';
                 } else {
-                    throw new Error(result.error || 'Failed to send');
+                    throw new Error(result.error || result.message || 'Failed to send');
                 }
             } catch (error) {
                 console.error('[WhatsApp] Send Failed:', error);
-                if (window.Toast) window.Toast.error('Failed to send message: ' + error.message);
+                if (window.Toast) window.Toast.error('Failed to send: ' + error.message);
             } finally {
                 sendBtn.innerHTML = originalText;
                 sendBtn.disabled = false;
@@ -1765,10 +1965,14 @@ if (!window.B2BLeadsManager) {
                     source: 'b2b_leads' // Differentiate from dealer filters
                 };
 
-                const filteredContacts = this.filteredLeads.map(l => ({
-                    phone: l.phone || '',
-                    name: l.name || l.business_name || 'Unknown'
-                })).filter(c => c.phone && c.phone.length >= 10); // Basic length check if format util fails or as backup
+                const filteredContacts = this.filteredLeads.map(l => {
+                    const rawPhone = l.phone || '';
+                    const formattedPhone = FormatUtils.formatPhoneNumber ? FormatUtils.formatPhoneNumber(rawPhone) : rawPhone;
+                    return {
+                        phone: formattedPhone,
+                        name: l.name || l.business_name || 'Unknown'
+                    };
+                }).filter(c => c.phone); // Basic length check if format util fails or as backup
 
                 payload.contacts = filteredContacts; // Snapshot
                 payload.count = filteredContacts.length;
