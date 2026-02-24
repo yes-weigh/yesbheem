@@ -193,7 +193,13 @@ class InstanceManager {
 
             const liveSessions = (backendData.success && Array.isArray(backendData.sessions)) ? backendData.sessions : [];
             const metaDocs = [];
-            firestoreSnap.forEach(doc => metaDocs.push(doc.data()));
+            firestoreSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                metaDocs.push({
+                    ...data,
+                    sessionId: docSnap.id // ALWAYS use doc.id as the sessionId
+                });
+            });
 
             // 3. Merge Data
             // We want to show all instances that are in Firestore.
@@ -680,22 +686,26 @@ class InstanceManager {
                     method: 'DELETE'
                 });
 
-                if (response.ok) {
+                const result = await response.json();
+
+                if (response.ok || result.success) {
                     backendDeleted = true;
-                    console.log('Backend session deleted successfully');
+                    console.log('Backend session deleted successfully:', result.message);
                 } else {
-                    const errorText = await response.text();
-                    console.error('Backend deletion failed:', response.status, errorText);
-                    throw new Error(`Backend deletion failed: ${response.status}`);
+                    console.error('Backend deletion failed:', response.status, result.message);
+                    throw new Error(result.message || `Backend deletion failed: ${response.status}`);
                 }
             } catch (backendError) {
                 console.error('Error during backend deletion:', backendError);
-                throw backendError;
+                // If it's unmanaged (Backend only), we want to alert the user it failed
+                if (!isManaged) {
+                    alert(`Failed to delete session from server: ${backendError.message}`);
+                }
             }
 
             // Success feedback
-            if (backendDeleted) {
-                import('./utils/toast.js').then(m => m.Toast.success('Instance deleted permanently'));
+            if (backendDeleted || (isManaged && firestoreDeleted)) {
+                import('./utils/toast.js').then(m => m.Toast.success('Instance removed successfully'));
                 this.fetchInstances();
             }
         } catch (e) {
