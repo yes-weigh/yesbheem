@@ -68,7 +68,7 @@ export class SettingsUsersController {
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <span class="user-role badge ${user.role === 'admin' ? 'badge-admin' : 'badge-user'}" style="font-size: 0.7rem; padding: 2px 8px;">
+                    <span class="user-role badge ${user.role === 'admin' ? 'badge-admin' : (user.role === 'media' ? 'badge-media' : 'badge-user')}" style="font-size: 0.7rem; padding: 2px 8px;">
                         ${this.escapeHtml(user.role || 'user').toUpperCase()}
                     </span>
                     <div class="actions" style="display: flex; gap: 4px;">
@@ -210,6 +210,7 @@ export class SettingsUsersController {
                                 <label style="font-size: 0.75rem; color: var(--text-secondary); margin-left: 4px;">Role</label>
                                 <select id="new-user-role" class="modern-input" style="background: rgba(0,0,0,0.3); border-color: var(--border-color); padding: 8px 12px;">
                                     <option value="user">User</option>
+                                    <option value="media">Media</option>
                                     <option value="admin">Admin</option>
                                 </select>
                             </div>
@@ -290,6 +291,7 @@ export class SettingsUsersController {
                             <label style="font-size: 0.8rem; color: var(--text-secondary);">Role</label>
                             <select id="edit-user-role" class="modern-input">
                                 <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+                                <option value="media" ${user.role === 'media' ? 'selected' : ''}>Media</option>
                                 <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
                             </select>
                         </div>

@@ -89,6 +89,7 @@ class NavigationController {
     constructor() {
         this.currentPage = 'dashboard';
         this.sidebarCollapsed = false;
+        this.userRole = null;
         this._firstNavDone = false;
         this._showingLogin = false;
         this.pages = [
@@ -130,13 +131,7 @@ class NavigationController {
             }
         }
 
-        // [Public Route] Media Access
-        if (path.startsWith('/public/media')) {
-            import('./public_access_manager.js').then(({ PublicAccessManager }) => {
-                PublicAccessManager.init();
-            });
-            return;
-        }
+
         // Auth hasn't resolved yet — do NOT load any page content here.
         // handleNavigation('dashboard') will be called from checkAccess() once
         // Firebase confirms the user is authenticated.
@@ -164,20 +159,12 @@ class NavigationController {
                 if (user) {
                     const tokenResult = await user.getIdTokenResult();
                     const isAdmin = tokenResult.claims.role === 'admin';
-                    const isMediaViewer = tokenResult.claims.role === 'media_viewer';
+                    const isMedia = tokenResult.claims.role === 'media';
+                    this.userRole = tokenResult.claims.role;
 
-                    // [Public Media Restriction] 
-                    // If media_viewer, they MUST be on /public/media
-                    if (isMediaViewer) {
-                        const path = window.location.pathname;
-                        if (!path.startsWith('/public/media')) {
-                            console.warn('[SPA] media_viewer attempted to access restricted area. Redirecting to /public/media');
-                            window.location.href = '/public/media';
-                            return;
-                        }
-                        // Don't continue initialization for media_viewer (they don't see the dashboard)
-                        return;
-                    }
+                    console.log(`[SPA] User confirmed: ${user.email} | Role: ${this.userRole}`);
+
+
 
                     // IMMEDIATELY show Sign Out button (don't wait for profile/claims)
                     // This fixes the missing button on Settings page refresh
@@ -218,9 +205,17 @@ class NavigationController {
                         console.error("Profile fetch error:", err);
                     }
 
-                    if (settingsLink) {
-                        settingsLink.style.display = isAdmin ? 'flex' : 'none';
-                    }
+                    // Sidebar Item Visibility
+                    document.querySelectorAll('.nav-item').forEach(item => {
+                        const page = item.dataset.page;
+                        if (isMedia) {
+                            item.style.display = (page === 'media') ? 'flex' : 'none';
+                        } else if (page === 'settings') {
+                            item.style.display = isAdmin ? 'flex' : 'none';
+                        } else {
+                            item.style.display = 'flex';
+                        }
+                    });
 
                     // Security Redirect if on settings page
                     if (window.location.pathname.includes('settings') && !isAdmin) {
@@ -239,10 +234,12 @@ class NavigationController {
                         window.dataManager = new window.DataManager();
                     }
 
-                    // Navigate to dashboard on first auth confirmation
+                    // Navigate to appropriate landing page
                     if (!this._firstNavDone) {
                         this._firstNavDone = true;
-                        this.handleNavigation('dashboard', false);
+                        const targetPage = isMedia ? 'media' : 'dashboard';
+                        console.log(`[SPA] Initial navigation to: ${targetPage}`);
+                        this.handleNavigation(targetPage, false);
                     }
 
                 } else {
@@ -449,6 +446,12 @@ class NavigationController {
     }
 
     handleNavigation(pageId, autoCollapse) {
+        // Restriction: 'media' role can ONLY see 'media' page
+        if (this.userRole === 'media' && pageId !== 'media') {
+            console.warn('[SPA] Restricted Access: Media role limited to media page.');
+            pageId = 'media';
+        }
+
         this.currentPage = pageId;
         this._showingLogin = false; // Reset guard if we navigate (e.g. after login)
         this.updateActiveNavItem(pageId);

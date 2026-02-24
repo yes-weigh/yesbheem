@@ -61,12 +61,8 @@ class SecurityOverlay {
                     this.createOverlay();
                     this.startWatchdog();
 
-                    if (tokenResult.claims.role !== 'media_viewer') {
-                        this.startHeartbeat(); // Start session heartbeat
-                        this.startSessionValidator(); // Start listening for remote termination
-                    } else {
-                        console.log('[SecurityOverlay] Public Media Viewer: Skipping session heartbeat/validation.');
-                    }
+                    this.startHeartbeat(); // Start session heartbeat
+                    this.startSessionValidator(); // Start listening for remote termination
                 } catch (e) {
                     console.error("[SecurityOverlay] Token verification error:", e);
                     this.terminate("Auth Verification Failed");
@@ -91,11 +87,7 @@ class SecurityOverlay {
                 }
 
                 // Redirect to Fortress Login if not authenticated
-                // UNLESS we are on a public route!
-                if (window.location.pathname.startsWith('/public/')) {
-                    console.log('[SecurityOverlay] Public route detected. Skipping strict redirect.');
-                    return;
-                }
+
 
                 console.warn('[SecurityOverlay] Unauthenticated access. Showing login...');
                 if (window.navController && typeof window.navController.showLogin === 'function') {
