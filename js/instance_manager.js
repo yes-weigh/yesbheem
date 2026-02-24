@@ -641,11 +641,15 @@ class InstanceManager {
             const response = await fetch(`${this.apiBase}/qr/${sessionId}`);
             const data = await response.json();
 
-            if (data.qr) {
+            if (data.success && data.qr) {
                 this.renderQR(data.qr);
                 this.startPolling(sessionId);
             } else {
-                this.qrContainer.innerHTML = '<p class="text-muted">QR code not available. Instance may already be connected.</p>';
+                const errorMsg = data.message || 'QR code not available. Instance may already be connected.';
+                this.qrContainer.innerHTML = `<p class="text-muted">${errorMsg}</p>`;
+                if (data.connected) {
+                    setTimeout(() => this.fetchInstances(), 1000);
+                }
             }
         } catch (e) {
             console.error('Error fetching QR:', e);
@@ -826,7 +830,7 @@ class InstanceManager {
             const data = await response.json();
 
             if (data.success) {
-                if (data.message === 'Already connected') {
+                if (data.message === 'Already connected' || data.connected) {
                     alert('This session is already connected!');
                     this.closeQrModal();
                     this.fetchInstances();
@@ -834,10 +838,11 @@ class InstanceManager {
                     this.renderQR(data.qrCode);
                     this.startPolling(sessionId);
                 } else {
-                    this.qrContainer.innerHTML = `<div class="error-state"><p>${data.message}</p></div>`;
+                    const errorMsg = data.message || 'Connecting... Please try again in a moment';
+                    this.qrContainer.innerHTML = `<div class="error-state"><p>${errorMsg}</p></div>`;
                 }
             } else {
-                throw new Error(data.message);
+                throw new Error(data.message || 'Backend failed to generate QR');
             }
 
         } catch (e) {
