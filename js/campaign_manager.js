@@ -193,11 +193,15 @@ class CampaignManager {
             if (liveSessions.length > 0) {
                 // If backend is live, map backend sessions to metadata
                 this.instances = liveSessions.map(session => {
-                    const meta = metaDocs.find(m => m.sessionId === (session.id || session.sessionId));
+                    const sessionId = session.id || session.sessionId;
+                    const meta = metaDocs.find(m => m.sessionId === sessionId);
                     return {
                         ...session,
-                        id: session.id || session.sessionId,
+                        id: sessionId,
+                        sessionId: sessionId,
                         name: meta ? meta.name : (session.name || 'Unnamed'),
+                        phoneNumber: session.phoneNumber || sessionId.split(':')[0] || 'Unknown',
+                        connected: session.connected ?? true, // If in liveSessions, it's likely connected
                         kam: meta ? meta.kam : null,
                         groups: meta ? meta.groups : []
                     };
@@ -206,8 +210,10 @@ class CampaignManager {
                 // Fallback: Use Firestore Metadata directly
                 // (User can select instance, even if we don't know if it's connected right now. Backend will handle it)
                 this.instances = metaDocs.map(meta => ({
-                    id: meta.sessionId, // Critical: Backend needs sessionId
+                    id: meta.sessionId,
+                    sessionId: meta.sessionId,
                     name: meta.name || 'Unnamed Instance',
+                    phoneNumber: 'Unknown',
                     kam: meta.kam,
                     groups: meta.groups || [],
                     connected: false // Unknown status
@@ -226,13 +232,21 @@ class CampaignManager {
         this.senderSelect.innerHTML = '<option value="">Select...</option>';
 
         if (type === 'single') {
-            this.instances.forEach(inst => {
+            // Filter only connected instances
+            const connectedInstances = this.instances.filter(inst => inst.connected);
+
+            if (connectedInstances.length === 0) {
+                this.senderSelect.innerHTML = '<option value="">No connected instances found</option>';
+                return;
+            }
+
+            connectedInstances.forEach(inst => {
                 const opt = document.createElement('option');
-                // Use id or sessionId consistent with what backend provides
                 const id = inst.id || inst.sessionId;
                 opt.value = id;
-                // Display Name + Phone (or ID) for clarity
-                opt.textContent = `${inst.name} (${id})`;
+                // Show Name and Phone Number (Braces)
+                const phoneLabel = inst.phoneNumber && inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : id;
+                opt.textContent = `${inst.name} (${phoneLabel})`;
                 this.senderSelect.appendChild(opt);
             });
         } else {
