@@ -57,7 +57,8 @@ service cloud.firestore {
 
     // Role-Based Access Control (RBAC) - Admin Only
     match /authorized_users/{email} {
-      allow read, write: if request.auth.token.role == 'admin';
+      allow read: if request.auth.token.role == 'admin' || request.auth.token.email == email;
+      allow write: if request.auth.token.role == 'admin';
     }
 
     // Temp OTPs (for auth flow)
@@ -111,9 +112,9 @@ service cloud.firestore {
 
     // Media Library
     match /media_library/{mediaId} {
-      // Allow read for Admin, Active Trusted Users, OR the new Media Viewer role
-      allow read: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin' || request.auth.token.role == 'media';
-      allow write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
+      // Order matters: check roles first to avoid isActiveUser() recursion/failure for custom roles
+      allow read: if request.auth.token.role == 'admin' || request.auth.token.role == 'media' || (isActiveUser() && isTrustedDevice());
+      allow write: if request.auth.token.role == 'admin' || (isActiveUser() && isTrustedDevice());
     }
 
     // Campaigns
