@@ -29,7 +29,9 @@ service cloud.firestore {
     // Users Profile
     match /users/{userId} {
       // User can read their own profile; Admin can read all (for Security Dashboard)
-      allow read: if (isActiveUser() && request.auth.uid == userId) || request.auth.token.role == 'admin';
+      // media role bypasses isActiveUser to avoid cycle/recursion when doc doesn't exist yet
+      allow read: if request.auth.token.role == 'admin' || 
+                     (request.auth.uid == userId && (request.auth.token.role == 'media' || isActiveUser()));
       
       // Allow users to update their own document (for logout session cleanup)
       allow update: if request.auth.uid == userId;

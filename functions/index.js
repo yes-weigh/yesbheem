@@ -251,7 +251,8 @@ exports.verifySplitOTP = onCall(async (request) => {
     const customClaims = {
         trustedDevice: true,
         deviceFingerprint: deviceFingerprint,
-        role: userRole || 'user' // Default to 'user' if role not set
+        role: userRole || 'user', // Default to 'user' if role not set
+        email: email // Include email for Firestore rule checks
     };
 
     const customToken = await admin.auth().createCustomToken(uid, customClaims);
