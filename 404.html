@@ -21,7 +21,7 @@
 
         // Check if we're in a subdirectory (e.g., /yesbheem/)
         // But ignore app routes (SPA routes)
-        const appRoutes = ['/dashboard', '/dealer', '/discussions', '/instance', '/b2b-leads', '/product', '/pricelist', '/media', '/yesbheem', '/template', '/broadcast', '/welcome', '/chatbot', '/groupgrabber', '/report', '/integration', '/settings', '/cirtificates'];
+        const appRoutes = ['/dashboard', '/dealer', '/discussions', '/instance', '/b2b-leads', '/product', '/pricelist', '/media', '/yesbheem', '/template', '/broadcast', '/welcome', '/chatbot', '/groupgrabber', '/report', '/integration', '/settings', '/cirtificates', '/public'];
         const isAppRoute = appRoutes.some(route => pathname.startsWith(route));
 
         const match = pathname.match(/^(\/[^\/]+)\//);
@@ -34,15 +34,15 @@
     </script>
 
     <!-- Modular CSS -->
-    <link rel="stylesheet" href="css/variables.css">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/header.css">
-    <link rel="stylesheet" href="css/sidebar.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/map.css">
-    <link rel="stylesheet" href="css/settings.css">
-    <link rel="stylesheet" href="css/discussions.css?v=4">
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/header.css">
+    <link rel="stylesheet" href="/css/sidebar.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/map.css">
+    <link rel="stylesheet" href="/css/settings.css">
+    <link rel="stylesheet" href="/css/discussions.css?v=4">
 </head>
 
 <body>
@@ -219,11 +219,11 @@
     <div id="toast-container" class="toast-container"></div>
 
     <!-- Configuration (must load first) -->
-    <script src="js/config.js"></script>
+    <script src="/js/config.js"></script>
     <!-- Theme Manager -->
-    <script src="js/theme_manager.js"></script>
+    <script src="/js/theme_manager.js"></script>
     <!-- Navigation Controller -->
-    <script src="js/nav_controller.js"></script>
+    <script src="/js/nav_controller.js"></script>
 </body>
 
 </html>
