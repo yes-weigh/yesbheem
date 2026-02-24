@@ -743,39 +743,38 @@ class UIRenderer {
         };
 
         // Helper: Render Floating Label Input
-        const renderFloatingInput = (label, field, type = 'text', readonly = false, extraAttrs = '') => `
-            <div class="floating-group">
-                <input type="${type}" 
-                       class="floating-input" 
-                       id="inp_${field}" 
-                       data-field="${field}" 
-                       value="${v(lead[field])}" 
-                       placeholder=" "
-                       ${extraAttrs} autocomplete="off">
-                <label class="floating-label" for="inp_${field}">${label}</label>
-                ${field === 'pincode' ? `
-                    <svg class="zip-loading-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none; position: absolute; right: 10px; top: 12px; animation: spin 1s linear infinite; color: var(--color-info);">
-                        <circle cx="12" cy="12" r="10" opacity="0.25"></circle>
-                        <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path>
-                    </svg>
-                ` : ''}
-            </div>
-        `;
+        const renderFloatingInput = (label, field, type = 'text', readonly = false, extraAttrs = '', style = '') => {
+            return `
+                <div class="floating-group" style="${style}">
+                    <input type="${type}" class="floating-input" placeholder=" " 
+                        id="inp_${field}" data-field="${field}" value="${v(lead[field])}" 
+                        ${readonly ? 'readonly' : ''} ${extraAttrs}
+                        onchange="window.b2bLeadsManager.saveLeadDetails('${lead.id}', true)">
+                    <label class="floating-label" for="inp_${field}">${label}</label>
+                    ${field === 'pincode' ? `
+                        <svg class="zip-loading-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none; position: absolute; right: 10px; top: 12px; animation: spin 1s linear infinite; color: var(--color-info);">
+                            <circle cx="12" cy="12" r="10" opacity="0.25"></circle>
+                            <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path>
+                        </svg>
+                    ` : ''}
+                </div>
+            `;
+        };
 
         // Helper: Render Floating Select
-        const renderFloatingSelect = (label, field, options, readonly = false, extraAttrs = '') => {
-            const current = v(lead[field]);
-            // Handle both object {name, phone} and string formats
-            const opts = options.map(o => {
-                const optValue = typeof o === 'object' ? o.name : o;
-                return `<option value="${optValue}" ${optValue === current ? 'selected' : ''}>${optValue}</option>`;
-            }).join('');
-
+        const renderFloatingSelect = (label, field, options, readonly = false, extraAttrs = '', style = '') => {
+            const current = lead[field];
             return `
-                <div class="floating-group">
-                    <select class="floating-input" id="inp_${field}" data-field="${field}" ${readonly ? 'disabled' : ''} ${extraAttrs}>
-                        <option value="" ${current === '' ? 'selected' : ''}>Select...</option>
-                        ${opts}
+                <div class="floating-group" style="${style}">
+                    <select class="floating-input" id="inp_${field}" data-field="${field}" 
+                        ${readonly ? 'disabled' : ''} ${extraAttrs}
+                        onchange="window.b2bLeadsManager.saveLeadDetails('${lead.id}', true)">
+                        <option value="">Select ${label}...</option>
+                        ${(options || []).map(opt => {
+                const val = typeof opt === 'object' ? opt.name : opt;
+                const labelText = typeof opt === 'object' ? opt.name : opt;
+                return `<option value="${val}" ${current === val ? 'selected' : ''}>${labelText}</option>`;
+            }).join('')}
                     </select>
                     <label class="floating-label" for="inp_${field}">${label}</label>
                 </div>
@@ -814,7 +813,7 @@ class UIRenderer {
                         <!-- Top Bar: Title, Status -->
                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 24px;">
                             <div style="display: flex; align-items: center; gap: 16px;">
-                                <h2 style="margin: 0; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); opacity: 0.8;">${lead.id ? 'Edit Lead' : 'Add New Lead'}</h2>
+                                <!-- Header title removed as requested -->
                             </div>
                             
                             <!-- Stage Chips (Prominent & Centered) -->
@@ -826,39 +825,19 @@ class UIRenderer {
                         <!-- Bottom Bar: Profile Fields Strip (Iconic Style) -->
                         <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px; box-shadow: inset 0 1px 1px rgba(255,255,255,0.05);">
                             <div style="display: flex; flex: 1; align-items: center; gap: 16px; overflow-x: auto; padding: 2px;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span title="Name" style="opacity: 0.6; font-size: 1.1rem;">👤</span>
-                                    ${renderFloatingInput('Name', 'name', 'text', false, '', 'width: 160px;')}
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span title="Business" style="opacity: 0.6; font-size: 1.1rem;">🏢</span>
-                                    ${renderFloatingInput('Business', 'business_name', 'text', false, '', 'width: 200px;')}
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span title="Phone" style="opacity: 0.6; font-size: 1.1rem;">📞</span>
-                                    ${renderFloatingInput('Phone', 'phone', 'text', false, '', 'width: 140px;')}
-                                </div>
+                                ${renderFloatingInput('Name', 'name', 'text', false, '', 'width: 160px;')}
+                                ${renderFloatingInput('Business', 'business_name', 'text', false, '', 'width: 200px;')}
+                                ${renderFloatingInput('Phone', 'phone', 'text', false, '', 'width: 140px;')}
                                 <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
-                                    <span title="Location" style="opacity: 0.6; font-size: 1.1rem;">📍</span>
                                     ${renderFloatingInput('Code', 'pincode', 'text', true, 'onchange="window.b2bLeadsManager.handlePopupZipChange(this)"', 'width: 80px;')}
                                     ${renderFloatingInput('State', 'state', 'text', true, '', 'width: 100px;')}
                                     ${renderFloatingInput('District', 'district', 'text', true, '', 'width: 110px;')}
                                     ${renderFloatingInput('City', 'city', 'text', true, '', 'width: 110px;')}
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
-                                    <span title="Internal Owner" style="opacity: 0.6; font-size: 1.1rem;">👔</span>
                                     ${renderFloatingSelect('KAM', 'kam', settings.key_accounts || [], false, 'onchange="window.b2bLeadsManager.updateWhatsAppInterface(this.value)"', 'width: 180px;')}
                                 </div>
                             </div>
-                            
-                            <!-- Save button -->
-                            <button class="btn-save" onclick="window.b2bLeadsManager.saveLeadDetails('${lead.id || ''}')" style="
-                                background: linear-gradient(135deg, var(--accent-color), #2563eb); border: none; color: white; padding: 10px 24px; font-size: 0.9rem; 
-                                border-radius: 10px; font-weight: 700; box-shadow: 0 4px 15px var(--accent-color-alpha, rgba(59, 130, 246, 0.4));
-                                cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap;
-                            " onmouseover="this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 6px 20px var(--accent-color-alpha, rgba(59, 130, 246, 0.5))';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 15px var(--accent-color-alpha, rgba(59, 130, 246, 0.4))'">
-                                Save Changes
-                            </button>
                         </div>
                     </div>
 

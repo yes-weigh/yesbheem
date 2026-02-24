@@ -936,12 +936,12 @@ if (!window.B2BLeadsManager) {
             }
         }
 
-        async saveLeadDetails(leadId) {
+        async saveLeadDetails(leadId, isAutoSave = false) {
             const modal = document.querySelector('.dealer-modal');
             if (!modal) return;
 
             const saveBtn = modal.querySelector('.btn-save');
-            if (saveBtn) {
+            if (saveBtn && !isAutoSave) {
                 saveBtn.disabled = true;
                 saveBtn.textContent = 'Saving...';
             }
@@ -950,7 +950,7 @@ if (!window.B2BLeadsManager) {
             // Scrape all data-field inputs
             modal.querySelectorAll('[data-field]').forEach(input => {
                 const field = input.dataset.field;
-                const val = input.value; // .trim() done inside?
+                const val = input.value;
                 if (field) data[field] = val;
             });
 
@@ -969,32 +969,36 @@ if (!window.B2BLeadsManager) {
                         this.leads[index].searchString = `${this.leads[index].name || ''} ${this.leads[index].phone || ''} ${this.leads[index].business_name || ''} ${this.leads[index].state || ''} ${this.leads[index].district || ''}`.toLowerCase();
 
                         // 3. Update UI Immediately
-                        if (Toast) Toast.info('Updating in background...');
-                        this.closeEditModal();
-                        this.applyFilters(); // Re-render table
+                        if (!isAutoSave) {
+                            if (Toast) Toast.info('Updating in background...');
+                            this.closeEditModal();
+                            this.applyFilters(); // Re-render table
+                        }
 
                         // 4. Perform Background Sync
-                        // We use a separate async execution flow here? No, we just await it but UI is already unblocked?
-                        // Actually, if we await here, the function saveLeadDetails doesn't return.
-                        // But since we closed the modal, the user doesn't care. 
-                        // The button spinner was on the modal which is now gone.
-
                         try {
                             const shardId = previousState._shardId;
-                            console.log(`[Debug] Background Sync - LeadId: ${leadId}, ShardId: ${shardId}`);
+                            console.log(`[Debug] Syncing LeadId: ${leadId}, ShardId: ${shardId} (AutoSave: ${isAutoSave})`);
 
                             await this.service.updateLead(leadId, data, shardId);
 
                             const duration = (performance.now() - startTime).toFixed(2);
                             console.log(`[Performance] Background Update took: ${duration}ms`);
+
+                            // Only show success toast if not already closed
                             if (Toast) Toast.success(`Synced successfully (${duration}ms)`);
+
+                            // Re-render table in background if auto-saving
+                            if (isAutoSave) {
+                                this.applyFilters();
+                            }
                         } catch (syncError) {
                             console.error('Background Sync Failed:', syncError);
                             // Revert Local State
                             this.leads[index] = previousState;
                             this.applyFilters();
                             if (Toast) Toast.error('Sync Failed: ' + syncError.message);
-                            alert('Failed to save changes to server. The lead has been reverted.');
+                            if (!isAutoSave) alert('Failed to save changes to server. The lead has been reverted.');
                         }
                     }
                 } else {
