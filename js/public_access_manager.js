@@ -162,32 +162,63 @@ export class PublicAccessManager {
             if (!response.ok) throw new Error("Failed to load media template");
             const html = await response.text();
 
-            // 2. Wrap it and inject - Using standard CRM layout for consistency
+            // 2. Wrap it and inject - Using exact CRM layout for consistency
             document.body.innerHTML = `
-                <div class="dashboard-container" style="height: 100vh; display: flex; flex-direction: column;">
-                    <!-- Public Header -->
-                    <header class="title-bar">
-                        <div class="title-bar-content">
-                            <div class="title-bar-left">
-                                <div class="title-bar-brand">
-                                    <h1>Media Library</h1>
-                                </div>
-                            </div>
-                            <div class="title-bar-right">
-                                <button id="public-logout" class="action-btn-secondary" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">
-                                    <span style="margin-right: 8px;">🚪</span> Exit
-                                </button>
+                <header class="title-bar">
+                    <div class="title-bar-content">
+                        <div class="title-bar-left">
+                            <div class="title-bar-brand" id="mobile-sidebar-toggle" style="cursor: pointer;" title="Toggle Sidebar">
+                                <h1>Yes Bheem</h1>
                             </div>
                         </div>
-                    </header>
+                        <div class="title-bar-right">
+                            <div class="user-badge-container">
+                                <div class="user-badge" id="user-badge">
+                                    <div class="user-avatar-small">M</div>
+                                    <span class="user-name-small">Media Viewer</span>
+                                    <svg class="dropdown-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                                        <path d="M6 8L2 4h8z" />
+                                    </svg>
+                                </div>
+                                <div class="theme-dropdown" id="theme-dropdown" style="display: none; position: absolute; right: 0; top: 100%; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 5px; z-index: 1000; min-width: 150px;">
+                                    <div class="dropdown-item" id="public-logout" style="color: #ff6b6b; padding: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px;">
+                                        <span class="theme-icon">🚪</span>
+                                        <span>Sign Out</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </header>
 
-                    <main class="main-content expanded" style="padding: 2rem; overflow-y: auto;">
+                <div class="dashboard-container">
+                    <aside class="sidebar" id="sidebar">
+                        <nav class="nav-menu">
+                            <div class="nav-item active" data-page="media">
+                                <span class="nav-icon">🖼️</span>
+                                <span class="nav-text">Media</span>
+                            </div>
+                        </nav>
+                    </aside>
+
+                    <main class="main-content" id="main-content">
                         <div id="page-content" class="page-enter">
                             ${html}
                         </div>
                     </main>
                 </div>
             `;
+
+            // UI Interactions for exact feel
+            const badge = document.getElementById('user-badge');
+            const dropdown = document.getElementById('theme-dropdown');
+            if (badge && dropdown) {
+                badge.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+                });
+                document.addEventListener('click', () => dropdown.style.display = 'none');
+            }
 
         } catch (e) {
             console.error("Error rendering media view:", e);
@@ -252,6 +283,7 @@ export class PublicAccessManager {
             '/css/base.css',
             '/css/layout.css',
             '/css/header.css',
+            '/css/sidebar.css',
             '/css/components.css',
             '/css/template.css'
         ];
