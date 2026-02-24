@@ -162,6 +162,23 @@ class NavigationController {
                 const userAvatarEl = document.querySelector('.user-avatar-small');
 
                 if (user) {
+                    const tokenResult = await user.getIdTokenResult();
+                    const isAdmin = tokenResult.claims.role === 'admin';
+                    const isMediaViewer = tokenResult.claims.role === 'media_viewer';
+
+                    // [Public Media Restriction] 
+                    // If media_viewer, they MUST be on /public/media
+                    if (isMediaViewer) {
+                        const path = window.location.pathname;
+                        if (!path.startsWith('/public/media')) {
+                            console.warn('[SPA] media_viewer attempted to access restricted area. Redirecting to /public/media');
+                            window.location.href = '/public/media';
+                            return;
+                        }
+                        // Don't continue initialization for media_viewer (they don't see the dashboard)
+                        return;
+                    }
+
                     // IMMEDIATELY show Sign Out button (don't wait for profile/claims)
                     // This fixes the missing button on Settings page refresh
                     const signOutBtn = document.getElementById('sign-out-button');
@@ -174,32 +191,32 @@ class NavigationController {
                         const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
                         const { db } = await import(configPath);
 
-                        const userDoc = await getDoc(doc(db, "authorized_users", user.email));
-                        const userData = userDoc.exists() ? userDoc.data() : {};
+                        // Only fetch profile if user has an email (public sessions might not)
+                        if (user.email) {
+                            const userDoc = await getDoc(doc(db, "authorized_users", user.email));
+                            const userData = userDoc.exists() ? userDoc.data() : {};
 
-                        // Name
-                        if (userNameEl) {
-                            userNameEl.textContent = userData.displayName || user.email.split('@')[0];
-                        }
+                            // Name
+                            if (userNameEl) {
+                                userNameEl.textContent = userData.displayName || user.email.split('@')[0];
+                            }
 
-                        // Avatar
-                        if (userAvatarEl) {
-                            if (userData.photoURL) {
-                                userAvatarEl.style.backgroundImage = `url('${userData.photoURL}')`;
-                                userAvatarEl.style.backgroundSize = 'cover';
-                                userAvatarEl.innerText = '';
-                            } else {
-                                const name = userData.displayName || user.email;
-                                userAvatarEl.innerText = name.charAt(0).toUpperCase();
-                                userAvatarEl.style.backgroundImage = 'none';
+                            // Avatar
+                            if (userAvatarEl) {
+                                if (userData.photoURL) {
+                                    userAvatarEl.style.backgroundImage = `url('${userData.photoURL}')`;
+                                    userAvatarEl.style.backgroundSize = 'cover';
+                                    userAvatarEl.innerText = '';
+                                } else {
+                                    const name = userData.displayName || user.email;
+                                    userAvatarEl.innerText = name.charAt(0).toUpperCase();
+                                    userAvatarEl.style.backgroundImage = 'none';
+                                }
                             }
                         }
                     } catch (err) {
                         console.error("Profile fetch error:", err);
                     }
-
-                    const tokenResult = await user.getIdTokenResult();
-                    const isAdmin = tokenResult.claims.role === 'admin';
 
                     if (settingsLink) {
                         settingsLink.style.display = isAdmin ? 'flex' : 'none';

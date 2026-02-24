@@ -162,45 +162,32 @@ export class PublicAccessManager {
             if (!response.ok) throw new Error("Failed to load media template");
             const html = await response.text();
 
-            // 2. Wrap it and inject
+            // 2. Wrap it and inject - Using standard CRM layout for consistency
             document.body.innerHTML = `
-                <div id="public-container" style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
-                    <!-- Public Header handled separately or injected above -->
-                    <div id="public-header" style="
-                        display: flex; 
-                        justify-content: space-between; 
-                        align-items: center; 
-                        margin-bottom: 2rem;
-                        padding-bottom: 1rem;
-                        border-bottom: 1px solid rgba(255,255,255,0.1);
-                    ">
-                        <h1 style="margin: 0; font-size: 1.5rem; letter-spacing: -0.02em;">Media Library (Public)</h1>
-                         <button id="public-logout" style="
-                            background: rgba(239, 68, 68, 0.1); 
-                            border: 1px solid rgba(239, 68, 68, 0.2); 
-                            color: #ef4444; 
-                            padding: 8px 16px; 
-                            border-radius: 8px; 
-                            cursor: pointer;
-                            font-size: 0.9rem;
-                            font-weight: 500;
-                            transition: all 0.2s;
-                        ">Exit</button>
-                    </div>
+                <div class="dashboard-container" style="height: 100vh; display: flex; flex-direction: column;">
+                    <!-- Public Header -->
+                    <header class="title-bar">
+                        <div class="title-bar-content">
+                            <div class="title-bar-left">
+                                <div class="title-bar-brand">
+                                    <h1>Media Library</h1>
+                                </div>
+                            </div>
+                            <div class="title-bar-right">
+                                <button id="public-logout" class="action-btn-secondary" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">
+                                    <span style="margin-right: 8px;">🚪</span> Exit
+                                </button>
+                            </div>
+                        </div>
+                    </header>
 
-                    <!-- Injected Content from media.html -->
-                    <div id="injected-media-page">
-                        ${html}
-                    </div>
+                    <main class="main-content expanded" style="padding: 2rem; overflow-y: auto;">
+                        <div id="page-content" class="page-enter">
+                            ${html}
+                        </div>
+                    </main>
                 </div>
             `;
-
-            // 3. Post-Injection Cleanup for Public View
-            // We need to hide things that shouldn't be visible to public users
-            // Although CSS hides "Delete", we might want to hide "Upload" button here too intentionally
-            // The template.css might handle some, but let's be sure.
-
-            // Note: Styles are loaded separately in loadStyles()
 
         } catch (e) {
             console.error("Error rendering media view:", e);
@@ -262,8 +249,11 @@ export class PublicAccessManager {
     static loadStyles() {
         const links = [
             '/css/variables.css',
+            '/css/base.css',
+            '/css/layout.css',
+            '/css/header.css',
             '/css/components.css',
-            '/css/template.css' // Adds styles for stats and inputs
+            '/css/template.css'
         ];
 
         links.forEach(href => {
