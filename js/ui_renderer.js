@@ -818,21 +818,8 @@ class UIRenderer {
                             </div>
                             
                             <!-- Stage Chips (Prominent & Centered) -->
-                             <div style="flex: 1; display: flex; justify-content: center; align-items: center; gap: 10px; padding-right: 40px;">
-                                <input type="hidden" id="inp_status" data-field="status" value="${lead.status || ''}">
-                                ${(statusOptions || []).map(s => `
-                                    <button type="button" class="status-chip ${s === lead.status ? 'active' : ''}" onclick="
-                                        document.getElementById('inp_status').value = '${s}';
-                                        this.parentElement.querySelectorAll('.status-chip').forEach(c => c.classList.remove('active'));
-                                        this.classList.add('active');
-                                    " style="
-                                        padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.12);
-                                        background: rgba(255, 255, 255, 0.05); color: var(--text-muted); cursor: pointer; 
-                                        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); font-size: 0.85rem; font-weight: 500; outline: none; white-space: nowrap;
-                                    ">
-                                        ${s}
-                                    </button>
-                                `).join('')}
+                            <div style="flex: 1; display: flex; justify-content: center; align-items: center; gap: 10px; padding-right: 40px;">
+                                <!-- Stage chips removed as requested -->
                             </div>
                         </div>
 
@@ -897,6 +884,11 @@ class UIRenderer {
                             <h3 style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; opacity: 0.6; margin-bottom: 20px;">Add Log</h3>
                             
                             <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                                <!-- Stage Selection Dropdown -->
+                                <div style="margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 16px;">
+                                    ${renderFloatingSelect('Lead Stage', 'status', statusOptions || [])}
+                                </div>
+
                                 <div class="activity-chips-container" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
                                     ${(settings.log_activities || ['Call', 'Visit', 'Message', 'Followup']).map(a => `
                                         <button type="button" class="activity-chip" onclick="
@@ -912,20 +904,13 @@ class UIRenderer {
                                 </div>
 
                                 <div style="margin: 14px 0;">
-                                    <label style="display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;">
-                                        <div style="position: relative; width: 34px; height: 18px;">
-                                            <input type="checkbox" id="toggle-due-date" onchange="
-                                                const container = document.getElementById('due-date-container');
-                                                const handle = this.parentElement.querySelector('.toggle-handle');
-                                                const bg = this.parentElement.querySelector('.toggle-bg');
-                                                container.style.display = this.checked ? 'flex' : 'none';
-                                                handle.style.transform = this.checked ? 'translateX(16px)' : 'translateX(0)';
-                                                bg.style.background = this.checked ? 'var(--accent-color)' : 'rgba(0,0,0,0.3)';
-                                                bg.style.borderColor = this.checked ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)';
-                                            " style="opacity: 0; width: 0; height: 0; position: absolute;">
-                                            <div class="toggle-bg" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); transition: 0.2s;"></div>
-                                            <div class="toggle-handle" style="position: absolute; height: 12px; width: 12px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>
-                                        </div>
+                                    <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                                        <input type="checkbox" id="toggle-due-date" onchange="
+                                            document.getElementById('due-date-container').style.display = this.checked ? 'flex' : 'none';
+                                        " style="
+                                            width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent-color);
+                                            border-radius: 4px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+                                        ">
                                         <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted); opacity: 0.9;">Set Due Date</span>
                                     </label>
                                 </div>
