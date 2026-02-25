@@ -764,11 +764,14 @@ class UIRenderer {
         // Helper: Render Floating Select
         const renderFloatingSelect = (label, field, options, readonly = false, extraAttrs = '', style = '') => {
             const current = lead[field];
+            // Default onchange for autosave; if extraAttrs contains its own onchange it will override this one
+            // because extraAttrs is placed AFTER the default, making it take precedence (HTML uses last duplicate attr)
             return `
                 <div class="floating-group" style="${style}">
                     <select class="floating-input" id="inp_${field}" data-field="${field}" 
-                        ${readonly ? 'disabled' : ''} ${extraAttrs}
-                        onchange="window.b2bLeadsManager.saveLeadDetails('${lead.id}', true)">
+                        ${readonly ? 'disabled' : ''}
+                        onchange="window.b2bLeadsManager.saveLeadDetails('${lead.id}', true)"
+                        ${extraAttrs}>
                         <option value="">Select ${label}...</option>
                         ${(options || []).map(opt => {
                 const val = typeof opt === 'object' ? opt.name : opt;
@@ -835,7 +838,7 @@ class UIRenderer {
                                     ${renderFloatingInput('City', 'city', 'text', true, '', 'width: 110px;')}
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
-                                    ${renderFloatingSelect('KAM', 'kam', settings.key_accounts || [], false, 'onchange="window.b2bLeadsManager.updateWhatsAppInterface(this.value)"', 'width: 180px;')}
+                                    ${renderFloatingSelect('KAM', 'kam', settings.key_accounts || [], false, `onchange="window.b2bLeadsManager.saveLeadDetails('${lead.id}', true); window.b2bLeadsManager.updateWhatsAppInterface(this.value);"`, 'width: 180px;')}
                                 </div>
                             </div>
                         </div>
