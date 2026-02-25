@@ -2361,17 +2361,11 @@ Proceed with import?
         }
 
         async refreshChatHistory(phone) {
-            const kamName = document.getElementById('inp_kam')?.value;
-            const instance = (this.whatsappInstances || []).find(i => (i.kam || '').toLowerCase() === kamName?.toLowerCase());
-
-            if (instance && instance.connected) {
-                await this.loadChatHistory(phone, instance.id);
-            } else {
-                if (Toast) Toast.warning('WhatsApp instance not connected.');
-            }
+            // Always load directly from Firestore — no backend required
+            await this.loadChatHistory(phone);
         }
 
-        async loadChatHistory(phone, sessionId) {
+        async loadChatHistory(phone) {
             const container = document.getElementById('wa-chat-history');
             const section = document.querySelector('.wa-chat-history-section');
             if (!container || !section) return;
@@ -2380,20 +2374,39 @@ Proceed with import?
             container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">Loading chat...</div>';
 
             try {
-                // Strip non-digit chars (e.g. '+' prefix) to match stored JID format
-                const cleanPhone = phone.replace(/\D/g, '');
-                const response = await fetch(`${window.appConfig.apiUrl}/api/chats/${cleanPhone}/messages?limit=10&sessionId=${sessionId}`);
-
-                const result = await response.json();
-
-                if (result.success && Array.isArray(result.data)) {
-                    this.renderChatHistory(result.data);
-                } else {
-                    container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">No messages found.</div>';
+                // Ensure Firebase is ready
+                if (!window.firebaseContext || !window.firebaseContext.db) {
+                    throw new Error('Firebase not initialized');
                 }
+                const { db } = window.firebaseContext;
+                const { collection, query, where, orderBy, limit, getDocs } = await import(
+                    'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js'
+                );
+
+                // Normalize phone: strip non-digits, then try both forms
+                // (e.g. "9198765" and "91198765" due to stored formatting variation)
+                const cleanPhone = phone.replace(/\D/g, '');
+
+                const q = query(
+                    collection(db, 'wa_messages'),
+                    where('phoneNumber', '==', cleanPhone),
+                    orderBy('timestamp', 'desc'),
+                    limit(20)
+                );
+
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">No messages found.</div>';
+                    return;
+                }
+
+                const messages = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                this.renderChatHistory(messages);
+
             } catch (e) {
-                console.error('[WhatsApp] Chat history fetch failed:', e);
-                container.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px; font-style: italic; font-size: 0.8rem;">Failed to load chat.</div>';
+                console.error('[WhatsApp] Chat history Firestore query failed:', e);
+                container.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px; font-style: italic; font-size: 0.8rem;">Failed to load chat history.</div>';
             }
         }
 

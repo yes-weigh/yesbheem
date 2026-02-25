@@ -1,4 +1,19 @@
 {
-    "indexes": [],
+    "indexes": [
+        {
+            "collectionGroup": "wa_messages",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "phoneNumber",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestamp",
+                    "order": "DESCENDING"
+                }
+            ]
+        }
+    ],
     "fieldOverrides": []
 }
