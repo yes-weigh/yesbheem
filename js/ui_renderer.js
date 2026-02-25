@@ -925,71 +925,88 @@ class UIRenderer {
                              </div>
                         </div>
 
-                        <!-- Column 3: ENGAGEMENT (The Connection) -->
-                        <div class="modal-column column-engagement" style="display: flex; flex-direction: column; height: 100%; padding: 24px; overflow-y: auto; background: rgba(255,255,255,0.015);">
-                            <h3 style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; opacity: 0.6; margin-bottom: 20px;">Ownership & Engagement</h3>
-                            
-                            <div style="display: flex; flex-direction: column; gap: 24px;">
-                                <!-- WhatsApp Card -->
-                                <div class="whatsapp-modern-card">
-                                    <div class="whatsapp-header-group">
-                                        <div class="whatsapp-title-wrapper">
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .004 5.41.001 12.045a11.811 11.811 0 001.592 5.967L0 24l6.135-1.609a11.808 11.808 0 005.91 1.579h.005c6.637 0 12.05-5.411 12.053-12.047a11.801 11.801 0 00-3.536-8.509z"/></svg>
-                                            <h4>WhatsApp</h4>
-                                        </div>
-                                        <div id="wa-instance-status" class="wa-status-pill">
-                                            <span class="wa-status-dot"></span>
-                                            Initializing...
-                                        </div>
+                        <!-- Column 3: WHATSAPP CHAT -->
+                        <div class="modal-column column-engagement" style="display: flex; flex-direction: column; height: 100%; overflow: hidden; background: rgba(255,255,255,0.015);">
+
+                            <!-- ① Fixed Header: title + connection status -->
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; background: rgba(16,185,129,0.04);">
+                                <div style="display: flex; align-items: center; gap: 10px; color: #10b981;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .004 5.41.001 12.045a11.811 11.811 0 001.592 5.967L0 24l6.135-1.609a11.808 11.808 0 005.91 1.579h.005c6.637 0 12.05-5.411 12.053-12.047a11.801 11.801 0 00-3.536-8.509z"/></svg>
+                                    <span style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;">WhatsApp</span>
+                                    <span style="font-size: 0.65rem; color: #64748b; font-weight: 500; margin-left: 2px;">• Live</span>
+                                </div>
+                                <div id="wa-instance-status" class="wa-status-pill">
+                                    <span class="wa-status-dot"></span>
+                                    Initializing...
+                                </div>
+                            </div>
+
+                            <!-- ② Scrollable Chat History (fills remaining space) -->
+                            <div id="wa-chat-history" style="
+                                flex: 1;
+                                overflow-y: auto;
+                                padding: 16px 16px 8px;
+                                display: flex;
+                                flex-direction: column;
+                                gap: 4px;
+                                scroll-behavior: smooth;
+                            ">
+                                <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                                    <div style="text-align: center; color: #334155; font-size: 0.8rem; font-style: italic;">
+                                        <div style="font-size: 1.5rem; margin-bottom: 8px; opacity: 0.4;">💬</div>
+                                        Loading messages...
                                     </div>
+                                </div>
+                            </div>
 
-                                    <div class="wa-modern-select-wrapper">
-                                        <select id="wa-template-select" class="wa-modern-select" onchange="window.b2bLeadsManager.handleWATemplateChange(this.value)">
-                                            <option value="">Select Template</option>
-                                        </select>
-                                    </div>
+                            <!-- ③ Composer — pinned at bottom -->
+                            <div style="flex-shrink: 0; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.25); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
 
-                                    <div class="wa-action-grid">
-                                        <button class="wa-action-btn" onclick="window.b2bLeadsManager.openMediaGallery()">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                                            Gallery
-                                        </button>
-                                        <button class="wa-action-btn" onclick="document.getElementById('wa-file-upload').click()">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                                            Upload
-                                        </button>
-                                        <input type="file" id="wa-file-upload" style="display: none;" onchange="window.b2bLeadsManager.handleWAMediaUpload(this.files[0])">
-                                    </div>
+                                <!-- Template selector -->
+                                <div class="wa-modern-select-wrapper" style="margin-bottom: 0;">
+                                    <select id="wa-template-select" class="wa-modern-select" onchange="window.b2bLeadsManager.handleWATemplateChange(this.value)" style="padding: 9px 14px; font-size: 0.8rem; border-radius: 10px;">
+                                        <option value="">Select Template...</option>
+                                    </select>
+                                </div>
 
-                                    <div id="wa-media-preview" class="wa-preview-container" style="display: none;"></div>
-
-                                    <div class="wa-message-composer">
-                                        <textarea id="wa-message-body" placeholder="Type message..."></textarea>
-                                    </div>
-
-                                    <button class="wa-send-btn" onclick="window.b2bLeadsManager.sendWhatsAppMessage('${lead.id}')">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                                       Send WhatsApp
+                                <!-- Media actions row -->
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="wa-action-btn" onclick="window.b2bLeadsManager.openMediaGallery()" style="flex: 1; padding: 7px; font-size: 0.72rem; border-radius: 10px;">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                        Gallery
                                     </button>
+                                    <button class="wa-action-btn" onclick="document.getElementById('wa-file-upload').click()" style="flex: 1; padding: 7px; font-size: 0.72rem; border-radius: 10px;">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                        Upload
+                                    </button>
+                                    <input type="file" id="wa-file-upload" style="display: none;" onchange="window.b2bLeadsManager.handleWAMediaUpload(this.files[0])">
+                                </div>
 
-                                     <!-- Chat History Section -->
-                                     <div class="wa-chat-history-section" style="margin-top: 24px; display: none;">
-                                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px;">
-                                             <h4 style="margin: 0; font-size: 0.75rem; font-weight: 800; color: #10b981; text-transform: uppercase; letter-spacing: 0.1em;">Previous Chat</h4>
-                                             <button onclick="window.b2bLeadsManager.refreshChatHistory('${lead.phone}')" style="background: none; border: none; color: #10b981; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 600; opacity: 0.8;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
-                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                                                 Refresh
-                                             </button>
-                                         </div>
-                                         <div id="wa-chat-history" class="wa-chat-history-container">
-                                             <div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">Loading chat history...</div>
-                                         </div>
-                                     </div>
-                                 </div>
+                                <!-- Media preview (shown when selected) -->
+                                <div id="wa-media-preview" class="wa-preview-container" style="display: none; position: relative; border-radius: 10px; overflow: hidden; border: 1px solid rgba(16,185,129,0.2);"></div>
 
-
+                                <!-- Message input + send -->
+                                <div style="display: flex; gap: 8px; align-items: flex-end;">
+                                    <div style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 2px 4px; transition: border-color 0.2s;" onfocusin="this.style.borderColor='rgba(16,185,129,0.4)'" onfocusout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                                        <textarea id="wa-message-body" placeholder="Message..." style="
+                                            width: 100%; min-height: 36px; max-height: 100px;
+                                            background: transparent; border: none; outline: none;
+                                            color: #f1f5f9; padding: 8px 12px;
+                                            font-size: 0.88rem; resize: none; line-height: 1.4;
+                                            font-family: inherit;
+                                        " oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+                                    </div>
+                                    <button class="wa-send-btn" onclick="window.b2bLeadsManager.sendWhatsAppMessage('${lead.id}')" style="
+                                        width: 44px; height: 44px; border-radius: 50%; padding: 0;
+                                        display: flex; align-items: center; justify-content: center;
+                                        flex-shrink: 0; font-size: 0; min-width: unset;
+                                    ">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
+
                     </div>
                 </div>
             </div>

@@ -890,6 +890,11 @@ if (!window.B2BLeadsManager) {
 
         closeEditModal() {
             this.isModalOpen = false;
+            // Tear down real-time chat listener if active
+            if (this.chatUnsubscribe) {
+                this.chatUnsubscribe();
+                this.chatUnsubscribe = null;
+            }
             const modal = document.querySelector('.dealer-modal-overlay');
             if (modal) modal.remove();
         }
@@ -2368,29 +2373,36 @@ Proceed with import?
             link.click();
         }
 
-        async refreshChatHistory(phone) {
-            // Always load directly from Firestore — no backend required
-            await this.loadChatHistory(phone);
+        refreshChatHistory(phone) {
+            // Real-time via onSnapshot — no manual refresh needed, kept for API compat
+            this.loadChatHistory(phone);
         }
 
         async loadChatHistory(phone) {
             const container = document.getElementById('wa-chat-history');
-            const section = document.querySelector('.wa-chat-history-section');
-            if (!container || !section) return;
+            if (!container) return;
 
-            section.style.display = 'block';
-            container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">Loading chat...</div>';
+            // Cancel any existing listener
+            if (this.chatUnsubscribe) {
+                this.chatUnsubscribe();
+                this.chatUnsubscribe = null;
+            }
+
+            container.innerHTML = `
+                <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                    <div style="text-align: center; color: #334155; font-size: 0.8rem; font-style: italic;">
+                        <div style="font-size: 1.5rem; margin-bottom: 8px; opacity: 0.4;">⏳</div>
+                        Connecting...
+                    </div>
+                </div>`;
 
             try {
-                if (!window.firebaseContext || !window.firebaseContext.db) {
-                    throw new Error('Firebase not initialized');
-                }
+                if (!window.firebaseContext || !window.firebaseContext.db) throw new Error('Firebase not initialized');
                 const { db } = window.firebaseContext;
-                const { collection, collectionGroup, query, where, orderBy, limit, getDocs } = await import(
+                const { collection, query, where, orderBy, limit, getDocs, onSnapshot } = await import(
                     'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js'
                 );
 
-                // Normalize phone to 12-digit international format (India default = 91)
                 const normalize = (raw) => {
                     const digits = String(raw).replace(/\D/g, '');
                     if (digits.length === 10) return '91' + digits;
@@ -2399,49 +2411,68 @@ Proceed with import?
                 };
                 const leadPhone = normalize(phone);
 
-                // Step 1: Find all chat docs for this lead (could be multiple CRM numbers)
-                const chatQuery = query(
+                // Step 1: Find chat doc IDs for this lead
+                const chatSnapshot = await getDocs(query(
                     collection(db, 'wa_chats'),
                     where('leadPhone', '==', leadPhone)
-                );
-                const chatSnapshot = await getDocs(chatQuery);
+                ));
 
                 if (chatSnapshot.empty) {
-                    container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">No messages found.</div>';
+                    container.innerHTML = `
+                        <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                            <div style="text-align: center; color: #334155; font-size: 0.8rem;">
+                                <div style="font-size: 1.5rem; margin-bottom: 8px; opacity: 0.3;">🔇</div>
+                                No messages yet
+                            </div>
+                        </div>`;
                     return;
                 }
 
-                // Step 2: Fetch messages subcollection from each chat doc in parallel
-                const msgPromises = chatSnapshot.docs.map(chatDoc =>
-                    getDocs(query(
+                // Step 2: Subscribe to all chat docs' messages with onSnapshot
+                const messageMap = new Map();
+                const allUnsubscribers = [];
+                let firstLoad = true;
+
+                const scheduleRender = (() => {
+                    let raf = null;
+                    return () => {
+                        if (raf) return;
+                        raf = requestAnimationFrame(() => {
+                            raf = null;
+                            this.renderChatHistory(Array.from(messageMap.values()));
+                        });
+                    };
+                })();
+
+                for (const chatDoc of chatSnapshot.docs) {
+                    const msgsQuery = query(
                         collection(db, 'wa_chats', chatDoc.id, 'messages'),
-                        orderBy('timestamp', 'desc'),
-                        limit(30)
-                    ))
-                );
-                const msgSnapshots = await Promise.all(msgPromises);
+                        orderBy('timestamp', 'asc'),
+                        limit(60)
+                    );
 
-                // Step 3: Merge all messages from all CRM numbers
-                const allMessages = [];
-                for (const snap of msgSnapshots) {
-                    for (const doc of snap.docs) {
-                        allMessages.push({ id: doc.id, ...doc.data() });
-                    }
+                    const unsub = onSnapshot(msgsQuery, (snap) => {
+                        snap.docChanges().forEach(change => {
+                            if (change.type === 'added' || change.type === 'modified') {
+                                messageMap.set(change.doc.id, { id: change.doc.id, ...change.doc.data() });
+                            } else if (change.type === 'removed') {
+                                messageMap.delete(change.doc.id);
+                            }
+                        });
+                        scheduleRender();
+                    }, (err) => console.error('[WhatsApp RT]', err));
+
+                    allUnsubscribers.push(unsub);
                 }
 
-                if (allMessages.length === 0) {
-                    container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">No messages found.</div>';
-                    return;
-                }
-
-                // Messages are already sorted desc from Firestore; renderChatHistory re-sorts asc
-                this.renderChatHistory(allMessages);
+                this.chatUnsubscribe = () => allUnsubscribers.forEach(fn => fn());
 
             } catch (e) {
-                console.error('[WhatsApp] Chat history Firestore query failed:', e);
-                container.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px; font-style: italic; font-size: 0.8rem;">Failed to load chat history.</div>';
+                console.error('[WhatsApp] Chat history load failed:', e);
+                container.innerHTML = `<div style="text-align: center; color: #ef4444; padding: 20px; font-size: 0.8rem;">Failed to load chat.</div>`;
             }
         }
+
 
 
         renderChatHistory(messages) {
@@ -2449,33 +2480,70 @@ Proceed with import?
             if (!container) return;
 
             if (!messages || messages.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">No messages found.</div>';
+                container.innerHTML = `
+                    <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                        <div style="text-align: center; color: #334155; font-size: 0.8rem;">
+                            <div style="font-size: 1.5rem; margin-bottom: 8px; opacity: 0.3;">🔇</div>
+                            No messages yet
+                        </div>
+                    </div>`;
                 return;
             }
 
-            // Invert to show oldest first at top, newest at bottom (for chat flow)
-            // Firestore returned them desc by timestamp
-            const sortedMessages = [...messages].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            const sorted = [...messages].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 
-            container.innerHTML = sortedMessages.map(msg => {
+            let lastDateStr = null;
+            const html = sorted.map(msg => {
                 const isMe = msg.direction === 'outbound' || msg.from === 'me';
-                const content = msg.content?.text || msg.content?.caption || 'Media Message';
+                const rawContent = msg.content?.text || msg.content?.caption || msg.body || '';
+                const content = rawContent || (msg.content?.image ? '📷 Image' : msg.content?.video ? '🎬 Video' : msg.content?.document ? '📄 Document' : '📎 Media');
 
-                const timestamp = msg.timestamp;
-                const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                const ts = msg.timestamp ? new Date(msg.timestamp) : null;
+                const timeStr = ts ? ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                const dateStr = ts ? ts.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : '';
 
-                return `
-                    <div class="wa-msg ${isMe ? 'outbound' : 'inbound'}">
-                        <div class="wa-msg-content">${this.escapeHtml(content)}</div>
-                        <span class="wa-msg-time">${timeStr}</span>
-                    </div>
-                `;
+                let separator = '';
+                if (dateStr && dateStr !== lastDateStr) {
+                    lastDateStr = dateStr;
+                    separator = `
+                        <div style="display: flex; align-items: center; gap: 10px; margin: 12px 0 8px; opacity: 0.45;">
+                            <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
+                            <span style="font-size: 0.65rem; font-weight: 700; color: #94a3b8; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em;">${dateStr}</span>
+                            <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
+                        </div>`;
+                }
+
+                const bubble = isMe ? `
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 2px;">
+                        <div style="
+                            max-width: 80%; background: linear-gradient(135deg, #10b981, #059669);
+                            color: #fff; border-radius: 18px 18px 4px 18px;
+                            padding: 9px 13px; font-size: 0.82rem; line-height: 1.45;
+                            box-shadow: 0 2px 8px rgba(16,185,129,0.25);
+                            word-break: break-word;
+                        ">
+                            ${this.escapeHtml(content)}
+                            <div style="font-size: 0.6rem; opacity: 0.75; text-align: right; margin-top: 3px;">✓✓ ${timeStr}</div>
+                        </div>
+                    </div>` : `
+                    <div style="display: flex; justify-content: flex-start; margin-bottom: 2px;">
+                        <div style="
+                            max-width: 80%; background: rgba(255,255,255,0.07);
+                            color: #e2e8f0; border-radius: 18px 18px 18px 4px;
+                            padding: 9px 13px; font-size: 0.82rem; line-height: 1.45;
+                            border: 1px solid rgba(255,255,255,0.08);
+                            word-break: break-word;
+                        ">
+                            ${this.escapeHtml(content)}
+                            <div style="font-size: 0.6rem; opacity: 0.5; margin-top: 3px;">${timeStr}</div>
+                        </div>
+                    </div>`;
+
+                return separator + bubble;
             }).join('');
 
-            // Scroll to bottom
-            setTimeout(() => {
-                container.scrollTop = container.scrollHeight;
-            }, 100);
+            container.innerHTML = html;
+            container.scrollTop = container.scrollHeight;
         }
 
         escapeHtml(unsafe) {
