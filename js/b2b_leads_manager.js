@@ -2374,41 +2374,67 @@ Proceed with import?
             container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">Loading chat...</div>';
 
             try {
-                // Ensure Firebase is ready
                 if (!window.firebaseContext || !window.firebaseContext.db) {
                     throw new Error('Firebase not initialized');
                 }
                 const { db } = window.firebaseContext;
-                const { collection, query, where, orderBy, limit, getDocs } = await import(
+                const { collection, collectionGroup, query, where, orderBy, limit, getDocs } = await import(
                     'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js'
                 );
 
-                // Normalize phone: strip non-digits, then try both forms
-                // (e.g. "9198765" and "91198765" due to stored formatting variation)
-                const cleanPhone = phone.replace(/\D/g, '');
+                // Normalize phone to 12-digit international format (India default = 91)
+                const normalize = (raw) => {
+                    const digits = String(raw).replace(/\D/g, '');
+                    if (digits.length === 10) return '91' + digits;
+                    if (digits.length === 11 && digits.startsWith('0')) return '91' + digits.slice(1);
+                    return digits;
+                };
+                const leadPhone = normalize(phone);
 
-                const q = query(
-                    collection(db, 'wa_messages'),
-                    where('phoneNumber', '==', cleanPhone),
-                    orderBy('timestamp', 'desc'),
-                    limit(20)
+                // Step 1: Find all chat docs for this lead (could be multiple CRM numbers)
+                const chatQuery = query(
+                    collection(db, 'wa_chats'),
+                    where('leadPhone', '==', leadPhone)
                 );
+                const chatSnapshot = await getDocs(chatQuery);
 
-                const snapshot = await getDocs(q);
-
-                if (snapshot.empty) {
+                if (chatSnapshot.empty) {
                     container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">No messages found.</div>';
                     return;
                 }
 
-                const messages = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                this.renderChatHistory(messages);
+                // Step 2: Fetch messages subcollection from each chat doc in parallel
+                const msgPromises = chatSnapshot.docs.map(chatDoc =>
+                    getDocs(query(
+                        collection(db, 'wa_chats', chatDoc.id, 'messages'),
+                        orderBy('timestamp', 'desc'),
+                        limit(30)
+                    ))
+                );
+                const msgSnapshots = await Promise.all(msgPromises);
+
+                // Step 3: Merge all messages from all CRM numbers
+                const allMessages = [];
+                for (const snap of msgSnapshots) {
+                    for (const doc of snap.docs) {
+                        allMessages.push({ id: doc.id, ...doc.data() });
+                    }
+                }
+
+                if (allMessages.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 0.8rem;">No messages found.</div>';
+                    return;
+                }
+
+                // Messages are already sorted desc from Firestore; renderChatHistory re-sorts asc
+                this.renderChatHistory(allMessages);
 
             } catch (e) {
                 console.error('[WhatsApp] Chat history Firestore query failed:', e);
                 container.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px; font-style: italic; font-size: 0.8rem;">Failed to load chat history.</div>';
             }
         }
+
 
         renderChatHistory(messages) {
             const container = document.getElementById('wa-chat-history');

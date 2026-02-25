@@ -159,10 +159,16 @@ service cloud.firestore {
       allow read, write: if (isActiveUser() && isTrustedDevice()) || request.auth.token.role == 'admin';
     }
 
-    // WhatsApp Message Logs (written by backend Admin SDK, read by frontend directly)
-    match /wa_messages/{messageId} {
+    // WhatsApp Chat Threads (written by backend Admin SDK, read by frontend directly)
+    match /wa_chats/{chatId} {
       allow read: if isActiveUser() || request.auth.token.role == 'admin';
       allow write: if false; // backend only (Admin SDK bypasses these rules)
+
+      // Messages subcollection
+      match /messages/{messageId} {
+        allow read: if isActiveUser() || request.auth.token.role == 'admin';
+        allow write: if false; // backend only
+      }
     }
 
     // Broad fallback for other collections (Be careful here, usually better to start with specific)
