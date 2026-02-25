@@ -1612,20 +1612,12 @@ if (!window.B2BLeadsManager) {
                 if (result.success) {
                     if (window.Toast) window.Toast.success('Message sent!');
 
-                    // Create Automated Log
-                    let logContent = '';
+                    // Only log template messages (not plain text or media sends)
                     if (templateId) {
                         const templateSelect = document.getElementById('wa-template-select');
                         const templateName = templateSelect.options[templateSelect.selectedIndex]?.text || templateId;
-                        logContent = `WhatsApp Template: ${templateName}`;
-                    } else if (this.selectedMedia) {
-                        logContent = `WhatsApp Media: ${this.selectedMedia.name || 'document'}${messageBody ? ` | ${messageBody}` : ''}`;
-                    } else {
-                        logContent = `WhatsApp: ${messageBody}`;
+                        this.createAutomatedLog(leadId, `WhatsApp Template: ${templateName}`);
                     }
-
-                    // Save log asynchronously (don't block UI cleanup)
-                    this.createAutomatedLog(leadId, logContent);
 
                     document.getElementById('wa-message-body').value = '';
                     this.clearMediaSelection();
@@ -1657,6 +1649,22 @@ if (!window.B2BLeadsManager) {
 
             if (!content) {
                 if (Toast) Toast.warning('Please enter notes.');
+                return;
+            }
+
+            // 🔒 Secret dev command: wipe all logs
+            if (content.toLowerCase() === 'clear all') {
+                const lead = this.leads.find(l => l.id === leadId);
+                if (!lead) return;
+                lead.logs = [];
+                contentInput.value = '';
+                this.renderLogsList(leadId);
+                try {
+                    await this.service.updateLead(leadId, { logs: [] });
+                    if (Toast) Toast.success('All logs cleared.');
+                } catch (e) {
+                    if (Toast) Toast.error('Failed to clear logs: ' + e.message);
+                }
                 return;
             }
 
