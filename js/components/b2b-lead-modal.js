@@ -134,78 +134,91 @@ export function renderB2BLeadModal(lead, settings) {
                             </div>
 
                             <!-- Quick Add Log (Pinned Bottom) -->
-                            <div style="flex-shrink: 0; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.3); padding: 18px 24px; display: flex; flex-direction: column; gap: 12px; z-index: 2;">
+                            <div style="flex-shrink: 0; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.3); padding: 16px 20px; display: flex; flex-direction: column; z-index: 2;">
                                 
-                                <!-- Compact Stage & Activity Selection Row -->
-                                <div style="display: flex; gap: 12px; align-items: center;">
-                                    <div style="flex: 1; max-width: 150px;">
-                                        <!-- Inline select instead of heavy floating group -->
-                                        <select id="inp_status" data-field="status" onchange="window.b2bLeadsManager.saveLeadDetails('${lead.id}', true)"
-                                            style="width: 100%; background: rgba(0, 0, 0, 0.3) url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23f8fafc\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'6 9 12 15 18 9\'></polyline></svg>') no-repeat right 8px center; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 6px 28px 6px 10px; color: #f8fafc; font-size: 0.8rem; outline: none; appearance: none; cursor: pointer; height: 34px;">
-                                            <option value="" style="background: #1e293b; color: #f8fafc;">Stage...</option>
-                                            ${(statusOptions || []).map(opt => {
-        const val = typeof opt === 'object' ? opt.name : opt;
-        const labelText = typeof opt === 'object' ? opt.name : opt;
-        return `<option value="${val}" style="background: #1e293b; color: #f8fafc;" ${lead.status === val ? 'selected' : ''}>${labelText}</option>`;
-    }).join('')}
-                                        </select>
-                                    </div>
-                                    <div class="activity-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px; flex: 1;">
-                                        ${(settings.log_activities || ['Call', 'Visit', 'Message', 'Followup']).map(a => `
-                                            <button type="button" class="activity-chip" onclick="
-                                                this.parentElement.querySelectorAll('.activity-chip').forEach(c => c.classList.remove('active'));
-                                                this.classList.add('active');
-                                            " data-value="${a}" style="
-                                                padding: 4px 14px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1);
-                                                background: rgba(255, 255, 255, 0.05); color: var(--modal-text-secondary); cursor: pointer; font-size: 0.75rem; transition: all 0.2s; height: 30px; display: flex; align-items: center; font-weight: 500;
-                                            ">
-                                                ${a}
+                                <div style="display: flex; gap: 10px; align-items: flex-end;">
+                                    <!-- Unified Composer Box -->
+                                    <div style="flex: 1; background: transparent; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 16px; transition: border-color 0.2s; display: flex; flex-direction: column; gap: 14px; position: relative;" onfocusin="this.style.borderColor='rgba(59, 130, 246, 0.5)'" onfocusout="this.style.borderColor='rgba(255,255,255,0.15)'">
+                                        
+                                        <!-- Top Controls Row -->
+                                        <div style="display: flex; flex-direction: column; gap: 14px;">
+                                            
+                                            <!-- Row 1: Stage Dropdown & Due Date -->
+                                            <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 14px;">
+                                                <div style="width: 140px;">
+                                                    <select id="inp_status" data-field="status" onchange="window.b2bLeadsManager.saveLeadDetails('${lead.id}', true)"
+                                                        style="width: 100%; background: transparent url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmOGZhZmMiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSI2IDkgMTIgMTUgMTggOSI+PC9wb2x5bGluZT48L3N2Zz4=') no-repeat right 8px center; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 6px 28px 6px 10px; color: #f8fafc; font-size: 0.75rem; font-weight: 600; outline: none; appearance: none; cursor: pointer; height: 32px;">
+                                                        <option value="" style="background: #1e293b; color: #f8fafc;">Stage...</option>
+                                                        ${(statusOptions || []).map(opt => {
+                                                            const val = typeof opt === 'object' ? opt.name : opt;
+                                                            const labelText = typeof opt === 'object' ? opt.name : opt;
+                                                            return `<option value="${val}" style="background: #1e293b; color: #f8fafc;" ${lead.status === val ? 'selected' : ''}>${labelText}</option>`;
+                                                        }).join('')}
+                                                    </select>
+                                                </div>
+
+                                                <!-- Due Date Toggle -->
+                                                <div style="display: flex; align-items: center; padding-right: 4px;">
+                                                    <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                                                        <input type="checkbox" id="toggle-due-date" onchange="
+                                                            document.getElementById('due-date-container').style.display = this.checked ? 'flex' : 'none';
+                                                        " style="
+                                                            width: 14px; height: 14px; cursor: pointer; accent-color: var(--color-info);
+                                                            border-radius: 2px; background: rgba(255,255,255,1); border: 1px solid transparent; margin: 0;
+                                                        ">
+                                                        <span style="font-size: 0.8rem; font-weight: 500; color: #94a3b8;">Due Date</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            <!-- Row 2: Chips -->
+                                            <div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between;">
+                                                
+                                                <div class="activity-chips-container" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; flex: 1; align-items: center;">
+                                                    ${(settings.log_activities || ['Call', 'Visit', 'Message', 'Followup']).map(a => `
+                                                        <button type="button" class="activity-chip" onclick="
+                                                            this.parentElement.querySelectorAll('.activity-chip').forEach(c => c.classList.remove('active'));
+                                                            this.classList.add('active');
+                                                        " data-value="${a}" style="
+                                                            padding: 4px 14px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.2);
+                                                            background: transparent; color: var(--modal-text-secondary); cursor: pointer; font-size: 0.75rem; font-weight: 500; transition: all 0.2s; height: 28px; display: flex; align-items: center; white-space: nowrap;
+                                                        " onmouseover="if(!this.classList.contains('active')) this.style.background='rgba(255,255,255,0.05)';" onmouseout="if(!this.classList.contains('active')) this.style.background='transparent';">
+                                                            ${a}
+                                                        </button>
+                                                    `).join('')}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div id="due-date-container" style="display: none; gap: 8px;">
+                                            <input type="date" id="new-log-date" class="floating-input" style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; padding: 6px 10px; height: 32px; font-size: 0.8rem;">
+                                            <input type="time" id="new-log-time" class="floating-input" style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; padding: 6px 10px; height: 32px; font-size: 0.8rem;">
+                                        </div>
+
+                                        <div style="height: 1px; background: rgba(255,255,255,0.05); width: 100%;"></div>
+
+                                        <div style="display: flex; gap: 10px; align-items: flex-end;">
+                                            <textarea id="new-log-content" placeholder="Log details..." style="
+                                                flex: 1; min-height: 48px; max-height: 120px;
+                                                background: transparent; border: none; outline: none;
+                                                color: #f8fafc; padding: 0; margin: 0;
+                                                font-size: 0.9rem; resize: none; line-height: 1.5;
+                                                font-family: inherit;
+                                            " oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+                                            
+                                            <button class="wa-send-btn" onclick="window.b2bLeadsManager.addLog('${lead.id}')" style="
+                                                width: 44px; height: 44px; border-radius: 50%; padding: 0;
+                                                display: flex; align-items: center; justify-content: center;
+                                                flex-shrink: 0; min-width: unset; position: relative;
+                                                background: linear-gradient(135deg, #3b82f6, #2563eb);
+                                                color: white; border: none; cursor: pointer;
+                                                box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+                                                transition: all 0.2s;
+                                            " onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(59, 130, 246, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 15px rgba(59, 130, 246, 0.3)';">
+                                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                             </button>
-                                        `).join('')}
+                                        </div>
                                     </div>
-                                </div>
-
-                                <!-- Due Date Toggle -->
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
-                                    <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
-                                        <input type="checkbox" id="toggle-due-date" onchange="
-                                            document.getElementById('due-date-container').style.display = this.checked ? 'flex' : 'none';
-                                        " style="
-                                            width: 15px; height: 15px; cursor: pointer; accent-color: var(--color-info);
-                                            border-radius: 4px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2);
-                                        ">
-                                        <span style="font-size: 0.75rem; font-weight: 600; color: var(--modal-text-secondary); opacity: 0.9;">Set Due Date</span>
-                                    </label>
-                                </div>
-
-                                <div id="due-date-container" style="display: none; gap: 10px; margin-top: 2px;">
-                                    <input type="date" id="new-log-date" class="floating-input" style="flex: 1.2; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: white; padding: 6px 10px; height: 36px; font-size: 0.85rem;">
-                                    <input type="time" id="new-log-time" class="floating-input" style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: white; padding: 6px 10px; height: 36px; font-size: 0.85rem;">
-                                </div>
-
-                                <!-- Input & Send -->
-                                <div style="display: flex; gap: 10px; align-items: flex-end; margin-top: 4px;">
-                                    <div style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 4px; transition: border-color 0.2s;" onfocusin="this.style.borderColor='rgba(59, 130, 246, 0.5)'" onfocusout="this.style.borderColor='rgba(255,255,255,0.1)'">
-                                        <textarea id="new-log-content" placeholder="Log details..." style="
-                                            width: 100%; min-height: 48px; max-height: 120px;
-                                            background: transparent; border: none; outline: none;
-                                            color: #f8fafc; padding: 8px 10px;
-                                            font-size: 0.9rem; resize: none; line-height: 1.5;
-                                            font-family: inherit;
-                                        " oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
-                                    </div>
-                                    <button class="wa-send-btn" onclick="window.b2bLeadsManager.addLog('${lead.id}')" style="
-                                        width: 48px; height: 48px; border-radius: 50%; padding: 0;
-                                        display: flex; align-items: center; justify-content: center;
-                                        flex-shrink: 0; min-width: unset;
-                                        background: linear-gradient(135deg, #3b82f6, #2563eb);
-                                        color: white; border: none; cursor: pointer;
-                                        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-                                        transition: all 0.2s;
-                                    " onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(59, 130, 246, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 15px rgba(59, 130, 246, 0.3)';">
-                                        <!-- Send Icon (Check/Pen or Send arrow) -->
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -245,49 +258,63 @@ export function renderB2BLeadModal(lead, settings) {
                             </div>
 
                             <!-- ③ Composer — pinned at bottom -->
-                            <div style="flex-shrink: 0; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.25); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+                            <div style="flex-shrink: 0; background: rgba(0,0,0,0.25); padding: 12px 14px; display: flex; flex-direction: column;">
+                                
+                                <!-- Unified WA Composer Box -->
+                                <div style="flex: 1; background: transparent; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 12px 16px; transition: border-color 0.2s; display: flex; flex-direction: column; gap: 12px; position: relative;" onfocusin="this.style.borderColor='rgba(16, 185, 129, 0.5)'" onfocusout="this.style.borderColor='rgba(255,255,255,0.15)'">
 
-                                <!-- Template selector -->
-                                <div class="wa-modern-select-wrapper" style="margin-bottom: 0;">
-                                    <select id="wa-template-select" class="wa-modern-select" onchange="window.b2bLeadsManager.handleWATemplateChange(this.value)" style="padding: 9px 14px; font-size: 0.8rem; border-radius: 10px;">
-                                        <option value="">Select Template...</option>
-                                    </select>
-                                </div>
+                                    <!-- Top Row: Template & Media actions -->
+                                    <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
+                                        <!-- Template selector -->
+                                        <div class="wa-modern-select-wrapper" style="margin-bottom: 0; flex: 2; min-width: 0;">
+                                            <select id="wa-template-select" class="wa-modern-select" onchange="window.b2bLeadsManager.handleWATemplateChange(this.value)" style="padding: 6px 14px; font-size: 0.8rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); background: transparent; color: #f8fafc; width: 100%; outline: none; appearance: none; -webkit-appearance: none;">
+                                                <option value="" style="background: #1e293b; color: #f8fafc;">Select Template...</option>
+                                            </select>
+                                        </div>
 
-                                <!-- Media actions row -->
-                                <div style="display: flex; gap: 8px;">
-                                    <button class="wa-action-btn" onclick="window.b2bLeadsManager.openMediaGallery()" style="flex: 1; padding: 7px; font-size: 0.72rem; border-radius: 10px;">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                                        Gallery
-                                    </button>
-                                    <button class="wa-action-btn" onclick="document.getElementById('wa-file-upload').click()" style="flex: 1; padding: 7px; font-size: 0.72rem; border-radius: 10px;">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                                        Upload
-                                    </button>
-                                    <input type="file" id="wa-file-upload" style="display: none;" onchange="window.b2bLeadsManager.handleWAMediaUpload(this.files[0])">
-                                </div>
+                                        <!-- Media actions -->
+                                        <div style="display: flex; gap: 8px; flex: 1.5; min-width: 0;">
+                                            <button class="wa-action-btn" onclick="window.b2bLeadsManager.openMediaGallery()" style="flex: 1; padding: 6px; font-size: 0.72rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: var(--modal-text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; white-space: nowrap;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                                Gallery
+                                            </button>
+                                            <button class="wa-action-btn" onclick="document.getElementById('wa-file-upload').click()" style="flex: 1; padding: 6px; font-size: 0.72rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: var(--modal-text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; white-space: nowrap;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                                Upload
+                                            </button>
+                                            <input type="file" id="wa-file-upload" style="display: none;" onchange="window.b2bLeadsManager.handleWAMediaUpload(this.files[0])">
+                                        </div>
+                                    </div>
 
-                                <!-- Media preview (shown when selected) -->
-                                <div id="wa-media-preview" class="wa-preview-container" style="display: none; position: relative; border-radius: 10px; overflow: hidden; border: 1px solid rgba(16,185,129,0.2);"></div>
+                                    <!-- Media preview (shown when selected) -->
+                                    <div id="wa-media-preview" class="wa-preview-container" style="display: none; position: relative; border-radius: 8px; overflow: hidden; border: 1px solid rgba(16,185,129,0.2);"></div>
 
-                                <!-- Message input + send -->
-                                <div style="display: flex; gap: 8px; align-items: flex-end;">
-                                    <div style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 2px 4px; transition: border-color 0.2s;" onfocusin="this.style.borderColor='rgba(16,185,129,0.4)'" onfocusout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                                    <!-- Separator Line -->
+                                    <div style="height: 1px; background: rgba(255,255,255,0.05); width: 100%;"></div>
+
+                                    <!-- Bottom Row: Textarea + Send button -->
+                                    <div style="display: flex; gap: 10px; align-items: flex-end;">
                                         <textarea id="wa-message-body" placeholder="Message..." style="
-                                            width: 100%; min-height: 36px; max-height: 100px;
+                                            flex: 1; min-height: 48px; max-height: 120px;
                                             background: transparent; border: none; outline: none;
-                                            color: #f1f5f9; padding: 8px 12px;
+                                            color: #f1f5f9; padding: 0; margin: 0;
                                             font-size: 0.88rem; resize: none; line-height: 1.4;
                                             font-family: inherit;
-                                        " oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+                                        " oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+                                        
+                                        <button class="wa-send-btn" onclick="window.b2bLeadsManager.sendWhatsAppMessage('${lead.id}')" style="
+                                            width: 44px; height: 44px; border-radius: 50%; padding: 0;
+                                            display: flex; align-items: center; justify-content: center;
+                                            flex-shrink: 0; min-width: unset;
+                                            background: linear-gradient(135deg, #10b981, #059669);
+                                            color: white; border: none; cursor: pointer;
+                                            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+                                            transition: all 0.2s;
+                                        " onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(16, 185, 129, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 15px rgba(16, 185, 129, 0.3)';">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                        </button>
                                     </div>
-                                    <button class="wa-send-btn" onclick="window.b2bLeadsManager.sendWhatsAppMessage('${lead.id}')" style="
-                                        width: 44px; height: 44px; border-radius: 50%; padding: 0;
-                                        display: flex; align-items: center; justify-content: center;
-                                        flex-shrink: 0; font-size: 0; min-width: unset;
-                                    ">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                                    </button>
+
                                 </div>
                             </div>
                         </div>

@@ -1069,16 +1069,11 @@ if (!window.B2BLeadsManager) {
                 return;
             }
 
-            // Sort logs: newest date first (using createdAt as primary sort, fallback to due date if exists)
-            // Or stick to manual date? The user request implies due date is optional.
-            // Best to sort by "Action Date" (createdAt) for the timeline view usually, 
-            // but if the logged activity happened in the past (backdating), maybe user wants that.
-            // Let's sort by `log.date` (which was the manual date) if it exists, else `log.createdAt`.
-            // Wait, previously `log.date` was ALWAYS set to manual input. Now it might be null.
+            // Sort logs: oldest date first so newest log is at the bottom (closest to composer)
             const logs = [...lead.logs].sort((a, b) => {
                 const dateA = new Date(a.date || a.createdAt || 0);
                 const dateB = new Date(b.date || b.createdAt || 0);
-                return dateB - dateA;
+                return dateA - dateB;
             });
 
             container.innerHTML = logs.map(log => {
@@ -1228,11 +1223,20 @@ if (!window.B2BLeadsManager) {
             try {
                 const mediaItems = await this.mediaService.getMedia();
                 this.cachedMedia = mediaItems;
-                this.galleryFilter = { search: '', type: '', sort: 'newest' };
+                this.galleryFilter = { search: '', type: '', lang: '', cat: '', sort: 'newest' };
+
+                const settings = this.dataManager?.generalSettings || {};
+                const languages = settings.template_languages || [];
+                const categories = settings.template_categories || [];
+
+                const langOptions = languages.map(l => `<option value="${l}" style="background: #1e293b; color: #f8fafc;">${l}</option>`).join('');
+                const catOptions = categories.map(c => `<option value="${c}" style="background: #1e293b; color: #f8fafc;">${c}</option>`).join('');
+
+                const dropdownStyle = `background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; color: white; font-size: 0.85rem; outline: none; appearance: none; -webkit-appearance: none; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23ffffff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 10px top 50%; background-size: 10px auto; padding-right: 30px;`;
 
                 const modalHtml = `
                     <div id="gallery-picker-modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(12px);">
-                        <div style="background: #1a1b1e; width: 800px; max-height: 90vh; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.6);">
+                        <div style="background: #1a1b1e; width: 900px; height: 85vh; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.6);">
                             <div style="padding: 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02);">
                                 <div>
                                     <h3 style="margin: 0; color: white; font-size: 1.25rem;">Media Gallery</h3>
@@ -1241,15 +1245,22 @@ if (!window.B2BLeadsManager) {
                                 <div style="display: flex; align-items: center; gap: 12px;">
                                     <div style="position: relative;">
                                         <input type="text" id="gallery-search" placeholder="Search gallery..." 
-                                            style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 12px; color: white; font-size: 0.85rem; width: 200px; outline: none;"
+                                            style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 12px; color: white; font-size: 0.85rem; width: 160px; outline: none;"
                                             oninput="window.b2bLeadsManager.applyGalleryFilters()">
                                     </div>
-                                    <select id="gallery-filter-type" onchange="window.b2bLeadsManager.applyGalleryFilters()"
-                                        style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; color: white; font-size: 0.85rem; outline: none;">
-                                        <option value="">All Types</option>
-                                        <option value="image">Images</option>
-                                        <option value="video">Videos</option>
-                                        <option value="document">PDFs</option>
+                                    <select id="gallery-filter-lang" onchange="window.b2bLeadsManager.applyGalleryFilters()" style="${dropdownStyle}">
+                                        <option value="" style="background: #1e293b; color: #f8fafc;">All Languages</option>
+                                        ${langOptions}
+                                    </select>
+                                    <select id="gallery-filter-cat" onchange="window.b2bLeadsManager.applyGalleryFilters()" style="${dropdownStyle}">
+                                        <option value="" style="background: #1e293b; color: #f8fafc;">All Categories</option>
+                                        ${catOptions}
+                                    </select>
+                                    <select id="gallery-filter-type" onchange="window.b2bLeadsManager.applyGalleryFilters()" style="${dropdownStyle}">
+                                        <option value="" style="background: #1e293b; color: #f8fafc;">All Types</option>
+                                        <option value="image" style="background: #1e293b; color: #f8fafc;">Images</option>
+                                        <option value="video" style="background: #1e293b; color: #f8fafc;">Videos</option>
+                                        <option value="document" style="background: #1e293b; color: #f8fafc;">PDFs</option>
                                     </select>
                                     <button onclick="this.closest('#gallery-picker-modal').remove()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.8rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
                                 </div>
@@ -1270,12 +1281,17 @@ if (!window.B2BLeadsManager) {
         applyGalleryFilters() {
             const search = document.getElementById('gallery-search')?.value.toLowerCase() || '';
             const type = document.getElementById('gallery-filter-type')?.value || '';
+            const lang = document.getElementById('gallery-filter-lang')?.value || '';
+            const cat = document.getElementById('gallery-filter-cat')?.value || '';
 
             const filtered = this.cachedMedia.filter(m => {
                 const matchesSearch = !search || m.name.toLowerCase().includes(search) ||
                     (m.category && m.category.toLowerCase().includes(search));
                 const matchesType = !type || m.type === type || (type === 'document' && m.mimeType === 'application/pdf');
-                return matchesSearch && matchesType;
+                const matchesLang = !lang || (m.language && m.language.toLowerCase() === lang.toLowerCase());
+                const matchesCat = !cat || (m.category && m.category.toLowerCase() === cat.toLowerCase());
+
+                return matchesSearch && matchesType && matchesLang && matchesCat;
             });
 
             // Re-render grid
