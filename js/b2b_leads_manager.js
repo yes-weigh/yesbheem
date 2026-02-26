@@ -1265,9 +1265,25 @@ if (!window.B2BLeadsManager) {
                                     <button onclick="this.closest('#gallery-picker-modal').remove()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.8rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
                                 </div>
                             </div>
-                            <div id="gallery-grid" style="flex: 1; overflow-y: auto; padding: 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+                            <div id="gallery-grid" style="flex: 1; overflow-y: auto; padding: 24px; display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: max-content; gap: 24px;">
                                 <!-- Grid content rendered via applyGalleryFilters -->
                             </div>
+                            <style>
+                                #gallery-grid::-webkit-scrollbar {
+                                    width: 8px;
+                                }
+                                #gallery-grid::-webkit-scrollbar-track {
+                                    background: rgba(255, 255, 255, 0.02);
+                                    border-radius: 4px;
+                                }
+                                #gallery-grid::-webkit-scrollbar-thumb {
+                                    background: rgba(255, 255, 255, 0.1);
+                                    border-radius: 4px;
+                                }
+                                #gallery-grid::-webkit-scrollbar-thumb:hover {
+                                    background: rgba(255, 255, 255, 0.2);
+                                }
+                            </style>
                         </div>
                     </div>
                 `;
@@ -1599,8 +1615,29 @@ if (!window.B2BLeadsManager) {
                 // Case 1: Template selected (priority)
                 if (templateId) {
                     endpoint = '/messages/template';
+
+                    // Fetch KAM phone from settings for dynamic variables
+                    let kamPhone = '';
+                    try {
+                        const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+                        const { db } = await import("./services/firebase_config.js");
+                        const settingsDoc = await getDoc(doc(db, "settings", "general"));
+                        if (settingsDoc.exists()) {
+                            const kamList = settingsDoc.data().key_accounts || [];
+                            const kamObj = kamList.find(k => (k.name || k) === kamName);
+                            if (kamObj && kamObj.phone) {
+                                kamPhone = kamObj.phone;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Failed to fetch KAM phone for template variables", e);
+                    }
+
                     payload.templateId = templateId;
-                    payload.variables = {}; // Future: Add lead-specific variables mapping
+                    payload.variables = {
+                        'KAM_PHONE': kamPhone,
+                        'name': lead.contactPerson || lead.companyName || 'Valued Customer'
+                    };
                 }
                 // Case 2: Media Attachment
                 else if (this.selectedMedia) {
