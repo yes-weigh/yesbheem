@@ -109,7 +109,7 @@ export function renderB2BLeadModal(lead, settings) {
                         </div>
                     </div>
 
-                    <div class="dealer-modal-content" style="display: grid; grid-template-columns: 420px 1fr; gap: 0; overflow: hidden; height: 100%;">
+                    <div class="dealer-modal-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0; overflow: hidden; height: 100%;">
                         
                         <!-- Column 1: CRM HUB (History & Add Log Chat-Style) -->
                         <div class="modal-column column-crm" style="display: flex; flex-direction: column; height: 100%; border-right: 1px solid rgba(255,255,255,0.06); overflow: hidden; background: rgba(0,0,0,0.15);">
