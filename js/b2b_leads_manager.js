@@ -1097,8 +1097,10 @@ if (!window.B2BLeadsManager) {
                 const createdStr = createdAtObj ? createdAtObj.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '';
                 const dueStr = dateObj ? dateObj.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '';
 
+                const tooltipData = this.escapeHtml(JSON.stringify(log, null, 2));
+
                 return `
-                <div class="log-thread-item" style="position: relative; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem;">
+                <div class="log-thread-item" style="position: relative; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem;" title="${tooltipData}">
                     <!-- Timeline Dot -->
                     <div style="position: absolute; left: -4px; top: 4px; width: 7px; height: 7px; border-radius: 50%; background: ${themeColor}; box-shadow: 0 0 8px ${themeColor}66;"></div>
                     
@@ -2566,8 +2568,9 @@ Proceed with import?
                         </div>`;
                 }
 
+                const tooltipData = this.escapeHtml(JSON.stringify(msg, null, 2));
                 const bubble = isMe ? `
-                    <div style="display: flex; justify-content: flex-end; margin-bottom: 2px;">
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 2px;" title="${tooltipData}">
                         <div style="
                             max-width: 80%; background: linear-gradient(135deg, #10b981, #059669);
                             color: #fff; border-radius: 18px 18px 4px 18px;
@@ -2579,7 +2582,7 @@ Proceed with import?
                             <div style="font-size: 0.6rem; opacity: 0.75; text-align: right; margin-top: 3px;">✓✓ ${timeStr}</div>
                         </div>
                     </div>` : `
-                    <div style="display: flex; justify-content: flex-start; margin-bottom: 2px;">
+                    <div style="display: flex; justify-content: flex-start; margin-bottom: 2px;" title="${tooltipData}">
                         <div style="
                             max-width: 80%; background: rgba(255,255,255,0.07);
                             color: #e2e8f0; border-radius: 18px 18px 18px 4px;

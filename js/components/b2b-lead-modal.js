@@ -150,10 +150,10 @@ export function renderB2BLeadModal(lead, settings) {
                                                         style="width: 100%; background: transparent url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmOGZhZmMiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSI2IDkgMTIgMTUgMTggOSI+PC9wb2x5bGluZT48L3N2Zz4=') no-repeat right 8px center; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 6px 28px 6px 10px; color: #f8fafc; font-size: 0.75rem; font-weight: 600; outline: none; appearance: none; cursor: pointer; height: 32px;">
                                                         <option value="" style="background: #1e293b; color: #f8fafc;">Stage...</option>
                                                         ${(statusOptions || []).map(opt => {
-                                                            const val = typeof opt === 'object' ? opt.name : opt;
-                                                            const labelText = typeof opt === 'object' ? opt.name : opt;
-                                                            return `<option value="${val}" style="background: #1e293b; color: #f8fafc;" ${lead.status === val ? 'selected' : ''}>${labelText}</option>`;
-                                                        }).join('')}
+        const val = typeof opt === 'object' ? opt.name : opt;
+        const labelText = typeof opt === 'object' ? opt.name : opt;
+        return `<option value="${val}" style="background: #1e293b; color: #f8fafc;" ${lead.status === val ? 'selected' : ''}>${labelText}</option>`;
+    }).join('')}
                                                     </select>
                                                 </div>
 
@@ -326,25 +326,28 @@ export function renderB2BLeadModal(lead, settings) {
             <style>
                 .dealer-modal-overlay {
                     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                    background: var(--modal-overlay-bg, rgba(0, 0, 0, 0.85)); /* Darker overlay */
-                    backdrop-filter: blur(12px);
+                    background: rgba(15, 23, 42, 0.65); /* Modern deep slate overlay */
+                    backdrop-filter: blur(16px) saturate(120%);
+                    -webkit-backdrop-filter: blur(16px) saturate(120%);
                     z-index: 10000;
                     display: flex; align-items: center; justify-content: center;
-                    animation: fadeIn 0.1s ease-out;
+                    animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                 }
                 .dealer-modal {
                     position: relative;
-                    background: var(--modal-bg-gradient, #0f172a);
+                    background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+                    backdrop-filter: blur(24px);
+                    -webkit-backdrop-filter: blur(24px);
                     width: 95vw;
                     height: 90vh;
                     max-width: 1600px; /* Max constraint for ultra wide */
-                    border-radius: 20px;
-                    border: var(--modal-border, 1px solid rgba(255,255,255,0.08));
-                    box-shadow: var(--modal-shadow, 0 50px 100px -20px rgba(0, 0, 0, 0.7));
-                    color: var(--modal-input-text, #e2e8f0);
+                    border-radius: 24px;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+                    color: #f1f5f9;
                     display: flex; flex-direction: column;
                     overflow: hidden;
-                    animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                    animation: scaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                 }
                 
                 /* Override overview styles for stacked column */
@@ -357,138 +360,118 @@ export function renderB2BLeadModal(lead, settings) {
                 .edit-stack .floating-group {
                     margin-bottom: 0;
                 }
-                .edit-group {
-                    /* No specific styles needed, just container */
-                }
                 
-                /* Scrollbar for internally scrolling columns */
+                /* Elegant Scrollbars */
                 .modal-column::-webkit-scrollbar,
-                #b2b-logs-list::-webkit-scrollbar {
-                    width: 6px;
+                #b2b-logs-list::-webkit-scrollbar,
+                .wa-chat-history-container::-webkit-scrollbar,
+                #wa-chat-history::-webkit-scrollbar,
+                .crm-history-container::-webkit-scrollbar {
+                    width: 5px;
+                    height: 5px;
                 }
                 .modal-column::-webkit-scrollbar-track,
-                #b2b-logs-list::-webkit-scrollbar-track {
-                    background: rgba(0,0,0,0.1);
+                #b2b-logs-list::-webkit-scrollbar-track,
+                .wa-chat-history-container::-webkit-scrollbar-track,
+                #wa-chat-history::-webkit-scrollbar-track,
+                .crm-history-container::-webkit-scrollbar-track {
+                    background: transparent;
                 }
                 .modal-column::-webkit-scrollbar-thumb,
-                #b2b-logs-list::-webkit-scrollbar-thumb {
-                    background: rgba(255,255,255,0.1);
-                    border-radius: 3px;
+                #b2b-logs-list::-webkit-scrollbar-thumb,
+                .wa-chat-history-container::-webkit-scrollbar-thumb,
+                #wa-chat-history::-webkit-scrollbar-thumb,
+                .crm-history-container::-webkit-scrollbar-thumb {
+                    background: rgba(255, 255, 255, 0.15);
+                    border-radius: 10px;
+                    transition: background 0.3s ease;
+                }
+                .modal-column::-webkit-scrollbar-thumb:hover,
+                #b2b-logs-list::-webkit-scrollbar-thumb:hover,
+                .wa-chat-history-container::-webkit-scrollbar-thumb:hover,
+                #wa-chat-history::-webkit-scrollbar-thumb:hover,
+                .crm-history-container::-webkit-scrollbar-thumb:hover {
+                    background: rgba(255, 255, 255, 0.25);
                 }
 
-                
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
                 @keyframes scaleUp {
-                    from { transform: scale(0.95) translateY(10px); opacity: 0; }
+                    from { transform: scale(0.96) translateY(20px); opacity: 0; }
                     to { transform: scale(1) translateY(0); opacity: 1; }
                 }
 
                 /* Header */
                 .dealer-modal-header {
-                    padding: 16px 24px;
-                    border-bottom: var(--modal-tabs-border, 1px solid rgba(255,255,255,0.05));
+                    padding: 20px 28px;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
                     display: flex; justify-content: space-between; align-items: center;
-                    background: var(--modal-header-bg, rgba(255,255,255,0.02));
+                    background: rgba(255, 255, 255, 0.015);
                 }
                 .dealer-modal-header h2 { 
-                    margin: 0; font-size: 1.25rem; font-weight: 700; 
-                    color: var(--modal-h2-color, #f8fafc);
-                    text-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    margin: 0; font-size: 1.35rem; font-weight: 800; 
+                    color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                    letter-spacing: -0.01em;
                 }
-                .header-actions { display: flex; gap: 12px; align-items: center; }
-                .stage-badge { 
-                    padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; 
-                    text-transform: uppercase; background: rgba(16, 185, 129, 0.2); color: #34d399; 
-                    border: 1px solid rgba(16, 185, 129, 0.3);
-                }
+                .header-actions { display: flex; gap: 14px; align-items: center; }
                 
                 .close-btn { 
-                    background: rgba(255,255,255,0.05); border: none; color: var(--modal-text-secondary, #94a3b8); 
-                    border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-                    cursor: pointer; transition: all 0.2s; 
+                    background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255,255,255,0.06); color: #94a3b8; 
+                    border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+                    cursor: pointer; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); 
                 }
-                .close-btn:hover { background: rgba(100,100,255,0.1); color: var(--modal-h2-color); transform: rotate(90deg); }
+                .close-btn:hover { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5; transform: rotate(90deg) scale(1.05); }
 
                 /* Modernized WhatsApp Section */
-                .whatsapp-modern-card {
-                    background: rgba(16, 185, 129, 0.03);
-                    border: 1px solid rgba(16, 185, 129, 0.1);
-                    border-radius: 20px;
-                    padding: 20px;
-                    position: relative;
-                    overflow: hidden;
-                    backdrop-filter: blur(5px);
-                }
-                .whatsapp-header-group {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    margin-bottom: 20px;
-                }
-                .whatsapp-title-wrapper {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    color: #10b981;
-                }
-                .whatsapp-title-wrapper h4 {
-                    margin: 0;
-                    font-size: 0.9rem;
-                    font-weight: 800;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                }
                 .wa-status-pill {
-                    padding: 6px 12px;
-                    border-radius: 20px;
-                    font-size: 0.7rem;
+                    padding: 6px 14px;
+                    border-radius: 24px;
+                    font-size: 0.75rem;
                     font-weight: 600;
                     display: flex;
                     align-items: center;
-                    gap: 6px;
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    background: rgba(0, 0, 0, 0.2);
-                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    gap: 8px;
+                    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                    background: rgba(0, 0, 0, 0.3);
+                    border: 1px solid rgba(255, 255, 255, 0.06);
+                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
                 }
                 .wa-status-dot {
                     width: 6px;
                     height: 6px;
                     border-radius: 50%;
                     position: relative;
-                    background: #475569;
+                    background: #64748b;
                 }
                 .wa-status-pill.connected {
-                    background: rgba(16, 185, 129, 0.1);
-                    border-color: rgba(16, 185, 129, 0.2);
+                    background: rgba(16, 185, 129, 0.12);
+                    border-color: rgba(16, 185, 129, 0.25);
                     color: #f8fafc;
                 }
                 .wa-status-pill.connected .wa-status-dot {
                     background: #10b981;
-                    box-shadow: 0 0 8px #10b981;
+                    box-shadow: 0 0 10px #10b981;
                 }
                 .wa-status-pill.connected .wa-status-dot::after {
                     content: '';
                     position: absolute;
-                    inset: -2px;
+                    inset: -3px;
                     border: 1px solid #10b981;
                     border-radius: 50%;
-                    animation: ripple 2s infinite;
+                    animation: ripple 2s infinite cubic-bezier(0.16, 1, 0.3, 1);
                 }
                 @keyframes ripple {
                     0% { transform: scale(1); opacity: 0.8; }
                     100% { transform: scale(2.5); opacity: 0; }
                 }
-                .wa-action-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 10px;
-                    margin-bottom: 15px;
-                }
                 .wa-action-btn {
-                    background: rgba(255, 255, 255, 0.03);
+                    background: rgba(255, 255, 255, 0.04);
                     border: 1px solid rgba(255, 255, 255, 0.08);
                     border-radius: 12px;
-                    padding: 10px;
-                    color: #94a3b8;
+                    padding: 8px 12px;
+                    color: #cbd5e1;
                     font-size: 0.75rem;
                     font-weight: 600;
                     cursor: pointer;
@@ -496,35 +479,37 @@ export function renderB2BLeadModal(lead, settings) {
                     align-items: center;
                     justify-content: center;
                     gap: 8px;
-                    transition: all 0.2s;
+                    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
                 }
                 .wa-action-btn:hover {
                     background: rgba(255, 255, 255, 0.08);
                     border-color: rgba(255, 255, 255, 0.15);
-                    color: #f8fafc;
-                    transform: translateY(-1px);
+                    color: #fff;
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                 }
-                .wa-action-btn svg { width: 18px; height: 18px; }
+                .wa-action-btn svg { width: 16px; height: 16px; }
                 .wa-modern-select-wrapper {
                     position: relative;
-                    margin-bottom: 15px;
                 }
                 .wa-modern-select {
                     width: 100%;
-                    background: rgba(0, 0, 0, 0.25);
+                    background: rgba(0, 0, 0, 0.3);
                     border: 1px solid rgba(255, 255, 255, 0.1);
                     border-radius: 12px;
-                    padding: 12px 16px;
-                    color: #f8fafc;
+                    padding: 10px 16px;
+                    color: #f1f5f9;
                     font-size: 0.85rem;
                     outline: none;
                     appearance: none;
                     cursor: pointer;
-                    transition: all 0.2s;
+                    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+                    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
                 }
                 .wa-modern-select:focus {
-                    border-color: rgba(16, 185, 129, 0.4);
-                    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+                    border-color: rgba(16, 185, 129, 0.5);
+                    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15), inset 0 2px 4px rgba(0,0,0,0.1);
                 }
                 .wa-modern-select option { background: #0f172a; color: #f8fafc; }
                 .wa-modern-select-wrapper::after {
@@ -533,88 +518,43 @@ export function renderB2BLeadModal(lead, settings) {
                     right: 16px;
                     top: 50%;
                     transform: translateY(-50%);
-                    color: #64748b;
+                    color: #94a3b8;
                     pointer-events: none;
-                    font-size: 0.7rem;
+                    font-size: 0.8rem;
                 }
-                .wa-message-composer {
-                    background: rgba(0, 0, 0, 0.2);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 16px;
-                    padding: 4px;
-                    margin-bottom: 20px;
-                    transition: border-color 0.2s;
-                }
-                .wa-message-composer:focus-within { border-color: rgba(16, 185, 129, 0.3); }
-                .wa-message-composer textarea {
-                    width: 100%;
-                    min-height: 80px;
-                    background: transparent;
-                    border: none;
-                    color: #f1f5f9;
-                    padding: 12px;
-                    font-size: 0.9rem;
-                    resize: none;
-                    outline: none;
-                    line-height: 1.5;
-                }
+                
                 .wa-send-btn {
-                    width: 100%;
-                    padding: 14px;
+                    padding: 12px;
                     border-radius: 14px;
                     background: linear-gradient(135deg, #10b981, #059669);
                     color: white;
-                    font-weight: 700;
-                    font-size: 0.9rem;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
                     border: none;
                     cursor: pointer;
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    gap: 10px;
-                    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+                    box-shadow: 0 6px 15px -3px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
                 }
                 .wa-send-btn:hover:not(:disabled) {
-                    transform: translateY(-2px) scale(1.01);
-                    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+                    transform: translateY(-2px) scale(1.02);
+                    box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+                }
+                .wa-send-btn:active:not(:disabled) {
+                    transform: translateY(0) scale(0.98);
                 }
                 .wa-send-btn:disabled {
                     background: rgba(255, 255, 255, 0.05);
                     color: #475569;
                     box-shadow: none;
                     cursor: not-allowed;
-                    opacity: 0.5;
+                    opacity: 0.6;
                 }
                 .wa-preview-container {
-                    margin-bottom: 15px; border-radius: 16px; overflow: hidden;
-                    background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(16, 185, 129, 0.1);
+                    margin-bottom: 12px; border-radius: 14px; overflow: hidden;
+                    background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(16, 185, 129, 0.2);
                 }
 
-                /* Tabs */
-                .dealer-modal-tabs {
-                    display: flex; padding: 0 24px;
-                    background: var(--modal-tabs-bg, rgba(0,0,0,0.1));
-                    border-bottom: var(--modal-tabs-border, 1px solid rgba(255,255,255,0.05));
-                }
-                .tab-btn {
-                    padding: 14px 4px; margin-right: 24px;
-                    background: none; border: none; 
-                    color: var(--modal-label-color, #64748b);
-                    font-size: 0.85rem; font-weight: 600; cursor: pointer;
-                    position: relative; transition: color 0.2s;
-                }
-                .tab-btn.active { color: var(--modal-h2-color, #f8fafc); }
-                .tab-btn.active::after {
-                    content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
-                    height: 2px; background: var(--color-info, #3b82f6); box-shadow: 0 -1px 8px var(--color-info);
-                }
-
-                /* Content Body */
-                .dealer-modal-content { padding: 24px; flex: 1; }
-                
                 /* Compact Grid Layout */
                 .compact-grid {
                     display: grid;
@@ -626,169 +566,99 @@ export function renderB2BLeadModal(lead, settings) {
                     .dealer-modal { width: 100%; height: 100%; border-radius: 0; }
                 }
 
-                .col-title {
-                    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
-                    color: var(--modal-label-color, #64748b); margin: 0 0 16px 0; font-weight: 700;
-                    border-bottom: 1px dashed var(--modal-table-border, rgba(255,255,255,0.1)); padding-bottom: 4px;
-                }
-
                 /* Floating Labels */
-                .floating-group { position: relative; margin-bottom: 16px; }
+                .floating-group { position: relative; margin-bottom: 0; }
                 .floating-input {
                     width: 100%;
-                    padding: 16px 12px 6px;
-                    height: 48px;
-                    background: var(--modal-input-bg, rgba(30, 41, 59, 0.5));
-                    border: var(--modal-input-border, 1px solid rgba(255, 255, 255, 0.1));
-                    border-radius: 8px;
-                    color: var(--modal-input-text, #f1f5f9);
-                    font-size: 0.9rem;
-                    font-family: inherit;
-                    transition: all 0.2s;
+                    padding: 20px 14px 6px;
+                    height: 52px;
+                    background: rgba(0, 0, 0, 0.2);
+                    border: 1px solid rgba(255, 255, 255, 0.08); /* Minimal border */
+                    border-radius: 12px;
+                    color: #f8fafc;
+                    font-size: 0.95rem;
+                    font-family: 'Inter', sans-serif;
+                    font-weight: 500;
+                    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
                     box-sizing: border-box;
+                    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+                }
+                .floating-input:hover {
+                    background: rgba(0, 0, 0, 0.25);
+                    border-color: rgba(255, 255, 255, 0.15);
                 }
                 .floating-input:focus {
                     outline: none;
-                    border-color: var(--color-info, #3b82f6);
-                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-                    background: var(--modal-input-focus-bg, rgba(30, 41, 59, 0.8));
+                    border-color: #3b82f6; /* Focus glow */
+                    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), inset 0 2px 4px rgba(0,0,0,0.1);
+                    background: rgba(0, 0, 0, 0.3);
                 }
                 .floating-label {
                     position: absolute;
-                    top: 14px; left: 12px;
-                    font-size: 0.85rem;
-                    color: var(--modal-label-color, #94a3b8);
+                    top: 16px; left: 14px;
+                    font-size: 0.9rem;
+                    color: #64748b;
                     pointer-events: none;
-                    transition: all 0.2s ease-out;
+                    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+                    font-weight: 500;
                 }
                 /* Active State for Float */
                 .floating-input:focus ~ .floating-label,
                 .floating-input:not(:placeholder-shown) ~ .floating-label {
-                    top: 4px;
-                    font-size: 0.65rem;
-                    color: var(--color-info, #3b82f6);
-                    font-weight: 600;
+                    top: 6px;
+                    font-size: 0.68rem;
+                    color: #3b82f6;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
                 }
                 /* Select handling */
-                select.floating-input { padding-top: 16px; cursor: pointer; }
-                select.floating-input option { background: var(--modal-input-bg, #1e293b); color: var(--modal-input-text); }
+                select.floating-input { padding-top: 18px; cursor: pointer; }
+                select.floating-input option { background: #0f172a; color: #f8fafc; }
 
                 /* Readonly */
                 .floating-input[readonly], .floating-input[disabled] {
-                    background: var(--modal-readonly-bg, rgba(0, 0, 0, 0.2));
+                    background: rgba(255, 255, 255, 0.02);
                     border-color: transparent;
                     cursor: default;
-                    color: var(--modal-text-secondary, #94a3b8);
+                    color: #94a3b8;
+                    box-shadow: none;
                 }
-
-                /* Edit Toggle Button */
-                .edit-toggle-btn {
-                    position: absolute; right: 10px; top: 12px;
-                    background: none; border: none;
-                    color: var(--text-muted); opacity: 0.5;
-                    cursor: pointer; transition: all 0.2s;
-                }
-                .edit-toggle-btn:hover { opacity: 1; color: var(--accent-color); }
-
-                /* Footer */
-                .dealer-modal-footer {
-                    padding: 16px 24px;
-                    border-top: var(--modal-footer-border, 1px solid rgba(255,255,255,0.05));
-                    background: var(--modal-footer-bg, rgba(15, 23, 42, 0.5));
-                    display: flex; justify-content: space-between; align-items: center;
-                }
-                .footer-note { font-size: 0.75rem; color: var(--modal-text-secondary, #94a3b8); font-style: italic; }
-                
-                .btn-cancel {
-                    padding: 8px 16px; margin-right: 8px;
-                    background: transparent; border: 1px solid var(--modal-table-border, rgba(255,255,255,0.1));
-                    color: var(--modal-text-secondary, #94a3b8); border-radius: 6px; cursor: pointer; transition: 0.2s;
-                }
-                .btn-cancel:hover { background: rgba(255,255,255,0.05); color: var(--modal-h2-color, #f8fafc); }
-                
-                .btn-save {
-                    padding: 8px 24px;
-                    background: linear-gradient(135deg, #3b82f6, #2563eb);
-                    border: none; color: white; border-radius: 6px;
-                    font-weight: 600; cursor: pointer;
-                    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-                    transition: transform 0.1s, box-shadow 0.2s;
-                }
-                .btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4); }
-                .btn-save:active { transform: translateY(0); }
 
                 /* Chip Active States */
-                .activity-chip.active, .status-chip.active {
-                    background: var(--color-info, #3b82f6) !important;
-                    border-color: var(--color-info, #3b82f6) !important;
-                    color: white !important;
-                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-                    font-weight: 700;
-                }
-
-                /* CRM Scrollbar Styles (matched to WhatsApp chat scrollbar) */
-                .crm-history-container::-webkit-scrollbar {
-                    width: 6px;
-                }
-                .crm-history-container::-webkit-scrollbar-track {
-                    background: rgba(0,0,0,0.1);
-                }
-                .crm-history-container::-webkit-scrollbar-thumb {
-                    background: rgba(255,255,255,0.1);
-                    border-radius: 3px;
-                }
-
-                /* Chat History Styles */
-                .wa-chat-history-container {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 8px;
-                    max-height: 400px;
-                    overflow-y: auto;
-                    padding: 4px;
-                }
-                .wa-chat-history-container::-webkit-scrollbar,
-                #wa-chat-history::-webkit-scrollbar {
-                    width: 6px;
-                }
-                .wa-chat-history-container::-webkit-scrollbar-track,
-                #wa-chat-history::-webkit-scrollbar-track {
-                    background: rgba(0,0,0,0.1);
-                }
-                .wa-chat-history-container::-webkit-scrollbar-thumb,
-                #wa-chat-history::-webkit-scrollbar-thumb {
-                    background: rgba(255,255,255,0.1);
-                    border-radius: 3px;
-                }
-                .wa-msg {
-                    max-width: 85%;
-                    padding: 8px 12px;
-                    border-radius: 12px;
-                    font-size: 0.85rem;
-                    line-height: 1.4;
+                .activity-chip {
                     position: relative;
+                    overflow: hidden;
+                    z-index: 1;
                 }
-                .wa-msg.inbound {
-                    align-self: flex-start;
-                    background: rgba(255, 255, 255, 0.05);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    color: #e2e8f0;
-                    border-bottom-left-radius: 2px;
+                .activity-chip::before {
+                    content: '';
+                    position: absolute;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+                    opacity: 0; transition: opacity 0.3s;
+                    z-index: -1;
                 }
-                .wa-msg.outbound {
-                    align-self: flex-end;
-                    background: rgba(16, 185, 129, 0.1);
-                    border: 1px solid rgba(16, 185, 129, 0.2);
-                    color: #f8fafc;
-                    border-bottom-right-radius: 2px;
+                .activity-chip:hover::before { opacity: 1; }
+                
+                .activity-chip.active, .status-chip.active {
+                    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+                    border-color: transparent !important;
+                    color: white !important;
+                    box-shadow: 0 6px 15px -3px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+                    font-weight: 600;
+                    transform: translateY(-1px);
                 }
-                .wa-msg-content { white-space: pre-wrap; word-break: break-word; }
-                .wa-msg-time {
-                    display: block;
-                    font-size: 0.65rem;
-                    opacity: 0.5;
-                    margin-top: 4px;
-                    text-align: right;
+
+                /* Improved bubble */
+                .wa-msg {
+                    max-width: 82%;
+                    padding: 10px 14px;
+                    border-radius: 14px;
+                    font-size: 0.9rem;
+                    line-height: 1.45;
+                    position: relative;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 }
             </style>
         `;
