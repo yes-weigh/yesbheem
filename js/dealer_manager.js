@@ -1727,6 +1727,28 @@ if (!window.DealerManager) {
 
             const activeContent = document.getElementById(`modal-tab-${tabId}`);
             if (activeContent) activeContent.style.display = 'block';
+
+            // Additional logic for Engagement tab
+            if (tabId === 'engagement') {
+                const modal = document.querySelector('.dealer-modal-overlay');
+                if (modal) {
+                    const sendBtn = modal.querySelector('.wa-send-btn');
+                    if (sendBtn) {
+                        const onclickAttr = sendBtn.getAttribute('onclick') || '';
+                        const match = onclickAttr.match(/'([^']+)'/);
+                        const dealerName = match ? match[1].replace(/\\'/g, "'") : '';
+
+                        if (dealerName) {
+                            this.renderLogsList(dealerName);
+                        }
+
+                        const kam = modal.querySelector('#inp_key_account_manager')?.value || '';
+                        this.initMediaAndTemplates().then(() => {
+                            this.updateWhatsAppInterface(kam);
+                        });
+                    }
+                }
+            }
         }
 
         async handlePopupZipChange(inputField) {
@@ -2472,6 +2494,462 @@ if (!window.DealerManager) {
                 this.refresh();
             }
         }
+
+        // --- ENGAGEMENT: WHATSAPP & CRM LOGS ---
+
+        escapeHtml(unsafe) {
+            if (!unsafe || typeof unsafe !== 'string') return unsafe;
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        async initMediaAndTemplates() {
+            const loadScript = async (src) => {
+                return new Promise((resolve) => {
+                    const script = document.createElement('script');
+                    script.src = src;
+                    script.onload = resolve;
+                    script.onerror = () => { console.error('Failed to load script', src); resolve(); }
+                    document.head.appendChild(script);
+                });
+            };
+
+            if (!window.MediaService) await loadScript('/js/services/media_service.js');
+            if (!this.mediaService && window.MediaService) {
+                this.mediaService = new window.MediaService();
+            }
+
+            if (!window.TemplateService) await loadScript('/js/services/template_service.js');
+            if (!this.templateService && window.TemplateService) {
+                this.templateService = new window.TemplateService();
+            }
+
+            if (this.whatsappInstances === undefined) {
+                this.whatsappInstances = [];
+                await this.loadWhatsAppInstances();
+            }
+            if (!this.templates || this.templates.length === 0) {
+                await this.loadWATemplates();
+            }
+        }
+
+        renderLogsList(dealerName) {
+            const container = document.getElementById('dealer-logs-list');
+            if (!container) return;
+
+            const dealer = this.filteredDealers.find(d => (d.customer_name || d.name || '').toLowerCase() === dealerName.toLowerCase());
+            if (!dealer) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px; font-style: italic; opacity: 0.7;">Dealer not found.</div>';
+                return;
+            }
+
+            const logs = dealer.logs || [];
+            if (logs.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px; font-style: italic; opacity: 0.7;">No logs recorded yet.</div>';
+                return;
+            }
+
+            const sortedLogs = [...logs].sort((a, b) => {
+                const dateA = new Date(a.date || a.createdAt || 0);
+                const dateB = new Date(b.date || b.createdAt || 0);
+                return dateA - dateB;
+            });
+
+            container.innerHTML = sortedLogs.map(log => {
+                const hasDueDate = !!log.date;
+                const type = log.activityType || 'Log';
+                const createdAtObj = log.createdAt ? new Date(log.createdAt) : null;
+                const dateObj = hasDueDate ? new Date(log.date) : null;
+
+                const colors = {
+                    'Call': '#3b82f6', 'Visit': '#a855f7', 'Message': '#22c55e',
+                    'Followup': '#f59e0b', 'Note': '#64748b'
+                };
+                const themeColor = colors[type] || colors['Note'];
+                const createdStr = createdAtObj ? createdAtObj.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+                const dueStr = dateObj ? dateObj.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+
+                return `
+                <div class="log-thread-item" style="position: relative; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem;" title="${this.escapeHtml(JSON.stringify(log, null, 2))}">
+                    <div style="position: absolute; left: -4px; top: 4px; width: 7px; height: 7px; border-radius: 50%; background: ${themeColor}; box-shadow: 0 0 8px ${themeColor}66;"></div>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;">
+                        <span style="font-weight: 700; color: ${themeColor}; font-size: 0.75rem; text-transform: uppercase;">${type}</span>
+                        <span style="color: var(--text-muted); opacity: 0.6; font-size: 0.75rem;">${createdStr}</span>
+                        ${hasDueDate ? `
+                            <span style="display: flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; padding: 1px 6px; border-radius: 4px; font-size: 0.7rem;">
+                                Due: ${dueStr}
+                            </span>
+                        ` : ''}
+                    </div>
+                    <div style="color: var(--text-main); line-height: 1.5; white-space: pre-wrap; opacity: 0.9;">${this.escapeHtml(log.content)}</div>
+                </div>
+                `;
+            }).join('') + `<style>.log-thread-item:last-child { border-left-color: transparent; margin-bottom: 0; }</style>`;
+        }
+
+        async addLog(dealerName) {
+            const btn = document.querySelector('.wa-send-btn');
+            if (btn) btn.disabled = true;
+
+            const contentEl = document.getElementById('new-log-content');
+            const typeEl = document.querySelector('.activity-chip.active');
+            const content = contentEl ? contentEl.value.trim() : '';
+
+            if (!content) {
+                import('./utils/toast.js').then(m => m.Toast.warning('Please enter log details.'));
+                if (btn) btn.disabled = false;
+                return;
+            }
+
+            let dueDate = null;
+            if (document.getElementById('toggle-due-date')?.checked) {
+                const dDate = document.getElementById('new-log-date')?.value;
+                const dTime = document.getElementById('new-log-time')?.value || '00:00';
+                if (dDate) dueDate = `${dDate}T${dTime}:00`;
+            }
+
+            const newLog = {
+                id: 'log_' + Date.now(),
+                activityType: typeEl ? typeEl.dataset.value : 'Note',
+                content,
+                createdAt: new Date().toISOString()
+            };
+            if (dueDate) newLog.date = dueDate;
+
+            try {
+                const dealer = this.filteredDealers.find(d => (d.customer_name || d.name || '').toLowerCase() === dealerName.toLowerCase());
+                if (dealer) {
+                    if (!dealer.logs) dealer.logs = [];
+                    dealer.logs.push(newLog);
+                }
+
+                const mergedDealer = window.dataManager.dealerData[dealerName] || {};
+                const currentLogs = mergedDealer.logs || [];
+                currentLogs.push(newLog);
+
+                await window.dataManager.saveDealerOverride(dealerName, { logs: currentLogs });
+
+                if (contentEl) {
+                    contentEl.value = '';
+                    contentEl.style.height = '48px';
+                }
+                if (document.getElementById('toggle-due-date')) {
+                    document.getElementById('toggle-due-date').checked = false;
+                    const c = document.getElementById('due-date-container');
+                    if (c) c.style.display = 'none';
+                }
+                this.renderLogsList(dealerName);
+
+                import('./utils/toast.js').then(m => m.Toast.success('Log added successfully.'));
+            } catch (error) {
+                console.error('Failed to save log', error);
+                import('./utils/toast.js').then(m => m.Toast.error('Failed to save log.'));
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        async loadWhatsAppInstances() {
+            try {
+                let liveSessions = [];
+                try {
+                    const res = await fetch(`${window.appConfig.apiUrl}/api/auth/sessions`);
+                    const data = await res.json();
+                    if (data.success && Array.isArray(data.sessions)) liveSessions = data.sessions;
+                } catch (e) { }
+
+                const metaDocs = [];
+                try {
+                    let _getDocs = typeof getDocs !== 'undefined' ? getDocs : window.getDocs;
+                    let _collection = typeof collection !== 'undefined' ? collection : window.collection;
+                    let _db = typeof db !== 'undefined' ? db : window.db;
+
+                    if (!_getDocs || !_collection || !_db) {
+                        try {
+                            const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+                            _getDocs = fb.getDocs;
+                            _collection = fb.collection;
+                            const config = await import("./services/firebase_config.js");
+                            _db = config.db;
+                        } catch (err) {
+                            console.warn("Dynamic import for WA instances failed", err);
+                        }
+                    }
+
+                    if (_getDocs && _collection && _db) {
+                        const snap = await _getDocs(_collection(_db, "whatsapp_instances"));
+                        snap.forEach(doc => metaDocs.push({ ...doc.data(), id: doc.id }));
+                    }
+                } catch (e) { }
+
+                if (liveSessions.length > 0) {
+                    this.whatsappInstances = liveSessions.map(session => {
+                        const meta = metaDocs.find(m => m.sessionId === (session.id || session.sessionId));
+                        return { ...session, id: session.id || session.sessionId, name: meta ? meta.name : session.name, kam: meta ? meta.kam : null, connected: true };
+                    });
+                } else {
+                    this.whatsappInstances = metaDocs.map(meta => ({ id: meta.sessionId, name: meta.name || 'Unnamed', kam: meta.kam, connected: false }));
+                }
+            } catch (e) { this.whatsappInstances = []; }
+        }
+
+        async loadWATemplates() {
+            if (!this.templateService) return;
+            try {
+                this.templates = await this.templateService.getTemplates();
+                const select = document.getElementById('wa-template-select');
+                if (select) {
+                    select.innerHTML = '<option value="">Select Template...</option>';
+                    this.templates.forEach(t => { select.innerHTML += `<option value="${t.id}">${t.name}</option>`; });
+                }
+            } catch (e) { }
+        }
+
+        handleWATemplateChange(templateId) {
+            const t = (this.templates || []).find(x => x.id === templateId);
+            const ta = document.getElementById('wa-message-body');
+            if (!t || !ta) return;
+            let content = '';
+            if (Array.isArray(t.components)) {
+                content = t.components.find(c => c.type === 'BODY')?.text || (t.components.find(c => c.type === 'HEADER')?.text || '');
+            } else if (t.content) {
+                content = t.content.body || t.content.text || t.content.caption || t.content;
+            }
+            ta.value = typeof content === 'string' ? content : '';
+        }
+
+        updateWhatsAppInterface(kamName) {
+            const statusEl = document.getElementById('wa-instance-status');
+            const sendBtn = document.querySelector('.wa-send-btn');
+            if (!statusEl) return;
+
+            statusEl.classList.remove('connected');
+            if (!kamName) {
+                statusEl.innerHTML = '<span class="wa-status-dot"></span><span style="color: var(--text-muted); opacity: 0.5;">Select KAM</span>';
+                if (sendBtn) sendBtn.disabled = true;
+                return;
+            }
+
+            const instance = (this.whatsappInstances || []).find(i => (i.kam || '').toLowerCase() === kamName.toLowerCase());
+            if (!instance) {
+                statusEl.innerHTML = '<span class="wa-status-dot" style="background: #ef4444;"></span><span style="color: #ef4444; opacity: 0.8;">No Session</span>';
+                if (sendBtn) sendBtn.disabled = true;
+            } else if (!instance.connected) {
+                statusEl.innerHTML = `<span class="wa-status-dot" style="background: #ef4444;"></span><span style="color: #ef4444; opacity: 0.8;">${instance.name} (OFF)</span>`;
+                if (sendBtn) sendBtn.disabled = true;
+            } else {
+                statusEl.classList.add('connected');
+                statusEl.innerHTML = `<span class="wa-status-dot"></span><span style="color: #fff; font-weight: 600;">Via: ${instance.name}</span>`;
+                if (sendBtn) sendBtn.disabled = false;
+
+                const phone = document.getElementById('inp_mobile_phone')?.value;
+                if (phone) this.loadChatHistory(phone, instance.id);
+            }
+        }
+
+        async sendWhatsAppMessage(dealerName) {
+            const messageBody = document.getElementById('wa-message-body')?.value.trim();
+            const kamName = document.getElementById('inp_key_account_manager')?.value;
+            const templateId = document.getElementById('wa-template-select')?.value;
+            const phone = document.getElementById('inp_mobile_phone')?.value.replace(/\D/g, '');
+
+            if (!kamName || (!messageBody && !templateId && !this.selectedMedia)) {
+                import('./utils/toast.js').then(m => m.Toast.warning('Missing KAM or message content.'));
+                return;
+            }
+            if (!phone) {
+                import('./utils/toast.js').then(m => m.Toast.error('Dealer has no valid phone number.'));
+                return;
+            }
+
+            const instance = (this.whatsappInstances || []).find(i => (i.kam || '').toLowerCase() === kamName.toLowerCase());
+            if (!instance) {
+                import('./utils/toast.js').then(m => m.Toast.error('No connected instance for this KAM.'));
+                return;
+            }
+
+            const sendBtn = document.querySelector('.wa-send-btn');
+            const originalText = sendBtn ? sendBtn.innerHTML : '';
+            if (sendBtn) {
+                sendBtn.innerHTML = '<span class="loading-spinner" style="width:16px;height:16px;border:2px solid #fff;border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite;"></span>';
+                sendBtn.disabled = true;
+            }
+
+            try {
+                let payload = { sessionId: instance.id, to: phone.length === 10 ? '91' + phone : phone };
+                let endpoint = '/messages/text';
+
+                if (templateId) {
+                    endpoint = '/messages/template';
+                    let kamPhone = '';
+                    try {
+                        let _getDoc = typeof getDoc !== 'undefined' ? getDoc : window.getDoc;
+                        let _doc = typeof doc !== 'undefined' ? doc : window.doc;
+                        let _db = typeof db !== 'undefined' ? db : window.db;
+
+                        if (!_getDoc || !_doc || !_db) {
+                            try {
+                                const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+                                _getDoc = fb.getDoc;
+                                _doc = fb.doc;
+                                const config = await import("./services/firebase_config.js");
+                                _db = config.db;
+                            } catch (err) {
+                                console.warn("Dynamic import for KAM phone failed", err);
+                            }
+                        }
+
+                        if (_getDoc && _doc && _db) {
+                            const settingsDoc = await _getDoc(_doc(_db, "settings", "general"));
+                            if (settingsDoc.exists()) {
+                                const kamList = settingsDoc.data().key_accounts || [];
+                                const kamObj = kamList.find(k => (k.name || k) === kamName);
+                                if (kamObj) kamPhone = kamObj.phone || '';
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Failed to fetch KAM phone', e);
+                    }
+
+                    payload.templateId = templateId;
+                    payload.variables = { 'KAM_PHONE': kamPhone, 'name': dealerName };
+                } else if (this.selectedMedia) {
+                    endpoint = '/messages/interactive';
+                    const mediaType = this.selectedMedia.type || 'image';
+                    payload.content = {
+                        [mediaType]: { url: this.selectedMedia.url, mimetype: this.selectedMedia.mimeType, fileName: this.selectedMedia.name },
+                        caption: messageBody
+                    };
+                } else {
+                    payload.text = messageBody;
+                }
+
+                const response = await fetch(`${window.appConfig.apiUrl}/api${endpoint}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    import('./utils/toast.js').then(m => m.Toast.success('Message sent!'));
+                    if (document.getElementById('wa-message-body')) document.getElementById('wa-message-body').value = '';
+                    this.clearMediaSelection();
+                    if (document.getElementById('wa-template-select')) document.getElementById('wa-template-select').value = '';
+
+                    // Auto-log template sends
+                    if (templateId) {
+                        const templateSelect = document.getElementById('wa-template-select');
+                        const templateName = templateSelect.options[templateSelect.selectedIndex]?.text || templateId;
+
+                        const mergedDealer = window.dataManager.dealerData[dealerName] || {};
+                        const currentLogs = mergedDealer.logs || [];
+                        currentLogs.push({
+                            id: 'log_' + Date.now(),
+                            activityType: 'WhatsApp',
+                            content: `Sent WhatsApp Template: ${templateName}`,
+                            createdAt: new Date().toISOString()
+                        });
+                        await window.dataManager.saveDealerOverride(dealerName, { logs: currentLogs });
+                        this.renderLogsList(dealerName);
+                    }
+                } else {
+                    throw new Error(result.error || result.message || 'Failed to send');
+                }
+            } catch (error) {
+                import('./utils/toast.js').then(m => m.Toast.error('Send Failed: ' + error.message));
+            } finally {
+                if (sendBtn) {
+                    sendBtn.innerHTML = originalText;
+                    sendBtn.disabled = false;
+                }
+            }
+        }
+
+        async loadChatHistory(phone, instanceId) {
+            const container = document.getElementById('wa-chat-history');
+            if (!container) return;
+            try {
+                let _collection = typeof collection !== 'undefined' ? collection : window.collection;
+                let _query = typeof query !== 'undefined' ? query : window.query;
+                let _where = typeof where !== 'undefined' ? where : window.where;
+                let _orderBy = typeof orderBy !== 'undefined' ? orderBy : window.orderBy;
+                let _onSnapshot = typeof onSnapshot !== 'undefined' ? onSnapshot : window.onSnapshot;
+                let _db = typeof db !== 'undefined' ? db : window.db;
+
+                if (!_collection || !_query || !_onSnapshot || !_db) {
+                    try {
+                        const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+                        _collection = fb.collection;
+                        _query = fb.query;
+                        _where = fb.where;
+                        _orderBy = fb.orderBy;
+                        _onSnapshot = fb.onSnapshot;
+                        const config = await import("./services/firebase_config.js");
+                        _db = config.db;
+                    } catch (err) {
+                        console.warn("Dynamic import for chat history failed", err);
+                    }
+                }
+
+                if (!_collection || !_query || !_onSnapshot || !_db) {
+                    container.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 20px;">Live updates unavailable.</div>';
+                    return;
+                }
+
+                let fPhone = phone.replace(/\\D/g, '');
+                if (fPhone.length === 10) fPhone = '91' + fPhone;
+                fPhone += '@s.whatsapp.net';
+
+                if (window.currentDealerChatUnsub) {
+                    window.currentDealerChatUnsub();
+                }
+
+                const q = _query(_collection(_db, 'wa_chats'), _where('key.remoteJid', '==', fPhone), _orderBy('messageTimestamp', 'asc'));
+
+                window.currentDealerChatUnsub = _onSnapshot(q, (snapshot) => {
+                    if (snapshot.empty) {
+                        container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px; font-style: italic;">No messages found.</div>';
+                        return;
+                    }
+                    let html = '';
+                    snapshot.forEach(doc => {
+                        const msg = doc.data();
+                        const isFromMe = msg.key.fromMe;
+                        const content = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '[Media Attachment]';
+                        const time = new Date(msg.messageTimestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const statusColor = msg.status === 'READ' ? '#3b82f6' : (msg.status === 'DELIVERY_ACK' ? '#94a3b8' : 'rgba(255,255,255,0.3)');
+
+                        html += `
+                            <div style="display: flex; justify-content: ${isFromMe ? 'flex-end' : 'flex-start'}; margin-bottom: 8px;">
+                                <div style="max-width: 80%; background: ${isFromMe ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)'}; 
+                                            border: 1px solid ${isFromMe ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.1)'};
+                                            border-radius: 12px; padding: 10px 14px; position: relative;">
+                                    <div style="font-size: 0.9rem; color: #fff; line-height: 1.4; white-space: pre-wrap; word-break: break-word;">${this.escapeHtml(content)}</div>
+                                    <div style="font-size: 0.65rem; color: rgba(255, 255, 255, 0.4); text-align: right; margin-top: 4px;">
+                                        ${time} ${isFromMe ? `
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${statusColor}" stroke-width="2" style="vertical-align: middle; margin-left: 2px;">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                    container.scrollTop = container.scrollHeight;
+                });
+            } catch (err) {
+                console.error('[WhatsApp] History failed', err);
+            }
+        }
+
+        // Default empty media methods to avoid errors
+        openMediaGallery() { import('./utils/toast.js').then(m => m.Toast.info('Media Gallery coming soon to Dealer Mode.')); }
+        handleWAMediaUpload(file) { console.log(file); }
+        clearMediaSelection() { this.selectedMedia = null; }
     };
 }
 

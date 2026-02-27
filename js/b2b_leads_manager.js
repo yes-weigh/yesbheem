@@ -1145,9 +1145,21 @@ if (!window.B2BLeadsManager) {
                 // 2. Fetch metadata from Firestore
                 const metaDocs = [];
                 try {
-                    const _getDocs = typeof getDocs !== 'undefined' ? getDocs : window.getDocs;
-                    const _collection = typeof collection !== 'undefined' ? collection : window.collection;
-                    const _db = typeof db !== 'undefined' ? db : window.db;
+                    let _getDocs = typeof getDocs !== 'undefined' ? getDocs : window.getDocs;
+                    let _collection = typeof collection !== 'undefined' ? collection : window.collection;
+                    let _db = typeof db !== 'undefined' ? db : window.db;
+
+                    if (!_getDocs || !_collection || !_db) {
+                        try {
+                            const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+                            _getDocs = fb.getDocs;
+                            _collection = fb.collection;
+                            const config = await import("./services/firebase_config.js");
+                            _db = config.db;
+                        } catch (err) {
+                            console.warn("Dynamic import for WA instances failed", err);
+                        }
+                    }
 
                     if (_getDocs && _collection && _db) {
                         const firestoreSnap = await _getDocs(_collection(_db, "whatsapp_instances"));
