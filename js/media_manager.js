@@ -219,9 +219,19 @@ class MediaManager {
     createCardHtml(m) {
         let previewHtml = '';
         let badgeHtml = '';
-        if (m.type === 'video' || m.mimeType?.startsWith('video')) {
+        const isVideo = m.type === 'video' || m.mimeType?.startsWith('video');
+        const videoUrl = m.url || '';
+
+        if (isVideo) {
             if (m.thumbnailUrl) {
-                previewHtml = `<img src="${m.thumbnailUrl}" alt="${this.escapeHtml(m.name)}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                previewHtml = `
+                    <img id="vthumb-${m.id}" src="${m.thumbnailUrl}" alt="${this.escapeHtml(m.name)}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    <video id="vplay-${m.id}" src="${videoUrl}" muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; display: none; position: absolute; inset: 0;"></video>
+                    <div id="vplay-icon-${m.id}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+                        <div style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+                        </div>
+                    </div>`;
             } else {
                 previewHtml = `
                     <div id="video-placeholder-${m.id}" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); color: var(--text-muted);">
@@ -229,6 +239,7 @@ class MediaManager {
                         <span style="font-size: 0.6rem;">GENERATING THUMB...</span>
                     </div>
                     <canvas id="video-thumb-${m.id}" class="hidden" style="width: 100%; height: 100%; object-fit: cover;"></canvas>
+                    <video id="vplay-${m.id}" src="${videoUrl}" muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; display: none; position: absolute; inset: 0;"></video>
                 `;
             }
             badgeHtml = 'VIDEO';
@@ -236,12 +247,9 @@ class MediaManager {
             previewHtml = `<img src="${m.url}" alt="${this.escapeHtml(m.name)}" style="width: 100%; height: 100%; object-fit: cover;">`;
             badgeHtml = 'IMAGE';
         } else if (m.type === 'document' || m.mimeType === 'application/pdf') {
-            // PDF - Check if we have a server-generated thumbnail
             if (m.thumbnailUrl) {
-                // Use fast server thumbnail
                 previewHtml = `<img src="${m.thumbnailUrl}" alt="${this.escapeHtml(m.name)}" style="width: 100%; height: 100%; object-fit: contain; background: #f0f0f0;">`;
             } else {
-                // Fallback to canvas placeholder for client-side rendering
                 previewHtml = `
                     <canvas id="pdf-thumb-${m.id}" style="width: 100%; height: 100%; object-fit: cover;"></canvas>
                     <div id="pdf-loading-${m.id}" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); color: var(--text-muted);">
@@ -263,22 +271,64 @@ class MediaManager {
             badgeHtml = 'DOC';
         }
 
+        // Inline-edit helpers
+        const langOpts = this.languages.map(l =>
+            `<option value="${l}" ${l === m.language ? 'selected' : ''}>${l}</option>`
+        ).join('');
+        const catOpts = this.categories.map(c =>
+            `<option value="${c}" ${c === m.category ? 'selected' : ''}>${c}</option>`
+        ).join('');
+
+        const hoverAttrs = isVideo
+            ? `onmouseenter="window.mediaMgr._videoHoverIn('${m.id}')" onmouseleave="window.mediaMgr._videoHoverOut('${m.id}')"`
+            : '';
+
         return `
-            <div class="template-card" style="flex-direction: column; gap: 0.8rem; padding: 0.8rem; cursor: pointer;" onclick="window.mediaMgr.editMedia('${m.id}')">
-                <div style="width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); position: relative;">
+            <div class="template-card media-card" data-id="${m.id}" style="flex-direction: column; gap: 0.8rem; padding: 0.8rem;" ${hoverAttrs}>
+                <div style="width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); position: relative; cursor: pointer;" onclick="window.mediaMgr.editMedia('${m.id}')">
                     ${previewHtml}
                     <div style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; color: white;">
                         ${badgeHtml}
                     </div>
                 </div>
-                
+
                 <div style="flex: 1; min-width: 0;">
-                    <div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.4rem;" title="${this.escapeHtml(m.name)}">
-                        ${this.escapeHtml(m.name)}
+                    <!-- Inline editable name -->
+                    <div style="margin-bottom: 0.5rem;">
+                        <input
+                            class="media-inline-name"
+                            value="${this.escapeHtml(m.name)}"
+                            data-original="${this.escapeHtml(m.name)}"
+                            title="Click to rename"
+                            onclick="event.stopPropagation()"
+                            onblur="window.mediaMgr.inlineUpdateField('${m.id}', 'name', this.value, this)"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}if(event.key==='Escape'){this.value=this.dataset.original;this.blur();}"
+                            style="width:100%;background:transparent;border:none;border-bottom:1px dashed rgba(255,255,255,0.2);color:var(--text-primary);font-weight:600;font-size:0.9rem;padding:2px 4px;border-radius:0;outline:none;cursor:text;transition:border-color 0.2s;"
+                            onfocus="this.style.borderBottomColor='var(--primary)';this.style.background='rgba(255,255,255,0.05)'"
+                        />
                     </div>
-                    <div class="template-card-badges" style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
-                         ${m.language ? `<span class="badge badge-lang" style="font-size: 0.7rem;">${m.language}</span>` : ''}
-                         ${m.category ? `<span class="badge badge-cat" style="font-size: 0.7rem;">${m.category}</span>` : ''}
+                    <!-- Inline editable language & category -->
+                    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;">
+                        <select
+                            class="media-inline-select badge badge-lang"
+                            title="Click to change language"
+                            onclick="event.stopPropagation()"
+                            onchange="window.mediaMgr.inlineUpdateField('${m.id}', 'language', this.value, this)"
+                            style="font-size:0.7rem;background:transparent;border:1px solid rgba(255,255,255,0.15);color:inherit;border-radius:4px;padding:1px 4px;cursor:pointer;max-width:120px;"
+                        >
+                            <option value="">-- lang --</option>
+                            ${langOpts}
+                        </select>
+                        <select
+                            class="media-inline-select badge badge-cat"
+                            title="Click to change category"
+                            onclick="event.stopPropagation()"
+                            onchange="window.mediaMgr.inlineUpdateField('${m.id}', 'category', this.value, this)"
+                            style="font-size:0.7rem;background:transparent;border:1px solid rgba(255,255,255,0.15);color:inherit;border-radius:4px;padding:1px 4px;cursor:pointer;max-width:140px;"
+                        >
+                            <option value="">-- category --</option>
+                            ${catOpts}
+                        </select>
                     </div>
                 </div>
 
@@ -286,13 +336,72 @@ class MediaManager {
                     <button class="action-btn-icon" onclick="event.stopPropagation(); window.mediaMgr.deleteMedia('${m.id}', '${m.storagePath || ''}')" title="Delete" style="color: #ef4444;">
                         🗑️
                     </button>
-                    <!-- Potential for Copy URL button -->
                     <button class="action-btn-icon" onclick="event.stopPropagation(); window.mediaMgr.copyUrl('${m.url}')" title="Copy URL">
                         📋
                     </button>
                 </div>
             </div>
         `;
+    }
+
+    /* --- VIDEO HOVER PLAY --- */
+
+    _videoHoverIn(id) {
+        const vid = document.getElementById(`vplay-${id}`);
+        const thumb = document.getElementById(`vthumb-${id}`);
+        const icon = document.getElementById(`vplay-icon-${id}`);
+        if (!vid) return;
+        if (thumb) thumb.style.display = 'none';
+        if (icon) icon.style.display = 'none';
+        vid.style.display = 'block';
+        vid.currentTime = 0;
+        vid.play().catch(() => { });
+    }
+
+    _videoHoverOut(id) {
+        const vid = document.getElementById(`vplay-${id}`);
+        const thumb = document.getElementById(`vthumb-${id}`);
+        const icon = document.getElementById(`vplay-icon-${id}`);
+        if (!vid) return;
+        vid.pause();
+        vid.style.display = 'none';
+        if (thumb) thumb.style.display = 'block';
+        if (icon) icon.style.display = 'flex';
+    }
+
+    /* --- INLINE EDIT --- */
+
+    async inlineUpdateField(id, field, value, el) {
+        const m = this.media.find(x => x.id === id);
+        if (!m) return;
+        const trimmed = value.trim();
+        // No change? skip
+        if (trimmed === (m[field] || '')) return;
+
+        try {
+            await this.service.updateMediaMetadata(id, { [field]: trimmed || null });
+            m[field] = trimmed || null;
+            // Visual feedback - works for both <input> and <select>
+            if (el) {
+                const isSelect = el.tagName === 'SELECT';
+                if (isSelect) {
+                    el.style.outline = '2px solid #22c55e';
+                    setTimeout(() => { el.style.outline = ''; }, 1000);
+                } else {
+                    el.style.borderBottomColor = '#22c55e';
+                    el.style.background = 'rgba(34,197,94,0.08)';
+                    setTimeout(() => {
+                        el.style.borderBottomColor = 'rgba(255,255,255,0.2)';
+                        el.style.background = 'transparent';
+                    }, 1000);
+                }
+            }
+            this.showToast(`${field.charAt(0).toUpperCase() + field.slice(1)} updated`);
+            this.updateStats();
+        } catch (e) {
+            console.error('Inline update failed:', e);
+            this.showToast('Update failed: ' + e.message);
+        }
     }
 
     /* --- INTERACTIONS --- */
@@ -501,10 +610,10 @@ class MediaManager {
         } else {
             // Document Fallback
             container.innerHTML = `
-                <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
+            < div style = "text-align: center; color: var(--text-muted); padding: 2rem;" >
                     <div style="font-size: 3rem; margin-bottom: 0.5rem;">📄</div>
                     <div style="font-size: 0.9rem;">${file.type}</div>
-                </div>
+                </div >
             `;
         }
     }
@@ -531,18 +640,18 @@ class MediaManager {
         document.getElementById('file-name-display').textContent = m.name;
 
         if (m.type === 'image' || m.mimeType?.startsWith('image')) {
-            container.innerHTML = `<img src="${m.url}" style="max-width:100%; max-height:100%;">`;
+            container.innerHTML = `< img src = "${m.url}" style = "max-width:100%; max-height:100%;" > `;
         } else if (m.type === 'video' || m.mimeType?.startsWith('video')) {
-            container.innerHTML = `<video src="${m.url}" controls style="max-width:100%; max-height:100%;"></video>`;
+            container.innerHTML = `< video src = "${m.url}" controls style = "max-width:100%; max-height:100%;" ></video > `;
         } else if (m.type === 'document' || m.mimeType === 'application/pdf') {
             // PDF Preview
-            container.innerHTML = `<iframe src="${m.url}" style="width:100%; height:400px; border:none; border-radius:8px;"></iframe>`;
+            container.innerHTML = `< iframe src = "${m.url}" style = "width:100%; height:400px; border:none; border-radius:8px;" ></iframe > `;
         } else {
             container.innerHTML = `
-                <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
+            < div style = "text-align: center; color: var(--text-muted); padding: 2rem;" >
                     <div style="font-size: 3rem; margin-bottom: 0.5rem;">📄</div>
                     <div style="font-size: 0.9rem;">${m.type || m.mimeType}</div>
-                </div>
+                </div >
             `;
         }
 
@@ -651,7 +760,7 @@ class MediaManager {
             try {
                 await this.renderPdfThumbnail(item.id, item.url);
             } catch (e) {
-                console.warn(`Failed to generate thumbnail for ${item.name}:`, e);
+                console.warn(`Failed to generate thumbnail for ${item.name}: `, e);
             }
         }
     }
@@ -667,7 +776,7 @@ class MediaManager {
             try {
                 await this.renderVideoThumbnail(video.id, video.url);
             } catch (e) {
-                console.warn(`Failed video thumb for ${video.name}:`, e);
+                console.warn(`Failed video thumb for ${video.name}: `, e);
             }
         }
     }
@@ -700,8 +809,8 @@ class MediaManager {
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
                     // Update UI immediately (if placeholder still exists)
-                    const placeholder = document.getElementById(`video-placeholder-${itemId}`);
-                    const cardCanvas = document.getElementById(`video-thumb-${itemId}`);
+                    const placeholder = document.getElementById(`video - placeholder - ${itemId} `);
+                    const cardCanvas = document.getElementById(`video - thumb - ${itemId} `);
                     if (placeholder && cardCanvas) {
                         cardCanvas.width = canvas.width;
                         cardCanvas.height = canvas.height;
@@ -738,8 +847,8 @@ class MediaManager {
     }
 
     async renderPdfThumbnail(itemId, url) {
-        const canvas = document.getElementById(`pdf-thumb-${itemId}`);
-        const loadingDiv = document.getElementById(`pdf-loading-${itemId}`);
+        const canvas = document.getElementById(`pdf - thumb - ${itemId} `);
+        const loadingDiv = document.getElementById(`pdf - loading - ${itemId} `);
 
         if (!canvas) return;
 
