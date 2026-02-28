@@ -63,13 +63,14 @@ export function renderDealerDetailsModal(data, settings) {
     }
 
     const categoriesWidget = `
-            <div class="floating-group" style="cursor: pointer;" onclick="window.dealerManager.editDealerCategories('${aggregated._internalId || aggregated.id || aggregated.cust_id}', '${dealerName.replace(/'/g, "\\'")}', this)">
-                <div class="floating-input categories-container">
+            <div class="floating-group" style="flex: 1 1 200px; min-width: 180px; cursor: pointer; margin-bottom: 0;" onclick="window.dealerManager.editDealerCategories('${aggregated._internalId || aggregated.id || aggregated.cust_id}', '${dealerName.replace(/'/g, "\\'")}', this)">
+                <div class="floating-input categories-container" style="display:flex; gap:6px; overflow-x:auto; padding-top: 20px; padding-bottom: 6px; padding-right:24px; min-height: 52px; align-items: center; white-space: nowrap;">
                     ${categoriesHtml}
                 </div>
-                <label class="floating-label" style="top: -8px; font-size: 0.65rem; color: var(--color-info); background: var(--modal-bg-gradient); padding: 0 4px;">Categories</label>
-                <div style="position:absolute; right:10px; top:12px; opacity:0.5; pointer-events:none;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                <!-- Simulating an active floating label -->
+                <label class="floating-label" style="top: 6px; font-size: 0.68rem; color: var(--modal-text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; transition: none;">Categories</label>
+                <div style="position:absolute; right:12px; top:18px; opacity:0.4; pointer-events:none;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </div>
             </div>
         `;
@@ -344,26 +345,16 @@ export function renderDealerDetailsModal(data, settings) {
                             </div>
                         </div>
 
-                        <!-- Inline fields strip -->
-                        <div style="background: var(--modal-tabs-bg); border: var(--modal-tabs-border); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px; box-shadow: inset 0 1px 1px rgba(255,255,255,0.05);">
-                            <div style="display: flex; flex: 1; align-items: center; gap: 16px; overflow-x: auto; padding: 2px;">
-                                ${renderFloatingInput('Contact Name', 'first_name', 'text', false, `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'width: 160px;')}
-                                ${renderFloatingInput('Phone', 'mobile_phone', 'text', false, `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'width: 140px;')}
-                                <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
-                                    ${renderFloatingInput('Zip', 'billing_zipcode', 'text', false, `onchange="window.dealerManager.handlePopupZipChange(this); window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'width: 80px;')}
-                                    ${renderFloatingInput('District', 'district', 'text', true, '', 'width: 110px;')}
-                                    ${renderFloatingInput('State', 'billing_state', 'text', true, '', 'width: 100px;')}
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
-                                    ${renderFloatingSelect('KAM', 'key_account_manager', settings.key_accounts || [], `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false); window.dealerManager.updateWhatsAppInterface(this.value);"`, 'width: 180px;')}
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
-                                    ${renderFloatingSelect('Stage', 'dealer_stage', settings.dealer_stages || [], `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'width: 160px;')}
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
-                                    ${categoriesWidget}
-                                </div>
-                            </div>
+                        <!-- Inline fields flex grid -->
+                        <div style="background: var(--modal-tabs-bg); border: var(--modal-tabs-border); border-radius: 12px; padding: 16px; display: flex; flex-wrap: wrap; align-items: stretch; gap: 16px; box-shadow: inset 0 1px 1px rgba(255,255,255,0.05);">
+                            ${renderFloatingInput('Contact Name', 'first_name', 'text', false, `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'flex: 1 1 180px; min-width: 150px; margin-bottom: 0;')}
+                            ${renderFloatingInput('Phone', 'mobile_phone', 'text', false, `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'flex: 1 1 140px; min-width: 120px; margin-bottom: 0;')}
+                            ${renderFloatingInput('Zip Code', 'billing_zipcode', 'text', false, `onchange="window.dealerManager.handlePopupZipChange(this); window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'flex: 1 1 100px; min-width: 90px; margin-bottom: 0;')}
+                            ${renderFloatingInput('District', 'district', 'text', true, '', 'flex: 1 1 130px; min-width: 110px; margin-bottom: 0;')}
+                            ${renderFloatingInput('State', 'billing_state', 'text', true, '', 'flex: 1 1 130px; min-width: 110px; margin-bottom: 0;')}
+                            ${renderFloatingSelect('KAM', 'key_account_manager', settings.key_accounts || [], `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false); window.dealerManager.updateWhatsAppInterface(this.value);"`, 'flex: 1 1 160px; min-width: 140px; margin-bottom: 0;')}
+                            ${renderFloatingSelect('Stage', 'dealer_stage', settings.dealer_stages || [], `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'flex: 1 1 140px; min-width: 120px; margin-bottom: 0;')}
+                            ${categoriesWidget}
                         </div>
                     </div>
 
