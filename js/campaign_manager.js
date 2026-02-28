@@ -978,12 +978,16 @@ class CampaignManager {
 
                 const phone = item.phone || '-';
                 const name = item.name || '-';
+                const sessionUsed = item.sessionId ? `\n<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">via ${item.sessionId}</div>` : '';
                 const status = item.status ? item.status.toUpperCase() : 'UNKNOWN';
                 const error = item.error ? `<div style="font-size:0.7rem; color:#ef4444; margin-top:2px;">${item.error}</div>` : '';
 
                 rowsHtml += `
                     <tr style="border-bottom: 1px solid var(--border-light); transition: background 0.1s;">
-                        <td style="padding: 12px 16px; color: var(--text-main); font-family: monospace;">${phone}</td>
+                        <td style="padding: 12px 16px; color: var(--text-main); font-family: monospace;">
+                            ${phone}
+                            ${sessionUsed}
+                        </td>
                         <td style="padding: 12px 16px; color: var(--text-main);">${name}</td>
                         <td style="padding: 12px 16px;">
                             <span style="background: ${statusColor}20; color: ${statusColor}; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
