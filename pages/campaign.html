@@ -451,6 +451,47 @@
                 padding-top: 24px;
             }
 
+            .instance-chips-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 12px;
+            }
+
+            .instance-chip {
+                background: rgba(99, 102, 241, 0.15);
+                border: 1px solid rgba(99, 102, 241, 0.3);
+                border-radius: 6px;
+                padding: 6px 10px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 0.85rem;
+                color: var(--text-main);
+                transition: all 0.2s;
+            }
+
+            .instance-chip:hover {
+                background: rgba(99, 102, 241, 0.25);
+            }
+
+            .instance-chip-remove {
+                background: none;
+                border: none;
+                color: var(--text-muted);
+                cursor: pointer;
+                padding: 0;
+                font-size: 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                outline: none;
+            }
+
+            .instance-chip-remove:hover {
+                color: #ef4444;
+            }
+
             /* Responsive Design */
             @media (max-width: 1200px) {
                 .campaign-grid {
@@ -511,6 +552,9 @@
                         <select id="campaign-sender-select" class="modern-input" style="width: 100%;">
                             <option value="">Select Instance...</option>
                         </select>
+                        <div id="selected-instances-container" class="instance-chips-container">
+                            <!-- Instance chips injected here -->
+                        </div>
                     </div>
                 </div>
 

@@ -9,9 +9,9 @@ class CampaignManager {
         this.audienceService = new AudienceService();
         this.activeTab = 'dashboard';
 
-        // Data State
         this.audiences = [];
         this.instances = [];
+        this.selectedInstances = []; // Holds selected instance IDs
         this.templates = [];
         this.campaigns = []; // Dashboard data
 
@@ -74,6 +74,7 @@ class CampaignManager {
         this.audienceInfo = document.getElementById('selected-audience-info');
 
         this.senderSelect = document.getElementById('campaign-sender-select');
+        this.selectedInstancesContainer = document.getElementById('selected-instances-container');
 
         this.templateSelect = document.getElementById('campaign-template-select');
         this.templatePreview = document.getElementById('campaign-template-preview');
@@ -104,6 +105,11 @@ class CampaignManager {
         // Template Preview
         if (this.templateSelect) {
             this.templateSelect.onchange = () => this.handleTemplateChange();
+        }
+
+        // Sender Selection (Multi)
+        if (this.senderSelect) {
+            this.senderSelect.onchange = (e) => this.handleSenderChange(e);
         }
 
         // Start Campaign
@@ -222,13 +228,16 @@ class CampaignManager {
     }
 
     populateSenderSelect() {
-        this.senderSelect.innerHTML = '<option value="">Select...</option>';
+        this.senderSelect.innerHTML = '<option value="">Select Instance...</option>';
 
-        // Filter only connected instances
-        const connectedInstances = this.instances.filter(inst => inst.connected);
+        // Filter only connected instancesNOT already selected
+        const connectedInstances = this.instances.filter(inst => {
+            const id = inst.id || inst.sessionId;
+            return inst.connected && !this.selectedInstances.includes(id);
+        });
 
         if (connectedInstances.length === 0) {
-            this.senderSelect.innerHTML = '<option value="">No connected instances found</option>';
+            this.senderSelect.innerHTML = '<option value="">No available instances</option>';
             return;
         }
 
@@ -240,6 +249,50 @@ class CampaignManager {
             const phoneLabel = inst.phoneNumber && inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : id;
             opt.textContent = `${inst.name} (${phoneLabel})`;
             this.senderSelect.appendChild(opt);
+        });
+    }
+
+    handleSenderChange(e) {
+        const id = e.target.value;
+        if (!id) return;
+
+        if (!this.selectedInstances.includes(id)) {
+            this.selectedInstances.push(id);
+        }
+
+        // Reset select to default
+        e.target.value = "";
+
+        this.renderInstanceChips();
+        this.populateSenderSelect();
+    }
+
+    renderInstanceChips() {
+        if (!this.selectedInstancesContainer) return;
+
+        this.selectedInstancesContainer.innerHTML = '';
+
+        this.selectedInstances.forEach(id => {
+            const inst = this.instances.find(i => (i.id || i.sessionId) === id);
+            if (!inst) return;
+
+            const name = inst.name || 'Unnamed';
+            const phone = inst.phoneNumber && inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : id;
+
+            const chip = document.createElement('div');
+            chip.className = 'instance-chip';
+            chip.innerHTML = `
+                <span>${name} (${phone})</span>
+                <button type="button" class="instance-chip-remove" title="Remove" data-id="${id}">×</button>
+            `;
+
+            chip.querySelector('.instance-chip-remove').onclick = () => {
+                this.selectedInstances = this.selectedInstances.filter(i => i !== id);
+                this.renderInstanceChips();
+                this.populateSenderSelect();
+            };
+
+            this.selectedInstancesContainer.appendChild(chip);
         });
     }
 
@@ -342,7 +395,6 @@ class CampaignManager {
 
         const name = this.nameInput.value.trim();
         const audienceId = this.audienceSelect.value;
-        const senderId = this.senderSelect.value;
         const templateId = this.templateSelect.value;
 
         // Get and validate max delay
@@ -354,8 +406,8 @@ class CampaignManager {
         }
 
         const kam = this.kamSelect.value;
-        if (!name || !audienceId || !senderId || !templateId || !kam) {
-            alert('Please complete all fields, including Campaign Manager.');
+        if (!name || !audienceId || this.selectedInstances.length === 0 || !templateId || !kam) {
+            alert('Please complete all fields, including selecting at least one Sender Instance and Manager.');
             return;
         }
 
@@ -377,8 +429,8 @@ class CampaignManager {
                 createdBy: getAuth().currentUser ? getAuth().currentUser.uid : 'unknown',
                 creatorEmail: getAuth().currentUser ? getAuth().currentUser.email : 'unknown',
                 senderConfig: {
-                    type: 'single',
-                    id: senderId
+                    type: 'multiple',
+                    ids: this.selectedInstances
                 },
                 templateConfig: {
                     id: templateId,
@@ -391,6 +443,12 @@ class CampaignManager {
             await addDoc(collection(db, "campaigns"), payload);
 
             alert(`Campaign Created! Messages will be sent with random delays between 1-${maxDelay} seconds.`);
+
+            // Clean up state
+            this.selectedInstances = [];
+            this.renderInstanceChips();
+            this.populateSenderSelect();
+
             this.switchTab('dashboard');
             this.loadCampaigns(); // refresh
 
@@ -554,9 +612,15 @@ class CampaignManager {
 
         // Select Sender (after dropdown is populated)
         setTimeout(() => {
-            const senderSelect = document.getElementById('campaign-sender-select');
-            if (senderSelect && campaign.senderConfig && campaign.senderConfig.id) {
-                senderSelect.value = campaign.senderConfig.id;
+            if (campaign.senderConfig && campaign.senderConfig.type === 'multiple' && campaign.senderConfig.ids) {
+                this.selectedInstances = [...campaign.senderConfig.ids];
+                this.renderInstanceChips();
+                this.populateSenderSelect();
+            } else if (campaign.senderConfig && campaign.senderConfig.id) {
+                // Legacy
+                this.selectedInstances = [campaign.senderConfig.id];
+                this.renderInstanceChips();
+                this.populateSenderSelect();
             }
         }, 100);
 
@@ -709,7 +773,13 @@ class CampaignManager {
             if (audienceEl) audienceEl.textContent = campaign.audienceName || 'Unknown Audience';
             if (kamEl) kamEl.textContent = campaign.campaignManager || 'Not Assigned';
             if (templateEl) templateEl.textContent = campaign.templateConfig?.name || campaign.templateId || 'N/A';
-            if (senderEl) senderEl.textContent = `${campaign.senderConfig?.id || '?'} (${campaign.senderConfig?.type || '?'})`;
+            if (senderEl) {
+                if (campaign.senderConfig?.type === 'multiple') {
+                    senderEl.textContent = `${campaign.senderConfig.ids?.length || 0} instance(s) selected`;
+                } else {
+                    senderEl.textContent = `${campaign.senderConfig?.id || '?'} (${campaign.senderConfig?.type || '?'})`;
+                }
+            }
 
             // Delay Display
             if (delayEl) {

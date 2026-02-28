@@ -37,6 +37,8 @@
         backdrop-filter: blur(8px);
         align-items: center;
         flex-wrap: wrap;
+        position: relative;
+        z-index: 50;
     }
 
     .control-group {
@@ -103,6 +105,38 @@
         background: #1e293b;
         /* Dark bg */
         color: #f8fafc;
+    }
+
+    .filter-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .filter-clear-btn {
+        position: absolute;
+        right: 30px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 18px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0;
+        display: none;
+        z-index: 5;
+        width: 16px;
+        height: 16px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+
+    .filter-clear-btn:hover {
+        color: #f8fafc;
+        background: rgba(255, 255, 255, 0.1);
     }
 
 
@@ -596,6 +630,8 @@
                 <select id="filter-district" class="filter-select">
                     <option value="all">All Districts</option>
                 </select>
+                <button class="filter-clear-btn" data-for="filter-district" title="Clear filter"
+                    aria-label="Clear District filter">×</button>
             </div>
             <div class="filter-wrapper">
                 <select id="filter-status" class="filter-select">
@@ -605,11 +641,15 @@
                     <option value="Converted">Converted</option>
                     <option value="Lost">Lost</option>
                 </select>
+                <button class="filter-clear-btn" data-for="filter-status" title="Clear filter"
+                    aria-label="Clear Status filter">×</button>
             </div>
             <div class="filter-wrapper">
                 <select id="filter-kam" class="filter-select">
                     <option value="all">All KAMs</option>
                 </select>
+                <button class="filter-clear-btn" data-for="filter-kam" title="Clear filter"
+                    aria-label="Clear KAM filter">×</button>
             </div>
         </div>
     </div>

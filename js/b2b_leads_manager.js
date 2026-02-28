@@ -202,6 +202,28 @@ if (!window.B2BLeadsManager) {
 
             const audModal = document.getElementById('save-audience-modal');
             if (audModal && audModal.parentElement !== document.body) document.body.appendChild(audModal);
+
+            // Filter Clear Buttons Logic
+            const filterIds = ['filter-kam', 'filter-status', 'filter-district'];
+
+            filterIds.forEach(filterId => {
+                const select = document.getElementById(filterId);
+                // Listen to change to trigger updates
+                if (select) {
+                    const btn = document.querySelector(`.filter-clear-btn[data-for="${filterId}"]`);
+                    if (btn) {
+                        select.addEventListener('change', () => {
+                            btn.style.display = select.value !== 'all' ? 'flex' : 'none';
+                        });
+                        btn.addEventListener('click', () => {
+                            select.value = 'all';
+                            select.dispatchEvent(new Event('change', { bubbles: true }));
+                        });
+                        // Init state
+                        btn.style.display = select.value !== 'all' ? 'flex' : 'none';
+                    }
+                }
+            });
         }
 
         attachGlobalListeners() {
@@ -257,11 +279,26 @@ if (!window.B2BLeadsManager) {
             if (!districtSelect) return;
 
             const wrapper = districtSelect.closest('.filter-wrapper');
-            // Show district filter if at least one state is selected (or if we want to show all districts when no state is selected, but usually dependent)
-            // Dealer logic: shows all districts if no state selected? Or hides?
-            // "if (this.stateFilter === 'all')" logic in old code.
-            // New logic: if array is empty, show all? Or hide?
-            // DealerManager shows all states districts if empty.
+            const clearBtn = wrapper ? wrapper.querySelector('.filter-clear-btn') : null;
+
+            const selectedStates = this.stateFilter;
+
+            if (!selectedStates || selectedStates.length === 0) {
+                // Hide District Filter
+                if (wrapper) wrapper.style.display = 'none';
+
+                // Reset Selection
+                districtSelect.value = 'all';
+                this.districtFilter = 'all';
+
+                // Hide clear button if visible
+                if (clearBtn) clearBtn.style.display = 'none';
+
+                return;
+            }
+
+            // Show District Filter
+            if (wrapper) wrapper.style.display = 'flex';
 
             let relevantLeads = this.leads;
             if (this.stateFilter.length > 0) {
@@ -270,18 +307,26 @@ if (!window.B2BLeadsManager) {
 
             const districts = [...new Set(relevantLeads.map(l => l.district).filter(Boolean))].sort();
 
-            let html = '<option value="all">All Districts</option>';
-            districts.forEach(d => html += `<option value="${d}">${d}</option>`);
-            districtSelect.innerHTML = html;
-
-            // Reset selection if current district is not in new list
-            if (this.districtFilter !== 'all' && !districts.includes(this.districtFilter)) {
+            // Preserve selection if valid, otherwise reset
+            const currentVal = districtSelect.value;
+            let newVal = 'all';
+            if (districts.includes(currentVal)) {
+                newVal = currentVal;
+            } else {
                 this.districtFilter = 'all';
             }
-            districtSelect.value = this.districtFilter;
 
-            // Ensure it's visible
-            if (wrapper) wrapper.style.display = 'flex';
+            let html = '<option value="all">All Districts</option>';
+            districts.forEach(d => {
+                html += `<option value="${d}">${d}</option>`;
+            });
+            districtSelect.innerHTML = html;
+            districtSelect.value = newVal;
+
+            // Manage clear button state based on new val
+            if (clearBtn) {
+                clearBtn.style.display = newVal !== 'all' ? 'flex' : 'none';
+            }
         }
 
 
@@ -395,7 +440,12 @@ if (!window.B2BLeadsManager) {
         updateFilterSelectors() {
             const setVal = (id, val) => {
                 const el = document.getElementById(id);
-                if (el) el.value = val;
+                if (el) {
+                    el.value = val;
+                    // Sync clear button
+                    const btn = document.querySelector(`.filter-clear-btn[data-for="${id}"]`);
+                    if (btn) btn.style.display = val !== 'all' ? 'flex' : 'none';
+                }
             };
             // setVal('filter-state', this.stateFilter); // Handled by component now
             setVal('filter-district', this.districtFilter);
