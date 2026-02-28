@@ -13,11 +13,9 @@ export function renderDealerDetailsModal(data, settings) {
         return val.toString().replace(/"/g, '&quot;');
     };
 
-    // --- OVERVIEW: 3-Column Grid Layout ---
-
     // Helper: Render Floating Label Input
-    const renderFloatingInput = (label, field, type = 'text', readonly = false, extraAttrs = '') => `
-            <div class="floating-group">
+    const renderFloatingInput = (label, field, type = 'text', readonly = false, extraAttrs = '', style = '') => `
+            <div class="floating-group" style="${style}">
                 <input type="${type}" 
                        class="floating-input" 
                        id="inp_${field}" 
@@ -37,16 +35,15 @@ export function renderDealerDetailsModal(data, settings) {
         `;
 
     // Helper: Render Floating Select
-    const renderFloatingSelect = (label, field, options) => {
+    const renderFloatingSelect = (label, field, options, extraAttrs = '', style = '') => {
         const current = v(field);
-        // Handle both object {name, phone} and string formats
         const opts = options.map(o => {
             const optValue = typeof o === 'object' ? o.name : o;
             return `<option value="${optValue}" ${optValue === current ? 'selected' : ''}>${optValue}</option>`;
         }).join('');
         return `
-                <div class="floating-group">
-                    <select class="floating-input" id="inp_${field}" data-field="${field}">
+                <div class="floating-group" style="${style}">
+                    <select class="floating-input" id="inp_${field}" data-field="${field}" ${extraAttrs}>
                         <option value=""></option>
                         ${opts}
                     </select>
@@ -169,7 +166,7 @@ export function renderDealerDetailsModal(data, settings) {
                     </div>
                 </div>
 
-                <!-- History Feed -->
+                <!-- History Feed (bottom-up, reversed column) -->
                 <div id="crm-tab-history" class="crm-history-container" style="display: flex; flex-direction: column-reverse; flex: 1; overflow-y: auto; padding: 20px 24px; position: relative; gap: 12px;">
                     <div style="position: absolute; left: 24px; top: 0; bottom: 20px; width: 1px; background: linear-gradient(to bottom, rgba(59, 130, 246, 0.3), rgba(255, 255, 255, 0.05)); z-index: 0;"></div>
                     
@@ -232,7 +229,7 @@ export function renderDealerDetailsModal(data, settings) {
                                     font-family: inherit;
                                 " oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
                                 
-                                <button class="wa-send-btn" onclick="window.dealerManager.addLog('${dealerName.replace(/'/g, "\\'")}')" style="
+                                <button class="wa-send-btn" onclick="window.dealerManager.addLog('${dealerName.replace(/'/g, "\\'")}');" style="
                                     width: 44px; height: 44px; border-radius: 50%; padding: 0;
                                     display: flex; align-items: center; justify-content: center;
                                     flex-shrink: 0; min-width: unset; position: relative;
@@ -263,6 +260,7 @@ export function renderDealerDetailsModal(data, settings) {
                         <span class="wa-status-dot"></span>
                         Initializing...
                     </div>
+                    <!-- Hidden phone value for chat loading -->
                     <input type="hidden" id="inp_phone" value="${v('mobile_phone')}">
                     <input type="hidden" id="inp_kam_hidden" value="${v('key_account_manager')}">
                 </div>
@@ -327,7 +325,7 @@ export function renderDealerDetailsModal(data, settings) {
                                 font-family: inherit;
                             " oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
                             
-                            <button class="wa-send-btn" onclick="window.dealerManager.sendWhatsAppMessage('${dealerName.replace(/'/g, "\\'")}')" style="
+                            <button class="wa-send-btn" onclick="window.dealerManager.sendWhatsAppMessage('${dealerName.replace(/'/g, "\\'")}');" style="
                                 width: 44px; height: 44px; border-radius: 50%; padding: 0;
                                 display: flex; align-items: center; justify-content: center;
                                 flex-shrink: 0; min-width: unset;
@@ -351,28 +349,44 @@ export function renderDealerDetailsModal(data, settings) {
     return `
             <div class="dealer-modal-overlay" onclick="window.dealerManager.closeDealerDetails()">
                 <div class="dealer-modal" onclick="event.stopPropagation()">
-                    <!-- Header -->
-                    <div class="dealer-modal-header">
-                        <div class="header-left">
-                            <h2>${dealerName}</h2>
-                        </div>
-                        <div class="header-actions">
-                             <div class="total-sales-display" style="margin-right: 20px; text-align: right;">
-                                <div style="font-size: 0.65rem; color: var(--modal-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; font-weight:600;">Total Sales</div>
+
+                    <!-- Header: full-width strip with inline editable fields -->
+                    <div class="dealer-modal-header" style="padding: 16px 24px; display: flex; flex-direction: column; gap: 16px; height: auto;">
+                        <!-- Close Button -->
+                        <button class="close-btn" onclick="window.dealerManager.closeDealerDetails()" style="
+                            position: absolute; top: 12px; right: 12px; border-radius: 50%; width: 36px; height: 36px;
+                            display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05);
+                            border: 1px solid rgba(255,255,255,0.08); color: var(--text-muted); cursor: pointer; transition: all 0.2s; z-index: 100;
+                        " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white';" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='var(--text-muted)';">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+
+                        <!-- Top Bar: Dealer name + total sales -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding-right: 40px;">
+                            <h2 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--modal-h2-color);">${dealerName}</h2>
+                            <div style="text-align: right;">
+                                <div style="font-size: 0.65rem; color: var(--modal-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Total Sales</div>
                                 <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-success); line-height: 1.2;">${totalSales}</div>
-                             </div>
-                             ${(() => {
-            const stageName = aggregated.dealer_stage;
-            if (!stageName) return '';
-            const image = (settings.stage_images || {})[stageName];
-            if (image) {
-                return `<img src="${image}" alt="${stageName}" title="${stageName}" style="height: 32px; width: 32px; object-fit: cover; border-radius: 50%;">`;
-            }
-            return `<span class="badge stage-badge stage-${(stageName || '').toLowerCase()}">${stageName}</span>`;
-        })()}
-                            <button class="close-btn" onclick="window.dealerManager.closeDealerDetails()">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                            </button>
+                            </div>
+                        </div>
+
+                        <!-- Inline fields strip -->
+                        <div style="background: var(--modal-tabs-bg); border: var(--modal-tabs-border); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px; box-shadow: inset 0 1px 1px rgba(255,255,255,0.05);">
+                            <div style="display: flex; flex: 1; align-items: center; gap: 16px; overflow-x: auto; padding: 2px;">
+                                ${renderFloatingInput('Contact Name', 'header_first_name', 'text', false, '', 'width: 160px;')}
+                                ${renderFloatingInput('Phone', 'mobile_phone', 'text', false, '', 'width: 140px;')}
+                                <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
+                                    ${renderFloatingInput('Zip', 'billing_zipcode', 'text', false, 'onchange="window.dealerManager.handlePopupZipChange(this)"', 'width: 80px;')}
+                                    ${renderFloatingInput('District', 'district', 'text', true, '', 'width: 110px;')}
+                                    ${renderFloatingInput('State', 'billing_state', 'text', true, '', 'width: 100px;')}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
+                                    ${renderFloatingSelect('KAM', 'key_account_manager', settings.key_accounts || [], `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}'); window.dealerManager.updateWhatsAppInterface(this.value);"`, 'width: 180px;')}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
+                                    ${renderFloatingSelect('Stage', 'dealer_stage', settings.dealer_stages || [], `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}')"`, 'width: 160px;')}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -388,7 +402,7 @@ export function renderDealerDetailsModal(data, settings) {
                         ${overviewHtml}
                     </div>
 
-                    <div class="dealer-modal-content" id="modal-tab-engagement" style="display: none; padding: 0; min-height: 50vh;">
+                    <div class="dealer-modal-content" id="modal-tab-engagement" style="display: none; padding: 0; overflow: hidden;">
                         ${engagementHtml}
                     </div>
                     
@@ -396,8 +410,8 @@ export function renderDealerDetailsModal(data, settings) {
                         ${historyHtml}
                     </div>
 
-                    <!-- Footer -->
-                    <div class="dealer-modal-footer">
+                    <!-- Footer (Overview & Sales only) -->
+                    <div class="dealer-modal-footer" id="modal-footer">
                         <div class="footer-note">
                             <span style="color:var(--color-info);">*</span> Changes saved as overrides
                         </div>
@@ -414,65 +428,65 @@ export function renderDealerDetailsModal(data, settings) {
                     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
                     background: var(--modal-overlay-bg);
                     backdrop-filter: blur(8px);
+                    -webkit-backdrop-filter: blur(8px);
                     z-index: 10000;
                     display: flex; align-items: center; justify-content: center;
                     animation: fadeIn 0.1s ease-out;
                 }
                 .dealer-modal {
+                    position: relative;
                     background: var(--modal-bg-gradient);
-                    width: 750px;
-                    max-width: 95%;
-                    border-radius: 16px;
+                    backdrop-filter: blur(24px);
+                    -webkit-backdrop-filter: blur(24px);
+                    width: 95vw;
+                    height: 90vh;
+                    max-width: 1600px;
+                    border-radius: 20px;
                     border: var(--modal-border);
                     box-shadow: var(--modal-shadow);
                     color: var(--modal-input-text);
                     display: flex; flex-direction: column;
                     overflow: hidden;
-                    animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                    animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                 }
-                
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
                 @keyframes scaleUp {
-                    from { transform: scale(0.95) translateY(10px); opacity: 0; }
+                    from { transform: scale(0.96) translateY(20px); opacity: 0; }
                     to { transform: scale(1) translateY(0); opacity: 1; }
                 }
 
                 /* Header */
                 .dealer-modal-header {
-                    padding: 16px 24px;
+                    padding: 20px 28px;
                     border-bottom: var(--modal-tabs-border);
-                    display: flex; justify-content: space-between; align-items: center;
                     background: var(--modal-header-bg);
+                    flex-shrink: 0;
                 }
-                .dealer-modal-header h2 { 
-                    margin: 0; font-size: 1.25rem; font-weight: 700; 
-                    color: var(--modal-h2-color);
-                    text-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                .dealer-modal-header h2 {
+                    margin: 0; font-size: 1.35rem; font-weight: 800;
+                    color: var(--modal-h2-color); text-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    letter-spacing: -0.01em;
                 }
-                .header-actions { display: flex; gap: 12px; align-items: center; }
-                .stage-badge { 
-                    padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; 
-                    text-transform: uppercase; background: rgba(16, 185, 129, 0.2); color: #34d399; 
-                    border: 1px solid rgba(16, 185, 129, 0.3);
+                .close-btn {
+                    background: rgba(255, 255, 255, 0.04); border: none; color: var(--modal-text-secondary);
+                    border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+                    cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
                 }
-                .stage-badge.stage-churned { background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
-                .stage-badge.stage-prospect { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
-
-                .close-btn { 
-                    background: rgba(255,255,255,0.05); border: none; color: var(--modal-text-secondary); 
-                    border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-                    cursor: pointer; transition: all 0.2s; 
-                }
-                .close-btn:hover { background: rgba(100,100,255,0.1); color: var(--modal-h2-color); transform: rotate(90deg); }
+                .close-btn:hover { background: rgba(100,100,255,0.1); color: var(--modal-h2-color); transform: rotate(90deg) scale(1.05); }
 
                 /* Tabs */
                 .dealer-modal-tabs {
                     display: flex; padding: 0 24px;
                     background: var(--modal-tabs-bg);
                     border-bottom: var(--modal-tabs-border);
+                    flex-shrink: 0;
                 }
                 .tab-btn {
                     padding: 14px 4px; margin-right: 24px;
-                    background: none; border: none; 
+                    background: none; border: none;
                     color: var(--modal-label-color);
                     font-size: 0.85rem; font-weight: 600; cursor: pointer;
                     position: relative; transition: color 0.2s;
@@ -483,10 +497,11 @@ export function renderDealerDetailsModal(data, settings) {
                     height: 2px; background: var(--color-info); box-shadow: 0 -1px 8px var(--color-info);
                 }
 
-                /* Content Body */
-                .dealer-modal-content { padding: 24px; flex: 1; }
-                
-                /* Compact Grid Layout */
+                /* Content */
+                .dealer-modal-content { padding: 24px; flex: 1; overflow-y: auto; }
+                #modal-tab-engagement { overflow: hidden; }
+
+                /* Compact Grid */
                 .compact-grid {
                     display: grid;
                     grid-template-columns: repeat(3, 1fr);
@@ -498,9 +513,9 @@ export function renderDealerDetailsModal(data, settings) {
                     border-bottom: 1px dashed var(--modal-table-border); padding-bottom: 4px;
                 }
 
-                /* Categories Chips */
+                /* Categories */
                 .categories-container {
-                    display: flex; flex-wrap: wrap; gap: 6px; 
+                    display: flex; flex-wrap: wrap; gap: 6px;
                     padding: 12px 10px;
                     overflow-y: auto; align-content: flex-start;
                     height: auto !important; min-height: 48px; max-height: 120px;
@@ -508,63 +523,66 @@ export function renderDealerDetailsModal(data, settings) {
                 .categories-container::-webkit-scrollbar { width: 4px; }
                 .categories-container::-webkit-scrollbar-track { background: transparent; }
                 .categories-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
-
                 .category-chip {
                     display: inline-flex; align-items: center;
                     padding: 2px 8px; border-radius: 12px;
-                    background: rgba(59, 130, 246, 0.15); 
+                    background: rgba(59, 130, 246, 0.15);
                     color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.2);
-                    font-size: 0.75rem; white-space: nowrap;
-                    font-weight: 500;
+                    font-size: 0.75rem; white-space: nowrap; font-weight: 500;
                 }
 
                 /* Floating Labels */
                 .floating-group { position: relative; margin-bottom: 16px; }
                 .floating-input {
                     width: 100%;
-                    padding: 16px 12px 6px;
-                    height: 48px;
+                    padding: 20px 14px 6px;
+                    height: 52px;
                     background: var(--modal-input-bg);
                     border: var(--modal-input-border);
-                    border-radius: 8px;
+                    border-radius: 12px;
                     color: var(--modal-input-text);
-                    font-size: 0.9rem;
-                    font-family: inherit;
-                    transition: all 0.2s;
+                    font-size: 0.95rem;
+                    font-family: 'Inter', sans-serif;
+                    font-weight: 500;
+                    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
                     box-sizing: border-box;
+                    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+                }
+                .floating-input:hover {
+                    box-shadow: 0 0 0 1px var(--color-info) inset;
                 }
                 .floating-input:focus {
                     outline: none;
                     border-color: var(--color-info);
-                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), inset 0 2px 4px rgba(0,0,0,0.1);
                     background: var(--modal-input-focus-bg);
                 }
                 .floating-label {
                     position: absolute;
-                    top: 14px; left: 12px;
-                    font-size: 0.85rem;
+                    top: 16px; left: 14px;
+                    font-size: 0.9rem;
                     color: var(--modal-label-color);
                     pointer-events: none;
-                    transition: all 0.2s ease-out;
+                    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+                    font-weight: 500;
                 }
-                /* Active State for Float */
                 .floating-input:focus ~ .floating-label,
                 .floating-input:not(:placeholder-shown) ~ .floating-label {
-                    top: 4px;
-                    font-size: 0.65rem;
+                    top: 6px;
+                    font-size: 0.68rem;
                     color: var(--color-info);
-                    font-weight: 600;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
                 }
-                /* Select handling */
-                select.floating-input { padding-top: 16px; cursor: pointer; }
+                select.floating-input { padding-top: 18px; cursor: pointer; }
                 select.floating-input option { background: var(--modal-input-bg); color: var(--modal-input-text); }
-
-                /* Readonly */
-                .floating-input[readonly] {
+                .floating-input[readonly], .floating-input[disabled] {
                     background: var(--modal-readonly-bg);
                     border-color: transparent;
                     cursor: default;
                     color: var(--modal-text-secondary);
+                    box-shadow: none;
                 }
 
                 /* Footer */
@@ -573,16 +591,15 @@ export function renderDealerDetailsModal(data, settings) {
                     border-top: var(--modal-footer-border);
                     background: var(--modal-footer-bg);
                     display: flex; justify-content: space-between; align-items: center;
+                    flex-shrink: 0;
                 }
                 .footer-note { font-size: 0.75rem; color: var(--modal-text-secondary); font-style: italic; }
-                
                 .btn-cancel {
                     padding: 8px 16px; margin-right: 8px;
                     background: transparent; border: 1px solid var(--modal-table-border);
                     color: var(--modal-text-secondary); border-radius: 6px; cursor: pointer; transition: 0.2s;
                 }
                 .btn-cancel:hover { background: rgba(255,255,255,0.05); color: var(--modal-h2-color); }
-                
                 .btn-save {
                     padding: 8px 24px;
                     background: linear-gradient(135deg, #3b82f6, #2563eb);
@@ -594,39 +611,116 @@ export function renderDealerDetailsModal(data, settings) {
                 .btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4); }
                 .btn-save:active { transform: translateY(0); }
 
+                /* Sales table */
                 .history-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-                .history-table th { 
-                    text-align: left; padding: 12px; font-size: 0.75rem; 
-                    color: var(--modal-table-header); 
-                    text-transform: uppercase; border-bottom: 1px solid var(--modal-table-border); 
+                .history-table th {
+                    text-align: left; padding: 12px; font-size: 0.75rem;
+                    color: var(--modal-table-header);
+                    text-transform: uppercase; border-bottom: 1px solid var(--modal-table-border);
                 }
-                .history-table td { 
-                    padding: 12px; font-size: 0.85rem; 
-                    color: var(--modal-table-row); 
-                    border-bottom: 1px solid rgba(255,255,255,0.03); 
+                .history-table td {
+                    padding: 12px; font-size: 0.85rem;
+                    color: var(--modal-table-row);
+                    border-bottom: 1px solid rgba(255,255,255,0.03);
                 }
                 .history-table tr:hover td { background: rgba(255,255,255,0.02); }
                 .text-right { text-align: right; }
 
-                /* WhatsApp Status Dot & Utilities */
+                /* WhatsApp */
+                .wa-status-pill {
+                    padding: 6px 14px; border-radius: 24px;
+                    font-size: 0.75rem; font-weight: 600;
+                    display: flex; align-items: center; gap: 8px;
+                    transition: all 0.3s; background: rgba(0,0,0,0.3);
+                    border: 1px solid rgba(255,255,255,0.06);
+                }
                 .wa-status-dot {
-                    width: 8px; height: 8px; border-radius: 50%;
-                    background: #94a3b8; position: relative;
+                    width: 6px; height: 6px; border-radius: 50%;
+                    position: relative; background: #64748b;
                 }
-                #wa-instance-status.connected .wa-status-dot {
-                    background: #10b981;
-                    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+                .wa-status-pill.connected {
+                    background: rgba(16,185,129,0.12);
+                    border-color: rgba(16,185,129,0.25); color: #f8fafc;
                 }
-                #wa-instance-status.connected .wa-status-dot::after {
-                    content: ''; position: absolute; inset: -4px;
-                    border-radius: 50%; border: 2px solid rgba(16, 185, 129, 0.2);
-                    animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+                .wa-status-pill.connected .wa-status-dot {
+                    background: #10b981; box-shadow: 0 0 10px #10b981;
                 }
-                @keyframes ping {
-                    75%, 100% { transform: scale(2); opacity: 0; }
+                .wa-status-pill.connected .wa-status-dot::after {
+                    content: ''; position: absolute; inset: -3px;
+                    border: 1px solid #10b981; border-radius: 50%;
+                    animation: ripple 2s infinite cubic-bezier(0.16,1,0.3,1);
                 }
-                @keyframes spin {
-                    to { transform: rotate(360deg); }
+                @keyframes ripple {
+                    0% { transform: scale(1); opacity: 0.8; }
+                    100% { transform: scale(2.5); opacity: 0; }
+                }
+                .wa-action-btn {
+                    background: rgba(255,255,255,0.04);
+                    border: 1px solid rgba(255,255,255,0.08);
+                    border-radius: 12px; padding: 8px 12px;
+                    color: #cbd5e1; font-size: 0.75rem; font-weight: 600;
+                    cursor: pointer; display: flex; align-items: center; justify-content: center;
+                    gap: 8px; transition: all 0.25s;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                }
+                .wa-action-btn:hover {
+                    background: rgba(255,255,255,0.08);
+                    border-color: rgba(255,255,255,0.15); color: #fff;
+                    transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                }
+                .wa-modern-select-wrapper { position: relative; }
+                .wa-modern-select {
+                    width: 100%; background: rgba(0,0,0,0.3);
+                    border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+                    padding: 10px 16px; color: #f1f5f9; font-size: 0.85rem;
+                    outline: none; appearance: none; cursor: pointer; transition: all 0.25s;
+                }
+                .wa-modern-select:focus { border-color: rgba(16,185,129,0.5); box-shadow: 0 0 0 4px rgba(16,185,129,0.15); }
+                .wa-modern-select option { background: #0f172a; color: #f8fafc; }
+                .wa-modern-select-wrapper::after {
+                    content: '▾'; position: absolute; right: 16px; top: 50%;
+                    transform: translateY(-50%); color: #94a3b8;
+                    pointer-events: none; font-size: 0.8rem;
+                }
+                .wa-send-btn {
+                    padding: 12px; border-radius: 14px;
+                    background: linear-gradient(135deg, #10b981, #059669);
+                    color: white; border: none; cursor: pointer;
+                    transition: all 0.3s; display: flex; align-items: center; justify-content: center;
+                    box-shadow: 0 6px 15px -3px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+                }
+                .wa-send-btn:hover:not(:disabled) { transform: translateY(-2px) scale(1.02); box-shadow: 0 10px 25px -5px rgba(16,185,129,0.5); }
+                .wa-send-btn:disabled { background: rgba(255,255,255,0.05); color: #475569; box-shadow: none; cursor: not-allowed; opacity: 0.6; }
+                .wa-preview-container { margin-bottom: 12px; border-radius: 14px; overflow: hidden; background: rgba(0,0,0,0.3); border: 1px solid rgba(16,185,129,0.2); }
+
+                /* Chip styles */
+                .activity-chip { position: relative; overflow: hidden; z-index: 1; }
+                .activity-chip.active {
+                    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+                    border-color: transparent !important; color: white !important;
+                    box-shadow: 0 6px 15px -3px rgba(59,130,246,0.5), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+                    font-weight: 600; transform: translateY(-1px);
+                }
+
+                /* Scrollbars */
+                .modal-column::-webkit-scrollbar,
+                #dealer-logs-list::-webkit-scrollbar,
+                #wa-chat-history::-webkit-scrollbar,
+                .crm-history-container::-webkit-scrollbar { width: 5px; height: 5px; }
+                .modal-column::-webkit-scrollbar-track,
+                #dealer-logs-list::-webkit-scrollbar-track,
+                #wa-chat-history::-webkit-scrollbar-track,
+                .crm-history-container::-webkit-scrollbar-track { background: transparent; }
+                .modal-column::-webkit-scrollbar-thumb,
+                #dealer-logs-list::-webkit-scrollbar-thumb,
+                #wa-chat-history::-webkit-scrollbar-thumb,
+                .crm-history-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+
+                @keyframes spin { to { transform: rotate(360deg); } }
+
+                @media (max-width: 768px) {
+                    .compact-grid { grid-template-columns: 1fr; }
+                    .dealer-modal { width: 100%; height: 100%; border-radius: 0; }
                 }
             </style>
         `;

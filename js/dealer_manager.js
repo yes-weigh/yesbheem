@@ -1700,6 +1700,9 @@ if (!window.DealerManager) {
                 // Inject
                 document.body.insertAdjacentHTML('beforeend', html);
 
+                // Preload media service + templates so gallery works immediately
+                this.initMediaAndTemplates().catch(e => console.warn('[Dealer] initMediaAndTemplates failed:', e));
+
             } catch (e) {
                 console.error('Failed to show details:', e);
                 import('./utils/toast.js').then(module => {
@@ -1709,6 +1712,15 @@ if (!window.DealerManager) {
         }
 
         closeDealerDetails() {
+            // Unsubscribe live chat listener
+            if (this.chatUnsubscribe) {
+                this.chatUnsubscribe();
+                this.chatUnsubscribe = null;
+            }
+            if (window.currentDealerChatUnsub) {
+                window.currentDealerChatUnsub();
+                window.currentDealerChatUnsub = null;
+            }
             const modal = document.querySelector('.dealer-modal-overlay');
             if (modal) modal.remove();
         }
@@ -1726,27 +1738,35 @@ if (!window.DealerManager) {
             });
 
             const activeContent = document.getElementById(`modal-tab-${tabId}`);
-            if (activeContent) activeContent.style.display = 'block';
+            if (activeContent) {
+                // Engagement tab is full-height flex — don't use display:block which breaks the 2-col layout
+                activeContent.style.display = tabId === 'engagement' ? 'flex' : 'block';
+                // For engagement, override content padding (already set in template; keeps flex working)
+                if (tabId === 'engagement') activeContent.style.setProperty('padding', '0', 'important');
+            }
+
+            // Footer: hide on engagement tab (it's full-height, no separate footer needed)
+            const footer = document.getElementById('modal-footer');
+            if (footer) footer.style.display = tabId === 'engagement' ? 'none' : 'flex';
 
             // Additional logic for Engagement tab
             if (tabId === 'engagement') {
                 const modal = document.querySelector('.dealer-modal-overlay');
                 if (modal) {
-                    const sendBtn = modal.querySelector('.wa-send-btn');
-                    if (sendBtn) {
-                        const onclickAttr = sendBtn.getAttribute('onclick') || '';
-                        const match = onclickAttr.match(/'([^']+)'/);
-                        const dealerName = match ? match[1].replace(/\\'/g, "'") : '';
+                    // Extract dealer name from the save button's onclick
+                    const saveBtn = modal.querySelector('.btn-save');
+                    const onclickAttr = saveBtn?.getAttribute('onclick') || '';
+                    const match = onclickAttr.match(/'([^']+)'/);
+                    const dealerName = match ? match[1].replace(/\\'/g, "'") : '';
 
-                        if (dealerName) {
-                            this.renderLogsList(dealerName);
-                        }
-
-                        const kam = modal.querySelector('#inp_key_account_manager')?.value || '';
-                        this.initMediaAndTemplates().then(() => {
-                            this.updateWhatsAppInterface(kam);
-                        });
+                    if (dealerName) {
+                        this.renderLogsList(dealerName);
                     }
+
+                    const kam = modal.querySelector('#inp_key_account_manager')?.value || '';
+                    this.initMediaAndTemplates().then(() => {
+                        this.updateWhatsAppInterface(kam);
+                    });
                 }
             }
         }
@@ -1813,13 +1833,17 @@ if (!window.DealerManager) {
                 saveBtn.disabled = true;
             }
 
-            // Collect Inputs
+            // Collect Inputs — supports new floating-input and legacy details-input classes
             const overrides = {};
-            modal.querySelectorAll('.details-input:not(.readonly)').forEach(input => {
-                const field = input.dataset.field;
-                const val = input.value.trim();
-                if (field) overrides[field] = val;
+            modal.querySelectorAll('[data-field]').forEach(el => {
+                const field = el.dataset.field;
+                if (!field || field === 'header_first_name') return;
+                if (el.readOnly || el.disabled) return;
+                overrides[field] = el.value?.trim() ?? '';
             });
+            // Sync header contact name field -> first_name
+            const headerName = modal.querySelector('[data-field="header_first_name"]')?.value?.trim();
+            if (headerName) overrides['first_name'] = headerName;
 
             try {
                 await this.dataManager.saveDealerOverride(dealerName, overrides);
@@ -2746,7 +2770,7 @@ if (!window.DealerManager) {
                 statusEl.innerHTML = `<span class="wa-status-dot"></span><span style="color: #fff; font-weight: 600;">Via: ${instance.name}</span>`;
                 if (sendBtn) sendBtn.disabled = false;
 
-                const phone = document.getElementById('inp_mobile_phone')?.value;
+                const phone = document.getElementById('inp_phone')?.value;
                 if (phone) this.loadChatHistory(phone, instance.id);
             }
         }
@@ -2871,85 +2895,330 @@ if (!window.DealerManager) {
         async loadChatHistory(phone, instanceId) {
             const container = document.getElementById('wa-chat-history');
             if (!container) return;
+
+            // Cancel any existing listener
+            if (this.chatUnsubscribe) {
+                this.chatUnsubscribe();
+                this.chatUnsubscribe = null;
+            }
+            if (window.currentDealerChatUnsub) {
+                window.currentDealerChatUnsub();
+                window.currentDealerChatUnsub = null;
+            }
+
+            container.innerHTML = `
+                <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                    <div style="text-align: center; color: #334155; font-size: 0.8rem; font-style: italic;">
+                        <div style="font-size: 1.5rem; margin-bottom: 8px; opacity: 0.4;">⏳</div>
+                        Connecting...
+                    </div>
+                </div>`;
+
             try {
-                let _collection = typeof collection !== 'undefined' ? collection : window.collection;
-                let _query = typeof query !== 'undefined' ? query : window.query;
-                let _where = typeof where !== 'undefined' ? where : window.where;
-                let _orderBy = typeof orderBy !== 'undefined' ? orderBy : window.orderBy;
-                let _onSnapshot = typeof onSnapshot !== 'undefined' ? onSnapshot : window.onSnapshot;
-                let _db = typeof db !== 'undefined' ? db : window.db;
+                if (!window.firebaseContext || !window.firebaseContext.db) throw new Error('Firebase not initialized');
+                const { db: _db } = window.firebaseContext;
+                const { collection, query, where, orderBy, limit, getDocs, onSnapshot } = await import(
+                    'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js'
+                );
 
-                if (!_collection || !_query || !_onSnapshot || !_db) {
-                    try {
-                        const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-                        _collection = fb.collection;
-                        _query = fb.query;
-                        _where = fb.where;
-                        _orderBy = fb.orderBy;
-                        _onSnapshot = fb.onSnapshot;
-                        const config = await import("./services/firebase_config.js");
-                        _db = config.db;
-                    } catch (err) {
-                        console.warn("Dynamic import for chat history failed", err);
+                const normalize = (raw) => {
+                    const digits = String(raw).replace(/\D/g, '');
+                    if (digits.length === 10) return '91' + digits;
+                    if (digits.length === 11 && digits.startsWith('0')) return '91' + digits.slice(1);
+                    return digits;
+                };
+                const leadPhone = normalize(phone);
+
+                // Step 1: Find chat doc IDs for this dealer phone
+                const chatSnapshot = await getDocs(query(
+                    collection(_db, 'wa_chats'),
+                    where('leadPhone', '==', leadPhone)
+                ));
+
+                if (chatSnapshot.empty) {
+                    // Fallback: try matching on key.remoteJid
+                    const jid = leadPhone + '@s.whatsapp.net';
+                    const q2 = query(collection(_db, 'wa_chats'), where('key.remoteJid', '==', jid));
+                    const snap2 = await getDocs(q2);
+                    if (snap2.empty) {
+                        container.innerHTML = `
+                            <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                                <div style="text-align: center; color: #334155; font-size: 0.8rem;">
+                                    <div style="font-size: 1.5rem; margin-bottom: 8px; opacity: 0.3;">🔇</div>
+                                    No messages yet
+                                </div>
+                            </div>`;
+                        return;
                     }
-                }
-
-                if (!_collection || !_query || !_onSnapshot || !_db) {
-                    container.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 20px;">Live updates unavailable.</div>';
+                    // Render flat chats (old structure)
+                    this._renderFlatChats(snap2, container);
                     return;
                 }
 
-                let fPhone = phone.replace(/\\D/g, '');
-                if (fPhone.length === 10) fPhone = '91' + fPhone;
-                fPhone += '@s.whatsapp.net';
+                // Step 2: Subscribe to all chat docs' messages subcollection
+                const messageMap = new Map();
+                const allUnsubscribers = [];
 
-                if (window.currentDealerChatUnsub) {
-                    window.currentDealerChatUnsub();
+                const scheduleRender = (() => {
+                    let raf = null;
+                    return () => {
+                        if (raf) return;
+                        raf = requestAnimationFrame(() => {
+                            raf = null;
+                            this._renderMessagesMap(Array.from(messageMap.values()), container);
+                        });
+                    };
+                })();
+
+                for (const chatDoc of chatSnapshot.docs) {
+                    const msgsQuery = query(
+                        collection(_db, 'wa_chats', chatDoc.id, 'messages'),
+                        orderBy('timestamp', 'asc'),
+                        limit(60)
+                    );
+
+                    const unsub = onSnapshot(msgsQuery, (snap) => {
+                        snap.docChanges().forEach(change => {
+                            if (change.type === 'added' || change.type === 'modified') {
+                                messageMap.set(change.doc.id, { id: change.doc.id, ...change.doc.data() });
+                            } else if (change.type === 'removed') {
+                                messageMap.delete(change.doc.id);
+                            }
+                        });
+                        scheduleRender();
+                    }, (err) => console.error('[WhatsApp RT dealer]', err));
+
+                    allUnsubscribers.push(unsub);
                 }
 
-                const q = _query(_collection(_db, 'wa_chats'), _where('key.remoteJid', '==', fPhone), _orderBy('messageTimestamp', 'asc'));
+                this.chatUnsubscribe = () => allUnsubscribers.forEach(fn => fn());
+                window.currentDealerChatUnsub = this.chatUnsubscribe;
 
-                window.currentDealerChatUnsub = _onSnapshot(q, (snapshot) => {
-                    if (snapshot.empty) {
-                        container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px; font-style: italic;">No messages found.</div>';
-                        return;
-                    }
-                    let html = '';
-                    snapshot.forEach(doc => {
-                        const msg = doc.data();
-                        const isFromMe = msg.key.fromMe;
-                        const content = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '[Media Attachment]';
-                        const time = new Date(msg.messageTimestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        const statusColor = msg.status === 'READ' ? '#3b82f6' : (msg.status === 'DELIVERY_ACK' ? '#94a3b8' : 'rgba(255,255,255,0.3)');
-
-                        html += `
-                            <div style="display: flex; justify-content: ${isFromMe ? 'flex-end' : 'flex-start'}; margin-bottom: 8px;">
-                                <div style="max-width: 80%; background: ${isFromMe ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)'}; 
-                                            border: 1px solid ${isFromMe ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.1)'};
-                                            border-radius: 12px; padding: 10px 14px; position: relative;">
-                                    <div style="font-size: 0.9rem; color: #fff; line-height: 1.4; white-space: pre-wrap; word-break: break-word;">${this.escapeHtml(content)}</div>
-                                    <div style="font-size: 0.65rem; color: rgba(255, 255, 255, 0.4); text-align: right; margin-top: 4px;">
-                                        ${time} ${isFromMe ? `
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${statusColor}" stroke-width="2" style="vertical-align: middle; margin-left: 2px;">
-                                                <polyline points="20 6 9 17 4 12"></polyline>
-                                            </svg>` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    container.innerHTML = html;
-                    container.scrollTop = container.scrollHeight;
-                });
-            } catch (err) {
-                console.error('[WhatsApp] History failed', err);
+            } catch (e) {
+                console.error('[WhatsApp] Chat history load failed:', e);
+                container.innerHTML = `<div style="text-align: center; color: #ef4444; padding: 20px; font-size: 0.8rem;">Failed to load chat.</div>`;
             }
         }
 
-        // Default empty media methods to avoid errors
-        openMediaGallery() { import('./utils/toast.js').then(m => m.Toast.info('Media Gallery coming soon to Dealer Mode.')); }
-        handleWAMediaUpload(file) { console.log(file); }
-        clearMediaSelection() { this.selectedMedia = null; }
+        _renderFlatChats(snapshot, container) {
+            if (snapshot.empty) { container.innerHTML = ''; return; }
+            let html = '';
+            snapshot.forEach(doc => {
+                const msg = doc.data();
+                const isFromMe = msg.key?.fromMe;
+                const content = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '[Media]';
+                const time = msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                html += `<div style="display:flex;justify-content:${isFromMe ? 'flex-end' : 'flex-start'};margin-bottom:8px;"><div style="max-width:80%;background:${isFromMe ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)'};border:1px solid ${isFromMe ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.1)'};border-radius:12px;padding:10px 14px;"><div style="font-size:0.9rem;color:#fff;line-height:1.4;white-space:pre-wrap;word-break:break-word;">${this.escapeHtml(content)}</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.4);text-align:right;margin-top:4px;">${time}</div></div></div>`;
+            });
+            container.innerHTML = html;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        _renderMessagesMap(messages, container) {
+            if (!messages.length) return;
+            const sorted = messages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            container.innerHTML = sorted.map(msg => {
+                const isFromMe = msg.fromMe;
+                const content = msg.body || msg.text || msg.content || '[Media]';
+                const ts = msg.timestamp ? new Date(msg.timestamp * 1000) : new Date(msg.createdAt || 0);
+                const time = ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return `<div style="display:flex;justify-content:${isFromMe ? 'flex-end' : 'flex-start'};margin-bottom:8px;"><div class="wa-msg" style="background:${isFromMe ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)'};border:1px solid ${isFromMe ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.1)'};"><div style="font-size:0.9rem;color:#fff;line-height:1.4;white-space:pre-wrap;word-break:break-word;">${this.escapeHtml(content)}</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.4);text-align:right;margin-top:4px;">${time}</div></div></div>`;
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async openMediaGallery() {
+            if (!this.mediaService) return;
+            try {
+                const mediaItems = await this.mediaService.getMedia();
+                this.cachedMedia = mediaItems;
+
+                const settings = this.generalSettings || {};
+                const languages = settings.template_languages || [];
+                const categories = settings.template_categories || [];
+
+                const langOptions = languages.map(l => `<option value="${l}" style="background:#1e293b;color:#f8fafc;">${l}</option>`).join('');
+                const catOptions = categories.map(c => `<option value="${c}" style="background:#1e293b;color:#f8fafc;">${c}</option>`).join('');
+                const dropdownStyle = `background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px;color:white;font-size:0.85rem;outline:none;appearance:none;-webkit-appearance:none;background-image:url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23ffffff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');background-repeat:no-repeat;background-position:right 10px top 50%;background-size:10px auto;padding-right:30px;`;
+
+                const modalHtml = `
+                    <div id="gallery-picker-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:20000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(12px);">
+                        <div style="background:#1a1b1e;width:900px;max-width:96vw;height:85vh;border-radius:24px;border:1px solid rgba(255,255,255,0.1);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 50px rgba(0,0,0,0.6);">
+                            <div style="padding:24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02);">
+                                <div>
+                                    <h3 style="margin:0;color:white;font-size:1.25rem;">Media Gallery</h3>
+                                    <p style="margin:4px 0 0;font-size:0.85rem;color:#64748b;">Select an asset to attach</p>
+                                </div>
+                                <div style="display:flex;align-items:center;gap:12px;">
+                                    <input type="text" id="gallery-search" placeholder="Search..." 
+                                        style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 12px;color:white;font-size:0.85rem;width:140px;outline:none;"
+                                        oninput="window.dealerManager.applyGalleryFilters()">
+                                    <select id="gallery-filter-lang" onchange="window.dealerManager.applyGalleryFilters()" style="${dropdownStyle}">
+                                        <option value="" style="background:#1e293b;color:#f8fafc;">All Languages</option>
+                                        ${langOptions}
+                                    </select>
+                                    <select id="gallery-filter-cat" onchange="window.dealerManager.applyGalleryFilters()" style="${dropdownStyle}">
+                                        <option value="" style="background:#1e293b;color:#f8fafc;">All Categories</option>
+                                        ${catOptions}
+                                    </select>
+                                    <select id="gallery-filter-type" onchange="window.dealerManager.applyGalleryFilters()" style="${dropdownStyle}">
+                                        <option value="" style="background:#1e293b;color:#f8fafc;">All Types</option>
+                                        <option value="image" style="background:#1e293b;color:#f8fafc;">Images</option>
+                                        <option value="video" style="background:#1e293b;color:#f8fafc;">Videos</option>
+                                        <option value="document" style="background:#1e293b;color:#f8fafc;">PDFs</option>
+                                    </select>
+                                    <button onclick="this.closest('#gallery-picker-modal').remove()" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:1.8rem;width:40px;height:40px;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#64748b'">&times;</button>
+                                </div>
+                            </div>
+                            <div id="gallery-grid" style="flex:1;overflow-y:auto;padding:24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px;align-content:start;"></div>
+                        </div>
+                    </div>`;
+
+                // Remove old gallery if any
+                document.getElementById('gallery-picker-modal')?.remove();
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                this.applyGalleryFilters();
+            } catch (e) {
+                console.error('[Gallery]', e);
+                import('./utils/toast.js').then(m => m.Toast.error('Failed to load gallery.'));
+            }
+        }
+
+        applyGalleryFilters() {
+            const search = document.getElementById('gallery-search')?.value.toLowerCase() || '';
+            const type = document.getElementById('gallery-filter-type')?.value || '';
+            const lang = document.getElementById('gallery-filter-lang')?.value || '';
+            const cat = document.getElementById('gallery-filter-cat')?.value || '';
+
+            const filtered = (this.cachedMedia || []).filter(m => {
+                const matchesSearch = !search || (m.name || '').toLowerCase().includes(search) || ((m.category || '').toLowerCase().includes(search));
+                const matchesType = !type || m.type === type || (type === 'document' && m.mimeType === 'application/pdf');
+                const matchesLang = !lang || (m.language && m.language.toLowerCase() === lang.toLowerCase());
+                const matchesCat = !cat || (m.category && m.category.toLowerCase() === cat.toLowerCase());
+                return matchesSearch && matchesType && matchesLang && matchesCat;
+            });
+
+            const grid = document.getElementById('gallery-grid');
+            if (!grid) return;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:#64748b;">No media found.</div>`;
+                return;
+            }
+
+            const renderId = Date.now();
+            this.currentGalleryRenderId = renderId;
+
+            grid.innerHTML = filtered.map(m => {
+                const isVideo = m.type === 'video' || (m.mimeType || '').startsWith('video/');
+                const isDoc = m.type === 'document' || (m.mimeType || '').startsWith('application/');
+                let previewHtml = '';
+                if (m.thumbnailUrl) {
+                    previewHtml = `<img src="${m.thumbnailUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+                } else if (m.type === 'image') {
+                    previewHtml = `<img src="${m.url}" style="width:100%;height:100%;object-fit:cover;">`;
+                } else {
+                    const icon = isVideo ? '🎬' : (isDoc ? '📄' : '📁');
+                    const label = isVideo ? 'GENERATING...' : (m.type || 'Media');
+                    const placeholderId = isVideo ? `gallery-placeholder-${m.id}` : '';
+                    const canvasId = isVideo ? `gallery-canvas-${m.id}` : '';
+                    previewHtml = `
+                        <div id="${placeholderId}" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#2a2b2e;color:#666;">
+                            <span style="font-size:2rem;margin-bottom:8px;">${icon}</span>
+                            <span style="font-size:0.5rem;text-transform:uppercase;letter-spacing:1px;padding:0 4px;text-align:center;">${label}</span>
+                        </div>
+                        ${isVideo ? `<canvas id="${canvasId}" style="width:100%;height:100%;object-fit:cover;display:none;"></canvas>` : ''}
+                    `;
+                }
+                return `
+                    <div onclick="window.dealerManager.selectMediaFromGallery('${m.id}')"
+                         title="${this.escapeHtml(m.name)}"
+                         style="aspect-ratio:1;background:#000;border-radius:16px;cursor:pointer;overflow:hidden;border:2px solid transparent;transition:0.2s;position:relative;box-shadow:0 4px 12px rgba(0,0,0,0.2);"
+                         onmouseover="this.style.borderColor='var(--accent-color,#10b981)';this.style.transform='translateY(-4px)'"
+                         onmouseout="this.style.borderColor='transparent';this.style.transform='translateY(0)'">
+                        ${previewHtml}
+                        <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(transparent,rgba(0,0,0,0.9));font-size:0.7rem;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;">
+                            ${m.name || 'Untitled'}
+                        </div>
+                    </div>`;
+            }).join('');
+
+            // Async video thumbnail generation
+            const videosNeedThumb = filtered.filter(m => (m.type === 'video' || (m.mimeType || '').startsWith('video/')) && !m.thumbnailUrl);
+            if (videosNeedThumb.length > 0) this._generateGalleryVideoThumbnails(videosNeedThumb, renderId);
+        }
+
+        async _generateGalleryVideoThumbnails(videos, renderId) {
+            for (const m of videos) {
+                if (this.currentGalleryRenderId !== renderId) break;
+                try {
+                    await new Promise((resolve) => {
+                        const vid = document.createElement('video');
+                        vid.src = m.url;
+                        vid.crossOrigin = 'anonymous';
+                        vid.muted = true;
+                        vid.preload = 'metadata';
+                        vid.onloadeddata = () => { vid.currentTime = 1; };
+                        vid.onseeked = () => {
+                            try {
+                                const canvas = document.getElementById(`gallery-canvas-${m.id}`);
+                                const placeholder = document.getElementById(`gallery-placeholder-${m.id}`);
+                                if (!canvas) { resolve(); return; }
+                                canvas.width = vid.videoWidth || 320;
+                                canvas.height = vid.videoHeight || 240;
+                                canvas.getContext('2d').drawImage(vid, 0, 0, canvas.width, canvas.height);
+                                canvas.style.display = 'block';
+                                if (placeholder) placeholder.style.display = 'none';
+                            } catch (e) { }
+                            resolve();
+                        };
+                        vid.onerror = () => resolve();
+                    });
+                } catch (e) { }
+            }
+        }
+
+        selectMediaFromGallery(mediaId) {
+            const media = (this.cachedMedia || []).find(m => m.id === mediaId);
+            if (media) {
+                this.updateMediaPreview(media);
+                document.getElementById('gallery-picker-modal')?.remove();
+            }
+        }
+
+        handleWAMediaUpload(file) {
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            const type = file.type.startsWith('video') ? 'video' : (file.type.startsWith('image') ? 'image' : 'document');
+            this.updateMediaPreview({ url, name: file.name, type, mimeType: file.type, _file: file });
+        }
+
+        updateMediaPreview(media) {
+            this.selectedMedia = media;
+            const preview = document.getElementById('wa-media-preview');
+            if (!preview) return;
+            const isVideo = media.type === 'video' || (media.mimeType || '').startsWith('video/');
+            const isImage = media.type === 'image' || (media.mimeType || '').startsWith('image/');
+            let previewEl = '';
+            if (isImage) {
+                previewEl = `<img src="${media.url}" style="width:100%;max-height:160px;object-fit:contain;border-radius:8px;">`;
+            } else if (isVideo) {
+                previewEl = `<video src="${media.url}" controls style="width:100%;max-height:160px;border-radius:8px;"></video>`;
+            } else {
+                previewEl = `<div style="padding:12px;display:flex;align-items:center;gap:12px;"><span style="font-size:1.5rem;">📄</span><span style="color:#f8fafc;font-size:0.85rem;">${this.escapeHtml(media.name)}</span></div>`;
+            }
+            preview.style.display = 'block';
+            preview.innerHTML = previewEl + `
+                <button onclick="window.dealerManager.clearMediaSelection()" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.7);border:none;color:white;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;">×</button>`;
+        }
+
+        clearMediaSelection() {
+            this.selectedMedia = null;
+            const preview = document.getElementById('wa-media-preview');
+            if (preview) { preview.innerHTML = ''; preview.style.display = 'none'; }
+            const fileInput = document.getElementById('wa-file-upload');
+            if (fileInput) fileInput.value = '';
+        }
     };
 }
 
