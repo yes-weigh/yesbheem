@@ -74,33 +74,7 @@ export function renderDealerDetailsModal(data, settings) {
             </div>
         `;
 
-    const overviewHtml = `
-            <div class="compact-grid">
-                <!-- Col 1: Identity -->
-                <div class="grid-col">
-                    <h5 class="col-title">Identity</h5>
-                    ${renderFloatingSelect('Key Account Manager', 'key_account_manager', settings.key_accounts || [])}
-                    ${renderFloatingSelect('Dealer Stage', 'dealer_stage', settings.dealer_stages || [])}
-                    ${categoriesWidget}
-                </div>
-
-                <!-- Col 2: Contact -->
-                <div class="grid-col">
-                    <h5 class="col-title">Contact</h5>
-                    ${renderFloatingInput('Contact Name', 'first_name')}
-                    ${renderFloatingInput('Mobile Phone', 'mobile_phone')}
-                </div>
-
-                <!-- Col 3: Location -->
-                <div class="grid-col">
-                    <h5 class="col-title">Location</h5>
-                    ${renderFloatingInput('Zip Code', 'billing_zipcode', 'text', false, 'onchange="window.dealerManager.handlePopupZipChange(this)"')}
-                    ${renderFloatingInput('District', 'district', 'text', true)}
-                    ${renderFloatingInput('State', 'billing_state', 'text', true)}
-                    <input type="hidden" data-field="shipping_zipcode" value="${v('shipping_zipcode') || v('billing_zipcode')}">
-                </div>
-            </div>
-        `;
+    const overviewHtml = ``; // Overview tab removed
 
     // --- HISTORY TAB CONTENT ---
     const historyRows = history.map(h => {
@@ -373,18 +347,21 @@ export function renderDealerDetailsModal(data, settings) {
                         <!-- Inline fields strip -->
                         <div style="background: var(--modal-tabs-bg); border: var(--modal-tabs-border); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px; box-shadow: inset 0 1px 1px rgba(255,255,255,0.05);">
                             <div style="display: flex; flex: 1; align-items: center; gap: 16px; overflow-x: auto; padding: 2px;">
-                                ${renderFloatingInput('Contact Name', 'header_first_name', 'text', false, '', 'width: 160px;')}
-                                ${renderFloatingInput('Phone', 'mobile_phone', 'text', false, '', 'width: 140px;')}
+                                ${renderFloatingInput('Contact Name', 'first_name', 'text', false, `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'width: 160px;')}
+                                ${renderFloatingInput('Phone', 'mobile_phone', 'text', false, `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'width: 140px;')}
                                 <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
-                                    ${renderFloatingInput('Zip', 'billing_zipcode', 'text', false, 'onchange="window.dealerManager.handlePopupZipChange(this)"', 'width: 80px;')}
+                                    ${renderFloatingInput('Zip', 'billing_zipcode', 'text', false, `onchange="window.dealerManager.handlePopupZipChange(this); window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'width: 80px;')}
                                     ${renderFloatingInput('District', 'district', 'text', true, '', 'width: 110px;')}
                                     ${renderFloatingInput('State', 'billing_state', 'text', true, '', 'width: 100px;')}
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
-                                    ${renderFloatingSelect('KAM', 'key_account_manager', settings.key_accounts || [], `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}'); window.dealerManager.updateWhatsAppInterface(this.value);"`, 'width: 180px;')}
+                                    ${renderFloatingSelect('KAM', 'key_account_manager', settings.key_accounts || [], `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false); window.dealerManager.updateWhatsAppInterface(this.value);"`, 'width: 180px;')}
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
-                                    ${renderFloatingSelect('Stage', 'dealer_stage', settings.dealer_stages || [], `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}')"`, 'width: 160px;')}
+                                    ${renderFloatingSelect('Stage', 'dealer_stage', settings.dealer_stages || [], `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'width: 160px;')}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
+                                    ${categoriesWidget}
                                 </div>
                             </div>
                         </div>
@@ -392,17 +369,12 @@ export function renderDealerDetailsModal(data, settings) {
 
                     <!-- Tabs -->
                     <div class="dealer-modal-tabs">
-                        <button class="tab-btn active" onclick="window.dealerManager.switchModalTab('overview')">Overview</button>
-                        <button class="tab-btn" onclick="window.dealerManager.switchModalTab('engagement')">Engagement</button>
+                        <button class="tab-btn active" onclick="window.dealerManager.switchModalTab('engagement')">Engagement</button>
                         <button class="tab-btn" onclick="window.dealerManager.switchModalTab('sales')">Sales (${history.length})</button>
                     </div>
 
                     <!-- Body -->
-                    <div class="dealer-modal-content" id="modal-tab-overview">
-                        ${overviewHtml}
-                    </div>
-
-                    <div class="dealer-modal-content" id="modal-tab-engagement" style="display: none; padding: 0; overflow: hidden;">
+                    <div class="dealer-modal-content" id="modal-tab-engagement" style="padding: 0; overflow: hidden; display: flex;">
                         ${engagementHtml}
                     </div>
                     

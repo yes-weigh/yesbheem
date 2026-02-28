@@ -1700,8 +1700,8 @@ if (!window.DealerManager) {
                 // Inject
                 document.body.insertAdjacentHTML('beforeend', html);
 
-                // Preload media service + templates so gallery works immediately
-                this.initMediaAndTemplates().catch(e => console.warn('[Dealer] initMediaAndTemplates failed:', e));
+                // Initialize the default Engagement tab logic (logs, whatsapp interface, etc)
+                this.switchModalTab('engagement');
 
             } catch (e) {
                 console.error('Failed to show details:', e);
@@ -1823,7 +1823,7 @@ if (!window.DealerManager) {
             }
         }
 
-        async saveDealerDetails(dealerName) {
+        async saveDealerDetails(dealerName, closeModal = true) {
             const modal = document.querySelector('.dealer-modal');
             if (!modal) return;
 
@@ -1847,12 +1847,22 @@ if (!window.DealerManager) {
 
             try {
                 await this.dataManager.saveDealerOverride(dealerName, overrides);
-                import('./utils/toast.js').then(module => {
-                    module.Toast.success('Dealer details updated');
-                });
 
-                await this.refresh();
-                this.closeDealerDetails();
+                if (closeModal) {
+                    import('./utils/toast.js').then(module => {
+                        module.Toast.success('Dealer details updated');
+                    });
+
+                    await this.refresh();
+                    this.closeDealerDetails();
+                } else {
+                    // Silent auto-save, just refresh the list in the background
+                    this.refresh();
+                    if (saveBtn) {
+                        saveBtn.innerText = 'Save Changes';
+                        saveBtn.disabled = false;
+                    }
+                }
             } catch (e) {
                 console.error('Save details failed:', e);
                 import('./utils/toast.js').then(module => {
