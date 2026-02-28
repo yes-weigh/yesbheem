@@ -978,7 +978,13 @@ class CampaignManager {
 
                 const phone = item.phone || '-';
                 const name = item.name || '-';
-                const sessionUsed = item.sessionId ? `\n<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">via ${item.sessionId}</div>` : '';
+                let sessionUsed = '';
+                if (item.sessionId) {
+                    const inst = this.instances?.find(i => (i.id || i.sessionId) === item.sessionId);
+                    const instName = inst ? (inst.name || 'Unnamed') : 'Unknown';
+                    const instPhone = inst && inst.phoneNumber && inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : item.sessionId;
+                    sessionUsed = `\n<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">via ${instName} (${instPhone})</div>`;
+                }
                 const status = item.status ? item.status.toUpperCase() : 'UNKNOWN';
                 const error = item.error ? `<div style="font-size:0.7rem; color:#ef4444; margin-top:2px;">${item.error}</div>` : '';
 
