@@ -20,7 +20,6 @@ class InstanceManager {
         // Search & Filter state
         this.searchQuery = '';
         this.filterKAM = 'all';
-        this.filterGroup = '';
         this.filterStatus = '';
 
         // Sorting state
@@ -46,10 +45,8 @@ class InstanceManager {
         this.qrContainer = document.getElementById('qr-container');
         this.nameInput = document.getElementById('new-instance-name');
         this.kamSelect = document.getElementById('new-instance-kam');
-        this.groupsContainer = document.getElementById('new-instance-groups-container');
         this.editNameInput = document.getElementById('edit-instance-name');
         this.editKamSelect = document.getElementById('edit-instance-kam');
-        this.editGroupsContainer = document.getElementById('edit-instance-groups-container');
 
         if (!this.container || !this.qrModal || !this.setupModal || !this.editModal) {
             console.error(`InstanceManager ${this.VERSION}: Critical elements not found`);
@@ -136,10 +133,7 @@ class InstanceManager {
                 // Normalize: If objects, extract name
                 const kams = rawKams.map(k => (typeof k === 'object' && k !== null) ? k.name : k);
 
-                const groups = data.instance_groups || [];
-
                 this.kams = kams; // Store for filter
-                this.groups = groups; // Store for filter
                 this.kamImages = data.key_account_images || {}; // Store images
 
                 // Populate setup/edit KAM selects
@@ -154,27 +148,6 @@ class InstanceManager {
                         });
                     }
                 });
-
-                this.availableGroups = groups || []; // Store for chip rendering
-
-                // Populate Group Filter Dropdown
-                const filterGroupSelect = document.getElementById('filter-group');
-                if (filterGroupSelect) {
-                    filterGroupSelect.innerHTML = '<option value="">All Groups</option>';
-                    groups.forEach(group => {
-                        const option = document.createElement('option');
-                        option.value = group;
-                        option.textContent = group;
-                        filterGroupSelect.appendChild(option);
-                    });
-                    // Set initial Value
-                    filterGroupSelect.value = this.filterGroup || '';
-
-                    filterGroupSelect.addEventListener('change', (e) => {
-                        this.filterGroup = e.target.value;
-                        this.applyFiltersAndRender();
-                    });
-                }
             }
         } catch (e) {
             console.error("Error loading Settings:", e);
@@ -217,7 +190,6 @@ class InstanceManager {
                     whatsappName: meta.whatsappName || live?.whatsappName, // Use live.whatsappName from backend
                     profilePictureUrl: meta.profilePictureUrl || live?.profilePictureUrl, // Use live.profilePictureUrl from backend
                     kam: meta.kam || 'Unassigned',
-                    groups: meta.groups || [],
                     phoneNumber: live?.phoneNumber || live?.id?.split(':')[0] || 'Unknown', // Fallback extraction
                     connected: live ? (live.connected ?? false) : false,
                     isManaged: true
@@ -232,7 +204,6 @@ class InstanceManager {
                         sessionId: id,
                         name: 'Unmanaged Instance',
                         kam: '-',
-                        groups: [],
                         phoneNumber: live.phoneNumber || id.split(':')[0] || 'Unknown',
                         connected: live.connected ?? false,
                         isManaged: false
@@ -292,9 +263,6 @@ class InstanceManager {
                 ? `<div class="instance-kam-pill">👤 ${inst.kam}</div>`
                 : `<div class="managed-badge">Unmanaged</div>`
             }
-            <div class="instance-groups">
-                ${inst.groups ? inst.groups.map(g => `<span class="group-badge">${g}</span>`).join('') : ''}
-            </div>
                 </div>
 
                 <div class="instance-actions">
@@ -365,9 +333,6 @@ class InstanceManager {
                             </td>
                             <td>
                                 <div>${inst.name}</div>
-                                <div class="instance-groups" style="margin-top:2px;">
-                                    ${inst.groups ? inst.groups.map(g => `<span class="group-badge" style="font-size:0.65rem; padding:1px 6px;">${g}</span>`).join('') : ''}
-                                </div>
                             </td>
                             <td>${inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : 'No Number'}</td>
                             <td>${inst.whatsappName || '-'}</td>
@@ -446,13 +411,6 @@ class InstanceManager {
                     ${inst.whatsappName ? `<div class="meta-item"><span class="meta-label">WhatsApp:</span> 📱 ${inst.whatsappName}</div>` : ''}
                     ${inst.isManaged ? `<div class="meta-item"><span class="meta-label">KAM:</span> 👤 ${inst.kam}</div>` : '<div class="meta-item">Unmanaged</div>'}
                     <div class="meta-item"><span class="meta-label">Status:</span> ${inst.connected ? '🟢 Connected' : '🔴 Disconnected'}</div>
-                    ${inst.groups && inst.groups.length > 0 ? `
-                    <div class="meta-item" style="flex-basis: 100%;">
-                        <span class="meta-label">Groups:</span> 
-                        <div class="instance-groups" style="display:inline-flex; vertical-align:middle; margin-top:0;">
-                            ${inst.groups.map(g => `<span class="group-badge">${g}</span>`).join('')}
-                        </div>
-                    </div>` : ''}
                 </div>
                 <div class="detailed-actions">
                     <button class="action-btn edit-btn" data-id="${inst.sessionId}">
@@ -543,10 +501,6 @@ class InstanceManager {
                 this.editNameInput.value = data.name || '';
                 this.editKamSelect.value = data.kam || '';
 
-                // Select groups
-                const groups = data.groups || [];
-                this.renderGroupSelector(this.editGroupsContainer, groups);
-
             } else {
                 // If no metadata exists, try to get from backend
                 const response = await fetch(`${this.apiBase}/sessions`);
@@ -556,7 +510,6 @@ class InstanceManager {
                 if (session) {
                     this.editNameInput.value = session.sessionId;
                     this.editKamSelect.value = '';
-                    this.renderGroupSelector(this.editGroupsContainer, []);
                 }
             }
         } catch (e) {
@@ -569,7 +522,6 @@ class InstanceManager {
     async saveEdit() {
         const name = this.editNameInput.value.trim();
         const kam = this.editKamSelect.value;
-        const groups = this.getSelectedGroups(this.editGroupsContainer);
 
         if (!name) {
             alert('Please enter an instance name');
@@ -587,7 +539,6 @@ class InstanceManager {
             await setDoc(doc(db, "whatsapp_instances", this.editingSessionId), {
                 name,
                 kam,
-                groups,
                 updatedAt: new Date().toISOString()
             }, { merge: true });
 
@@ -605,7 +556,6 @@ class InstanceManager {
         this.editingSessionId = null;
         this.editNameInput.value = '';
         this.editKamSelect.value = '';
-        if (this.editGroupsContainer) this.editGroupsContainer.innerHTML = '';
     }
 
     /* --- LOGOUT METHOD --- */
@@ -719,38 +669,11 @@ class InstanceManager {
     }
 
 
-    /* --- GROUP CHIP SELECTOR HELPERS --- */
-    renderGroupSelector(container, selectedGroups = []) {
-        if (!container) return;
-        container.innerHTML = '';
-        const groups = this.availableGroups || [];
-        groups.forEach(group => {
-            const chip = document.createElement('div');
-            chip.className = 'group-chip-selector' + (selectedGroups.includes(group) ? ' selected' : '');
-            chip.textContent = group;
-            chip.onclick = () => {
-                chip.classList.toggle('selected');
-            };
-            container.appendChild(chip);
-        });
-    }
-
-    getSelectedGroups(container) {
-        if (!container) return [];
-        return Array.from(container.querySelectorAll('.group-chip-selector.selected')).map(el => el.textContent);
-    }
-
-    getGroupsFromSelect(isEdit = false) {
-        // Deprecated helper kept for safety, but new logic uses getSelectedGroups
-        return [];
-    }
-
     /* --- SETUP FLOW --- */
 
     openSetupModal(existingSessionId = null) {
         this.nameInput.value = '';
         this.kamSelect.value = '';
-        this.renderGroupSelector(this.groupsContainer, []);
         this.claimingSessionId = existingSessionId; // Store content
 
         const title = this.setupModal.querySelector('h2');
@@ -775,7 +698,6 @@ class InstanceManager {
     async handleCreateSessionClick() {
         const name = this.nameInput.value.trim();
         const kam = this.kamSelect.value;
-        const groups = this.getSelectedGroups(this.groupsContainer);
 
         if (!name) { alert('Please enter an Instance Name'); return; }
         if (!kam) { alert('Please select a Key Account Manager'); return; }
@@ -794,7 +716,6 @@ class InstanceManager {
                 sessionId,
                 name,
                 kam,
-                groups,
                 createdAt: new Date(),
                 createdBy: 'admin', // TODO: Get actual user
                 updatedAt: new Date()
@@ -1050,11 +971,6 @@ class InstanceManager {
             } else {
                 filtered = filtered.filter(inst => inst.kam === this.filterKAM);
             }
-        }
-
-        // Apply Group filter
-        if (this.filterGroup) {
-            filtered = filtered.filter(inst => inst.groups && inst.groups.includes(this.filterGroup));
         }
 
         // Apply status filter

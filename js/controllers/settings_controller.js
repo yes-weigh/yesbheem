@@ -13,7 +13,6 @@ export class SettingsController {
         this.leadStages = [];
         this.logActivities = [];
         this.dealerCategories = [];
-        this.instanceGroups = [];
         this.isLoading = false;
 
         // DOM Elements
@@ -76,7 +75,6 @@ export class SettingsController {
                 this.leadStages = data.lead_stages || [];
                 this.logActivities = data.log_activities || [];
                 this.dealerCategories = data.dealer_categories || [];
-                this.instanceGroups = data.instance_groups || [];
                 this.templateLanguages = data.template_languages || [];
                 this.templateCategories = data.template_categories || [];
                 this.keyAccountImages = data.key_account_images || {};
@@ -90,7 +88,6 @@ export class SettingsController {
                 this.leadStages = ['New', 'Contacted', 'Converted', 'Lost'];
                 this.logActivities = ['Call', 'Meeting', 'Email', 'Note'];
                 this.dealerCategories = [];
-                this.instanceGroups = [];
                 this.templateLanguages = ['English', 'Malayalam', 'Hindi', 'Tamil', 'Telugu'];
                 this.templateCategories = ['Marketing', 'Transactional', 'Promotional', 'Support'];
                 this.keyAccountImages = {}; // Map: Name -> URL
@@ -101,7 +98,6 @@ export class SettingsController {
                     lead_stages: this.leadStages,
                     log_activities: this.logActivities,
                     dealer_categories: this.dealerCategories,
-                    instance_groups: this.instanceGroups,
                     template_languages: this.templateLanguages,
                     template_categories: this.templateCategories,
                     key_account_images: this.keyAccountImages,
@@ -407,15 +403,6 @@ export class SettingsController {
             this.renderDealerCategories();
             this.updateBadges();
             await this.persistItem(listName, value, 'add');
-        } else if (listName === 'instanceGroups') {
-            if (this.instanceGroups.includes(value)) {
-                alert('This group already exists!');
-                return;
-            }
-            this.instanceGroups.push(value);
-            this.renderInstanceGroups();
-            this.updateBadges();
-            await this.persistItem(listName, value, 'add');
         } else if (listName === 'templateLanguages') {
             if (this.templateLanguages.includes(value)) {
                 alert('This language already exists!');
@@ -478,10 +465,6 @@ export class SettingsController {
             this.dealerCategories = this.dealerCategories.filter(item => item !== value);
             this.renderDealerCategories();
             await this.persistItem(listName, value, 'remove');
-        } else if (listName === 'instanceGroups') {
-            this.instanceGroups = this.instanceGroups.filter(item => item !== value);
-            this.renderInstanceGroups();
-            await this.persistItem(listName, value, 'remove');
         } else if (listName === 'templateLanguages') {
             this.templateLanguages = this.templateLanguages.filter(item => item !== value);
             this.renderTemplateLanguages();
@@ -543,15 +526,6 @@ export class SettingsController {
                     this.renderDealerCategories();
                     await this.persistRename(listName, oldValue, trimmedValue);
                     fieldName = 'categories';
-                }
-            } else if (listName === 'instanceGroups') {
-                if (this.instanceGroups.includes(trimmedValue)) { alert('Group already exists'); return; }
-                const idx = this.instanceGroups.indexOf(oldValue);
-                if (idx !== -1) {
-                    this.instanceGroups[idx] = trimmedValue;
-                    this.renderInstanceGroups();
-                    await this.persistRename(listName, oldValue, trimmedValue);
-                    // No cascade for now, or implement if needed
                 }
             } else if (listName === 'templateLanguages') {
                 if (this.templateLanguages.includes(trimmedValue)) { alert('Language already exists'); return; }
@@ -797,9 +771,6 @@ export class SettingsController {
         else if (listName === 'logActivities') firestoreField = 'log_activities';
 
         else if (listName === 'dealerCategories') firestoreField = 'dealer_categories';
-        else if (listName === 'instanceGroups') {
-            firestoreField = 'instance_groups';
-        }
         else if (listName === 'templateLanguages') firestoreField = 'template_languages';
         else if (listName === 'templateCategories') firestoreField = 'template_categories';
 
@@ -906,13 +877,6 @@ export class SettingsController {
             placeholder = 'Search deactivated dealers...';
             renderMethod = 'renderDeactivatedDealers';
             placeholder = 'Search deactivated dealers...';
-        } else if (type === 'instanceGroups') {
-            title = 'Manage Instance Groups';
-            listId = 'instance-groups-list';
-            inputId = 'add-group-input';
-            btnId = 'add-group-btn';
-            renderMethod = 'renderInstanceGroups';
-            placeholder = 'Enter group name...';
         } else if (type === 'templateLanguages') {
             title = 'Manage Template Languages';
             listId = 'template-languages-list';
@@ -1001,11 +965,6 @@ export class SettingsController {
             this.deactivatedList = document.getElementById(listId);
             const searchInput = document.getElementById(inputId);
             searchInput.onkeyup = () => this.filterDeactivatedList(searchInput.value);
-        } else if (type === 'instanceGroups') {
-            this.instanceGroupsList = document.getElementById(listId);
-            this.addGroupInput = document.getElementById(inputId);
-            document.getElementById(btnId).onclick = () => this.handleAddItem('instanceGroups', this.addGroupInput);
-            this.addGroupInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddItem('instanceGroups', this.addGroupInput); };
         } else if (type === 'templateLanguages') {
             this.templateLanguagesList = document.getElementById(listId);
             this.addLanguageInput = document.getElementById(inputId);
@@ -1041,7 +1000,6 @@ export class SettingsController {
         this.renderLogActivities();
         this.renderDealerCategories();
         this.renderDeactivatedDealers();
-        this.renderInstanceGroups();
         this.renderTemplateLanguages();
         this.renderTemplateCategories();
     }
@@ -1190,26 +1148,6 @@ export class SettingsController {
         `).join('');
     }
 
-    renderInstanceGroups() {
-        if (!this.instanceGroupsList) return;
-        this.instanceGroupsList.innerHTML = this.instanceGroups.map(group => `
-            <div class="list-item">
-                <span class="item-text">${this.escapeHtml(group)}</span>
-                <div class="actions">
-                    <button class="edit-btn" onclick="window.settingsController.handleRenameItem('instanceGroups', '${this.escapeHtml(group)}')" title="Rename">
-                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                    </button>
-                    <button class="delete-btn" onclick="window.settingsController.handleRemoveItem('instanceGroups', '${this.escapeHtml(group)}')" title="Delete">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    }
-
     renderTemplateLanguages() {
         if (!this.templateLanguagesList) return;
         this.templateLanguagesList.innerHTML = this.templateLanguages.map(lang => `
@@ -1312,12 +1250,10 @@ export class SettingsController {
             const stagesCount = document.getElementById('stages-count');
             const categoriesCount = document.getElementById('categories-count');
             const deactivatedCount = document.getElementById('deactivated-count');
-            const groupsCount = document.getElementById('groups-count');
 
             if (kamCount) kamCount.innerText = `${this.keyAccounts.length} items`;
             if (stagesCount) stagesCount.innerText = `${this.dealerStages.length} items`;
             if (categoriesCount) categoriesCount.innerText = `${this.dealerCategories.length} items`;
-            if (groupsCount) groupsCount.innerText = `${this.instanceGroups.length} items`;
             if (deactivatedCount) deactivatedCount.innerText = `${this.deactivatedDealers.length} items`;
 
             const languagesCount = document.getElementById('languages-count');

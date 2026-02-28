@@ -43,10 +43,6 @@
                     <option value="connected">Connected</option>
                     <option value="disconnected">Disconnected</option>
                 </select>
-
-                <select id="filter-group" class="filter-select">
-                    <option value="">All Groups</option>
-                </select>
             </div>
 
             <!-- Right: View Mode Toggle -->
@@ -134,14 +130,6 @@
                     <option value="">Select KAM...</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label class="form-label">Instance Groups</label>
-                <div id="new-instance-groups-container" class="chips-input-container">
-                    <!-- Groups populated by JS -->
-                </div>
-                <div class="help-text" style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Click to
-                    toggle selection</div>
-            </div>
             <div class="setup-actions">
                 <button id="btn-create-session" class="primary-btn">Next: Scan QR</button>
             </div>
@@ -166,14 +154,6 @@
                 <select id="edit-instance-kam" class="form-select">
                     <option value="">Select KAM...</option>
                 </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Instance Groups</label>
-                <div id="edit-instance-groups-container" class="chips-input-container">
-                    <!-- Groups populated by JS -->
-                </div>
-                <div class="help-text" style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Click to
-                    toggle selection</div>
             </div>
         </div>
         <div class="setup-actions">

@@ -73,7 +73,6 @@ class CampaignManager {
         this.audienceSelect = document.getElementById('campaign-audience-select');
         this.audienceInfo = document.getElementById('selected-audience-info');
 
-        this.senderRadios = document.querySelectorAll('input[name="senderType"]');
         this.senderSelect = document.getElementById('campaign-sender-select');
 
         this.templateSelect = document.getElementById('campaign-template-select');
@@ -101,11 +100,6 @@ class CampaignManager {
         if (this.audienceSelect) {
             this.audienceSelect.onchange = () => this.handleAudienceChange();
         }
-
-        // Sender Type Toggle
-        this.senderRadios.forEach(radio => {
-            radio.onchange = () => this.populateSenderSelect();
-        });
 
         // Template Preview
         if (this.templateSelect) {
@@ -228,41 +222,25 @@ class CampaignManager {
     }
 
     populateSenderSelect() {
-        const type = document.querySelector('input[name="senderType"]:checked').value;
         this.senderSelect.innerHTML = '<option value="">Select...</option>';
 
-        if (type === 'single') {
-            // Filter only connected instances
-            const connectedInstances = this.instances.filter(inst => inst.connected);
+        // Filter only connected instances
+        const connectedInstances = this.instances.filter(inst => inst.connected);
 
-            if (connectedInstances.length === 0) {
-                this.senderSelect.innerHTML = '<option value="">No connected instances found</option>';
-                return;
-            }
-
-            connectedInstances.forEach(inst => {
-                const opt = document.createElement('option');
-                const id = inst.id || inst.sessionId;
-                opt.value = id;
-                // Show Name and Phone Number (Braces)
-                const phoneLabel = inst.phoneNumber && inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : id;
-                opt.textContent = `${inst.name} (${phoneLabel})`;
-                this.senderSelect.appendChild(opt);
-            });
-        } else {
-            // Groups - TODO: We need a way to get distinct groups. 
-            // InstanceManager gets them from settings. We could do the same.
-            // For MVP, letting user type group name or fetching unique groups from instances?
-            // Let's grab groups from instances array if available
-            const groups = new Set();
-            // This assumes instances have 'groups' property populated, which might not be true if we only hit /sessions
-            // Implementation Gaps: InstanceManager loads detailed metadata. 
-            // Solution: We'll list "All Connected" as a group or similar for now.
-            const opt = document.createElement('option');
-            opt.value = 'all';
-            opt.textContent = 'All Connected Instances (Round Robin)';
-            this.senderSelect.appendChild(opt);
+        if (connectedInstances.length === 0) {
+            this.senderSelect.innerHTML = '<option value="">No connected instances found</option>';
+            return;
         }
+
+        connectedInstances.forEach(inst => {
+            const opt = document.createElement('option');
+            const id = inst.id || inst.sessionId;
+            opt.value = id;
+            // Show Name and Phone Number (Braces)
+            const phoneLabel = inst.phoneNumber && inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : id;
+            opt.textContent = `${inst.name} (${phoneLabel})`;
+            this.senderSelect.appendChild(opt);
+        });
     }
 
     async loadTemplates() {
@@ -399,7 +377,7 @@ class CampaignManager {
                 createdBy: getAuth().currentUser ? getAuth().currentUser.uid : 'unknown',
                 creatorEmail: getAuth().currentUser ? getAuth().currentUser.email : 'unknown',
                 senderConfig: {
-                    type: document.querySelector('input[name="senderType"]:checked').value,
+                    type: 'single',
                     id: senderId
                 },
                 templateConfig: {
@@ -574,16 +552,7 @@ class CampaignManager {
             audSelect.dispatchEvent(new Event('change'));
         }
 
-        // Set Sender Type Radio Button
-        if (campaign.senderConfig && campaign.senderConfig.type) {
-            const senderTypeRadio = document.querySelector(`input[name="senderType"][value="${campaign.senderConfig.type}"]`);
-            if (senderTypeRadio) {
-                senderTypeRadio.checked = true;
-                senderTypeRadio.dispatchEvent(new Event('change'));
-            }
-        }
-
-        // Select Sender (after radio is set and dropdown is populated)
+        // Select Sender (after dropdown is populated)
         setTimeout(() => {
             const senderSelect = document.getElementById('campaign-sender-select');
             if (senderSelect && campaign.senderConfig && campaign.senderConfig.id) {
