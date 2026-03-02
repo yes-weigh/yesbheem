@@ -63,7 +63,7 @@ export function renderDealerDetailsModal(data, settings) {
     }
 
     const categoriesWidget = `
-            <div class="floating-group" style="flex: 1 1 200px; min-width: 180px; cursor: pointer; margin-bottom: 0;" onclick="window.dealerManager.editDealerCategories('${aggregated._internalId || aggregated.id || aggregated.cust_id}', '${dealerName.replace(/'/g, "\\'")}', this)">
+            <div class="floating-group" style="width: 180px; flex-shrink: 0; cursor: pointer; margin-bottom: 0;" onclick="window.dealerManager.editDealerCategories('${aggregated._internalId || aggregated.id || aggregated.cust_id}', '${dealerName.replace(/'/g, "\\'")}', this)">
                 <div class="floating-input categories-container" style="display:flex; gap:6px; overflow-x:auto; padding-top: 20px; padding-bottom: 6px; padding-right:24px; min-height: 52px; align-items: center; white-space: nowrap;">
                     ${categoriesHtml}
                 </div>
@@ -128,7 +128,7 @@ export function renderDealerDetailsModal(data, settings) {
     const currentStatus = aggregated.dealer_stage || '';
 
     const engagementHtml = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0; overflow: hidden; height: 100%;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0; overflow: hidden; height: 100%; width: 100%;">
             
             <!-- Column 1: CRM HUB -->
             <div class="modal-column column-crm" style="display: flex; flex-direction: column; height: 100%; border-right: var(--modal-tabs-border); overflow: hidden; background: transparent;">
@@ -325,36 +325,49 @@ export function renderDealerDetailsModal(data, settings) {
             <div class="dealer-modal-overlay" onclick="window.dealerManager.closeDealerDetails()">
                 <div class="dealer-modal" onclick="event.stopPropagation()">
 
-                    <!-- Header: full-width strip with inline editable fields -->
+                    <!-- Header: Title + Controls + Profile (matching B2B leads style) -->
                     <div class="dealer-modal-header" style="padding: 16px 24px; display: flex; flex-direction: column; gap: 16px; height: auto;">
-                        <!-- Close Button -->
+                        <!-- Close Button (absolute, top-right) -->
                         <button class="close-btn" onclick="window.dealerManager.closeDealerDetails()" style="
                             position: absolute; top: 12px; right: 12px; border-radius: 50%; width: 36px; height: 36px;
                             display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05);
                             border: 1px solid rgba(255,255,255,0.08); color: var(--text-muted); cursor: pointer; transition: all 0.2s; z-index: 100;
-                        " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white';" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='var(--text-muted)';">
+                        " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white';" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='var(--text-muted)';"
+                        >
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
 
-                        <!-- Top Bar: Dealer name + total sales -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding-right: 40px;">
-                            <h2 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--modal-h2-color);">${dealerName}</h2>
-                            <div style="text-align: right;">
-                                <div style="font-size: 0.65rem; color: var(--modal-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Total Sales</div>
-                                <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-success); line-height: 1.2;">${totalSales}</div>
+                        <!-- Top Bar: Dealer name + Total Sales (like B2B header, no title h2 just badge) -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 24px;">
+                            <div style="display: flex; align-items: center; gap: 16px;">
+                                <!-- Dealer name removed from here; shown in fields strip below -->
+                            </div>
+                            <!-- Total Sales top-right (matching B2B screenshot) -->
+                            <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding-right: 40px;">
+                                <div style="text-align: right;">
+                                    <div style="font-size: 0.6rem; color: var(--modal-text-secondary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700;">Total Sales</div>
+                                    <div style="font-size: 1.1rem; font-weight: 800; color: var(--color-success); line-height: 1.2; letter-spacing: -0.02em;">${totalSales}</div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Inline fields flex grid -->
-                        <div style="background: var(--modal-tabs-bg); border: var(--modal-tabs-border); border-radius: 12px; padding: 16px; display: flex; flex-wrap: wrap; align-items: stretch; gap: 16px; box-shadow: inset 0 1px 1px rgba(255,255,255,0.05);">
-                            ${renderFloatingInput('Contact Name', 'first_name', 'text', false, `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'flex: 1 1 180px; min-width: 150px; margin-bottom: 0;')}
-                            ${renderFloatingInput('Phone', 'mobile_phone', 'text', false, `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'flex: 1 1 140px; min-width: 120px; margin-bottom: 0;')}
-                            ${renderFloatingInput('Zip Code', 'billing_zipcode', 'text', false, `onchange="window.dealerManager.handlePopupZipChange(this); window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'flex: 1 1 100px; min-width: 90px; margin-bottom: 0;')}
-                            ${renderFloatingInput('District', 'district', 'text', true, '', 'flex: 1 1 130px; min-width: 110px; margin-bottom: 0;')}
-                            ${renderFloatingInput('State', 'billing_state', 'text', true, '', 'flex: 1 1 130px; min-width: 110px; margin-bottom: 0;')}
-                            ${renderFloatingSelect('KAM', 'key_account_manager', settings.key_accounts || [], `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false); window.dealerManager.updateWhatsAppInterface(this.value);"`, 'flex: 1 1 160px; min-width: 140px; margin-bottom: 0;')}
-                            ${renderFloatingSelect('Stage', 'dealer_stage', settings.dealer_stages || [], `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'flex: 1 1 140px; min-width: 120px; margin-bottom: 0;')}
-                            ${categoriesWidget}
+                        <!-- Bottom Bar: Horizontal scrollable fields strip (B2B leads style) -->
+                        <div style="background: var(--modal-tabs-bg); border: var(--modal-tabs-border); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px; box-shadow: inset 0 1px 1px rgba(255,255,255,0.05);">
+                            <div style="display: flex; flex: 1; align-items: center; gap: 16px; overflow-x: auto; padding: 2px;">
+                                ${renderFloatingInput('Dealer Name', 'customer_name', 'text', true, '', 'width: 180px; flex-shrink: 0;')}
+                                ${renderFloatingInput('Contact Name', 'first_name', 'text', false, `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'width: 160px; flex-shrink: 0;')}
+                                ${renderFloatingInput('Phone', 'mobile_phone', 'text', false, `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'width: 140px; flex-shrink: 0;')}
+                                <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px; flex-shrink: 0;">
+                                    ${renderFloatingInput('Zip Code', 'billing_zipcode', 'text', false, `onchange="window.dealerManager.handlePopupZipChange(this); window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'width: 90px;')}
+                                    ${renderFloatingInput('District', 'district', 'text', true, '', 'width: 120px;')}
+                                    ${renderFloatingInput('State', 'billing_state', 'text', true, '', 'width: 110px;')}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px; flex-shrink: 0;">
+                                    ${renderFloatingSelect('KAM', 'key_account_manager', settings.key_accounts || [], `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false); window.dealerManager.updateWhatsAppInterface(this.value);"`, 'width: 160px;')}
+                                    ${renderFloatingSelect('Stage', 'dealer_stage', settings.dealer_stages || [], `onchange="window.dealerManager.saveDealerDetails('${dealerName.replace(/'/g, "\\'")}', false)"`, 'width: 130px;')}
+                                    ${categoriesWidget}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -394,7 +407,7 @@ export function renderDealerDetailsModal(data, settings) {
                     -webkit-backdrop-filter: blur(8px);
                     z-index: 10000;
                     display: flex; align-items: center; justify-content: center;
-                    animation: fadeIn 0.1s ease-out;
+                    animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                 }
                 .dealer-modal {
                     position: relative;
@@ -404,13 +417,13 @@ export function renderDealerDetailsModal(data, settings) {
                     width: 95vw;
                     height: 90vh;
                     max-width: 1600px;
-                    border-radius: 20px;
+                    border-radius: 24px;
                     border: var(--modal-border);
                     box-shadow: var(--modal-shadow);
                     color: var(--modal-input-text);
                     display: flex; flex-direction: column;
                     overflow: hidden;
-                    animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                    animation: scaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                 }
                 @keyframes fadeIn {
                     from { opacity: 0; }
@@ -423,7 +436,7 @@ export function renderDealerDetailsModal(data, settings) {
 
                 /* Header */
                 .dealer-modal-header {
-                    padding: 20px 28px;
+                    padding: 16px 24px;
                     border-bottom: var(--modal-tabs-border);
                     background: var(--modal-header-bg);
                     flex-shrink: 0;
@@ -433,6 +446,9 @@ export function renderDealerDetailsModal(data, settings) {
                     color: var(--modal-h2-color); text-shadow: 0 2px 10px rgba(0,0,0,0.1);
                     letter-spacing: -0.01em;
                 }
+                /* Hide horizontal scrollbar in header strip */
+                .dealer-modal-header [style*="overflow-x: auto"]::-webkit-scrollbar { height: 0; }
+                .dealer-modal-header [style*="overflow-x: auto"] { scrollbar-width: none; }
                 .close-btn {
                     background: rgba(255, 255, 255, 0.04); border: none; color: var(--modal-text-secondary);
                     border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
@@ -680,6 +696,14 @@ export function renderDealerDetailsModal(data, settings) {
                 .crm-history-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
 
                 @keyframes spin { to { transform: rotate(360deg); } }
+
+                /* Edit stack for stacked fields */
+                .edit-stack {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                .edit-stack .floating-group { margin-bottom: 0; }
 
                 @media (max-width: 768px) {
                     .compact-grid { grid-template-columns: 1fr; }

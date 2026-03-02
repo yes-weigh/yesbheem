@@ -3025,15 +3025,58 @@ if (!window.DealerManager) {
         }
 
         _renderMessagesMap(messages, container) {
-            if (!messages.length) return;
+            if (!messages.length) { container.innerHTML = ''; return; }
             const sorted = messages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-            container.innerHTML = sorted.map(msg => {
-                const isFromMe = msg.fromMe;
-                const content = msg.body || msg.text || msg.content || '[Media]';
-                const ts = msg.timestamp ? new Date(msg.timestamp * 1000) : new Date(msg.createdAt || 0);
-                const time = ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                return `<div style="display:flex;justify-content:${isFromMe ? 'flex-end' : 'flex-start'};margin-bottom:8px;"><div class="wa-msg" style="background:${isFromMe ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)'};border:1px solid ${isFromMe ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.1)'};"><div style="font-size:0.9rem;color:#fff;line-height:1.4;white-space:pre-wrap;word-break:break-word;">${this.escapeHtml(content)}</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.4);text-align:right;margin-top:4px;">${time}</div></div></div>`;
+
+            let lastDateStr = null;
+            const html = sorted.map(msg => {
+                // Support both B2B-style (content.text) and WhatsApp raw (message.conversation)
+                const isFromMe = msg.fromMe || msg.direction === 'outbound' || msg.from === 'me';
+                let rawContent = msg.content?.text
+                    || msg.content?.caption
+                    || msg.message?.conversation
+                    || msg.message?.extendedTextMessage?.text
+                    || (typeof msg.body === 'string' ? msg.body : null)
+                    || '';
+                const content = rawContent
+                    || (msg.content?.image ? '📷 Image'
+                        : msg.content?.video ? '🎬 Video'
+                            : msg.content?.document ? '📄 Document'
+                                : '[Media]');
+
+                const ts = msg.timestamp ? new Date(msg.timestamp * (msg.timestamp < 1e12 ? 1000 : 1)) : null;
+                const timeStr = ts ? ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                const dateStr = ts ? ts.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : '';
+
+                let separator = '';
+                if (dateStr && dateStr !== lastDateStr) {
+                    lastDateStr = dateStr;
+                    separator = `
+                        <div style="display: flex; align-items: center; gap: 10px; margin: 12px 0 8px; opacity: 0.45;">
+                            <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
+                            <span style="font-size: 0.65rem; font-weight: 700; color: #94a3b8; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em;">${dateStr}</span>
+                            <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
+                        </div>`;
+                }
+
+                const bubble = isFromMe ? `
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 2px;">
+                        <div style="max-width: 80%; background: linear-gradient(135deg, #10b981, #059669); color: #fff; border-radius: 18px 18px 4px 18px; padding: 9px 13px; font-size: 0.82rem; line-height: 1.45; box-shadow: 0 2px 8px rgba(16,185,129,0.25); word-break: break-word;">
+                            ${this.escapeHtml(content)}
+                            <div style="font-size: 0.6rem; opacity: 0.75; text-align: right; margin-top: 3px;">✓✓ ${timeStr}</div>
+                        </div>
+                    </div>` : `
+                    <div style="display: flex; justify-content: flex-start; margin-bottom: 2px;">
+                        <div style="max-width: 80%; background: rgba(255,255,255,0.07); color: #e2e8f0; border-radius: 18px 18px 18px 4px; padding: 9px 13px; font-size: 0.82rem; line-height: 1.45; border: 1px solid rgba(255,255,255,0.08); word-break: break-word;">
+                            ${this.escapeHtml(content)}
+                            <div style="font-size: 0.6rem; opacity: 0.5; margin-top: 3px;">${timeStr}</div>
+                        </div>
+                    </div>`;
+
+                return separator + bubble;
             }).join('');
+
+            container.innerHTML = html;
             container.scrollTop = container.scrollHeight;
         }
 
