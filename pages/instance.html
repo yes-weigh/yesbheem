@@ -34,11 +34,11 @@
             <div class="controls-middle">
                 <input type="text" id="search-instances" class="search-input" placeholder="🔍 Search instances...">
 
-                <div class="filter-wrapper" id="kam-selector-container" style="min-width: 160px; position: relative;">
+                <div class="filter-wrapper kam-selector-container" id="kam-selector-container">
                     <!-- Custom KAM Selector will be injected here -->
                 </div>
 
-                <select id="filter-status" class="filter-select">
+                <select id="filter-status" class="filter-select" title="Filter by Status" aria-label="Filter by Status">
                     <option value="">All Status</option>
                     <option value="connected">Connected</option>
                     <option value="disconnected">Disconnected</option>
@@ -62,7 +62,7 @@
         </div>
 
         <!-- Bulk Actions Bar (hidden by default) -->
-        <div class="bulk-actions" id="bulk-actions" style="display: none;">
+        <div class="bulk-actions hidden" id="bulk-actions">
             <div class="bulk-info">
                 <span id="bulk-count">0</span> selected
             </div>
@@ -164,6 +164,16 @@
 </div>
 
 <style>
+    /* === UTILITY CLASSES FOR REPLACED INLINE STYLES === */
+    .kam-selector-container {
+        min-width: 160px;
+        position: relative;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+
     /* === DASHBOARD STATS CARDS (DEALER STYLE) === */
     .stats-dashboard {
         display: grid;
@@ -465,6 +475,7 @@
 
     .instance-table th.sortable {
         cursor: pointer;
+        -webkit-user-select: none;
         user-select: none;
         position: relative;
     }
@@ -1165,6 +1176,7 @@
         align-items: center;
         justify-content: center;
         z-index: 1000;
+        -webkit-backdrop-filter: blur(4px);
         backdrop-filter: blur(4px);
     }
 
@@ -1362,6 +1374,7 @@
         font-size: 0.85rem;
         cursor: pointer;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        -webkit-user-select: none;
         user-select: none;
         display: inline-flex;
         align-items: center;

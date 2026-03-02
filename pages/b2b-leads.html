@@ -9,6 +9,31 @@
         /* Ensure font matches */
     }
 
+    /* === UTILITY CLASSES === */
+    .col-w40 {
+        width: 40px;
+    }
+
+    .col-w50 {
+        width: 50px;
+    }
+
+    .col-w80 {
+        width: 80px;
+    }
+
+    .col-w100 {
+        width: 100px;
+    }
+
+    .col-w120 {
+        width: 120px;
+    }
+
+    .col-w180 {
+        width: 180px;
+    }
+
     .page-title-bar {
         height: 60px;
         /* Taller bar */
@@ -34,6 +59,7 @@
         gap: 16px;
         border-bottom: 1px solid var(--modal-border);
         background: var(--modal-header-bg);
+        -webkit-backdrop-filter: blur(8px);
         backdrop-filter: blur(8px);
         align-items: center;
         flex-wrap: wrap;
@@ -161,6 +187,7 @@
         gap: 16px;
         min-height: 80px;
         position: relative;
+        -webkit-backdrop-filter: blur(10px);
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.05);
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -239,8 +266,6 @@
         overflow-y: auto;
         padding: 0;
         position: relative;
-        scrollbar-width: thin;
-        scrollbar-color: var(--border-strong) transparent;
         min-height: 0;
     }
 
@@ -256,6 +281,7 @@
     .leads-table th {
         background: var(--modal-header-bg);
         /* Use var */
+        -webkit-backdrop-filter: blur(8px);
         backdrop-filter: blur(8px);
         color: var(--modal-text-secondary);
         /* Match dealer */
@@ -270,6 +296,7 @@
         z-index: 10;
         border-bottom: 1px solid var(--modal-border);
         white-space: nowrap;
+        -webkit-user-select: none;
         user-select: none;
     }
 
@@ -575,6 +602,180 @@
         opacity: 0.5;
         font-size: 1rem;
     }
+
+    /* --- Utility Classes for Replaced Inline Styles --- */
+    .header-divider {
+        width: 1px;
+        height: 24px;
+        background: var(--border-light);
+        margin: 0 4px;
+    }
+
+    .header-action-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+
+    .sl-no-header {
+        color: var(--text-muted);
+        font-size: 0.75rem;
+    }
+
+    .flex-center-gap {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .flex-actions-gap {
+        display: flex;
+        gap: 12px;
+    }
+
+    .bulk-count-highlight {
+        font-weight: bold;
+        color: var(--text-main);
+    }
+
+    .bulk-count-label {
+        color: var(--text-muted);
+    }
+
+    .bulk-delete-btn {
+        border-color: #f87171;
+        color: #f87171;
+    }
+
+    .modal-w650 {
+        width: 650px;
+    }
+
+    .modal-w400 {
+        max-width: 400px;
+    }
+
+    .modal-w480 {
+        width: 480px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .mb-20 {
+        margin-bottom: 20px;
+    }
+
+    .mb-24 {
+        margin-bottom: 24px;
+    }
+
+    .mt-auto {
+        margin-top: auto;
+    }
+
+    .modal-title-custom {
+        margin-bottom: 8px;
+        color: var(--text-main);
+    }
+
+    .modal-title-lg {
+        margin-top: 0;
+        font-size: 1.25rem;
+    }
+
+    .modal-subtitle {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .modal-subtitle-margin {
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    .form-label {
+        display: block;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        margin-bottom: 6px;
+    }
+
+    .form-label-lg {
+        display: block;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
+
+    .form-label-xl {
+        display: block;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-bottom: 12px;
+        font-weight: 500;
+    }
+
+    .w-100 {
+        width: 100%;
+    }
+
+    .bg-primary-force {
+        background: var(--bg-primary);
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    .btn-confirm {
+        background: var(--accent-color);
+        border-color: var(--accent-color);
+        color: white;
+    }
+
+    .radio-group-container {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 16px;
+    }
+
+    .radio-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        color: var(--text-main);
+    }
+
+    .font-medium {
+        font-weight: 500;
+    }
+
+    .audience-desc-box {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        background: rgba(255, 255, 255, 0.03);
+        padding: 12px;
+        border-radius: 8px;
+        line-height: 1.5;
+        border: 1px solid var(--border-light);
+    }
+
+    .accent-text {
+        color: var(--accent-color);
+    }
 </style>
 
 
@@ -584,21 +785,18 @@
         <div class="page-title">B2B Leads Management</div>
         <div class="header-actions">
             <span id="lead-count-display" class="lead-count">Loading...</span>
-            <button class="btn-primary" onclick="window.b2bLeadsManager.openAddModal()"
-                style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+            <button class="btn-primary header-action-btn" onclick="window.b2bLeadsManager.openAddModal()">
                 + Add Lead
             </button>
-            <div style="width: 1px; height: 24px; background: var(--border-light); margin: 0 4px;"></div>
-            <button class="btn-secondary" onclick="window.b2bLeadsManager.downloadImportTemplate()"
-                style="padding: 0.5rem 1rem; font-size: 0.85rem;" title="Download CSV Template">
+            <div class="header-divider"></div>
+            <button class="btn-secondary header-action-btn" onclick="window.b2bLeadsManager.downloadImportTemplate()"
+                title="Download CSV Template">
                 Template
             </button>
-            <button class="btn-secondary" onclick="window.b2bLeadsManager.openImportModal()"
-                style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+            <button class="btn-secondary header-action-btn" onclick="window.b2bLeadsManager.openImportModal()">
                 Import
             </button>
-            <button class="btn-secondary" onclick="window.b2bLeadsManager.exportCSV()"
-                style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+            <button class="btn-secondary header-action-btn" onclick="window.b2bLeadsManager.exportCSV()">
                 Export
             </button>
         </div>
@@ -627,14 +825,15 @@
                 <!-- State Selector Component Injected Here -->
             </div>
             <div class="filter-wrapper">
-                <select id="filter-district" class="filter-select">
+                <select id="filter-district" class="filter-select" title="Filter by District"
+                    aria-label="Filter by District">
                     <option value="all">All Districts</option>
                 </select>
                 <button class="filter-clear-btn" data-for="filter-district" title="Clear filter"
                     aria-label="Clear District filter">×</button>
             </div>
             <div class="filter-wrapper">
-                <select id="filter-status" class="filter-select">
+                <select id="filter-status" class="filter-select" title="Filter by Status" aria-label="Filter by Status">
                     <option value="all">All Status</option>
                     <option value="New">New</option>
                     <option value="Contacted">Contacted</option>
@@ -645,7 +844,7 @@
                     aria-label="Clear Status filter">×</button>
             </div>
             <div class="filter-wrapper">
-                <select id="filter-kam" class="filter-select">
+                <select id="filter-kam" class="filter-select" title="Filter by KAM" aria-label="Filter by KAM">
                     <option value="all">All KAMs</option>
                 </select>
                 <button class="filter-clear-btn" data-for="filter-kam" title="Clear filter"
@@ -655,7 +854,7 @@
     </div>
 
     <!-- Active Filters Section -->
-    <div class="active-filter-bar" id="active-filter-bar" style="display: none;">
+    <div class="active-filter-bar hidden" id="active-filter-bar">
         <div class="active-filters-list" id="active-filters-list">
             <!-- Chips injected here -->
         </div>
@@ -666,23 +865,24 @@
     <div class="leads-table-container">
         <table class="leads-table">
             <colgroup>
-                <col style="width: 40px"> <!-- Checkbox -->
-                <col style="width: 50px"> <!-- Index -->
-                <col style="width: 180px"> <!-- Name -->
-                <col style="width: 180px"> <!-- Business -->
-                <col style="width: 120px"> <!-- Phone -->
-                <col style="width: 120px"> <!-- State -->
-                <col style="width: 120px"> <!-- District -->
-                <col style="width: 100px"> <!-- Status -->
-                <col style="width: 120px"> <!-- KAM -->
-                <col style="width: 80px"> <!-- Action -->
+                <col class="col-w40"> <!-- Checkbox -->
+                <col class="col-w50"> <!-- Index -->
+                <col class="col-w180"> <!-- Name -->
+                <col class="col-w180"> <!-- Business -->
+                <col class="col-w120"> <!-- Phone -->
+                <col class="col-w120"> <!-- State -->
+                <col class="col-w120"> <!-- District -->
+                <col class="col-w100"> <!-- Status -->
+                <col class="col-w120"> <!-- KAM -->
+                <col class="col-w80"> <!-- Action -->
             </colgroup>
             <thead>
                 <tr>
-                    <th style="text-align: center">
-                        <input type="checkbox" id="select-all-leads">
+                    <th class="text-center">
+                        <input type="checkbox" id="select-all-leads" title="Select all leads"
+                            aria-label="Select all leads">
                     </th>
-                    <th style="color: var(--text-muted); font-size: 0.75rem;">SL.NO</th>
+                    <th class="sl-no-header">SL.NO</th>
                     <th class="sortable" onclick="window.b2bLeadsManager.sortBy('name')">Name</th>
                     <th class="sortable" onclick="window.b2bLeadsManager.sortBy('business_name')">Business</th>
                     <th>Phone</th>
@@ -690,7 +890,7 @@
                     <th class="sortable" onclick="window.b2bLeadsManager.sortBy('district')">District</th>
                     <th class="sortable" onclick="window.b2bLeadsManager.sortBy('status')">Status</th>
                     <th class="sortable" onclick="window.b2bLeadsManager.sortBy('kam')">KAM</th>
-                    <th style="text-align: center;">Actions</th>
+                    <th class="text-center">Actions</th>
                 </tr>
             </thead>
             <tbody id="leads-table-body">
@@ -705,15 +905,14 @@
 
 <!-- Bulk Actions -->
 <div id="bulk-actions-bar" class="bulk-actions-bar">
-    <div style="display:flex; gap:8px; align-items:center;">
-        <span style="font-weight:bold; color:var(--text-main);" id="bulk-selected-count">12</span>
-        <span style="color:var(--text-muted);">Selected</span>
+    <div class="flex-center-gap">
+        <span class="bulk-count-highlight" id="bulk-selected-count">12</span>
+        <span class="bulk-count-label">Selected</span>
     </div>
-    <div style="display:flex; gap:12px;">
+    <div class="flex-actions-gap">
         <button class="btn-secondary" onclick="window.b2bLeadsManager.clearSelection()">Clear</button>
         <button class="btn-primary" onclick="window.b2bLeadsManager.openAudienceModal()">Save as Audience</button>
-        <button class="btn-secondary" style="border-color: #f87171; color: #f87171;"
-            onclick="window.b2bLeadsManager.bulkDelete()">
+        <button class="btn-secondary bulk-delete-btn" onclick="window.b2bLeadsManager.bulkDelete()">
             Delete Selected
         </button>
     </div>
@@ -721,82 +920,74 @@
 
 <!-- Edit Modal -->
 <div id="lead-edit-modal" class="modal-overlay">
-    <div class="modal-container" style="width:650px;">
+    <div class="modal-container modal-w650">
         <div id="lead-edit-modal-content"></div>
     </div>
 </div>
 
 <!-- Bulk KAM Modal -->
-<div id="bulk-kam-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-container" style="max-width: 400px;">
-        <div style="margin-bottom: 20px;">
-            <h3 style="margin-bottom: 8px; color: var(--text-main);">Assign KAM</h3>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">Assign a Key Account Manager to <span
-                    id="bulk-kam-count" style="font-weight: bold; color: var(--text-main);">0</span> selected
+<div id="bulk-kam-modal" class="modal-overlay hidden">
+    <div class="modal-container modal-w400">
+        <div class="mb-20">
+            <h3 class="modal-title-custom">Assign KAM</h3>
+            <p class="modal-subtitle">Assign a Key Account Manager to <span id="bulk-kam-count"
+                    class="bulk-count-highlight">0</span> selected
                 leads.</p>
         </div>
-        <div style="margin-bottom: 24px;">
-            <label style="display: block; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 6px;">Select
-                KAM</label>
-            <select id="bulk-kam-select" class="filter-select" style="width: 100%; background: var(--bg-primary);">
+        <div class="mb-24">
+            <label class="form-label">Select KAM</label>
+            <select id="bulk-kam-select" class="filter-select w-100 bg-primary-force" title="Bulk Assign KAM"
+                aria-label="Bulk Assign KAM">
                 <option value="">Not Assigned</option>
             </select>
         </div>
-        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <div class="modal-actions">
             <button class="btn-secondary" onclick="window.b2bLeadsManager.closeBulkKAMModal()">Cancel</button>
-            <button class="btn-primary"
-                style="background: var(--accent-color); border-color: var(--accent-color); color: white;"
-                onclick="window.b2bLeadsManager.confirmBulkAssign()">Confirm Assignment</button>
+            <button class="btn-primary btn-confirm" onclick="window.b2bLeadsManager.confirmBulkAssign()">Confirm
+                Assignment</button>
         </div>
     </div>
 </div>
 
 <!-- Save Audience Modal -->
 <div id="save-audience-modal" class="modal-overlay">
-    <div class="modal-container" style="width:480px; padding: 24px; display: flex; flex-direction: column;">
-        <div style="margin-bottom: 24px;">
-            <h3 style="margin-bottom: 8px; color: var(--text-main); margin-top: 0; font-size: 1.25rem;">Save
-                Audience Segment</h3>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0; line-height: 1.5;">
+    <div class="modal-container modal-w480">
+        <div class="mb-24">
+            <h3 class="modal-title-custom modal-title-lg">Save Audience Segment</h3>
+            <p class="modal-subtitle modal-subtitle-margin">
                 Create a reusable audience from your current selection.
             </p>
         </div>
 
-        <div style="margin-bottom: 20px;">
-            <label
-                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 8px; font-weight: 500;">Audience
-                Name</label>
-            <input type="text" id="audience-name-input" class="modern-input" placeholder="e.g. High Value Leads"
-                style="width: 100%;">
+        <div class="mb-20">
+            <label class="form-label-lg">Audience Name</label>
+            <input type="text" id="audience-name-input" class="modern-input w-100" placeholder="e.g. High Value Leads">
         </div>
 
-        <div style="margin-bottom: 24px;">
-            <label
-                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px; font-weight: 500;">Audience
-                Type</label>
+        <div class="mb-24">
+            <label class="form-label-xl">Audience Type</label>
 
-            <div class="radio-group" style="display: flex; gap: 24px; margin-bottom: 16px;">
-                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text-main);">
+            <div class="radio-group radio-group-container">
+                <label class="radio-label">
                     <input type="radio" name="audienceType" value="static" checked
                         onchange="window.b2bLeadsManager.toggleAudienceTypeDescription()">
-                    <span style="font-weight: 500;">Static List</span>
+                    <span class="font-medium">Static List</span>
                 </label>
-                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text-main);">
+                <label class="radio-label">
                     <input type="radio" name="audienceType" value="dynamic"
                         onchange="window.b2bLeadsManager.toggleAudienceTypeDescription()">
-                    <span style="font-weight: 500;">Dynamic Filter</span>
+                    <span class="font-medium">Dynamic Filter</span>
                 </label>
             </div>
 
-            <p id="audience-type-desc"
-                style="margin: 0; font-size: 0.9rem; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; line-height: 1.5; border: 1px solid var(--border-light);">
-                Save the <strong id="audience-count-preview" style="color: var(--accent-color);">0</strong>
+            <p id="audience-type-desc" class="audience-desc-box">
+                Save the <strong id="audience-count-preview" class="accent-text">0</strong>
                 currently selected leads as a fixed list.
                 Future changes to leads data won't affect who is in this list.
             </p>
         </div>
 
-        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: auto;">
+        <div class="modal-actions modal-actions-mt">
             <button class="btn-secondary" onclick="window.b2bLeadsManager.closeAudienceModal()">Cancel</button>
             <button class="btn-primary" onclick="window.b2bLeadsManager.confirmSaveAudience()">Save
                 Audience</button>
