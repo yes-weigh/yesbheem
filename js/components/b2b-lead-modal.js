@@ -300,9 +300,10 @@ export function renderB2BLeadModal(lead, settings) {
                                             color: var(--modal-input-text); padding: 0; margin: 0;
                                             font-size: 0.88rem; resize: none; line-height: 1.4;
                                             font-family: inherit;
-                                        " oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+                                        " oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'"
+                                          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();window.b2bLeadsManager.sendWhatsAppMessage('${lead.id}');}"></textarea>
                                         
-                                        <button class="wa-send-btn" onclick="window.b2bLeadsManager.sendWhatsAppMessage('${lead.id}')" style="
+                                        <button id="wa-whatsapp-send-btn" class="wa-send-btn" onclick="window.b2bLeadsManager.sendWhatsAppMessage('${lead.id}')" style="
                                             width: 44px; height: 44px; border-radius: 50%; padding: 0;
                                             display: flex; align-items: center; justify-content: center;
                                             flex-shrink: 0; min-width: unset;

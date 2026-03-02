@@ -298,9 +298,10 @@ export function renderDealerDetailsModal(data, settings) {
                                 color: var(--modal-input-text); padding: 0; margin: 0;
                                 font-size: 0.88rem; resize: none; line-height: 1.4;
                                 font-family: inherit;
-                            " oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+                            " oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'"
+                              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();window.dealerManager.sendWhatsAppMessage('${dealerName.replace(/'/g, "\\'")}');}"></textarea>
                             
-                            <button class="wa-send-btn" onclick="window.dealerManager.sendWhatsAppMessage('${dealerName.replace(/'/g, "\\'")}');" style="
+                            <button id="wa-whatsapp-send-btn" class="wa-send-btn" onclick="window.dealerManager.sendWhatsAppMessage('${dealerName.replace(/'/g, "\\'")}');" style="
                                 width: 44px; height: 44px; border-radius: 50%; padding: 0;
                                 display: flex; align-items: center; justify-content: center;
                                 flex-shrink: 0; min-width: unset;
@@ -337,19 +338,6 @@ export function renderDealerDetailsModal(data, settings) {
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
 
-                        <!-- Top Bar: Dealer name + Total Sales (like B2B header, no title h2 just badge) -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 24px;">
-                            <div style="display: flex; align-items: center; gap: 16px;">
-                                <!-- Dealer name removed from here; shown in fields strip below -->
-                            </div>
-                            <!-- Total Sales top-right (matching B2B screenshot) -->
-                            <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding-right: 40px;">
-                                <div style="text-align: right;">
-                                    <div style="font-size: 0.6rem; color: var(--modal-text-secondary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700;">Total Sales</div>
-                                    <div style="font-size: 1.1rem; font-weight: 800; color: var(--color-success); line-height: 1.2; letter-spacing: -0.02em;">${totalSales}</div>
-                                </div>
-                            </div>
-                        </div>
 
                         <!-- Bottom Bar: Horizontal scrollable fields strip (B2B leads style) -->
                         <div style="background: var(--modal-tabs-bg); border: var(--modal-tabs-border); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px; box-shadow: inset 0 1px 1px rgba(255,255,255,0.05);">
@@ -374,7 +362,7 @@ export function renderDealerDetailsModal(data, settings) {
                     <!-- Tabs -->
                     <div class="dealer-modal-tabs">
                         <button class="tab-btn active" onclick="window.dealerManager.switchModalTab('engagement')">Engagement</button>
-                        <button class="tab-btn" onclick="window.dealerManager.switchModalTab('sales')">Sales (${history.length})</button>
+                        <button class="tab-btn" onclick="window.dealerManager.switchModalTab('sales')">Sales (${history.length}) &nbsp;<span style="color: var(--color-success); font-weight: 800;">${totalSales}</span></button>
                     </div>
 
                     <!-- Body -->
