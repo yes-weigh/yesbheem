@@ -512,16 +512,26 @@ class CampaignManager {
 
         tbody.innerHTML = this.campaigns.map((c, i) => {
             const progress = c.stats?.total > 0 ? Math.round((c.stats.sent / c.stats.total) * 100) : 0;
-            const statusBadge = c.status === 'completed' ? 'COMPLETED' :
-                c.status === 'scheduled' ? 'SCHEDULED' :
-                    c.status === 'in_progress' ? 'IN PROGRESS' : 'ACTIVE';
+
+            // Determine status badge — antiban block gets its own amber badge
+            const isAntiBanPaused = !!c.blockInfo;
+            let statusBadgeHtml;
+            if (isAntiBanPaused) {
+                const reasons = { 'warm-up': '⏳ Warming Up', 'rate-limit': '⚡ Rate Limited', 'health-pause': '⚠️ Health Pause' };
+                const label = reasons[c.blockInfo?.reason] || '⏳ Antiban Paused';
+                statusBadgeHtml = `<span class="status-badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);cursor:pointer" onclick="window.campaignManager.viewCampaign('${c.id}')" title="Click to see details">${label}</span>`;
+            } else {
+                const statusMap = { completed: 'COMPLETED', scheduled: 'SCHEDULED', processing: 'IN PROGRESS', active: 'ACTIVE', failed: 'FAILED', paused: 'PAUSED' };
+                const statusClass = { completed: 'status-completed', scheduled: 'status-scheduled', processing: 'status-active', active: 'status-active', failed: 'status-draft', paused: 'status-draft' };
+                statusBadgeHtml = `<span class="status-badge ${statusClass[c.status] || 'status-draft'}">${statusMap[c.status] || (c.status || 'UNKNOWN').toUpperCase()}</span>`;
+            }
 
             return `
                 <tr>
                     <td style="color: var(--text-muted); font-size: 0.85rem;">${i + 1}</td>
                     <td>${this.escapeHtml(c.name)}</td>
                     <td>${this.escapeHtml(c.audienceName || 'N/A')}</td>
-                    <td><span class="status-badge status-${c.status}">${statusBadge}</span></td>
+                    <td>${statusBadgeHtml}</td>
                     <td>
                         <div class="progress-bar">
                             <div class="progress-fill" style="width:${progress}%"></div>
@@ -804,6 +814,108 @@ class CampaignManager {
                     this.closeViewModal();
                     this.duplicateCampaign(campaign.id);
                 };
+            }
+
+            // ── AntiBan Block Info Panel ────────────────────────────────────────
+            // Remove any stale antiban panel from previous viewCampaign call
+            const stalePanel = document.getElementById('antiban-block-panel');
+            if (stalePanel) stalePanel.remove();
+
+            if (campaign.blockInfo) {
+                const bi = campaign.blockInfo;
+                const overviewTab = document.getElementById('view-tab-overview');
+
+                // Format next retry time
+                const retryDate = bi.nextRetryAt ? new Date(bi.nextRetryAt) : null;
+                const retryStr = retryDate ? retryDate.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+
+                // Format estimated completion
+                const etaDate = bi.estimatedCompletionAt ? new Date(bi.estimatedCompletionAt) : null;
+                const etaStr = etaDate ? etaDate.toLocaleString([], { dateStyle: 'long' }) : '—';
+
+                // Warm-up schedule HTML
+                let scheduleHtml = '';
+                if (bi.warmUpSchedule && bi.warmUpSchedule.length > 0) {
+                    const rows = bi.warmUpSchedule.map(s => {
+                        const statusIcon = s.status === 'done' ? '✅' : s.status === 'active' ? '🔄' : '⏳';
+                        const limitLabel = s.dailyLimit === 'unlimited' ? '∞ (graduated)' : `${s.dailyLimit} msgs`;
+                        const barPct = s.dailyLimit === 'unlimited' ? 100 : Math.min(100, Math.round((s.dailyLimit / 1000) * 100));
+                        const barColor = s.status === 'done' ? '#10b981' : s.status === 'active' ? '#f59e0b' : '#6366f1';
+                        return `
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+                                <td style="padding:8px 12px;color:#94a3b8;font-size:0.8rem;white-space:nowrap">${statusIcon} Day ${s.day}</td>
+                                <td style="padding:8px 12px;color:#cbd5e1;font-size:0.8rem">${s.date}</td>
+                                <td style="padding:8px 12px;color:#f1f5f9;font-size:0.8rem;font-weight:600">${limitLabel}</td>
+                                <td style="padding:8px 12px;min-width:120px">
+                                    <div style="background:rgba(255,255,255,0.06);border-radius:4px;height:6px;overflow:hidden">
+                                        <div style="width:${barPct}%;height:100%;background:${barColor};border-radius:4px;transition:width 0.4s ease"></div>
+                                    </div>
+                                </td>
+                                <td style="padding:8px 12px;color:#94a3b8;font-size:0.75rem;text-align:right">${s.willSend} sent</td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    scheduleHtml = `
+                        <div style="margin-top:16px">
+                            <div style="font-size:0.8rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">📅 Warm-Up Schedule</div>
+                            <div style="border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.06)">
+                                <table style="width:100%;border-collapse:collapse">
+                                    <thead>
+                                        <tr style="background:rgba(0,0,0,0.3)">
+                                            <th style="padding:8px 12px;text-align:left;color:#64748b;font-size:0.75rem;font-weight:600">Day</th>
+                                            <th style="padding:8px 12px;text-align:left;color:#64748b;font-size:0.75rem;font-weight:600">Date</th>
+                                            <th style="padding:8px 12px;text-align:left;color:#64748b;font-size:0.75rem;font-weight:600">Daily Limit</th>
+                                            <th style="padding:8px 12px;text-align:left;color:#64748b;font-size:0.75rem;font-weight:600">Capacity</th>
+                                            <th style="padding:8px 12px;text-align:right;color:#64748b;font-size:0.75rem;font-weight:600">Will Send</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>${rows}</tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const reasonIcons = { 'warm-up': '🌡️', 'rate-limit': '⚡', 'health-pause': '🏥' };
+                const reasonIcon = reasonIcons[bi.reason] || '⏸️';
+
+                const panel = document.createElement('div');
+                panel.id = 'antiban-block-panel';
+                panel.style.cssText = `
+                    margin-top: 20px;
+                    padding: 16px 20px;
+                    background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.04));
+                    border: 1px solid rgba(245,158,11,0.25);
+                    border-radius: 12px;
+                `;
+                panel.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                        <span style="font-size:1.2rem">${reasonIcon}</span>
+                        <div>
+                            <div style="font-weight:700;color:#f59e0b;font-size:0.95rem">AntiBan Paused</div>
+                            <div style="font-size:0.82rem;color:#94a3b8;margin-top:2px">${bi.reasonLabel || bi.reason}</div>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:2px">
+                        <div style="background:rgba(0,0,0,0.2);border-radius:8px;padding:10px 14px">
+                            <div style="font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Next Retry</div>
+                            <div style="font-size:0.9rem;color:#f1f5f9;font-weight:600">${retryStr}</div>
+                        </div>
+                        <div style="background:rgba(0,0,0,0.2);border-radius:8px;padding:10px 14px">
+                            <div style="font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Est. Completion</div>
+                            <div style="font-size:0.9rem;color:#f1f5f9;font-weight:600">${etaStr}</div>
+                        </div>
+                    </div>
+                    ${scheduleHtml}
+                `;
+
+                // Insert before the action buttons row (last child of overview tab)
+                if (overviewTab) {
+                    const actionRow = overviewTab.querySelector('.flex-right-gap12');
+                    if (actionRow) overviewTab.insertBefore(panel, actionRow);
+                    else overviewTab.appendChild(panel);
+                }
             }
 
             // DYNAMIC CLOSE BUTTON BINDING (Fix for lost scope)
