@@ -2806,7 +2806,7 @@ if (!window.DealerManager) {
                 return;
             }
 
-            const sendBtn = document.querySelector('.wa-send-btn');
+            const sendBtn = document.getElementById('wa-whatsapp-send-btn') || document.querySelector('.wa-send-btn[onclick*="sendWhatsAppMessage"]');
             const originalText = sendBtn ? sendBtn.innerHTML : '';
             if (sendBtn) {
                 sendBtn.innerHTML = '<span class="loading-spinner" style="width:16px;height:16px;border:2px solid #fff;border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite;"></span>';

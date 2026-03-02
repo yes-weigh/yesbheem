@@ -1659,7 +1659,7 @@ if (!window.B2BLeadsManager) {
             let phone = lead.phone.replace(/\D/g, '');
             if (phone.length === 10) phone = '91' + phone;
 
-            const sendBtn = document.querySelector('.wa-send-btn');
+            const sendBtn = document.getElementById('wa-whatsapp-send-btn') || document.querySelector('.wa-send-btn[onclick*="sendWhatsAppMessage"]');
             if (!sendBtn) {
                 console.error('[WhatsApp] Send button not found in DOM');
                 return;
