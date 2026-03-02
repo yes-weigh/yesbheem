@@ -83,10 +83,14 @@ class TemplateService {
     }
 
     async sendMessage(payload) {
-        let endpoint = payload.type === 'text' ? '/messages/text' : '/messages/interactive';
-        // Adjust body structure based on endpoint expectation
-        // Text: { sessionId, to, text }
-        // Interactive: { sessionId, to, content }
+        let endpoint;
+        if (payload.type === 'text') {
+            endpoint = '/messages/text';
+        } else if (payload.type === 'list') {
+            endpoint = '/messages/list';
+        } else {
+            endpoint = '/messages/interactive';
+        }
 
         let body = {
             sessionId: payload.sessionId,
@@ -97,7 +101,6 @@ class TemplateService {
             body.text = payload.content.text;
         } else {
             body.content = payload.content;
-            // Ensure type is allowed if backend needs it, but usually endpoint defines it
             if (payload.type) body.type = payload.type;
         }
 

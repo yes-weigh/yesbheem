@@ -19,6 +19,8 @@ class TemplateManager {
         this.buttons = [];
         this.currentSection = 'text'; // Track active section
         this.viewMode = localStorage.getItem('templateViewMode') || 'list'; // Default to list
+        this.editorMode = 'buttons'; // 'buttons' | 'list'
+        this.listSections = []; // [{ title, rows: [{ title, description, rowId }] }]
 
         // UI Refs
         this.sessionSelect = document.getElementById('session-select');
@@ -576,9 +578,19 @@ class TemplateManager {
             mediaControls.classList.remove('hidden');
         }
 
-        // Buttons
         this.buttons = [];
-        if (content.interactiveButtons) {
+        if (template.type === 'list') {
+            // Restore list editor
+            this.listSections = (content.sections && Array.isArray(content.sections))
+                ? JSON.parse(JSON.stringify(content.sections))
+                : [];
+            const btnTextEl = document.getElementById('list-button-text');
+            const titleEl = document.getElementById('list-title');
+            if (btnTextEl) btnTextEl.value = content.buttonText || '';
+            if (titleEl) titleEl.value = content.title || '';
+            this.renderListEditor();
+            this.switchEditorMode('list');
+        } else if (content.interactiveButtons) {
             this.buttons = content.interactiveButtons.map(b => {
                 const params = JSON.parse(b.buttonParamsJson);
                 let type = 'reply';
@@ -1005,6 +1017,117 @@ class TemplateManager {
         this.updateUI();
     }
 
+    // ─── List / Section Editor ────────────────────────────────────────────
+
+    /** Switch the right-panel between 'buttons' and 'list' modes */
+    switchEditorMode(mode) {
+        this.editorMode = mode;
+        const buttonsPanel = document.getElementById('panel-buttons-mode');
+        const listPanel = document.getElementById('panel-list-mode');
+        const btnButtons = document.getElementById('mode-btn-buttons');
+        const btnList = document.getElementById('mode-btn-list');
+        if (mode === 'list') {
+            buttonsPanel && buttonsPanel.classList.add('hidden');
+            listPanel && listPanel.classList.remove('hidden');
+            btnButtons && btnButtons.classList.remove('active');
+            btnList && btnList.classList.add('active');
+        } else {
+            buttonsPanel && buttonsPanel.classList.remove('hidden');
+            listPanel && listPanel.classList.add('hidden');
+            btnButtons && btnButtons.classList.add('active');
+            btnList && btnList.classList.remove('active');
+        }
+    }
+
+    addSection() {
+        this.listSections.push({ title: '', rows: [] });
+        this.renderListEditor();
+    }
+
+    removeSection(sIdx) {
+        this.listSections.splice(sIdx, 1);
+        this.renderListEditor();
+    }
+
+    addRow(sIdx) {
+        if (!this.listSections[sIdx]) return;
+        const rowId = 'row_' + Math.random().toString(36).substr(2, 6);
+        this.listSections[sIdx].rows.push({ title: '', description: '', rowId });
+        this.renderListEditor();
+    }
+
+    removeRow(sIdx, rIdx) {
+        if (!this.listSections[sIdx]) return;
+        this.listSections[sIdx].rows.splice(rIdx, 1);
+        this.renderListEditor();
+    }
+
+    /** Rebuild the live list sections editor UI */
+    renderListEditor() {
+        const container = document.getElementById('list-sections-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        this.listSections.forEach((section, sIdx) => {
+            const sEl = document.createElement('div');
+            sEl.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:0.75rem;background:rgba(255,255,255,0.03);';
+            sEl.innerHTML = `
+                <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.5rem;">
+                    <input type="text" class="modern-input small list-section-title" data-s="${sIdx}"
+                        placeholder="Section title (optional)" value="${this.escapeHtml(section.title)}" style="flex:1;">
+                    <button class="action-btn-secondary list-remove-section" data-s="${sIdx}"
+                        style="color:#ef4444;border-color:rgba(239,68,68,0.3);padding:4px 8px;min-width:0;font-size:0.75rem;">&#x2715;</button>
+                </div>
+                <div class="list-rows-container" data-s="${sIdx}" style="display:flex;flex-direction:column;gap:0.4rem;">
+                    ${section.rows.map((row, rIdx) => `
+                        <div style="display:flex;gap:0.4rem;align-items:flex-start;">
+                            <div style="flex:1;display:flex;flex-direction:column;gap:0.3rem;">
+                                <input type="text" class="modern-input small list-row-title" data-s="${sIdx}" data-r="${rIdx}"
+                                    placeholder="Row title *" value="${this.escapeHtml(row.title)}">
+                                <input type="text" class="modern-input small list-row-desc" data-s="${sIdx}" data-r="${rIdx}"
+                                    placeholder="Description (optional)" value="${this.escapeHtml(row.description || '')}">
+                            </div>
+                            <button class="action-btn-secondary list-remove-row" data-s="${sIdx}" data-r="${rIdx}"
+                                style="color:#ef4444;border-color:rgba(239,68,68,0.3);padding:4px 8px;min-width:0;font-size:0.75rem;margin-top:4px;">&#x2715;</button>
+                        </div>
+                    `).join('')}
+                </div>
+                <button class="pill-btn list-add-row" data-s="${sIdx}"
+                    style="width:100%;justify-content:center;margin-top:0.5rem;font-size:0.73rem;">+ Add Row</button>
+            `;
+            container.appendChild(sEl);
+        });
+
+        // Bind live-edit events
+        container.querySelectorAll('.list-section-title').forEach(el => {
+            el.addEventListener('input', () => {
+                const s = parseInt(el.dataset.s);
+                if (this.listSections[s]) this.listSections[s].title = el.value;
+            });
+        });
+        container.querySelectorAll('.list-remove-section').forEach(el => {
+            el.addEventListener('click', () => this.removeSection(parseInt(el.dataset.s)));
+        });
+        container.querySelectorAll('.list-add-row').forEach(el => {
+            el.addEventListener('click', () => this.addRow(parseInt(el.dataset.s)));
+        });
+        container.querySelectorAll('.list-remove-row').forEach(el => {
+            el.addEventListener('click', () => this.removeRow(parseInt(el.dataset.s), parseInt(el.dataset.r)));
+        });
+        container.querySelectorAll('.list-row-title').forEach(el => {
+            el.addEventListener('input', () => {
+                const s = parseInt(el.dataset.s), r = parseInt(el.dataset.r);
+                if (this.listSections[s]?.rows[r]) this.listSections[s].rows[r].title = el.value;
+            });
+        });
+        container.querySelectorAll('.list-row-desc').forEach(el => {
+            el.addEventListener('input', () => {
+                const s = parseInt(el.dataset.s), r = parseInt(el.dataset.r);
+                if (this.listSections[s]?.rows[r]) this.listSections[s].rows[r].description = el.value;
+            });
+        });
+    }
+
     renderButtonsInline() {
         const container = document.getElementById('wa-buttons-preview');
         const addBtn = document.getElementById('wa-button-add');
@@ -1215,6 +1338,13 @@ class TemplateManager {
             addButtonBtn.querySelector('button').addEventListener('click', () => this.addButtonInline());
         }
 
+        // Editor Mode Toggle (Buttons <-> List Menu)
+        document.getElementById('mode-btn-buttons')?.addEventListener('click', () => this.switchEditorMode('buttons'));
+        document.getElementById('mode-btn-list')?.addEventListener('click', () => this.switchEditorMode('list'));
+
+        // Add Section button in List editor
+        document.getElementById('btn-add-section')?.addEventListener('click', () => this.addSection());
+
         const confirmBtn = document.getElementById('btn-confirm');
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => this.confirmButton());
@@ -1396,6 +1526,21 @@ class TemplateManager {
         const mediaUrl = document.getElementById('media-url-input').value;
         const mediaType = document.getElementById('media-type-select').value;
 
+        // ── List Menu mode ──────────────────────────────────────────────────────
+        if (this.editorMode === 'list') {
+            const buttonText = (document.getElementById('list-button-text')?.value || '').trim();
+            const listTitle = (document.getElementById('list-title')?.value || '').trim();
+            const content = {
+                buttonText: buttonText || 'Select',
+                sections: this.listSections,
+            };
+            if (bodyText) content.text = bodyText;
+            if (listTitle) content.title = listTitle;
+            if (footerText) content.footer = footerText;
+            return { content, type: 'list' };
+        }
+
+        // ── Buttons / Media mode ────────────────────────────────────────────────
         const hasMedia = !!mediaUrl;
         const hasButtons = this.buttons.length > 0;
 
@@ -1464,6 +1609,14 @@ class TemplateManager {
         document.getElementById('media-url-input').value = '';
         this.buttons = [];
         this.renderButtonsInline();
+        // Reset list editor
+        this.listSections = [];
+        this.renderListEditor();
+        const btnTextEl = document.getElementById('list-button-text');
+        const listTitle = document.getElementById('list-title');
+        if (btnTextEl) btnTextEl.value = '';
+        if (listTitle) listTitle.value = '';
+        this.switchEditorMode('buttons'); // Default back to buttons mode
         this.updateUI(); // Resets view
         this.focusSection('text'); // Resets focus to text (hides other placeholders)
     }

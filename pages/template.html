@@ -178,8 +178,25 @@
             <!-- RIGHT: ACTIONS & BUTTONS -->
             <div class="editor-col editor-panel">
 
-                <!-- Buttons Card -->
-                <div class="panel-section">
+                <!-- ── MODE TOGGLE ──────────────────────────────── -->
+                <div class="panel-section" style="padding-bottom:0;">
+                    <div class="panel-title">Message Type</div>
+                    <div id="editor-mode-toggle" style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                        <button class="pill-btn active" data-mode="buttons" id="mode-btn-buttons"
+                            style="flex:1;justify-content:center;font-size:0.78rem;">
+                            🔘 Buttons
+                        </button>
+                        <button class="pill-btn" data-mode="list" id="mode-btn-list"
+                            style="flex:1;justify-content:center;font-size:0.78rem;">
+                            📋 List Menu
+                        </button>
+                    </div>
+                </div>
+
+                <hr style="border:0;border-top:1px solid var(--border);margin:0.75rem 0;">
+
+                <!-- ── BUTTONS PANEL (default) ──────────────────── -->
+                <div id="panel-buttons-mode" class="panel-section">
                     <div class="panel-title">Interactive Buttons</div>
 
                     <!-- Buttons List (Visual) moved here -->
@@ -234,7 +251,35 @@
                     </div>
                 </div>
 
+                <!-- ── LIST MENU PANEL ──────────────────────────── -->
+                <div id="panel-list-mode" class="panel-section hidden">
+                    <div class="panel-title">List Menu</div>
+
+                    <!-- Meta fields -->
+                    <div style="display:flex;flex-direction:column;gap:0.6rem;margin-bottom:1rem;">
+                        <input type="text" id="list-button-text" class="modern-input small"
+                            placeholder="Button label (e.g. View Options)" maxlength="20">
+                        <input type="text" id="list-title" class="modern-input small"
+                            placeholder="Menu title (optional)" maxlength="60">
+                    </div>
+
+                    <!-- Sections container -->
+                    <div id="list-sections-container" style="display:flex;flex-direction:column;gap:0.75rem;"></div>
+
+                    <!-- Add Section button -->
+                    <button id="btn-add-section" class="pill-btn"
+                        style="width:100%;justify-content:center;margin-top:0.75rem;font-size:0.78rem;">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24" style="margin-right:4px;">
+                            <path d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Add Section
+                    </button>
+                </div>
+
                 <hr style="border: 0; border-top: 1px solid var(--border); margin: 0;">
+
+
 
                 <!-- Sample Message / Testing -->
                 <div class="panel-section">
