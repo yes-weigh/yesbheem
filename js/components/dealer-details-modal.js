@@ -52,19 +52,32 @@ export function renderDealerDetailsModal(data, settings) {
             `;
     };
 
+    const categoryImages = settings.category_images || {};
+
     // Categories Widget (Scrollable Chips)
     const cats = aggregated.categories || [];
     let categoriesHtml = '';
 
     if (Array.isArray(cats) && cats.length > 0) {
-        categoriesHtml = cats.map(c => `<span class="category-chip">${c}</span>`).join('');
+        categoriesHtml = cats.map(c => {
+            const cImg = categoryImages[c];
+            if (cImg) {
+                return `
+                    <div class="category-icon-chip image-chip" title="${c}">
+                        <img src="${cImg}" alt="${c}" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
+                    </div>
+                `;
+            }
+            // Fallback for missing image
+            return `<span class="category-icon-chip text-chip" title="${c}">${c.charAt(0).toUpperCase()}</span>`;
+        }).join('');
     } else {
-        categoriesHtml = '<span style="opacity:0.3; font-size: 0.8rem; padding: 4px;">No categories...</span>';
+        categoriesHtml = '<span style="opacity:0.3; font-size: 0.8rem; padding: 4px;">--</span>';
     }
 
     const categoriesWidget = `
-            <div class="floating-group" style="width: 180px; flex-shrink: 0; cursor: pointer; margin-bottom: 0;" onclick="window.dealerManager.editDealerCategories('${aggregated._internalId || aggregated.id || aggregated.cust_id}', '${dealerName.replace(/'/g, "\\'")}', this)">
-                <div class="floating-input categories-container" style="display:flex; gap:6px; overflow-x:auto; padding-top: 20px; padding-bottom: 6px; padding-right:24px; min-height: 52px; align-items: center; white-space: nowrap;">
+            <div class="floating-group" style="min-width: 140px; max-width: 350px; flex-shrink: 0; cursor: pointer; margin-bottom: 0;" onclick="window.dealerManager.editDealerCategories('${aggregated._internalId || aggregated.id || aggregated.cust_id}', '${dealerName.replace(/'/g, "\\'")}', this)">
+                <div class="floating-input categories-container" style="display:flex; flex-wrap: nowrap; gap:6px; overflow-x:auto; overflow-y:hidden; padding-top: 20px; padding-bottom: 6px; padding-right:24px; min-height: 52px; align-items: center; scrollbar-width: none;">
                     ${categoriesHtml}
                 </div>
                 <!-- Simulating an active floating label -->
@@ -482,20 +495,33 @@ export function renderDealerDetailsModal(data, settings) {
 
                 /* Categories */
                 .categories-container {
-                    display: flex; flex-wrap: wrap; gap: 6px;
+                    display: flex; flex-wrap: nowrap; gap: 6px;
                     padding: 12px 10px;
-                    overflow-y: auto; align-content: flex-start;
-                    height: auto !important; min-height: 48px; max-height: 120px;
+                    overflow-x: auto; overflow-y: hidden; align-items: center;
+                    height: auto !important; min-height: 48px;
+                    scrollbar-width: none; /* Firefox */
                 }
-                .categories-container::-webkit-scrollbar { width: 4px; }
-                .categories-container::-webkit-scrollbar-track { background: transparent; }
-                .categories-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
-                .category-chip {
-                    display: inline-flex; align-items: center;
-                    padding: 2px 8px; border-radius: 12px;
-                    background: rgba(59, 130, 246, 0.15);
-                    color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.2);
-                    font-size: 0.75rem; white-space: nowrap; font-weight: 500;
+                .categories-container::-webkit-scrollbar { display: none; /* Chrome/Safari */ }
+                .category-icon-chip {
+                    display: inline-flex; align-items: center; justify-content: center;
+                    width: 26px; height: 26px; border-radius: 50%;
+                    background: rgba(255, 255, 255, 0.05);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                    flex-shrink: 0;
+                    overflow: hidden;
+                }
+                .category-icon-chip.text-chip {
+                    font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+                }
+                .category-icon-chip.image-chip {
+                    padding: 2px;
+                    background: transparent;
+                }
+                .category-icon-chip:hover {
+                    border-color: rgba(255, 255, 255, 0.3);
+                    transform: translateY(-2px) scale(1.05);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
                 }
 
                 /* Floating Labels */

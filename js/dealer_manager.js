@@ -2093,9 +2093,20 @@ if (!window.DealerManager) {
                         const displayDiv = element.querySelector('.categories-container') || element.querySelector('.floating-input');
                         if (displayDiv) {
                             if (selectedItems.length > 0) {
-                                displayDiv.innerHTML = selectedItems.map(c => `<span class="category-chip">${c}</span>`).join('');
+                                const categoryImages = this.generalSettings.category_images || {};
+                                displayDiv.innerHTML = selectedItems.map(c => {
+                                    const cImg = categoryImages[c];
+                                    if (cImg) {
+                                        return `
+                                            <div class="category-icon-chip image-chip" title="${c}">
+                                                <img src="${cImg}" alt="${c}" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
+                                            </div>
+                                        `;
+                                    }
+                                    return `<span class="category-icon-chip text-chip" title="${c}">${c.charAt(0).toUpperCase()}</span>`;
+                                }).join('');
                             } else {
-                                displayDiv.innerHTML = '<span style="opacity:0.3; font-size: 0.8rem; padding: 4px;">No categories...</span>';
+                                displayDiv.innerHTML = '<span style="opacity:0.3; font-size: 0.8rem; padding: 4px;">--</span>';
                             }
                         }
                     }
