@@ -1511,9 +1511,9 @@ class TemplateManager {
                 const status = document.getElementById('status-message');
                 status.classList.remove('hidden');
                 setTimeout(() => status.classList.add('hidden'), 3000);
-            } else alert(res.message);
+            } else alert(res.message || res.error || 'Failed to send');
 
-        } catch (e) { console.error(e); alert('Failed to send'); }
+        } catch (e) { console.error(e); alert('Failed to send: ' + e.message); }
         finally {
             btn.textContent = 'Test Send'; // Fixed Text
             btn.disabled = false;
