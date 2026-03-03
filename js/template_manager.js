@@ -1397,9 +1397,9 @@ class TemplateManager {
 
         // Actions
         // New Message button handled at top of method now
-
-        document.getElementById('btn-save-template').addEventListener('click', () => this.handleSave());
-        document.getElementById('btn-send-message').addEventListener('click', () => this.handleSend());
+        // Using .onclick prevents accumulating event listeners if init() is called multiple times by the SPA router.
+        document.getElementById('btn-save-template').onclick = () => this.handleSave();
+        document.getElementById('btn-send-message').onclick = () => this.handleSend();
 
         window.tmplMgr = this;
     }
