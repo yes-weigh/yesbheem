@@ -21,13 +21,14 @@
 
         <!-- Middle: Search and Filters -->
         <div class="controls-middle">
-            <input type="text" id="search-templates" class="search-input" placeholder="🔍 Search templates...">
+            <input type="text" id="search-templates" class="search-input" placeholder="🔍 Search templates..."
+                title="Search templates">
 
-            <select id="filter-language" class="filter-select">
+            <select id="filter-language" class="filter-select" title="Language filter">
                 <option value="">All Languages</option>
             </select>
 
-            <select id="filter-category" class="filter-select">
+            <select id="filter-category" class="filter-select" title="Category filter">
                 <option value="">All Categories</option>
             </select>
         </div>
@@ -54,24 +55,23 @@
     </div>
 
     <!-- EDITOR CONTAINER -->
-    <div id="template-editor-container" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
+    <div id="template-editor-container" class="hidden editor-container">
 
         <!-- 1. HEADER (Metadata) -->
-        <div class="editor-header"
-            style="flex-shrink: 0; padding: 1rem 2rem; border-bottom: 1px solid var(--border); background: var(--bg-panel); display: flex; align-items: center; gap: 2rem;">
-            <button id="btn-back-to-list" class="action-btn-secondary" style="margin-right: 1rem;">
+        <div class="editor-header">
+            <button id="btn-back-to-list" class="action-btn-secondary mr-4">
                 ← Back
             </button>
 
-            <div style="flex: 1; display: flex; gap: 1rem; align-items: center;">
-                <input type="text" id="template-name-input" class="modern-input" placeholder="Template Name"
-                    style="font-weight: 700; font-size: 1.1rem;">
+            <div class="flex-1 flex-row gap-4 items-center">
+                <input type="text" id="template-name-input" class="modern-input font-bold text-lg"
+                    placeholder="Template Name" title="Template Name">
 
-                <select id="template-language-select" class="modern-input" style="width: 180px;">
+                <select id="template-language-select" class="modern-input w-48" title="Language selection">
                     <option value="">Select Language</option>
                 </select>
 
-                <select id="template-category-select" class="modern-input" style="width: 180px;">
+                <select id="template-category-select" class="modern-input w-48" title="Category selection">
                     <option value="">Select Category</option>
                 </select>
             </div>
@@ -85,52 +85,48 @@
                 <div class="panel-title">Header Media</div>
 
                 <!-- Media Preview (Visual) -->
-                <div id="wa-media-preview" class="media-preview-box hidden"
-                    style="width:100%; aspect-ratio:16/9; background:#000; border-radius:8px; overflow:hidden; margin-bottom:1rem;">
+                <div id="wa-media-preview" class="media-preview-box hidden">
                 </div>
-                <div id="wa-media-placeholder" class="media-preview-placeholder"
-                    style="width:100%; aspect-ratio:16/9; background:rgba(255,255,255,0.05); border:1px dashed rgba(255,255,255,0.2); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1rem;">
+                <div id="wa-media-placeholder" class="media-preview-placeholder">
                     <span>No Media Selected</span>
                 </div>
 
                 <!-- Media Controls -->
                 <div id="wa-media-controls" class="wa-media-controls">
-                    <div style="display: flex; flex-direction: column; gap: 1rem;">
-                        <select id="media-type-select" class="modern-input">
+                    <div class="flex-col gap-4">
+                        <select id="media-type-select" class="modern-input" title="Media connection toggle">
                             <option value="none">No Media</option>
                             <option value="image">Image</option>
                             <option value="video">Video</option>
                             <option value="document">Document</option>
                         </select>
 
-                        <div id="media-upload-area" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                            <div style="display: flex; gap: 0.5rem; justify-content: center;">
-                                <button id="btn-open-media-library" class="cta-button"
-                                    style="background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.2); flex: 1; justify-content: center; font-size: 0.8rem; padding: 0.5rem;">
+                        <div id="media-upload-area" class="flex-col gap-2">
+                            <div class="flex-row gap-2 justify-center">
+                                <button id="btn-open-media-library" class="cta-button media-btn-library">
                                     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
-                                        viewBox="0 0 24 24" style="margin-right: 4px;">
+                                        viewBox="0 0 24 24" class="mr-1">
                                         <path
                                             d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
                                         </path>
                                     </svg>
                                     Library
                                 </button>
-                                <button id="btn-upload-pc" class="cta-button"
-                                    style="background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.2); flex: 1; justify-content: center; font-size: 0.8rem; padding: 0.5rem;">
+                                <button id="btn-upload-pc" class="cta-button media-btn-upload">
                                     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
-                                        viewBox="0 0 24 24" style="margin-right: 4px;">
+                                        viewBox="0 0 24 24" class="mr-1">
                                         <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
                                     </svg>
                                     Upload
                                 </button>
                             </div>
                             <input type="file" id="media-file-input" class="hidden"
-                                accept="image/*,video/*,application/pdf">
+                                accept="image/*,video/*,application/pdf" title="Media Upload File">
 
-                            <div style="text-align: center; font-size: 0.8rem; color: var(--text-muted);">OR</div>
+                            <div class="text-center text-sm text-muted">OR</div>
 
                             <input type="text" id="media-url-input" class="modern-input"
-                                placeholder="Paste Image/Video URL">
+                                placeholder="Paste Image/Video URL" title="Paste Image URL">
                         </div>
                     </div>
                 </div>
@@ -140,74 +136,64 @@
             <div class="editor-col editor-col-center">
 
                 <!-- Main Message Body -->
-                <div class="content-card"
-                    style="width: 100%; background: var(--bg-panel); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                        <div
-                            style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; font-weight: 700;">
+                <div class="content-card w-full bg-panel p-6 rounded-xl border-solid">
+                    <div class="flex-row justify-between items-center mb-2">
+                        <div class="text-xs text-muted font-bold uppercase">
                             Message Body
                         </div>
-                        <button id="btn-translate-editor" class="text-xs pill-btn"
-                            style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 2px 8px;">
+                        <button id="btn-translate-editor" class="text-xs pill-btn btn-translate">
                             🌍 Translate
                         </button>
                     </div>
-                    <div class="wa-text-content cursor-text editable-preview" id="wa-text-preview"
+                    <div class="wa-text-content cursor-text editable-preview min-h-200" id="wa-text-preview"
                         contenteditable="true"
-                        data-placeholder="Type your message here... (Supports *bold*, _italic_, ~strike~)"
-                        style="min-height: 200px; font-size: 1rem; line-height: 1.6; color: var(--text-primary); outline: none;">
+                        data-placeholder="Type your message here... (Supports *bold*, _italic_, ~strike~)">
                     </div>
                 </div>
 
                 <!-- Footer -->
-                <div class="content-card"
-                    style="width: 100%; background: var(--bg-panel); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); margin-top: 1rem;">
-                    <div
-                        style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; font-weight: 700; margin-bottom: 0.5rem;">
+                <div class="content-card w-full bg-panel p-6 rounded-xl border-solid mt-4">
+                    <div class="text-xs text-muted font-bold uppercase mb-2">
                         Footer (Optional)</div>
                     <div class="wa-footer cursor-text editable-preview" id="wa-footer-preview" contenteditable="true"
-                        data-placeholder="Add a footer text..."
-                        style="font-size: 0.9rem; color: var(--text-muted); outline: none;"></div>
+                        data-placeholder="Add a footer text..."></div>
                 </div>
                 <!-- Status Message -->
-                <div id="status-message" class="text-sm font-bold hidden"
-                    style="color:#10b981; text-align:center; margin-top: 1rem;">Message Sent!</div>
+                <div id="status-message" class="text-sm font-bold hidden text-center mt-4 text-success">Message Sent!
+                </div>
             </div>
 
             <!-- RIGHT: ACTIONS & BUTTONS -->
             <div class="editor-col editor-panel">
 
                 <!-- ── MODE TOGGLE ──────────────────────────────── -->
-                <div class="panel-section" style="padding-bottom:0;">
+                <div class="panel-section pb-0">
                     <div class="panel-title">Message Type</div>
-                    <div id="editor-mode-toggle" style="display:flex;gap:0.5rem;margin-top:0.5rem;">
-                        <button class="pill-btn active" data-mode="buttons" id="mode-btn-buttons"
-                            style="flex:1;justify-content:center;font-size:0.78rem;">
+                    <div id="editor-mode-toggle" class="flex-row gap-2 mt-2">
+                        <button class="pill-btn flex-1 justify-center text-xs active" data-mode="buttons"
+                            id="mode-btn-buttons">
                             🔘 Buttons
                         </button>
-                        <button class="pill-btn" data-mode="list" id="mode-btn-list"
-                            style="flex:1;justify-content:center;font-size:0.78rem;">
+                        <button class="pill-btn flex-1 justify-center text-xs" data-mode="list" id="mode-btn-list">
                             📋 List Menu
                         </button>
                     </div>
                 </div>
 
-                <hr style="border:0;border-top:1px solid var(--border);margin:0.75rem 0;">
+                <hr class="divider-hr m-0">
 
                 <!-- ── BUTTONS PANEL (default) ──────────────────── -->
                 <div id="panel-buttons-mode" class="panel-section">
                     <div class="panel-title">Interactive Buttons</div>
 
                     <!-- Buttons List (Visual) moved here -->
-                    <div id="wa-buttons-preview" class="wa-buttons-container"
-                        style="flex-direction: column; align-items: stretch; gap: 0.5rem; margin-bottom: 1rem;"></div>
+                    <div id="wa-buttons-preview" class="wa-buttons-container flex-col items-stretch gap-2 mb-4"></div>
 
                     <!-- Add Button -->
                     <div id="wa-button-add" class="wa-button-add">
-                        <button class="pill-btn" style="width: 100%;">
+                        <button class="pill-btn w-full justify-center">
                             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
-                                viewBox="0 0 24 24" style="margin-right: 4px;">
+                                viewBox="0 0 24 24" class="mr-1">
                                 <path d="M12 4v16m8-8H4"></path>
                             </svg>
                             Add Button
@@ -215,12 +201,10 @@
                     </div>
 
                     <!-- Button Edit Form -->
-                    <div id="wa-button-edit-form" class="wa-button-edit-form hidden"
-                        style="margin-top: 1rem; border: 1px solid var(--border); padding: 1rem; border-radius: 8px;">
-                        <h4 style="font-size: 0.8rem; margin-bottom: 0.5rem; text-transform: uppercase;">Edit Button
-                        </h4>
-                        <div style="display: flex; gap: 0.5rem; flex-direction: column;">
-                            <select id="btn-type-input" class="modern-input small">
+                    <div id="wa-button-edit-form" class="wa-button-edit-form hidden mt-4 border-solid p-4 rounded-lg">
+                        <h4 class="text-sm mb-2 uppercase">Edit Button</h4>
+                        <div class="flex-col gap-2">
+                            <select id="btn-type-input" class="modern-input small" title="Button Match Type">
                                 <option value="reply">Quick Reply</option>
                                 <option value="url">URL Action</option>
                                 <option value="call">Phone Number</option>
@@ -228,25 +212,25 @@
                                 <option value="copy">Copy Code</option>
                             </select>
 
-                            <label id="btn-dynamic-kam-wrapper" class="hidden"
-                                style="display:flex; align-items:center; gap:8px; font-size:0.8rem; margin-bottom: 4px;">
-                                <input type="checkbox" id="btn-dynamic-kam">
+                            <label id="btn-dynamic-kam-wrapper" class="hidden btn-interactive-kam">
+                                <input type="checkbox" id="btn-dynamic-kam"
+                                    title="Use assigned KAM properties checkbox">
                                 <span>Use assigned KAM phone number</span>
                             </label>
-                            <input type="text" id="btn-text-input" class="modern-input small"
-                                placeholder="Button Label">
+                            <input type="text" id="btn-text-input" class="modern-input small" placeholder="Button Label"
+                                title="Action Button Text">
                             <input type="text" id="btn-value-input" class="modern-input small hidden"
-                                placeholder="Value (URL/Phone)">
+                                placeholder="Value (URL/Phone)" title="Action Data Value">
                             <!-- Chat Button Specific Fields -->
                             <input type="text" id="btn-chat-phone-input" class="modern-input small hidden"
-                                placeholder="Phone Number (e.g., 919876543210)">
-                            <textarea id="btn-chat-message-input" class="modern-input small hidden"
+                                placeholder="Phone Number (e.g., 919876543210)" title="Chat Start Phone Number Target">
+                            <textarea id="btn-chat-message-input"
+                                class="modern-input small hidden resize-y font-inherit"
                                 placeholder="Pre-filled message (optional)" rows="3"
-                                style="resize: vertical; font-family: inherit;"></textarea>
-                            <button id="btn-confirm" class="pill-btn primary-btn"
-                                style="width: 100%; justify-content: center;">Confirm</button>
-                            <button id="btn-delete-button" class="action-btn-secondary"
-                                style="color: #ef4444; border-color: rgba(239,68,68,0.3); margin-top: 0.5rem;">Delete</button>
+                                title="Prefill Message on Chat Open Target"></textarea>
+                            <button id="btn-confirm" class="pill-btn primary-btn w-full justify-center">Confirm</button>
+                            <button id="btn-delete-button"
+                                class="action-btn-secondary btn-delete-action-mt">Delete</button>
                         </div>
                     </div>
                 </div>
@@ -256,28 +240,29 @@
                     <div class="panel-title">List Menu</div>
 
                     <!-- Meta fields -->
-                    <div style="display:flex;flex-direction:column;gap:0.6rem;margin-bottom:1rem;">
+                    <div class="flex-col gap-2 mb-4">
                         <input type="text" id="list-button-text" class="modern-input small"
-                            placeholder="Button label (e.g. View Options)" maxlength="20">
+                            placeholder="Button label (e.g. View Options)" maxlength="20"
+                            title="Main Open List Button Label">
                         <input type="text" id="list-title" class="modern-input small"
-                            placeholder="Menu title (optional)" maxlength="60">
+                            placeholder="Menu title (optional)" maxlength="60"
+                            title="Opened Bottomsheet Popup Header Label">
                     </div>
 
                     <!-- Sections container -->
-                    <div id="list-sections-container" style="display:flex;flex-direction:column;gap:0.75rem;"></div>
+                    <div id="list-sections-container" class="flex-col gap-3"></div>
 
                     <!-- Add Section button -->
-                    <button id="btn-add-section" class="pill-btn"
-                        style="width:100%;justify-content:center;margin-top:0.75rem;font-size:0.78rem;">
+                    <button id="btn-add-section" class="pill-btn w-full justify-center mt-3 text-xs">
                         <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"
-                            viewBox="0 0 24 24" style="margin-right:4px;">
+                            viewBox="0 0 24 24" class="mr-1">
                             <path d="M12 4v16m8-8H4"></path>
                         </svg>
                         Add Section
                     </button>
                 </div>
 
-                <hr style="border: 0; border-top: 1px solid var(--border); margin: 0;">
+                <hr class="divider-hr m-0">
 
 
 
@@ -285,34 +270,28 @@
                 <div class="panel-section">
                     <div class="panel-title">Test & Save</div>
 
-                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="flex-col gap-4">
                         <div>
-                            <label
-                                style="display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.4rem;">Sender
-                                KAM (For Dynamic Buttons)</label>
+                            <label class="block text-xs text-muted mb-1">Sender KAM (For Dynamic Buttons)</label>
                             <!-- KAM Selector Container -->
                             <div id="test-kam-selector-container"></div>
                         </div>
 
                         <div>
-                            <label
-                                style="display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.4rem;">Testing
-                                Session</label>
-                            <select id="session-select" class="modern-input">
+                            <label class="block text-xs text-muted mb-1">Testing Session</label>
+                            <select id="session-select" class="modern-input" title="Sender Source Phone">
                                 <option value="">Loading...</option>
                             </select>
                         </div>
                         <div>
-                            <label
-                                style="display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.4rem;">Receiver
-                                Number</label>
-                            <input type="text" id="phone-number" class="modern-input" placeholder="e.g. 919876543210">
+                            <label class="block text-xs text-muted mb-1">Receiver Number</label>
+                            <input type="text" id="phone-number" class="modern-input" placeholder="e.g. 919876543210"
+                                title="Receiver number to drop testing sample">
                         </div>
                     </div>
 
-                    <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
-                        <button id="btn-send-message" class="cta-button"
-                            style="background: #0f1523; border: 1px solid var(--primary); color: var(--primary);">
+                    <div class="flex-row gap-2 mt-6">
+                        <button id="btn-send-message" class="cta-button btn-test-send">
                             Test Send
                         </button>
                         <button id="btn-save-template" class="cta-button">
