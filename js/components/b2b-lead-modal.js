@@ -206,7 +206,7 @@ export function renderB2BLeadModal(lead, settings) {
                                                 font-family: inherit;
                                             " oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
                                             
-                                            <button class="wa-send-btn" onclick="window.b2bLeadsManager.addLog('${lead.id}')" style="
+                                            <button class="crm-log-btn" onclick="window.b2bLeadsManager.addLog('${lead.id}')" style="
                                                 width: 44px; height: 44px; border-radius: 50%; padding: 0;
                                                 display: flex; align-items: center; justify-content: center;
                                                 flex-shrink: 0; min-width: unset; position: relative;
@@ -549,6 +549,13 @@ export function renderB2BLeadModal(lead, settings) {
                     color: #475569;
                     box-shadow: none;
                     cursor: not-allowed;
+                    opacity: 0.6;
+                }
+                .crm-log-btn:disabled {
+                    background: rgba(255, 255, 255, 0.05) !important;
+                    color: #475569 !important;
+                    box-shadow: none !important;
+                    cursor: not-allowed !important;
                     opacity: 0.6;
                 }
                 .wa-preview-container {

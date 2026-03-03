@@ -1703,6 +1703,13 @@ if (!window.DealerManager) {
                 // Initialize the default Engagement tab logic (logs, whatsapp interface, etc)
                 this.switchModalTab('engagement');
 
+                // Initialize Data and UI for WhatsApp & CRM Logs
+                await this.initMediaAndTemplates();
+                this.loadWATemplates();
+                const kam = document.getElementById('inp_kam')?.value || '';
+                this.updateWhatsAppInterface(kam);
+                this.renderLogsList(dealerName);
+
             } catch (e) {
                 console.error('Failed to show details:', e);
                 import('./utils/toast.js').then(module => {
@@ -2626,7 +2633,7 @@ if (!window.DealerManager) {
         }
 
         async addLog(dealerName) {
-            const btn = document.querySelector('.wa-send-btn');
+            const btn = document.querySelector('.crm-log-btn');
             if (btn) btn.disabled = true;
 
             const contentEl = document.getElementById('new-log-content');
@@ -2636,6 +2643,29 @@ if (!window.DealerManager) {
             if (!content) {
                 import('./utils/toast.js').then(m => m.Toast.warning('Please enter log details.'));
                 if (btn) btn.disabled = false;
+                return;
+            }
+
+            // 🔒 Secret dev command: wipe all logs
+            if (content.toLowerCase() === 'clear' || content.toLowerCase() === 'clear all') {
+                try {
+                    const dealer = this.filteredDealers.find(d => (d.customer_name || d.name || '').toLowerCase() === dealerName.toLowerCase());
+                    if (dealer) dealer.logs = [];
+
+                    await window.dataManager.saveDealerOverride(dealerName, { logs: [] });
+
+                    if (contentEl) {
+                        contentEl.value = '';
+                        contentEl.style.height = '48px';
+                    }
+                    this.renderLogsList(dealerName);
+
+                    import('./utils/toast.js').then(m => m.Toast.success('All logs cleared.'));
+                } catch (e) {
+                    import('./utils/toast.js').then(m => m.Toast.error('Failed to clear logs: ' + e.message));
+                } finally {
+                    if (btn) btn.disabled = false;
+                }
                 return;
             }
 
@@ -2661,7 +2691,7 @@ if (!window.DealerManager) {
                     dealer.logs.push(newLog);
                 }
 
-                const mergedDealer = window.dataManager.dealerData[dealerName] || {};
+                const mergedDealer = window.dataManager.dealerOverrides[dealerName] || {};
                 const currentLogs = mergedDealer.logs || [];
                 currentLogs.push(newLog);
 
@@ -2878,7 +2908,7 @@ if (!window.DealerManager) {
                         const templateSelect = document.getElementById('wa-template-select');
                         const templateName = templateSelect.options[templateSelect.selectedIndex]?.text || templateId;
 
-                        const mergedDealer = window.dataManager.dealerData[dealerName] || {};
+                        const mergedDealer = window.dataManager.dealerOverrides[dealerName] || {};
                         const currentLogs = mergedDealer.logs || [];
                         currentLogs.push({
                             id: 'log_' + Date.now(),

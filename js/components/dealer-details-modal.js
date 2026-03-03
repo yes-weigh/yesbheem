@@ -204,7 +204,7 @@ export function renderDealerDetailsModal(data, settings) {
                                     font-family: inherit;
                                 " oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
                                 
-                                <button class="wa-send-btn" onclick="window.dealerManager.addLog('${dealerName.replace(/'/g, "\\'")}');" style="
+                                <button class="crm-log-btn" onclick="window.dealerManager.addLog('${dealerName.replace(/'/g, "\\'")}');" style="
                                     width: 44px; height: 44px; border-radius: 50%; padding: 0;
                                     display: flex; align-items: center; justify-content: center;
                                     flex-shrink: 0; min-width: unset; position: relative;
@@ -658,6 +658,7 @@ export function renderDealerDetailsModal(data, settings) {
                 }
                 .wa-send-btn:hover:not(:disabled) { transform: translateY(-2px) scale(1.02); box-shadow: 0 10px 25px -5px rgba(16,185,129,0.5); }
                 .wa-send-btn:disabled { background: rgba(255,255,255,0.05); color: #475569; box-shadow: none; cursor: not-allowed; opacity: 0.6; }
+                .crm-log-btn:disabled { background: rgba(255,255,255,0.05) !important; color: #475569 !important; box-shadow: none !important; cursor: not-allowed !important; opacity: 0.6; }
                 .wa-preview-container { margin-bottom: 12px; border-radius: 14px; overflow: hidden; background: rgba(0,0,0,0.3); border: 1px solid rgba(16,185,129,0.2); }
 
                 /* Chip styles */
