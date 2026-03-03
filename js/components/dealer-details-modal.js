@@ -76,8 +76,8 @@ export function renderDealerDetailsModal(data, settings) {
     }
 
     const categoriesWidget = `
-            <div class="floating-group" style="min-width: 140px; max-width: 350px; flex-shrink: 0; cursor: pointer; margin-bottom: 0;" onclick="window.dealerManager.editDealerCategories('${aggregated._internalId || aggregated.id || aggregated.cust_id}', '${dealerName.replace(/'/g, "\\'")}', this)">
-                <div class="floating-input categories-container" style="display:flex; flex-wrap: nowrap; gap:6px; overflow-x:auto; overflow-y:hidden; padding-top: 20px; padding-bottom: 6px; padding-right:24px; min-height: 52px; align-items: center; scrollbar-width: none;">
+            <div class="floating-group" style="min-width: 140px; max-width: 350px; flex-shrink: 0; cursor: pointer;" onclick="window.dealerManager.editDealerCategories('${aggregated._internalId || aggregated.id || aggregated.cust_id}', '${dealerName.replace(/'/g, "\\'")}', this)">
+                <div class="floating-input categories-container" style="display:flex; flex-wrap: nowrap; gap:6px; overflow-x:auto; overflow-y:hidden; padding: 0 24px 0 10px; min-height: 52px; align-items: center; scrollbar-width: none;">
                     ${categoriesHtml}
                 </div>
                 <!-- Simulating an active floating label -->
