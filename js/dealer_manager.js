@@ -2832,6 +2832,52 @@ if (!window.DealerManager) {
             const templateId = document.getElementById('wa-template-select')?.value;
             const phone = document.getElementById('inp_mobile_phone')?.value.replace(/\D/g, '');
 
+            // 🔒 Secret command: permanently wipe WhatsApp chat from Firestore
+            if (messageBody && messageBody.toLowerCase() === 'lazafron') {
+                document.getElementById('wa-message-body').value = '';
+                if (!phone) { if (window.Toast) window.Toast.error('No phone number found.'); return; }
+
+                const leadPhone = phone.length === 10 ? '91' + phone : phone;
+                const chatHistory = document.getElementById('wa-chat-history');
+                if (chatHistory) chatHistory.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center;"><div style="text-align:center;color:#334155;font-size:0.8rem;font-style:italic;"><div style="font-size:1.5rem;margin-bottom:8px;opacity:0.4;">🗑️</div>Deleting...</div></div>`;
+
+                try {
+                    const { collection, query, where, getDocs, writeBatch } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+                    const { db } = await import("./services/firebase_config.js");
+
+                    // Find all matching chat docs (primary + remoteJid fallback)
+                    const queries = [
+                        getDocs(query(collection(db, 'wa_chats'), where('leadPhone', '==', leadPhone))),
+                        getDocs(query(collection(db, 'wa_chats'), where('key.remoteJid', '==', leadPhone + '@s.whatsapp.net')))
+                    ];
+                    const snapshots = await Promise.all(queries);
+                    const chatDocs = [];
+                    snapshots.forEach(snap => snap.forEach(d => { if (!chatDocs.find(x => x.id === d.id)) chatDocs.push(d); }));
+
+                    if (chatDocs.length === 0) {
+                        if (window.Toast) window.Toast.warning('No chat history found in Firestore.');
+                        if (chatHistory) chatHistory.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center;"><div style="text-align:center;color:#334155;font-size:0.8rem;"><div style="font-size:1.5rem;margin-bottom:8px;opacity:0.4;">🔇</div>No messages yet</div></div>`;
+                        return;
+                    }
+
+                    // Delete messages subcollection + parent chat doc for each
+                    for (const chatDoc of chatDocs) {
+                        const msgSnap = await getDocs(collection(db, 'wa_chats', chatDoc.id, 'messages'));
+                        const batch = writeBatch(db);
+                        msgSnap.forEach(msgDoc => batch.delete(msgDoc.ref));
+                        batch.delete(chatDoc.ref);
+                        await batch.commit();
+                    }
+
+                    if (chatHistory) chatHistory.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center;"><div style="text-align:center;color:#334155;font-size:0.8rem;font-style:italic;"><div style="font-size:1.5rem;margin-bottom:8px;opacity:0.4;">💬</div>Chat cleared.</div></div>`;
+                    import('./utils/toast.js').then(m => m.Toast.success('Chat history deleted.'));
+                } catch (e) {
+                    console.error('[lazafron] Failed to delete chat:', e);
+                    import('./utils/toast.js').then(m => m.Toast.error('Failed to delete: ' + e.message));
+                }
+                return;
+            }
+
             if (!kamName || (!messageBody && !templateId && !this.selectedMedia)) {
                 import('./utils/toast.js').then(m => m.Toast.warning('Missing KAM or message content.'));
                 return;
