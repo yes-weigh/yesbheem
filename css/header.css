@@ -54,6 +54,7 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    cursor: pointer;
 }
 
 .title-bar-logo {
@@ -161,6 +162,16 @@
     border-radius: 0 0 8px 8px;
 }
 
+.dropdown-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 5px 0;
+}
+
+#sign-out-button {
+    color: #ff6b6b;
+}
+
 .theme-icon {
     font-size: 1.2rem;
 }
@@ -184,6 +195,7 @@
     justify-content: space-between;
     padding: 0 1.5rem;
     background: var(--bg-panel);
+    -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border-light);
     z-index: 100;
@@ -208,8 +220,8 @@
     font-weight: 700;
     letter-spacing: -0.02em;
     background: linear-gradient(to right, #fff, #94a3b8);
-    background-clip: text;
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 

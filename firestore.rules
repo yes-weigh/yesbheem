@@ -162,12 +162,14 @@ service cloud.firestore {
     // WhatsApp Chat Threads (written by backend Admin SDK, read by frontend directly)
     match /wa_chats/{chatId} {
       allow read: if isActiveUser() || request.auth.token.role == 'admin';
-      allow write: if false; // backend only (Admin SDK bypasses these rules)
+      allow create, update: if false; // backend only (Admin SDK bypasses these rules)
+      allow delete: if request.auth.token.role == 'admin'; // admin can wipe chats
 
       // Messages subcollection
       match /messages/{messageId} {
         allow read: if isActiveUser() || request.auth.token.role == 'admin';
-        allow write: if false; // backend only
+        allow create, update: if false; // backend only
+        allow delete: if request.auth.token.role == 'admin'; // admin can wipe messages
       }
     }
 
