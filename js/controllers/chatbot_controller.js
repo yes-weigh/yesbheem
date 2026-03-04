@@ -278,6 +278,11 @@ class ChatbotController {
         if (Array.isArray(result)) {
             if (result.length === 0) return { count: 0, items: [] };
 
+            // Chat history is already limited to 50 items and needs all of them to provide good context
+            if (toolName === 'getChatHistory') {
+                return { count: result.length, items: result };
+            }
+
             // For search results, return key fields only
             const sample = result.slice(0, 20).map(item => {
                 if (toolName.includes('Dealer') || toolName === 'searchDealers') {

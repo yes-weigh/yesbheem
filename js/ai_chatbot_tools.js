@@ -667,17 +667,68 @@ export class AIChatbotTools {
     // ==========================================
 
     /**
-     * Fetches the WhatsApp chat history for a given phone number.
+     * Fetches the WhatsApp chat history for a given phone number across all CRM sessions.
      * Useful for giving the AI context before it replies.
      * @param {string} phone - Target phone number.
      * @returns {Promise<Array>} List of chat messages.
      */
     async getChatHistory({ phone } = {}) {
         try {
-            const response = await fetch(`https://asia-south1-yesbheem-f3db3.cloudfunctions.net/api/wati/messages/${phone}`);
-            if (!response.ok) throw new Error("Failed to fetch chat history");
-            const data = await response.json();
-            return data.items || [];
+            const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+            const config = await import("./services/firebase_config.js");
+            const db = config.db;
+
+            // Normalize phone variations (with and without 91)
+            const phoneStr = String(phone).replace(/\D/g, '');
+            const phoneVariants = [
+                phoneStr,
+                phoneStr.length === 10 ? '91' + phoneStr : phoneStr.replace(/^91/, '')
+            ];
+
+            const chatDocs = [];
+            // Query wa_chats where leadPhone matches the requested phone
+            for (const p of [...new Set(phoneVariants)]) {
+                const q = fb.query(fb.collection(db, 'wa_chats'), fb.where('leadPhone', '==', p));
+                const snap = await fb.getDocs(q);
+                snap.forEach(d => chatDocs.push(d));
+            }
+
+            if (chatDocs.length === 0) {
+                return [{ note: `No chat history found for phone ${phone}.` }];
+            }
+
+            let allMessages = [];
+
+            // Fetch recent messages for each matched chat document
+            for (const chatDoc of chatDocs) {
+                const crmPhone = chatDoc.data().crmPhone;
+                // Fetch all messages for this session (avoiding ordering to prevent missing index errors)
+                const msgsSnap = await fb.getDocs(fb.collection(db, `wa_chats/${chatDoc.id}/messages`));
+
+                msgsSnap.forEach(msgDoc => {
+                    const m = msgDoc.data();
+
+                    // Universal extraction of text and timestamp across different WhatsApp webhook formats
+                    const text = m.text || m.body || m.message?.conversation || m.message?.extendedTextMessage?.text || "[Media/Non-text message]";
+                    const timestamp = m.timestamp || m.messageTimestamp || m.createdAt?.toMillis?.() || m.time || 0;
+                    const fromMe = m.fromMe !== undefined ? m.fromMe : (m.direction === 'outbound' || m.type === 'sent');
+
+                    allMessages.push({
+                        crmSessionPhone: crmPhone,
+                        text: text,
+                        fromMe: fromMe,
+                        timestamp: Number(timestamp)
+                    });
+                });
+            }
+
+            // Sort all collected messages chronologically
+            allMessages.sort((a, b) => a.timestamp - b.timestamp);
+
+            // Return the most recent 50 messages purely to save AI context tokens
+            const recentMessages = allMessages.slice(-50);
+
+            return recentMessages.length > 0 ? recentMessages : [{ note: "Chat exists but no recent messages found." }];
         } catch (error) {
             console.error("error in getChatHistory:", error);
             throw error;
