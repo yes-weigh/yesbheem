@@ -365,8 +365,8 @@ class ChatbotController {
 // nav_controller calls the exported ChatbotController class and calls .init() on it.
 window.ChatbotController = ChatbotController;
 
-// Self-initialize if #chatbot-messages is already in the DOM (e.g. direct load)
-if (document.getElementById('chatbot-messages')) {
+// Self-initialize only if we are not in the SPA shell
+if (document.getElementById('chatbot-messages') && !window.navController) {
     const ctrl = new ChatbotController();
     ctrl.init();  // async — non-blocking
     window._chatbotCtrl = ctrl;

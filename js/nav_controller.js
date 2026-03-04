@@ -113,8 +113,8 @@ class NavigationController {
             { id: 'campaign', name: 'Campaign', icon: '📢' },
             { id: 'product', name: 'Product', icon: '📦' },
             { id: 'instance', name: 'Instance', icon: '🖥️' },
-            { id: 'yesbheem', name: 'Yes Bheem', icon: '⚡' },
-            { id: 'chatbot', name: 'Chatbot', icon: '🤖' },
+            { id: 'yesbheem', name: 'Chatbot', icon: '⚡' },
+            { id: 'chatbot', name: 'Yes Bheem AI', icon: '🤖' },
             { id: 'integration', name: 'Integration', icon: '🔌' },
             { id: 'settings', name: 'Settings', icon: '⚙️' }
         ];
