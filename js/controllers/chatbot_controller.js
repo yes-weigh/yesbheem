@@ -144,6 +144,32 @@ class ChatbotController {
      * Execute a tool call requested by Gemini, then send the result back for a natural reply.
      */
     async _executeFunctionCall(toolName, args) {
+        // 1. Intercept destructive actions requiring user confirmation
+        const requiresConfirmation = ['sendWhatsAppMessage', 'deleteLead'].includes(toolName);
+
+        if (requiresConfirmation) {
+            this._setThinking(false); // Stop typing dot while waiting for user
+            let confirmMsg = `Are you sure you want to run ${this._humaniseTool(toolName)}?`;
+
+            if (toolName === 'sendWhatsAppMessage') {
+                confirmMsg = `Are you sure you want to send a WhatsApp message to ${args.phone || 'this user'}?`;
+            } else if (toolName === 'deleteLead') {
+                confirmMsg = `Are you sure you want to permanently delete this lead?`;
+            }
+
+            const isConfirmed = await this._requestConfirmation(confirmMsg);
+            this._setThinking(true); // Resume typing dot
+
+            if (!isConfirmed) {
+                // User clicked "No" — send synthetic cancellation back to Gemini
+                this._history.push({
+                    role: 'model',
+                    parts: [{ functionCall: { name: toolName, args } }]
+                });
+                return this._handleGeminiResult({ type: 'text', reply: "Okay, I've cancelled that action." }, null);
+            }
+        }
+
         // Show "thinking" status in UI
         this._renderFnStatusBubble(`⚙️ Running: ${this._humaniseTool(toolName)}…`);
 
@@ -169,8 +195,7 @@ class ChatbotController {
             parts: [{ functionCall: { name: toolName, args } }]
         });
 
-        // Instead of a functionResponse part (which the Cloud Function doesn't support in its
-        // simple text bridge), we add the tool result as a plain user message so Gemini can summarise it.
+        // Add the tool result as a plain user message so Gemini can summarise it
         const resultText = `Tool "${toolName}" returned: ${JSON.stringify(summarised)}. Please summarise this result for the user in a helpful, concise way.`;
 
         // Ask Gemini to produce a natural-language reply using the tool result
@@ -183,6 +208,60 @@ class ChatbotController {
         } finally {
             this._setThinking(false);
         }
+    }
+
+    /**
+     * Render a confirmation bubble and await user click.
+     * @returns {Promise<boolean>} True if "Yes" clicked, False if "No".
+     */
+    _requestConfirmation(message) {
+        return new Promise((resolve) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chat-message ai';
+
+            const icon = document.createElement('div');
+            icon.className = 'msg-icon';
+            icon.textContent = '🤖';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-confirm-bubble';
+
+            const textEl = document.createElement('div');
+            textEl.className = 'chat-confirm-text';
+            textEl.textContent = message;
+
+            const actionsEl = document.createElement('div');
+            actionsEl.className = 'chat-confirm-actions';
+
+            const btnYes = document.createElement('button');
+            btnYes.className = 'btn-confirm-yes';
+            btnYes.textContent = 'Yes, do it';
+
+            const btnNo = document.createElement('button');
+            btnNo.className = 'btn-confirm-no';
+            btnNo.textContent = 'No, cancel';
+
+            // Click handlers
+            btnYes.addEventListener('click', () => {
+                bubble.innerHTML = `<div class="chat-confirm-text"><em>Confirmed.</em></div>`;
+                resolve(true);
+            }, { once: true });
+
+            btnNo.addEventListener('click', () => {
+                bubble.innerHTML = `<div class="chat-confirm-text" style="color:var(--text-muted)"><em>Cancelled.</em></div>`;
+                resolve(false);
+            }, { once: true });
+
+            actionsEl.appendChild(btnYes);
+            actionsEl.appendChild(btnNo);
+            bubble.appendChild(textEl);
+            bubble.appendChild(actionsEl);
+            wrapper.appendChild(icon);
+            wrapper.appendChild(bubble);
+
+            this._messagesEl.appendChild(wrapper);
+            this._scrollToBottom();
+        });
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -274,7 +353,16 @@ class ChatbotController {
 
         const bubble = document.createElement('div');
         bubble.className = `msg-bubble ${extraClass}`.trim();
-        bubble.textContent = text;
+
+        if (role === 'ai' && window.marked) {
+            // Parse markdown for AI messages
+            bubble.innerHTML = marked.parse(text);
+            // Add a class so CSS can target markdown elements
+            bubble.classList.add('markdown-body');
+        } else {
+            // Safe plain text for user messages / fallback
+            bubble.textContent = text;
+        }
 
         wrapper.appendChild(icon);
         wrapper.appendChild(bubble);

@@ -260,6 +260,131 @@
     padding: 0.45rem 0.8rem;
 }
 
+/* ── Confirmation Bubble ─────────────────────────── */
+.chat-confirm-bubble {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-top-left-radius: 4px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.chat-confirm-text {
+    font-size: 0.875rem;
+    color: var(--text-main);
+    line-height: 1.5;
+}
+
+.chat-confirm-actions {
+    display: flex;
+    gap: 0.6rem;
+}
+
+.btn-confirm-yes,
+.btn-confirm-no {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.btn-confirm-yes {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-confirm-yes:hover {
+    background: var(--primary-dark, #1d4ed8);
+}
+
+.btn-confirm-no {
+    background: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-main);
+}
+
+.btn-confirm-no:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+/* ── Markdown Styles (AI Bubbles) ────────────────────── */
+.msg-bubble.markdown-body {
+    white-space: normal;
+    /* Override pre-wrap for proper markdown flow */
+}
+
+.msg-bubble.markdown-body p {
+    margin: 0 0 0.75rem 0;
+}
+
+.msg-bubble.markdown-body p:last-child {
+    margin-bottom: 0;
+}
+
+.msg-bubble.markdown-body strong {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.msg-bubble.markdown-body ul,
+.msg-bubble.markdown-body ol {
+    margin: 0 0 0.75rem 0;
+    padding-left: 1.5rem;
+}
+
+.msg-bubble.markdown-body ul:last-child,
+.msg-bubble.markdown-body ol:last-child {
+    margin-bottom: 0;
+}
+
+.msg-bubble.markdown-body li {
+    margin-bottom: 0.25rem;
+}
+
+/* Tables in AI response */
+.msg-bubble.markdown-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+    font-size: 0.8rem;
+}
+
+.msg-bubble.markdown-body th,
+.msg-bubble.markdown-body td {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border-light);
+    text-align: left;
+}
+
+.msg-bubble.markdown-body th {
+    background: rgba(0, 0, 0, 0.03);
+    font-weight: 600;
+}
+
+.theme-dark .msg-bubble.markdown-body th {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Code backticks */
+.msg-bubble.markdown-body code {
+    background: rgba(0, 0, 0, 0.05);
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.8rem;
+}
+
+.theme-dark .msg-bubble.markdown-body code {
+    background: rgba(255, 255, 255, 0.1);
+}
+
 .msg-bubble.error-bubble {
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid rgba(239, 68, 68, 0.3);
