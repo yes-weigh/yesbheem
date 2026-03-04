@@ -205,6 +205,7 @@ class ChatbotController {
                     return {
                         id: item.id || item.customer_name,
                         name: item.customer_name || item.first_name,
+                        sales: item.sales || item.total_sales || 0,
                         stage: item.dealer_stage,
                         district: item.district,
                         state: item.state,
@@ -253,7 +254,8 @@ class ChatbotController {
             searchMedia: 'searching media',
             searchTemplates: 'searching templates',
             sendWhatsAppMessage: 'sending WhatsApp message',
-            getChatHistory: 'fetching chat history'
+            getChatHistory: 'fetching chat history',
+            getDealerSales: 'fetching dealer sales'
         };
         return map[name] || name;
     }

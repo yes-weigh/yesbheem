@@ -75,45 +75,91 @@ export class AIChatbotTools {
     // ==========================================
 
     /**
-     * Search for dealers based on a query and optional filters.
+     * Search and filter the dealer list with advanced sorting and period selection.
      * @param {string} query - Text to search (name, phone, etc.)
      * @param {Object} filters - Optional filters: { kam, stage, state, district }
+     * @param {string} sortBy - Field to sort by (e.g. 'sales', 'customer_name')
+     * @param {string} sortOrder - 'asc' or 'desc' (default 'desc')
+     * @param {number} limit - Max number of results (default 50)
+     * @param {string} period - Optional historical period (e.g. '21-22') to search within.
      * @returns {Promise<Array>} List of matching dealer objects.
      */
-    async searchDealers({ query = '', filters = {} } = {}) {
+    async searchDealers({ query = '', filters = {}, sortBy = '', sortOrder = 'desc', limit = 50, period = null } = {}) {
         try {
-            // Use the 3-tier merged data: reports aggregation + dealer_overrides
-            let data = await this._getDealerData();
+            let data = [];
 
-            if (data.length === 0) {
-                throw new Error("No dealer data available. Visit the Dealers page once to load it.");
+            // 1. Determine data source (Aggregated vs Specific Period)
+            if (period && window.dataManager) {
+                const reports = await window.dataManager.listReports();
+                const periodKeyword = String(period).replace(/20/g, '').trim();
+                const matchingReport = reports.find(r => r.name.toLowerCase().includes(periodKeyword.toLowerCase()));
+
+                if (matchingReport) {
+                    data = await window.dataManager.loadReportDataFromFirestore(matchingReport.id);
+                } else {
+                    throw new Error(`Report not found for period: ${period}`);
+                }
+            } else {
+                data = await this._getDealerData();
             }
 
+            if (data.length === 0) {
+                return [];
+            }
+
+            // 2. Apply text search
             if (query) {
                 const q = String(query).toLowerCase();
                 data = data.filter(d =>
-                    (d.customer_name || '').toLowerCase().includes(q) ||
+                    (d.customer_name || d.name || '').toLowerCase().includes(q) ||
                     (d.first_name || '').toLowerCase().includes(q) ||
-                    (d.mobile_phone || '').includes(q)
+                    (d.mobile_phone || d.phone || '').includes(q)
                 );
             }
 
-            // Case-insensitive partial match for KAM name (e.g. "biju" matches "Biju Thomas")
-            if (filters && filters.kam) {
-                const k = filters.kam.toLowerCase();
-                data = data.filter(d => (d.key_account_manager || '').toLowerCase().includes(k));
-            }
-            if (filters && filters.stage) {
-                data = data.filter(d => d.dealer_stage === filters.stage);
-            }
-            if (filters && filters.state) {
-                data = data.filter(d => (d.state || '').toLowerCase() === filters.state.toLowerCase());
-            }
-            if (filters && filters.district) {
-                data = data.filter(d => (d.district || '').toLowerCase() === filters.district.toLowerCase());
+            // 3. Apply filters
+            if (filters) {
+                if (filters.kam) {
+                    const k = filters.kam.toLowerCase();
+                    data = data.filter(d => (d.key_account_manager || d.kam || '').toLowerCase().includes(k));
+                }
+                if (filters.stage) {
+                    data = data.filter(d => (d.dealer_stage || d.stage) === filters.stage);
+                }
+                if (filters.state) {
+                    const s = filters.state.toLowerCase();
+                    data = data.filter(d =>
+                        (d.state || d.billing_state || d.shipping_state || '').toLowerCase().includes(s)
+                    );
+                }
+                if (filters.district) {
+                    data = data.filter(d => (d.district || '').toLowerCase() === filters.district.toLowerCase());
+                }
             }
 
-            return data;
+            // 4. Apply sorting
+            if (sortBy) {
+                data.sort((a, b) => {
+                    let valA = a[sortBy] || 0;
+                    let valB = b[sortBy] || 0;
+
+                    // Specialized handling for sales fields
+                    if (sortBy === 'sales' || sortBy === 'total_sales') {
+                        valA = parseFloat(a.sales || a.total_sales || 0);
+                        valB = parseFloat(b.sales || b.total_sales || 0);
+                    }
+
+                    if (typeof valA === 'string') valA = valA.toLowerCase();
+                    if (typeof valB === 'string') valB = valB.toLowerCase();
+
+                    if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+                    if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            // 5. Apply limit
+            return data.slice(0, limit);
         } catch (error) {
             console.error("error in searchDealers:", error);
             throw error;
@@ -197,17 +243,67 @@ export class AIChatbotTools {
         }
     }
 
+    /**
+     * Get aggregated sales and period-specific sales for a dealer.
+     * @param {string} dealerId - The unique ID or name of the dealer.
+     * @param {Array<string>} periods - Optional list of periods (e.g. ["20-21", "21-22"]) to fetch specific historical sales.
+     * @returns {Promise<Object>} Object containing total sales and period breakdown.
+     */
+    async getDealerSales({ dealerId, periods = [] } = {}) {
+        try {
+            const dealer = await this.getDealerDetails({ dealerId });
+            const result = {
+                name: dealer.customer_name,
+                aggregatedTotalSales: dealer.sales || dealer.total_sales || 0,
+                periodSales: {}
+            };
+
+            if (periods.length > 0 && window.dataManager) {
+                const reports = await window.dataManager.listReports();
+                for (const period of periods) {
+                    // Match period to report name (e.g. "21-22" matches "Sales 21-22")
+                    const periodKeyword = String(period).replace(/20/g, '').trim();
+                    const matchingReport = reports.find(r => r.name.toLowerCase().includes(periodKeyword.toLowerCase()));
+
+                    if (matchingReport) {
+                        const reportData = await window.dataManager.loadReportDataFromFirestore(matchingReport.id);
+                        const dealerInReport = reportData.find(d =>
+                            (d.customer_name || '').toLowerCase().trim() === dealer.customer_name.toLowerCase().trim()
+                        );
+                        if (dealerInReport) {
+                            result.periodSales[period] = parseFloat(dealerInReport.sales || 0);
+                        } else {
+                            result.periodSales[period] = 0;
+                        }
+                    } else {
+                        result.periodSales[period] = "Report not found for this period";
+                    }
+                }
+            }
+
+            return result;
+        } catch (error) {
+            console.error("error in getDealerSales:", error);
+            throw error;
+        }
+    }
+
+    // getTopDealersBySales is now integrated into searchDealers
+
     // ==========================================
     // 2. B2B LEADS TOOLS
     // ==========================================
 
     /**
-     * Search for B2B Leads.
-     * @param {string} query - Text search query.
-     * @param {Object} filters - Optional filters: { status, district }
-     * @returns {Promise<Array>} Matching leads.
+     * Search and filter B2B leads with sorting and limiting.
+     * @param {string} query - Text to search (name, business name, phone, etc.)
+     * @param {Object} filters - Optional filters: { status, state, district }
+     * @param {string} sortBy - Field to sort by (e.g. 'name', 'business_name', 'created_at')
+     * @param {string} sortOrder - 'asc' or 'desc' (default 'desc')
+     * @param {number} limit - Max number of results (default 50)
+     * @returns {Promise<Array>} List of matching lead objects.
      */
-    async searchLeads({ query = '', filters = {} } = {}) {
+    async searchLeads({ query = '', filters = {}, sortBy = '', sortOrder = 'desc', limit = 50 } = {}) {
         try {
             let data = [];
             let mgr = await this._getManager('b2bLeadsManager', true);
@@ -220,23 +316,67 @@ export class AIChatbotTools {
                 data = await service.getAllLeads();
             }
 
+            if (data.length === 0) return [];
+
+            // 1. Apply text search
             if (query) {
                 const q = String(query).toLowerCase();
                 data = data.filter(l =>
-                    (l.Company_Name || '').toLowerCase().includes(q) ||
-                    (l.Contact_Person || '').toLowerCase().includes(q) ||
-                    (l.Phone_Number || '').includes(q)
+                    (l.name || l.Contact_Person || '').toLowerCase().includes(q) ||
+                    (l.business_name || l.Company_Name || '').toLowerCase().includes(q) ||
+                    (l.phone || l.Phone_Number || '').includes(q)
                 );
             }
 
-            if (filters.status) {
-                data = data.filter(l => l.Status === filters.status);
-            }
-            if (filters.district) {
-                data = data.filter(l => (l.District || '').toLowerCase() === filters.district.toLowerCase());
+            // 2. Apply filters
+            if (filters) {
+                if (filters.status || filters.Status) {
+                    const s = filters.status || filters.Status;
+                    data = data.filter(l => (l.status || l.Status) === s);
+                }
+                if (filters.state) {
+                    const st = filters.state.toLowerCase();
+                    data = data.filter(l => (l.state || '').toLowerCase().includes(st));
+                }
+                if (filters.district) {
+                    const d = filters.district.toLowerCase();
+                    data = data.filter(l => (l.district || l.District || '').toLowerCase() === d);
+                }
             }
 
-            return data;
+            // 3. Apply sorting
+            if (sortBy) {
+                data.sort((a, b) => {
+                    // Try both normalized and original field names
+                    const fieldMap = {
+                        'name': ['name', 'Contact_Person'],
+                        'business_name': ['business_name', 'Company_Name'],
+                        'status': ['status', 'Status'],
+                        'created_at': ['created_at', 'timestamp']
+                    };
+
+                    const fields = fieldMap[sortBy] || [sortBy];
+                    let valA = null, valB = null;
+
+                    for (const f of fields) {
+                        if (a[f] !== undefined) valA = a[f];
+                        if (b[f] !== undefined) valB = b[f];
+                    }
+
+                    if (valA === null) valA = '';
+                    if (valB === null) valB = '';
+
+                    if (typeof valA === 'string') valA = valA.toLowerCase();
+                    if (typeof valB === 'string') valB = valB.toLowerCase();
+
+                    if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+                    if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            // 4. Apply limit
+            return data.slice(0, limit);
         } catch (error) {
             console.error("error in searchLeads:", error);
             throw error;

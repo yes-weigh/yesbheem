@@ -947,6 +947,44 @@ exports.generateMissingThumbnails = onCall({
  *   { type: 'text',          reply: string }          — plain AI reply
  *   { type: 'function_call', name: string, args: {} } — tool the AI wants called
  */
+// ── Module-level settings cache for geminiChat ─────────────────────────────
+// Fetched once per Cloud Function cold start (or after 1-hour TTL).
+// This avoids a Firestore read on EVERY chat call for data that rarely changes.
+let _appSettingsCache = null;
+let _appSettingsFetchedAt = 0;
+const APP_SETTINGS_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+async function getAppSettings() {
+    const now = Date.now();
+    if (_appSettingsCache && (now - _appSettingsFetchedAt) < APP_SETTINGS_TTL_MS) {
+        return _appSettingsCache;
+    }
+    try {
+        const db = admin.firestore();
+        const snap = await db.collection('settings').doc('general').get();
+        const data = snap.exists ? snap.data() : {};
+        _appSettingsCache = {
+            dealer_stages: Array.isArray(data.dealer_stages) ? data.dealer_stages : [],
+            lead_stages: Array.isArray(data.lead_stages) ? data.lead_stages : ['New', 'Contacted', 'Converted', 'Lost'],
+            key_accounts: Array.isArray(data.key_accounts) ? data.key_accounts : [],
+            dealer_categories: Array.isArray(data.dealer_categories) ? data.dealer_categories : []
+        };
+        _appSettingsFetchedAt = now;
+        console.log('[geminiChat] App settings cache refreshed.');
+    } catch (e) {
+        console.warn('[geminiChat] Failed to load app settings, using defaults:', e.message);
+        // Return stale cache if available, else fall back to safe defaults
+        if (_appSettingsCache) return _appSettingsCache;
+        _appSettingsCache = {
+            dealer_stages: [],
+            lead_stages: ['New', 'Contacted', 'Converted', 'Lost'],
+            key_accounts: [],
+            dealer_categories: []
+        };
+    }
+    return _appSettingsCache;
+}
+
 exports.geminiChat = onCall({ secrets: [geminiApiKey] }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Must be authenticated to use the AI assistant.');
@@ -965,7 +1003,7 @@ exports.geminiChat = onCall({ secrets: [geminiApiKey] }, async (request) => {
     const functionDeclarations = [
         {
             name: 'searchDealers',
-            description: 'Search and filter the dealer list. Returns matching dealer objects.',
+            description: 'Search, filter, and rank dealers. Use this for general searches or when the user asks for rankings, top sellers, or sorting by sales.',
             parameters: {
                 type: 'OBJECT',
                 properties: {
@@ -978,7 +1016,11 @@ exports.geminiChat = onCall({ secrets: [geminiApiKey] }, async (request) => {
                             state: { type: 'STRING' },
                             district: { type: 'STRING' }
                         }
-                    }
+                    },
+                    sortBy: { type: 'STRING', description: 'Field to sort by, e.g., "sales" for top sellers.' },
+                    sortOrder: { type: 'STRING', enum: ['asc', 'desc'], description: 'Default is "desc".' },
+                    limit: { type: 'NUMBER', description: 'Number of results to return (default 10 for AI efficiency).' },
+                    period: { type: 'STRING', description: 'Optional historical year (e.g. "21-22") to search within.' }
                 }
             }
         },
@@ -1018,12 +1060,22 @@ exports.geminiChat = onCall({ secrets: [geminiApiKey] }, async (request) => {
         },
         {
             name: 'searchLeads',
-            description: 'Search and filter B2B leads (prospective dealers).',
+            description: 'Search, filter, and sort B2B leads. Use this for general lead searches or when the user asks for sorted/filtered lead data.',
             parameters: {
                 type: 'OBJECT',
                 properties: {
-                    query: { type: 'STRING' },
-                    filters: { type: 'OBJECT', properties: { status: { type: 'STRING' }, district: { type: 'STRING' } } }
+                    query: { type: 'STRING', description: 'Text to search (name, business name, etc.)' },
+                    filters: {
+                        type: 'OBJECT',
+                        properties: {
+                            status: { type: 'STRING', description: 'Filter by lead status.' },
+                            state: { type: 'STRING', description: 'Filter by state.' },
+                            district: { type: 'STRING', description: 'Filter by district.' }
+                        }
+                    },
+                    sortBy: { type: 'STRING', description: 'Field to sort by (e.g., "name", "business_name", "created_at").' },
+                    sortOrder: { type: 'STRING', enum: ['asc', 'desc'], description: 'Default is "desc".' },
+                    limit: { type: 'NUMBER', description: 'Number of results to return (default 10 for AI efficiency).' }
                 }
             }
         },
@@ -1115,17 +1167,57 @@ exports.geminiChat = onCall({ secrets: [geminiApiKey] }, async (request) => {
                 required: ['phone'],
                 properties: { phone: { type: 'STRING' } }
             }
+        },
+        {
+            name: 'getDealerSales',
+            description: 'Get aggregated sales and period-specific sales for a dealer. Use this for detailed year-over-year breakdowns of a single dealer.',
+            parameters: {
+                type: 'OBJECT',
+                required: ['dealerId'],
+                properties: {
+                    dealerId: { type: 'STRING', description: 'The unique ID or name of the dealer.' },
+                    periods: {
+                        type: 'ARRAY',
+                        items: { type: 'STRING' },
+                        description: 'Optional list of financial year periods (e.g. ["20-21", "21-22"]) to fetch historical sales. Monthly data is NOT available.'
+                    }
+                }
+            }
         }
     ];
 
-    const systemInstruction = `You are an AI assistant built into the Yes Bheem CRM web application.
-You help sales teams manage dealers and B2B leads, send WhatsApp messages, and work with media and message templates.
+    // Load live settings (cached in module memory, refreshed at most once per hour)
+    const appSettings = await getAppSettings();
 
-Guidelines:
+    // Extract readable lists for the prompt
+    const kamNames = appSettings.key_accounts
+        .map(k => (typeof k === 'object' ? k.name : k))
+        .filter(Boolean)
+        .join(', ') || 'Not configured';
+    const dealerStages = appSettings.dealer_stages.join(', ') || 'Not configured';
+    const leadStages = appSettings.lead_stages.join(', ') || 'New, Contacted, Converted, Lost';
+    const dealerCats = appSettings.dealer_categories.join(', ') || 'Not configured';
+
+    const systemInstruction = `You are Yes Bheem AI, an intelligent assistant built into the Yes Bheem CRM web application.
+You help sales teams manage dealers and B2B leads, analyse sales performance, send WhatsApp messages, and work with media and message templates.
+
+## Application Context (live data — do not guess these values)
+- Dealer stages: ${dealerStages}
+- Lead stages: ${leadStages}
+- Key Account Managers (KAMs): ${kamNames}
+- Dealer categories: ${dealerCats}
+- Dealers are identified by their "customer_name" field (this is the primary key, not "id")
+- The primary market is Kerala, India. Default state filter to "Kerala" when the user doesn't specify.
+- Sales figures are in Indian Rupees (₹).
+- Only financial year reports are available (e.g., 20-21, 21-22). Monthly breakdowns are NOT supported.
+
+## Behaviour Guidelines
 - Be concise and professional.
-- When the user asks for data (e.g. "show dealers in Kerala"), always call the relevant search function.
+- Always call the relevant tool when the user asks for data (dealers, leads, templates, media).
+- Use the exact stage/status values listed above when constructing filter arguments — do not invent new values.
+- When a user mentions a KAM name (even partially), match it to the known KAM list above.
 - Before performing destructive actions (delete, deactivate, send messages), always confirm with the user.
-- When you call a function, the result will be provided back to you — use it to give a helpful, summarised response.
+- When a tool returns results, summarise them helpfully and concisely — do not dump raw JSON.
 - Dates and times are in IST (Indian Standard Time).
 - If a request is outside your tool capabilities, say so clearly.`;
 
