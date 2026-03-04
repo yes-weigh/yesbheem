@@ -145,18 +145,20 @@ export class AIChatbotTools {
      */
     async updateDealer({ dealerId, updates } = {}) {
         try {
-            if (!window.dealerManager) throw new Error("DealerManager not available.");
             const dealer = await this.getDealerDetails({ dealerId });
-
-            // Merge updates
             const updatedDealer = { ...dealer, ...updates };
 
-            // Call the existing service method directly bypassing UI prompts
-            await window.dealerManager.service.updateDealer(dealer.customer_name, updatedDealer);
+            if (window.dealerManager && window.dealerManager.service) {
+                await window.dealerManager.service.updateDealer(dealer.customer_name, updatedDealer);
 
-            // Try to refresh UI if we are on the dealer page
-            if (typeof window.dealerManager.loadData === 'function') {
-                window.dealerManager.loadData(true);
+                if (typeof window.dealerManager.loadData === 'function') {
+                    window.dealerManager.loadData(true);
+                }
+            } else if (window.dataManager && window.dataManager.dataLayer) {
+                console.log("[AIChatbotTools] updateDealer: Using dataLayer headlessly");
+                await window.dataManager.dataLayer.updateDealer(dealer.customer_name, updates);
+            } else {
+                throw new Error("Unable to update dealer. DealerManager and DataManager not available.");
             }
 
             return true;
@@ -207,9 +209,16 @@ export class AIChatbotTools {
      */
     async searchLeads({ query = '', filters = {} } = {}) {
         try {
-            if (!window.b2bLeadsManager) throw new Error("B2BLeadsManager not available.");
-
-            let data = window.b2bLeadsManager.leads || [];
+            let data = [];
+            let mgr = await this._getManager('b2bLeadsManager', true);
+            if (mgr && mgr.leads) {
+                data = mgr.leads;
+            } else {
+                console.log("[AIChatbotTools] searchLeads: Fetching leads headlessly");
+                const { B2BLeadsService } = await import('./services/b2b_leads_service.js');
+                const service = new B2BLeadsService();
+                data = await service.getAllLeads();
+            }
 
             if (query) {
                 const q = String(query).toLowerCase();
@@ -241,8 +250,18 @@ export class AIChatbotTools {
      */
     async getLeadDetails({ leadId } = {}) {
         try {
-            if (!window.b2bLeadsManager) throw new Error("B2BLeadsManager not available.");
-            const lead = window.b2bLeadsManager.leads.find(l => l.id === leadId);
+            let data = [];
+            let mgr = await this._getManager('b2bLeadsManager', true);
+            if (mgr && mgr.leads) {
+                data = mgr.leads;
+            } else {
+                console.log("[AIChatbotTools] getLeadDetails: Fetching leads headlessly");
+                const { B2BLeadsService } = await import('./services/b2b_leads_service.js');
+                const service = new B2BLeadsService();
+                data = await service.getAllLeads();
+            }
+
+            const lead = data.find(l => l.id === leadId);
             if (!lead) throw new Error(`Lead not found: ${leadId}`);
             return lead;
         } catch (error) {
@@ -259,13 +278,23 @@ export class AIChatbotTools {
      */
     async createOrUpdateLead({ payload, leadId = null } = {}) {
         try {
-            if (!window.b2bLeadsManager) throw new Error("B2BLeadsManager not available.");
+            let mgr = await this._getManager('b2bLeadsManager', true);
+            let service;
+            if (mgr && mgr.service) {
+                service = mgr.service;
+            } else {
+                console.log("[AIChatbotTools] createOrUpdateLead: Using service headlessly");
+                const { B2BLeadsService } = await import('./services/b2b_leads_service.js');
+                service = new B2BLeadsService();
+            }
 
             if (leadId) {
-                await window.b2bLeadsManager.service.updateLead(leadId, payload);
+                await service.updateLead(leadId, payload);
+                if (mgr && typeof mgr.loadData === 'function') mgr.loadData(true);
                 return leadId;
             } else {
-                const newId = await window.b2bLeadsManager.service.addLead(payload);
+                const newId = await service.addLead(payload);
+                if (mgr && typeof mgr.loadData === 'function') mgr.loadData(true);
                 return newId;
             }
         } catch (error) {
@@ -299,10 +328,20 @@ export class AIChatbotTools {
      */
     async deleteLead({ leadId } = {}) {
         try {
-            const mgr = await this._getManager('b2bLeadsManager');
-            await mgr.service.deleteLead(leadId);
+            let mgr = await this._getManager('b2bLeadsManager', true);
+            let service;
+            if (mgr && mgr.service) {
+                service = mgr.service;
+            } else {
+                console.log("[AIChatbotTools] deleteLead: Using service headlessly");
+                const { B2BLeadsService } = await import('./services/b2b_leads_service.js');
+                service = new B2BLeadsService();
+            }
+
+            await service.deleteLead(leadId);
+
             // Refresh UI if on the B2B leads page
-            if (typeof mgr.loadData === 'function') mgr.loadData(true);
+            if (mgr && typeof mgr.loadData === 'function') mgr.loadData(true);
             return true;
         } catch (error) {
             console.error("error in deleteLead:", error);
@@ -322,8 +361,17 @@ export class AIChatbotTools {
      */
     async searchMedia({ query = '', filters = {} } = {}) {
         try {
-            if (!window.mediaManager) throw new Error("MediaManager not available.");
-            let data = window.mediaManager.media || [];
+            let mgr = await this._getManager('mediaManager', true);
+            let data = [];
+
+            if (mgr && mgr.media) {
+                data = mgr.media;
+            } else {
+                console.log("[AIChatbotTools] searchMedia: Fetching media headlessly");
+                await import('./services/media_service.js');
+                const service = new window.MediaService();
+                data = await service.getMedia();
+            }
 
             if (filters && filters.category && filters.category !== 'All') {
                 data = data.filter(m => (m.category || 'General') === filters.category);
@@ -353,8 +401,19 @@ export class AIChatbotTools {
      */
     async getMediaUrl({ mediaId } = {}) {
         try {
-            if (!window.mediaManager) throw new Error("MediaManager not available.");
-            const media = window.mediaManager.media.find(m => m.id === mediaId);
+            let mgr = await this._getManager('mediaManager', true);
+            let data = [];
+
+            if (mgr && mgr.media) {
+                data = mgr.media;
+            } else {
+                console.log("[AIChatbotTools] getMediaUrl: Fetching media headlessly");
+                await import('./services/media_service.js');
+                const service = new window.MediaService();
+                data = await service.getMedia();
+            }
+
+            const media = data.find(m => m.id === mediaId);
             if (!media) throw new Error(`Media not found: ${mediaId}`);
 
             return media.url;
@@ -527,7 +586,9 @@ export class AIChatbotTools {
             }
 
             if (!phone) throw new Error(`${entityType} has no valid phone number.`);
-            if (!kamName) throw new Error(`${entityType} is not assigned to a KAM.`);
+            if (!kamName) {
+                console.warn(`[AI WhatsApp] ${entityType} is not assigned to a KAM. Falling back to default session.`);
+            }
 
             // Get WhatsApp instances, gracefully fallback to API request if manager not loaded
             let waInstances = mgr ? (mgr.whatsappInstances || []) : [];
@@ -552,17 +613,27 @@ export class AIChatbotTools {
                 }
             }
 
-            const cleanName = (name) => (name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-            const targetKam = cleanName(kamName);
+            let instance;
 
-            let instance = waInstances.find(i => cleanName(i.kam) === targetKam);
+            if (kamName) {
+                const cleanName = (name) => (name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const targetKam = cleanName(kamName);
 
-            // Fallback: Partial match (e.g. "fazal v s" vs "fazal")
-            if (!instance) {
-                instance = waInstances.find(i =>
-                    cleanName(i.kam).includes(targetKam) ||
-                    targetKam.includes(cleanName(i.kam))
-                );
+                instance = waInstances.find(i => cleanName(i.kam) === targetKam);
+
+                // Fallback: Partial match (e.g. "fazal v s" vs "fazal")
+                if (!instance) {
+                    instance = waInstances.find(i =>
+                        cleanName(i.kam).includes(targetKam) ||
+                        targetKam.includes(cleanName(i.kam))
+                    );
+                }
+            }
+
+            // If no KAM was assigned, or we couldn't find a matching session, pick the first connected session
+            if (!instance && waInstances.length > 0) {
+                console.warn(`[AI WhatsApp] Using default connected WhatsApp session because KAM session could not be determined.`);
+                instance = waInstances[0]; // Or pick one that says "connected" if there's a status field, but getting ANY session is better than failing
             }
 
             if (!instance) {
