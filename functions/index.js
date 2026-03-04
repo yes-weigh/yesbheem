@@ -1195,8 +1195,15 @@ exports.handleWhatsAppInbound = onDocumentCreated({
     if (!settingsDoc.exists) return;
 
     const chatbotKamPhone = settingsDoc.data().chatbot_kam_phone;
-    if (!chatbotKamPhone || crmPhone !== chatbotKamPhone) {
+
+    // Normalize: strip non-digits and compare last 10 digits (handles 10-digit vs 12-digit mismatch)
+    const normalizeDigits = p => String(p || '').replace(/\D/g, '').slice(-10);
+    const chatbotKamLast10 = normalizeDigits(chatbotKamPhone);
+    const crmLast10 = normalizeDigits(crmPhone);
+
+    if (!chatbotKamLast10 || crmLast10 !== chatbotKamLast10) {
         // Message was not sent to the active Chatbot KAM
+        console.log(`[handleWhatsAppInbound] Skipping: crmPhone ${crmPhone} (${crmLast10}) != chatbotKAM ${chatbotKamPhone} (${chatbotKamLast10})`);
         return;
     }
 
@@ -1261,27 +1268,50 @@ If you need to perform an action on the CRM, politely let them know that a human
         const axios = require('axios');
         const apiUrl = whatsappApiUrl.value();
 
+        // Helper already defined above, re-use
+        const _norm10 = p => String(p || '').replace(/\D/g, '').slice(-10);
+        const crmNorm10 = _norm10(crmPhone);
+
         let sessionId = null;
         try {
-            const sessRes = await axios.get(`${apiUrl}/api/auth/sessions`);
-            const sessions = sessRes.data.sessions || [];
+            // Primary: cross-reference whatsapp_instances Firestore docs by stored phone
+            const instancesSnap = await admin.firestore().collection('whatsapp_instances').get();
+            instancesSnap.forEach(doc => {
+                if (sessionId) return; // already found
+                const d = doc.data();
+                // Phone may be stored directly on the doc or inside additionalData
+                const candidates = [
+                    d.phone,
+                    d.phoneNumber,
+                    d.additionalData?.phone,
+                    d.sessionId,
+                    doc.id
+                ];
+                for (const c of candidates) {
+                    if (_norm10(c) === crmNorm10) {
+                        sessionId = d.sessionId || doc.id;
+                        console.log(`[handleWhatsAppInbound] Matched session ${sessionId} for crmPhone ${crmPhone} via Firestore field "${c}"`);
+                        break;
+                    }
+                }
+            });
 
-            // Search for matching CRM phone in session data
-            const matchedSession = sessions.find(s =>
-                s.phoneNumber === crmPhone ||
-                (s.additionalData && s.additionalData.phone === crmPhone) ||
-                s.id === crmPhone // Some sessions use phone as ID
-            );
-
-            if (matchedSession) {
-                sessionId = matchedSession.id || matchedSession.sessionId;
+            // Fallback: scan live /api/auth/sessions response
+            if (!sessionId) {
+                const sessRes = await axios.get(`${apiUrl}/api/auth/sessions`);
+                const sessions = sessRes.data.sessions || [];
+                const matchedSession = sessions.find(s => {
+                    const candidates = [s.phoneNumber, s.additionalData?.phone, s.id, s.sessionId];
+                    return candidates.some(c => _norm10(c) === crmNorm10);
+                });
+                if (matchedSession) sessionId = matchedSession.id || matchedSession.sessionId;
             }
         } catch (e) {
-            console.error('[handleWhatsAppInbound] Error fetching sessions:', e.message);
+            console.error('[handleWhatsAppInbound] Error resolving sessionId:', e.message);
         }
 
         if (!sessionId) {
-            console.error(`[handleWhatsAppInbound] No active WhatsApp session found for crmPhone: ${crmPhone}`);
+            console.error(`[handleWhatsAppInbound] No active WhatsApp session found for crmPhone: ${crmPhone} (norm: ${crmNorm10})`);
             return;
         }
 
