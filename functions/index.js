@@ -1,8 +1,8 @@
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+﻿const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onObjectFinalized } = require("firebase-functions/v2/storage");
-const { defineSecret } = require('firebase-functions/params');
+const { defineSecret, defineString } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const path = require('path');
 const os = require('os');
@@ -20,6 +20,7 @@ const smtpPassword = defineSecret('SMTP_PASSWORD');
 const smtpHost = defineSecret('SMTP_HOST');
 const smtpPort = defineSecret('SMTP_PORT');
 const smtpUser = defineSecret('SMTP_USER');
+const geminiApiKey = defineSecret('GEMINI_API_KEY');
 
 exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail, smtpPassword, smtpHost, smtpPort, smtpUser] }, async (request) => {
     const { phoneNumber, email, deviceFingerprint } = request.data;
@@ -928,4 +929,371 @@ exports.generateMissingThumbnails = onCall({
 
     console.log('[generateMissingThumbnails] Batch processing complete:', summary);
     return summary;
+});
+
+// ============================================================================
+// GEMINI AI CHATBOT PROXY
+// ============================================================================
+
+/**
+ * Proxies multi-turn chat requests to Gemini using the new @google/genai SDK.
+ * Keeps the API key server-side in Secret Manager.
+ *
+ * Request data:
+ *   history      [{role: 'user'|'model', parts: [{text}]}]  — prior turns
+ *   userMessage  string  — the new user message
+ *
+ * Response:
+ *   { type: 'text',          reply: string }          — plain AI reply
+ *   { type: 'function_call', name: string, args: {} } — tool the AI wants called
+ */
+exports.geminiChat = onCall({ secrets: [geminiApiKey] }, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Must be authenticated to use the AI assistant.');
+    }
+
+    const { history = [], userMessage } = request.data;
+
+    if (!userMessage || typeof userMessage !== 'string') {
+        throw new HttpsError('invalid-argument', 'userMessage is required and must be a string.');
+    }
+
+    const { GoogleGenAI } = require('@google/genai');
+    const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
+
+    // ── Tool declarations ────────────────────────────────────────────────────
+    const functionDeclarations = [
+        {
+            name: 'searchDealers',
+            description: 'Search and filter the dealer list. Returns matching dealer objects.',
+            parameters: {
+                type: 'OBJECT',
+                properties: {
+                    query: { type: 'STRING', description: 'Text to search by name, phone, etc.' },
+                    filters: {
+                        type: 'OBJECT',
+                        properties: {
+                            kam: { type: 'STRING' },
+                            stage: { type: 'STRING' },
+                            state: { type: 'STRING' },
+                            district: { type: 'STRING' }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            name: 'getDealerDetails',
+            description: 'Get full details for a specific dealer by their ID or name.',
+            parameters: {
+                type: 'OBJECT',
+                required: ['dealerId'],
+                properties: { dealerId: { type: 'STRING' } }
+            }
+        },
+        {
+            name: 'updateDealer',
+            description: 'Update a dealer properties such as stage, KAM, phone, or email.',
+            parameters: {
+                type: 'OBJECT',
+                required: ['dealerId', 'updates'],
+                properties: {
+                    dealerId: { type: 'STRING' },
+                    updates: { type: 'OBJECT' }
+                }
+            }
+        },
+        {
+            name: 'performBulkDealerAction',
+            description: 'Apply a bulk action (assign_kam or deactivate) to a list of dealers.',
+            parameters: {
+                type: 'OBJECT',
+                required: ['action', 'dealerIds'],
+                properties: {
+                    action: { type: 'STRING' },
+                    dealerIds: { type: 'ARRAY', items: { type: 'STRING' } },
+                    payload: { type: 'OBJECT' }
+                }
+            }
+        },
+        {
+            name: 'searchLeads',
+            description: 'Search and filter B2B leads (prospective dealers).',
+            parameters: {
+                type: 'OBJECT',
+                properties: {
+                    query: { type: 'STRING' },
+                    filters: { type: 'OBJECT', properties: { status: { type: 'STRING' }, district: { type: 'STRING' } } }
+                }
+            }
+        },
+        {
+            name: 'getLeadDetails',
+            description: 'Get details for a specific B2B lead.',
+            parameters: {
+                type: 'OBJECT',
+                required: ['leadId'],
+                properties: { leadId: { type: 'STRING' } }
+            }
+        },
+        {
+            name: 'createOrUpdateLead',
+            description: 'Create a new B2B lead or update an existing one.',
+            parameters: {
+                type: 'OBJECT',
+                required: ['payload'],
+                properties: {
+                    payload: { type: 'OBJECT' },
+                    leadId: { type: 'STRING' }
+                }
+            }
+        },
+        {
+            name: 'deleteLead',
+            description: 'Permanently delete a B2B lead by ID.',
+            parameters: {
+                type: 'OBJECT',
+                required: ['leadId'],
+                properties: { leadId: { type: 'STRING' } }
+            }
+        },
+        {
+            name: 'addLeadLog',
+            description: 'Add a CRM activity log entry to a lead.',
+            parameters: {
+                type: 'OBJECT',
+                required: ['leadId', 'content'],
+                properties: {
+                    leadId: { type: 'STRING' },
+                    content: { type: 'STRING' },
+                    logType: { type: 'STRING' }
+                }
+            }
+        },
+        {
+            name: 'searchMedia',
+            description: 'Search media assets in the library.',
+            parameters: {
+                type: 'OBJECT',
+                properties: {
+                    query: { type: 'STRING' },
+                    filters: { type: 'OBJECT', properties: { category: { type: 'STRING' }, language: { type: 'STRING' } } }
+                }
+            }
+        },
+        {
+            name: 'searchTemplates',
+            description: 'Search WhatsApp message templates.',
+            parameters: {
+                type: 'OBJECT',
+                properties: {
+                    query: { type: 'STRING' },
+                    filters: { type: 'OBJECT', properties: { status: { type: 'STRING' }, language: { type: 'STRING' }, category: { type: 'STRING' } } }
+                }
+            }
+        },
+        {
+            name: 'sendWhatsAppMessage',
+            description: 'Send a WhatsApp message to a dealer or lead. Provide either templateId (for approved templates) or text (for normal messages).',
+            parameters: {
+                type: 'OBJECT',
+                required: ['entityId', 'entityType'],
+                properties: {
+                    entityId: { type: 'STRING' },
+                    entityType: { type: 'STRING', description: 'dealer or lead' },
+                    templateId: { type: 'STRING', description: 'WhatsApp template ID' },
+                    text: { type: 'STRING', description: 'Plain text message body' },
+                    mediaId: { type: 'STRING' }
+                }
+            }
+        },
+        {
+            name: 'getChatHistory',
+            description: 'Fetch the WhatsApp chat history for a phone number.',
+            parameters: {
+                type: 'OBJECT',
+                required: ['phone'],
+                properties: { phone: { type: 'STRING' } }
+            }
+        }
+    ];
+
+    const systemInstruction = `You are an AI assistant built into the Yes Bheem CRM web application.
+You help sales teams manage dealers and B2B leads, send WhatsApp messages, and work with media and message templates.
+
+Guidelines:
+- Be concise and professional.
+- When the user asks for data (e.g. "show dealers in Kerala"), always call the relevant search function.
+- Before performing destructive actions (delete, deactivate, send messages), always confirm with the user.
+- When you call a function, the result will be provided back to you — use it to give a helpful, summarised response.
+- Dates and times are in IST (Indian Standard Time).
+- If a request is outside your tool capabilities, say so clearly.`;
+
+    // Build contents array: full history + new user message
+    const contents = [
+        ...history,
+        { role: 'user', parts: [{ text: userMessage }] }
+    ];
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents,
+            config: {
+                systemInstruction,
+                tools: [{ functionDeclarations }]
+            }
+        });
+
+        // Check if Gemini wants to call a function
+        const parts = response.candidates?.[0]?.content?.parts || [];
+        for (const part of parts) {
+            if (part.functionCall) {
+                console.log(`[geminiChat] Function call: ${part.functionCall.name}`, part.functionCall.args);
+                return {
+                    type: 'function_call',
+                    name: part.functionCall.name,
+                    args: part.functionCall.args
+                };
+            }
+        }
+
+        // Plain text reply
+        const textReply = response.text;
+        console.log(`[geminiChat] Reply for ${request.auth.uid}: ${String(textReply).substring(0, 80)}...`);
+        return { type: 'text', reply: textReply };
+
+    } catch (error) {
+        console.error('[geminiChat] Gemini API error:', error);
+        throw new HttpsError('internal', `AI service error: ${error.message}`);
+    }
+});
+
+const whatsappApiUrl = defineString('WHATSAPP_API_URL');
+
+exports.handleWhatsAppInbound = onDocumentCreated({
+    document: "wa_chats/{chatId}/messages/{msgId}",
+    secrets: [geminiApiKey]
+}, async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) return;
+
+    const msg = snapshot.data();
+
+    // 1. Ignore outbound messages
+    if (msg.fromMe === true) return;
+
+    const chatId = event.params.chatId;
+    // For safety, fallback to checking from msg or document name
+    const crmPhone = msg.crmPhone || (chatId ? chatId.split('_')[0] : null);
+    const leadPhone = msg.leadPhone || (chatId ? chatId.split('_')[1] : null);
+
+    if (!crmPhone || !leadPhone) return;
+
+    // 2. Check Chatbot Config
+    const settingsDoc = await admin.firestore().collection('settings').doc('general').get();
+    if (!settingsDoc.exists) return;
+
+    const chatbotKamPhone = settingsDoc.data().chatbot_kam_phone;
+    if (!chatbotKamPhone || crmPhone !== chatbotKamPhone) {
+        // Message was not sent to the active Chatbot KAM
+        return;
+    }
+
+    console.log(`[handleWhatsAppInbound] Processing inbound from ${leadPhone} to chatbot ${crmPhone}`);
+
+    // 3. Assemble chat history context (last 10 messages)
+    const messagesSnapshot = await admin.firestore()
+        .collection('wa_chats').doc(chatId)
+        .collection('messages')
+        .orderBy('timestamp', 'desc')
+        .limit(10)
+        .get();
+
+    const historyDocs = [];
+    messagesSnapshot.forEach(doc => historyDocs.push(doc.data()));
+    historyDocs.reverse(); // old to new
+
+    const history = [];
+    let userMessage = "";
+
+    for (let i = 0; i < historyDocs.length; i++) {
+        const docMsg = historyDocs[i];
+        const text = docMsg.content?.text || "";
+        if (!text) continue;
+
+        if (i === historyDocs.length - 1) {
+            userMessage = text;
+        } else {
+            history.push({
+                role: docMsg.fromMe ? 'model' : 'user',
+                parts: [{ text: text }]
+            });
+        }
+    }
+
+    if (!userMessage) return;
+
+    // 4. Call Gemini 1.5 Flash
+    const { GoogleGenAI } = require('@google/genai');
+    const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
+
+    const systemInstruction = `You are a helpful assistant for Yes Bheem CRM on WhatsApp.
+Please keep your answers short, polite, and conversational. Respond in plain text without Markdown.
+If you need to perform an action on the CRM, politely let them know that a human Key Account Manager will assist them shortly.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [
+                ...history,
+                { role: 'user', parts: [{ text: userMessage }] }
+            ],
+            config: { systemInstruction }
+        });
+
+        const replyText = response.text;
+        if (!replyText) return;
+
+        console.log(`[handleWhatsAppInbound] Generated reply: ${replyText}`);
+
+        // 5. Find Session ID for Outbound API Call
+        const axios = require('axios');
+        const apiUrl = whatsappApiUrl.value();
+
+        let sessionId = null;
+        try {
+            const sessRes = await axios.get(`${apiUrl}/api/auth/sessions`);
+            const sessions = sessRes.data.sessions || [];
+
+            // Search for matching CRM phone in session data
+            const matchedSession = sessions.find(s =>
+                s.phoneNumber === crmPhone ||
+                (s.additionalData && s.additionalData.phone === crmPhone) ||
+                s.id === crmPhone // Some sessions use phone as ID
+            );
+
+            if (matchedSession) {
+                sessionId = matchedSession.id || matchedSession.sessionId;
+            }
+        } catch (e) {
+            console.error('[handleWhatsAppInbound] Error fetching sessions:', e.message);
+        }
+
+        if (!sessionId) {
+            console.error(`[handleWhatsAppInbound] No active WhatsApp session found for crmPhone: ${crmPhone}`);
+            return;
+        }
+
+        // 6. Send Reply via HTTP POST to Baileys Server
+        console.log(`[handleWhatsAppInbound] Sending reply via session ${sessionId} to ${leadPhone}`);
+        await axios.post(`${apiUrl}/api/messages/text`, {
+            sessionId: sessionId,
+            to: leadPhone,
+            text: replyText
+        });
+
+    } catch (error) {
+        console.error('[handleWhatsAppInbound] Failed to process auto-reply:', error);
+    }
 });

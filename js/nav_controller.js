@@ -72,7 +72,18 @@ const PAGE_REGISTRY = {
     // ── Stub pages — pure HTML, no JS init needed ───────────────────────────
     'login': null,
     'welcome': null,
-    'chatbot': null,
+    'chatbot': async () => {
+        const basePath = (window.appConfig && window.appConfig.getBasePath()) || '/';
+        const mod = await import(`${basePath}js/controllers/chatbot_controller.js`)
+            .catch(e => console.error('[SPA] chatbot_controller load failed', e));
+        if (!mod) return;
+        const CtrlClass = mod.default || window.ChatbotController;
+        if (CtrlClass) {
+            const ctrl = new CtrlClass();
+            await ctrl.init();  // async — waits for Firebase import
+            window._chatbotCtrl = ctrl;
+        }
+    },
     'broadcast': null,
     'contacts': null,
     'groupgrabber': null,

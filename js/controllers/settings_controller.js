@@ -80,6 +80,7 @@ export class SettingsController {
                 this.keyAccountImages = data.key_account_images || {};
                 this.stageImages = data.stage_images || {};
                 this.categoryImages = data.category_images || {};
+                this.chatbotKamPhone = data.chatbot_kam_phone || null;
             } else {
                 console.log("No settings document found. Creating default...");
                 // Initialize defaults
@@ -91,6 +92,7 @@ export class SettingsController {
                 this.templateLanguages = ['English', 'Malayalam', 'Hindi', 'Tamil', 'Telugu'];
                 this.templateCategories = ['Marketing', 'Transactional', 'Promotional', 'Support'];
                 this.keyAccountImages = {}; // Map: Name -> URL
+                this.chatbotKamPhone = null;
 
                 await setDoc(docRef, {
                     key_accounts: this.keyAccounts,
@@ -102,7 +104,8 @@ export class SettingsController {
                     template_categories: this.templateCategories,
                     key_account_images: this.keyAccountImages,
                     stage_images: {},
-                    category_images: {}
+                    category_images: {},
+                    chatbot_kam_phone: this.chatbotKamPhone
                 });
             }
 
@@ -281,6 +284,35 @@ export class SettingsController {
             import('../utils/toast.js').then(m => m.Toast.error('Failed to remove image'));
             // Revert local state if critical failure
             // this.loadData();
+        }
+    }
+
+    /**
+     * Set a KAM as the active WhatsApp chatbot
+     */
+    async handleSetChatbotKam(kamName, kamPhone) {
+        if (!kamPhone) return;
+
+        const isCurrentChatbot = this.chatbotKamPhone === kamPhone;
+
+        if (isCurrentChatbot) {
+            if (!confirm(`Remove "${kamName}" from being the active Chatbot?`)) return;
+            this.chatbotKamPhone = null;
+        } else {
+            if (!confirm(`Set "${kamName}" as the active WhatsApp Chatbot?\n\nInbound messages to this KAM will be auto-replied by AI.`)) return;
+            this.chatbotKamPhone = kamPhone;
+        }
+
+        try {
+            const docRef = doc(db, "settings", "general");
+            await updateDoc(docRef, { chatbot_kam_phone: this.chatbotKamPhone });
+
+            this.renderKeyAccounts(); // Re-render to update UI icon
+
+            import('../utils/toast.js').then(m => m.Toast.success(this.chatbotKamPhone ? `Chatbot assigned to ${kamName}` : `Chatbot disabled for ${kamName}`));
+        } catch (error) {
+            console.error('Failed to set chatbot KAM:', error);
+            import('../utils/toast.js').then(m => m.Toast.error('Failed to update chatbot assignment'));
         }
     }
 
@@ -1043,6 +1075,7 @@ export class SettingsController {
             const name = account.name;
             const phone = account.phone || '';
             const hasImage = this.keyAccountImages && this.keyAccountImages[name];
+            const isChatbot = this.chatbotKamPhone && this.chatbotKamPhone === phone;
             return `
             <div class="list-item">
                 <div style="display:flex; align-items:center; gap:10px; flex: 1;">
@@ -1056,6 +1089,11 @@ export class SettingsController {
                     ${hasImage ? `
                     <button class="delete-btn" onclick="window.settingsController.handleRemoveItemImage('kam', '${this.escapeHtml(name)}')" title="Remove Image" style="color:#ef4444; border-color: rgba(239,68,68,0.3); margin-right:4px;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                    ` : ''}
+                    ${phone ? `
+                    <button class="edit-btn" onclick="window.settingsController.handleSetChatbotKam('${this.escapeHtml(name)}', '${this.escapeHtml(phone)}')" title="${isChatbot ? 'Active Chatbot (Click to disable)' : 'Set as Chatbot'}" style="${isChatbot ? 'color: var(--success-color); border-color: var(--success-color);' : ''}">
+                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h2a2 2 0 0 1 2 2v2h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2v2a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-2H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h2V9a2 2 0 0 1 2-2h2V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2zM9 13v2h2v-2H9zm4 0v2h2v-2h-2z"></path></svg>
                     </button>
                     ` : ''}
                     <button class="edit-btn" onclick="window.settingsController.handleSetItemImage('kam', '${this.escapeHtml(name)}')" title="${hasImage ? 'Change Image' : 'Set Image'}">
