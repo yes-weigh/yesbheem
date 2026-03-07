@@ -1,0 +1,92 @@
+<div class="fb-layout">
+    <!-- Left Sidebar: Flow List & Palette -->
+    <div class="fb-sidebar fb-sidebar-left">
+        <div class="fb-sidebar-section">
+            <div class="fb-sidebar-header">
+                <h3>Your Flows</h3>
+                <button class="btn btn-sm btn-primary" onclick="window.flowBuilderManager.createNewFlow()">+
+                    New</button>
+            </div>
+            <div id="flow-list-container" class="fb-flow-list">
+                <!-- Dynamically populated via JS -->
+                <div class="fb-loading-spinner">Loading flows...</div>
+            </div>
+        </div>
+
+        <div class="fb-sidebar-section fb-palette-section">
+            <div class="fb-sidebar-header">
+                <h3>Add Nodes</h3>
+            </div>
+            <div class="fb-node-palette">
+                <div class="fb-drag-node fb-node-trigger" draggable="true"
+                    ondragstart="window.flowBuilderManager.drag(event)" data-node="trigger">
+                    <span class="fb-node-icon">⚡</span> <span class="fb-node-label">Trigger</span>
+                </div>
+                <div class="fb-drag-node fb-node-condition" draggable="true"
+                    ondragstart="window.flowBuilderManager.drag(event)" data-node="condition">
+                    <span class="fb-node-icon">🛤️</span> <span class="fb-node-label">Condition</span>
+                </div>
+                <div class="fb-drag-node fb-node-action" draggable="true"
+                    ondragstart="window.flowBuilderManager.drag(event)" data-node="action">
+                    <span class="fb-node-icon">⚙️</span> <span class="fb-node-label">Action</span>
+                </div>
+                <div class="fb-drag-node fb-node-ai" draggable="true"
+                    ondragstart="window.flowBuilderManager.drag(event)" data-node="ai">
+                    <span class="fb-node-icon">🤖</span> <span class="fb-node-label">AI Agent</span>
+                </div>
+                <div class="fb-drag-node fb-node-wait" draggable="true"
+                    ondragstart="window.flowBuilderManager.drag(event)" data-node="wait">
+                    <span class="fb-node-icon">⏳</span> <span class="fb-node-label">Wait</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Center: Canvas Area -->
+    <div class="fb-main">
+        <div class="fb-topbar fb-hidden" id="fb-topbar">
+            <input type="text" id="flow-name-input" class="fb-flow-title" placeholder="Untitled Flow">
+            <div class="fb-topbar-actions">
+                <label class="fb-toggle">
+                    <input type="checkbox" id="flow-enabled-input">
+                    <span class="fb-toggle-slider"></span>
+                    <span class="fb-toggle-label">Active</span>
+                </label>
+                <button class="btn btn-primary btn-icon-text" id="save-flow-btn"
+                    onclick="window.flowBuilderManager.saveCurrentFlow()">
+                    <i>💾</i> Save Flow
+                </button>
+            </div>
+        </div>
+
+        <div class="fb-canvas-container">
+            <!-- Drawflow Canvas -->
+            <div id="drawflow" class="fb-hidden" ondrop="window.flowBuilderManager.drop(event)"
+                ondragover="window.flowBuilderManager.allowDrop(event)"></div>
+
+            <!-- Empty State -->
+            <div id="no-flow-selected" class="fb-empty-state">
+                <div class="fb-empty-icon">🔀</div>
+                <h3>Visual Flow Builder</h3>
+                <p>Select a flow from the sidebar to edit it, or create a new one to automate your WhatsApp
+                    conversations.</p>
+                <button class="btn btn-primary btn-lg" onclick="window.flowBuilderManager.createNewFlow()">Create New
+                    Flow</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Sidebar: Property Panel -->
+    <div id="fb-property-panel" class="fb-sidebar fb-sidebar-right">
+        <div class="fb-panel-header">
+            <h3 id="fb-panel-title">Node Settings</h3>
+            <button class="fb-close-btn" onclick="window.flowBuilderManager.closePropertyPanel()">&times;</button>
+        </div>
+        <div id="fb-panel-body" class="fb-panel-body">
+            <div class="fb-panel-empty">
+                <i>⚙️</i>
+                <p>Select a node on the canvas to configure its properties.</p>
+            </div>
+        </div>
+    </div>
+</div>

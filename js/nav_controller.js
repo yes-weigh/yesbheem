@@ -39,6 +39,7 @@ const PAGE_REGISTRY = {
     'media': () => initManager('MediaManager', 'mediaMgr'),
     'template': () => initManager('TemplateManager', 'tmplMgr'),
     'discussions': () => initManager('BoardController', 'boardController'),
+    'flow-builder': () => initManager('FlowBuilderManager', 'flowBuilderManager'),
 
     // ── Settings (multi-controller) ─────────────────────────────────────────
     'settings': () => {
@@ -116,6 +117,7 @@ class NavigationController {
             { id: 'yesbheem', name: 'Chatbot', icon: '⚡' },
             { id: 'chatbot', name: 'Yes Bheem AI', icon: '🤖' },
             { id: 'integration', name: 'Integration', icon: '🔌' },
+            { id: 'flow-builder', name: 'Flow Builder', icon: '🔀' },
             { id: 'settings', name: 'Settings', icon: '⚙️' }
         ];
         this.init();

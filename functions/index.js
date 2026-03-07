@@ -7,6 +7,7 @@ const admin = require('firebase-admin');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const { evaluateFlows } = require('./flowEngine');
 
 
 admin.initializeApp();
@@ -1298,6 +1299,14 @@ exports.handleWhatsAppInbound = onDocumentCreated({
         console.log(`[handleWhatsAppInbound] Skipping: crmPhone ${crmPhone} (${crmLast10}) != chatbotKAM ${chatbotKamPhone} (${chatbotKamLast10})`);
         return;
     }
+
+    // --- FLOW ENGINE INTEGRATION ---
+    const flowHandled = await evaluateFlows(msg, chatId, crmPhone, leadPhone);
+    if (flowHandled) {
+        console.log(`[handleWhatsAppInbound] Message handled by Visual Flow Builder. Skipping Gemini AI.`);
+        return;
+    }
+    // -------------------------------
 
     console.log(`[handleWhatsAppInbound] Processing inbound from ${leadPhone} to chatbot ${crmPhone}`);
 

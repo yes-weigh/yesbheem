@@ -44,6 +44,8 @@
     <link rel="stylesheet" href="/css/settings.css">
     <link rel="stylesheet" href="/css/discussions.css?v=4">
     <link rel="stylesheet" href="/css/chatbot.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow/dist/drawflow.min.css">
+    <link rel="stylesheet" href="/css/flow_builder.css">
 </head>
 
 <body>
@@ -152,6 +154,10 @@
                     <span class="nav-icon">🔌</span>
                     <span class="nav-text">Integration</span>
                 </div>
+                <div class="nav-item" data-page="flow-builder">
+                    <span class="nav-icon">🔀</span>
+                    <span class="nav-text">Flow Builder</span>
+                </div>
                 <div class="nav-item" data-page="settings">
                     <span class="nav-icon">⚙️</span>
                     <span class="nav-text">Settings</span>
@@ -185,6 +191,9 @@
     <!-- Marked.js for markdown rendering in chatbot -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
+    <!-- Drawflow for Visual Flow Builder -->
+    <script src="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow/dist/drawflow.min.js"></script>
+
     <!-- ═══════════════════════════════════════════════════════════════════
          § 2 — CONFIG & THEME  (must load before any manager)
          ═══════════════════════════════════════════════════════════════════ -->
@@ -217,6 +226,7 @@
     <script type="module" src="/js/instance_manager.js"></script>
     <script src="/js/media_manager.js"></script>
     <script type="module" src="/js/controllers/board_controller.js"></script>
+    <script type="module" src="/js/flow_builder_manager.js"></script>
 
     <!-- Settings (4 controllers for the settings page) -->
     <script type="module" src="/js/controllers/settings_controller.js"></script>

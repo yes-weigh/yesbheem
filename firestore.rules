@@ -97,6 +97,14 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
+    // Visual Flow Builder
+    match /flows/{flowId} {
+      allow read, write: if isActiveUser() || request.auth.token.role == 'admin';
+    }
+    match /flow_sessions/{sessionId} {
+      allow read, write: if isActiveUser() || request.auth.token.role == 'admin';
+    }
+
     // WhatsApp Instances Metadata
     match /whatsapp_instances/{docId} {
       allow read, write: if isActiveUser() || request.auth.token.role == 'admin';
