@@ -1619,67 +1619,67 @@
                     <label class="detail-label">Campaign Name</label>
                     <div id="view-campaign-name" class="detail-value large">...</div>
                 </div>
-            </div>
 
-            <div class="campaign-details-grid">
-                <div class="detail-item">
-                    <label class="detail-label">Status</label>
-                    <div id="view-campaign-status" class="detail-value">...</div>
-                </div>
-                <div class="detail-item">
-                    <label class="detail-label">Progress</label>
-                    <div id="view-campaign-progress" class="detail-value">...</div>
-                    <div class="modern-progress-bar">
-                        <div id="view-campaign-progress-fill" class="progress-fill"></div>
+                <div class="campaign-details-grid">
+                    <div class="detail-item">
+                        <label class="detail-label">Status</label>
+                        <div id="view-campaign-status" class="detail-value">...</div>
+                    </div>
+                    <div class="detail-item">
+                        <label class="detail-label">Progress</label>
+                        <div id="view-campaign-progress" class="detail-value">...</div>
+                        <div class="modern-progress-bar">
+                            <div id="view-campaign-progress-fill" class="progress-fill"></div>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <label class="detail-label">Audience</label>
+                        <div id="view-campaign-audience" class="detail-value">...</div>
+                    </div>
+                    <div class="detail-item">
+                        <label class="detail-label">Manager (KAM)</label>
+                        <div id="view-campaign-kam" class="detail-value">...</div>
+                    </div>
+                    <div class="detail-item">
+                        <label class="detail-label">Template</label>
+                        <div id="view-campaign-template" class="detail-value">...</div>
+                    </div>
+                    <div class="detail-item">
+                        <label class="detail-label">Sender Instance</label>
+                        <div id="view-campaign-sender" class="detail-value">...</div>
+                    </div>
+                    <div class="detail-item">
+                        <label class="detail-label">Delay Setting</label>
+                        <div id="view-campaign-delay" class="detail-value">...</div>
+                    </div>
+                    <div class="detail-item">
+                        <label class="detail-label">Created At</label>
+                        <div id="view-campaign-created" class="detail-value">...</div>
                     </div>
                 </div>
-                <div class="detail-item">
-                    <label class="detail-label">Audience</label>
-                    <div id="view-campaign-audience" class="detail-value">...</div>
-                </div>
-                <div class="detail-item">
-                    <label class="detail-label">Manager (KAM)</label>
-                    <div id="view-campaign-kam" class="detail-value">...</div>
-                </div>
-                <div class="detail-item">
-                    <label class="detail-label">Template</label>
-                    <div id="view-campaign-template" class="detail-value">...</div>
-                </div>
-                <div class="detail-item">
-                    <label class="detail-label">Sender Instance</label>
-                    <div id="view-campaign-sender" class="detail-value">...</div>
-                </div>
-                <div class="detail-item">
-                    <label class="detail-label">Delay Setting</label>
-                    <div id="view-campaign-delay" class="detail-value">...</div>
-                </div>
-                <div class="detail-item">
-                    <label class="detail-label">Created At</label>
-                    <div id="view-campaign-created" class="detail-value">...</div>
-                </div>
+
+                <!-- AntiBan Panel will be injected here by JS -->
             </div>
 
-            <!-- AntiBan Panel will be injected here by JS -->
-        </div>
-
-        <!-- MESSAGES LOG TAB -->
-        <div id="view-tab-logs" class="logs-tab-panel">
-            <div class="logs-table-container">
-                <table class="logs-table">
-                    <thead>
-                        <tr>
-                            <th class="logs-th">Phone</th>
-                            <th class="logs-th">Name</th>
-                            <th class="logs-th">Status</th>
-                            <th class="logs-th">Sent Time</th>
-                        </tr>
-                    </thead>
-                    <tbody id="view-campaign-logs-body">
-                        <tr>
-                            <td colspan="4" class="logs-td-empty">Loading logs...</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <!-- MESSAGES LOG TAB -->
+            <div id="view-tab-logs" class="logs-tab-panel" style="display: none;">
+                <div class="logs-table-container">
+                    <table class="logs-table">
+                        <thead>
+                            <tr>
+                                <th class="logs-th">Phone</th>
+                                <th class="logs-th">Name</th>
+                                <th class="logs-th">Status</th>
+                                <th class="logs-th">Sent Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="view-campaign-logs-body">
+                            <tr>
+                                <td colspan="4" class="logs-td-empty">Loading logs...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

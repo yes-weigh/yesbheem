@@ -998,18 +998,14 @@ class CampaignManager {
         const contentLogs = modal.querySelector('#view-tab-logs');
 
         if (tabName === 'overview') {
-            tabOverview.style.color = 'var(--text-main)';
-            tabOverview.style.borderBottomColor = 'var(--accent-color)';
-            tabLogs.style.color = 'var(--text-muted)';
-            tabLogs.style.borderBottomColor = 'transparent';
+            tabOverview.classList.add('active');
+            tabLogs.classList.remove('active');
 
             contentOverview.style.display = 'block';
             contentLogs.style.display = 'none';
         } else {
-            tabLogs.style.color = 'var(--text-main)';
-            tabLogs.style.borderBottomColor = 'var(--accent-color)';
-            tabOverview.style.color = 'var(--text-muted)';
-            tabOverview.style.borderBottomColor = 'transparent';
+            tabLogs.classList.add('active');
+            tabOverview.classList.remove('active');
 
             contentLogs.style.display = 'block';
             contentOverview.style.display = 'none';
