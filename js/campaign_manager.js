@@ -701,6 +701,38 @@ class CampaignManager {
         // Fix: Track Current ID for Logs
         this.currentViewingCampaignId = id;
 
+        // Reset Retry UI
+        const retryContainer = document.getElementById('retry-failed-container');
+        const retrySelect = document.getElementById('retry-session-select');
+        const retryCountText = document.getElementById('retry-failed-count');
+        const retryBtn = document.getElementById('btn-retry-failed');
+
+        if (retryContainer) retryContainer.style.display = 'none';
+
+        if (campaign.stats && campaign.stats.failed > 0) {
+            if (retryContainer && retrySelect && retryCountText && retryBtn) {
+                retryContainer.style.display = 'flex';
+                retryCountText.textContent = `${campaign.stats.failed} message(s) failed. Select a session to retry.`;
+
+                // Populate Dropdown
+                retrySelect.innerHTML = '<option value="">Select Session to Retry...</option>';
+                const activeSessions = this.instances.filter(inst => inst.connected);
+                activeSessions.forEach(inst => {
+                    const opt = document.createElement('option');
+                    const sid = inst.id || inst.sessionId;
+                    opt.value = sid;
+                    const phoneLabel = inst.phoneNumber && inst.phoneNumber !== 'Unknown' ? inst.phoneNumber : sid;
+                    opt.textContent = `${inst.name} (${phoneLabel})`;
+                    retrySelect.appendChild(opt);
+                });
+
+                // Bind Retry Button
+                retryBtn.onclick = () => this.retryFailedMessages(id);
+                retryBtn.disabled = false;
+                retryBtn.textContent = 'Retry Now';
+            }
+        }
+
         // DUPLICATE CLEANUP: Remove any existing modals on body to prevent ID conflicts
         const existingModals = document.querySelectorAll('#view-campaign-modal');
         if (existingModals.length > 1) {
@@ -1008,14 +1040,14 @@ class CampaignManager {
             tabOverview.classList.add('active');
             tabLogs.classList.remove('active');
 
-            contentOverview.style.display = 'block';
-            contentLogs.style.display = 'none';
+            contentOverview.classList.add('active');
+            contentLogs.classList.remove('active');
         } else {
             tabLogs.classList.add('active');
             tabOverview.classList.remove('active');
 
-            contentLogs.style.display = 'block';
-            contentOverview.style.display = 'none';
+            contentLogs.classList.add('active');
+            contentOverview.classList.remove('active');
 
             // Load Logs if empty or refreshed
             this.loadCampaignLogs(this.currentViewingCampaignId);
@@ -1584,6 +1616,56 @@ class CampaignManager {
         } catch (error) {
             console.error('Error deleting contact:', error);
             alert('Failed to delete contact: ' + error.message);
+        }
+    }
+
+    async retryFailedMessages(campaignId) {
+        const retrySelect = document.getElementById('retry-session-select');
+        const retryBtn = document.getElementById('btn-retry-failed');
+        const sessionId = retrySelect ? retrySelect.value : null;
+
+        if (!sessionId) {
+            alert('Please select a session to retry.');
+            return;
+        }
+
+        if (!confirm('Are you sure you want to retry all failed messages with the selected session?')) {
+            return;
+        }
+
+        try {
+            if (retryBtn) {
+                retryBtn.disabled = true;
+                retryBtn.textContent = 'Retrying...';
+            }
+
+            const response = await fetch(`${window.appConfig.apiUrl}/api/campaigns/${campaignId}/retry`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ sessionId })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Retry initiated successfully! The campaign is now processing again.');
+                this.closeViewModal();
+                // Refresh dashboard if needed
+                if (typeof this.loadCampaigns === 'function') {
+                    this.loadCampaigns();
+                }
+            } else {
+                throw new Error(data.message || 'Failed to initiate retry');
+            }
+        } catch (error) {
+            console.error('[retryFailedMessages] Error:', error);
+            alert('Error: ' + error.message);
+            if (retryBtn) {
+                retryBtn.disabled = false;
+                retryBtn.textContent = 'Retry Now';
+            }
         }
     }
 

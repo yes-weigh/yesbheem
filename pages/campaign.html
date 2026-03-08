@@ -506,13 +506,13 @@
             gap: 16px;
         }
 
-        /* Logs Styling */
-        .logs-tab-panel {
+        /* Tab Panel Styling */
+        .modal-tab-panel {
             display: none;
             height: 100%;
         }
 
-        .logs-tab-panel.active {
+        .modal-tab-panel.active {
             display: block;
         }
 
@@ -551,6 +551,98 @@
             border-radius: 99px;
             font-size: 0.75rem;
             font-weight: 600;
+        }
+
+        /* Retry Section Styling */
+        .retry-container {
+            display: none;
+            /* Hidden by default, shown if there are failures */
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .retry-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .retry-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .retry-text-main {
+            font-weight: 700;
+            color: #ef4444;
+            font-size: 0.95rem;
+        }
+
+        .retry-text-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .retry-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        #retry-session-select {
+            flex: 1;
+            padding: 10px 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        #retry-session-select:focus {
+            border-color: #ef4444;
+        }
+
+        .btn-retry {
+            padding: 10px 20px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-retry:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-retry:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
     </style>
 
@@ -1614,7 +1706,7 @@
         <!-- Body -->
         <div class="view-modal-content">
             <!-- OVERVIEW TAB -->
-            <div id="view-tab-overview">
+            <div id="view-tab-overview" class="modal-tab-panel active">
                 <div class="detail-item mb24 campaign-name-card">
                     <label class="detail-label">Campaign Name</label>
                     <div id="view-campaign-name" class="detail-value large">...</div>
@@ -1663,7 +1755,25 @@
             </div>
 
             <!-- MESSAGES LOG TAB -->
-            <div id="view-tab-logs" class="logs-tab-panel" style="display: none;">
+            <div id="view-tab-logs" class="modal-tab-panel">
+                <!-- Retry Section (Dynamic) -->
+                <div id="retry-failed-container" class="retry-container">
+                    <div class="retry-info">
+                        <div class="retry-icon">🔄</div>
+                        <div>
+                            <div class="retry-text-main">Failed Messages Detected</div>
+                            <div class="retry-text-sub" id="retry-failed-count">You can retry them with a different
+                                session.</div>
+                        </div>
+                    </div>
+                    <div class="retry-actions">
+                        <select id="retry-session-select">
+                            <option value="">Select Session to Retry...</option>
+                        </select>
+                        <button id="btn-retry-failed" class="btn-retry">Retry Now</button>
+                    </div>
+                </div>
+
                 <div class="logs-table-container">
                     <table class="logs-table">
                         <thead>
