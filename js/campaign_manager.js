@@ -731,16 +731,7 @@ class CampaignManager {
 
         // AGGRESSIVE VISIBILITY ENFORCEMENT
         modal.style.display = 'flex';
-        modal.style.visibility = 'visible';
-        modal.style.opacity = '1';
         modal.style.zIndex = '99999';
-        modal.style.position = 'fixed';
-        modal.style.top = '0';
-        modal.style.left = '0';
-        modal.style.width = '100vw';
-        modal.style.height = '100vh';
-        modal.style.background = 'rgba(0, 0, 0, 0.8)';
-        modal.style.pointerEvents = 'auto'; // Fix for click transparency
 
         // Debug Alert to prove execution
         console.log('Modal styles enforced. Display:', modal.style.display);
@@ -773,11 +764,18 @@ class CampaignManager {
             const color = statusColors[campaign.status] || '#94a3b8';
             if (statusEl) statusEl.innerHTML = `<span style="background: ${color}20; color: ${color}; padding: 4px 12px; border-radius: 99px; font-size: 0.85rem;">${(campaign.status || 'UNKNOWN').toUpperCase()}</span>`;
 
-            // Progress
             const sent = campaign.stats?.sent || 0;
             const total = campaign.stats?.total || 0;
             const percent = total > 0 ? Math.round((sent / total) * 100) : 0;
             if (progressEl) progressEl.textContent = `${sent} / ${total} (${percent}%)`;
+
+            // New: Progress Fill
+            const progressFill = document.getElementById('view-campaign-progress-fill');
+            if (progressFill) {
+                setTimeout(() => {
+                    progressFill.style.width = `${percent}%`;
+                }, 100);
+            }
 
             // Details
             if (audienceEl) audienceEl.textContent = campaign.audienceName || 'Unknown Audience';
@@ -883,11 +881,14 @@ class CampaignManager {
                 const panel = document.createElement('div');
                 panel.id = 'antiban-block-panel';
                 panel.style.cssText = `
-                    margin-top: 20px;
-                    padding: 16px 20px;
+                    grid-column: 1 / -1;
+                    margin-top: 24px;
+                    padding: 24px;
                     background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.04));
-                    border: 1px solid rgba(245,158,11,0.25);
-                    border-radius: 12px;
+                    border: 1px solid rgba(245,158,11,0.2);
+                    border-radius: 20px;
+                    backdrop-filter: blur(10px);
+                    -webkit-backdrop-filter: blur(10px);
                 `;
                 panel.innerHTML = `
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">

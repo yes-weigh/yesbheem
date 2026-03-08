@@ -9,7 +9,7 @@
             justify-content: space-between;
             align-items: center;
         }
-        
+
 
         .campaign-tabs {
             display: flex;
@@ -358,6 +358,190 @@
         }
 
         /* Delete Button Styles are now in components.css */
+
+        /* === VIEW CAMPAIGN MODAL (MODERN) === */
+        #view-campaign-modal {
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+            background: rgba(0, 0, 0, 0.7);
+            transition: all 0.3s ease;
+        }
+
+        #view-campaign-modal .modal-container {
+            background: var(--modal-bg-gradient);
+            border: var(--modal-border);
+            box-shadow: var(--modal-shadow);
+            border-radius: 24px;
+            max-width: 800px;
+            width: 95%;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+        }
+
+        .view-modal-header {
+            padding: 24px 32px;
+            background: var(--modal-header-bg);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .view-modal-tabs {
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .modal-tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-tab-btn.active {
+            background: var(--color-info);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .view-modal-content {
+            padding: 32px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .campaign-details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .detail-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.2s;
+        }
+
+        .detail-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .detail-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .detail-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .detail-value.large {
+            font-size: 1.5rem;
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .progress-section {
+            grid-column: 1 / -1;
+            margin-top: 12px;
+        }
+
+        .modern-progress-bar {
+            height: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 99px;
+            overflow: hidden;
+            margin: 12px 0;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, var(--color-info), var(--color-accent));
+            border-radius: 99px;
+            transition: width 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            width: 0%;
+        }
+
+        .view-modal-footer {
+            padding: 24px 32px;
+            background: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: flex-end;
+            gap: 16px;
+        }
+
+        /* Logs Styling */
+        .logs-tab-panel {
+            display: none;
+            height: 100%;
+        }
+
+        .logs-tab-panel.active {
+            display: block;
+        }
+
+        .logs-table-container {
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .logs-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .logs-th {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 16px;
+            text-align: left;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .logs-td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .log-status-badge {
+            padding: 4px 10px;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
     </style>
 
     <div class="campaign-header">
@@ -454,14 +638,9 @@
                 margin-bottom: 24px;
             }
 
-            .campaign-section-card {
-                background: linear-gradient(135deg, rgba(15, 21, 35, 0.8), rgba(20, 26, 40, 0.9));
-                border: 1px solid rgba(99, 102, 241, 0.15);
-                border-radius: 16px;
-                padding: 24px;
-                -webkit-backdrop-filter: blur(10px);
-                backdrop-filter: blur(10px);
-                transition: all 0.3s ease;
+            .campaign-name-card {
+                background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), transparent);
+                border-color: rgba(59, 130, 246, 0.2);
             }
 
             .campaign-section-card:hover {
@@ -1407,106 +1586,98 @@
 </div>
 <!-- View Campaign Modal -->
 <div id="view-campaign-modal" class="modal-overlay display-none">
-    <div class="modal-container modal-max-w600">
-        <div class="modal-header modal-header-flex">
-            <div class="flex-gap24">
-                <button class="modal-tab-btn active tab-btn-modal-active"
-                    onclick="window.campaignManager.switchViewTab('overview')" id="tab-btn-overview">
+    <div class="modal-container">
+        <!-- Header -->
+        <div class="view-modal-header">
+            <div class="view-modal-tabs">
+                <button class="modal-tab-btn active" onclick="window.campaignManager.switchViewTab('overview')"
+                    id="tab-btn-overview">
                     Overview
                 </button>
-                <button class="modal-tab-btn tab-btn-modal" onclick="window.campaignManager.switchViewTab('logs')"
-                    id="tab-btn-logs">
+                <button class="modal-tab-btn" onclick="window.campaignManager.switchViewTab('logs')" id="tab-btn-logs">
                     Message Log
                 </button>
             </div>
-            <button class="modal-close modal-close-btn"
-                onclick="window.campaignManager.closeViewModal()">&times;</button>
+            <button class="modal-close" onclick="window.campaignManager.closeViewModal()">&times;</button>
         </div>
 
-        <div class="modal-body modal-body-pt24">
+        <!-- Body -->
+        <div class="view-modal-content">
             <!-- OVERVIEW TAB -->
             <div id="view-tab-overview">
-                <div class="mb24">
-                    <label class="label-sm-muted">CAMPAIGN
-                        NAME</label>
-                    <div id="view-campaign-name" class="val-lg-main">
-                        ...</div>
-                </div>
-
-                <div class="grid-2col-gap20-mb24">
-                    <div>
-                        <label class="label-sm-muted">STATUS</label>
-                        <div id="view-campaign-status" class="val-fw500">...</div>
-                    </div>
-                    <div>
-                        <label class="label-sm-muted">PROGRESS</label>
-                        <div id="view-campaign-progress" class="val-mono-lg">...</div>
-                    </div>
-                </div>
-
-                <div class="panel-secondary">
-                    <div class="grid-2col-gap16">
-                        <div>
-                            <label class="label-sm-muted">AUDIENCE</label>
-                            <div id="view-campaign-audience" class="val-main">...</div>
-                        </div>
-                        <div>
-                            <label class="label-sm-muted">MANAGER
-                                (KAM)</label>
-                            <div id="view-campaign-kam" class="val-main">...</div>
-                        </div>
-                        <div>
-                            <label class="label-sm-muted">TEMPLATE</label>
-                            <div id="view-campaign-template" class="val-main">...</div>
-                        </div>
-                        <div>
-                            <label class="label-sm-muted">SENDER</label>
-                            <div id="view-campaign-sender" class="val-main">...</div>
-                        </div>
-                        <div>
-                            <label class="label-sm-muted">DELAY
-                                SETTING</label>
-                            <div id="view-campaign-delay" class="val-main">...</div>
-                        </div>
-                        <div>
-                            <label class="label-sm-muted">CREATED
-                                AT</label>
-                            <div id="view-campaign-created" class="val-main">...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex-right-gap12">
-                    <button class="btn-secondary" onclick="window.campaignManager.closeViewModal()">Close</button>
-                    <button class="btn-primary" id="view-campaign-duplicate-btn">Duplicate</button>
+                <div class="detail-item mb24 campaign-name-card">
+                    <label class="detail-label">Campaign Name</label>
+                    <div id="view-campaign-name" class="detail-value large">...</div>
                 </div>
             </div>
 
-            <!-- MESSAGES LOG TAB -->
-            <div id="view-tab-logs" class="logs-tab-panel">
-                <div class="table-container logs-table-container">
-                    <table class="logs-table">
-                        <thead class="logs-thead">
-                            <tr class="logs-tr-border">
-                                <th class="logs-th">
-                                    PHONE</th>
-                                <th class="logs-th">
-                                    NAME</th>
-                                <th class="logs-th">
-                                    STATUS</th>
-                                <th class="logs-th">
-                                    SENT TIME</th>
-                            </tr>
-                        </thead>
-                        <tbody id="view-campaign-logs-body">
-                            <!-- Populated via JS -->
-                            <tr>
-                                <td colspan="4" class="logs-td-empty">
-                                    Loading logs...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <div class="campaign-details-grid">
+                <div class="detail-item">
+                    <label class="detail-label">Status</label>
+                    <div id="view-campaign-status" class="detail-value">...</div>
                 </div>
+                <div class="detail-item">
+                    <label class="detail-label">Progress</label>
+                    <div id="view-campaign-progress" class="detail-value">...</div>
+                    <div class="modern-progress-bar">
+                        <div id="view-campaign-progress-fill" class="progress-fill"></div>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <label class="detail-label">Audience</label>
+                    <div id="view-campaign-audience" class="detail-value">...</div>
+                </div>
+                <div class="detail-item">
+                    <label class="detail-label">Manager (KAM)</label>
+                    <div id="view-campaign-kam" class="detail-value">...</div>
+                </div>
+                <div class="detail-item">
+                    <label class="detail-label">Template</label>
+                    <div id="view-campaign-template" class="detail-value">...</div>
+                </div>
+                <div class="detail-item">
+                    <label class="detail-label">Sender Instance</label>
+                    <div id="view-campaign-sender" class="detail-value">...</div>
+                </div>
+                <div class="detail-item">
+                    <label class="detail-label">Delay Setting</label>
+                    <div id="view-campaign-delay" class="detail-value">...</div>
+                </div>
+                <div class="detail-item">
+                    <label class="detail-label">Created At</label>
+                    <div id="view-campaign-created" class="detail-value">...</div>
+                </div>
+            </div>
+
+            <!-- AntiBan Panel will be injected here by JS -->
+        </div>
+
+        <!-- MESSAGES LOG TAB -->
+        <div id="view-tab-logs" class="logs-tab-panel">
+            <div class="logs-table-container">
+                <table class="logs-table">
+                    <thead>
+                        <tr>
+                            <th class="logs-th">Phone</th>
+                            <th class="logs-th">Name</th>
+                            <th class="logs-th">Status</th>
+                            <th class="logs-th">Sent Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="view-campaign-logs-body">
+                        <tr>
+                            <td colspan="4" class="logs-td-empty">Loading logs...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
+
+    <!-- Footer -->
+    <div class="view-modal-footer">
+        <button class="btn-secondary" onclick="window.campaignManager.closeViewModal()">Close</button>
+        <button class="btn-primary" id="view-campaign-duplicate-btn">Duplicate Campaign</button>
+    </div>
+</div>
+</div>
