@@ -361,9 +361,19 @@
 
         /* === VIEW CAMPAIGN MODAL (MODERN) === */
         #view-campaign-modal {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            display: none;
+            /* Controlled by JS */
+            align-items: center;
+            justify-content: center;
+            z-index: 99999 !important;
             -webkit-backdrop-filter: blur(8px);
             backdrop-filter: blur(8px);
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8) !important;
             transition: all 0.3s ease;
         }
 

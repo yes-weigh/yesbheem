@@ -731,7 +731,7 @@ class CampaignManager {
 
         // AGGRESSIVE VISIBILITY ENFORCEMENT
         modal.style.display = 'flex';
-        modal.style.zIndex = '99999';
+        modal.classList.add('active'); // In case we use class-based visibility later
 
         // Debug Alert to prove execution
         console.log('Modal styles enforced. Display:', modal.style.display);
