@@ -912,10 +912,13 @@ class CampaignManager {
                 `;
 
                 // Insert before the action buttons row (last child of overview tab)
-                if (overviewTab) {
-                    const actionRow = overviewTab.querySelector('.flex-right-gap12');
-                    if (actionRow) overviewTab.insertBefore(panel, actionRow);
-                    else overviewTab.appendChild(panel);
+                // [FIX] Use dedicated injection point for AntiBan to prevent layout issues
+                const injectionPoint = overviewTab.querySelector('#antiban-injection-point');
+                if (injectionPoint) {
+                    injectionPoint.innerHTML = ''; // Clear previous
+                    injectionPoint.appendChild(panel);
+                } else {
+                    overviewTab.appendChild(panel);
                 }
             }
 
@@ -943,6 +946,10 @@ class CampaignManager {
 
             // Show Modal
             modal.style.display = 'flex';
+
+            // [FIX] FORCE RESET TABS to Overview on open
+            this.switchViewTab('overview');
+
             console.log('Modal displayed successfully');
 
         } catch (error) {
