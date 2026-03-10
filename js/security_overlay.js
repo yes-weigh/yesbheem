@@ -157,7 +157,11 @@ class SecurityOverlay {
                Checking auth token validity:
             */
             try {
-                await this.user.getIdToken(true); // Force refresh to check if disabled/suspended
+                // Soft token check without forcing network request (true -> false/omitted)
+                // This prevents rate limiting from Google STS that was causing 15m session drops
+                if (this.user) {
+                    await this.user.getIdToken();
+                }
             } catch (e) {
                 this.terminate("Session Revoked by Server");
             }
