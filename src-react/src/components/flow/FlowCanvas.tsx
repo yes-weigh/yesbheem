@@ -86,7 +86,7 @@ function FlowCanvasInner({ initialNodes: propsNodes, initialEdges: propsEdges, i
     const [ruleName, setRuleName] = useState(initialName || 'Untitled Rule');
     const [isSaving, setIsSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
-    const [savedRuleId] = useState<string | null>(initialRuleId || null);
+    const [savedRuleId, setSavedRuleId] = useState<string | null>(initialRuleId || null);
     const [showLogs, setShowLogs] = useState(false);
     const [isSimulating, setIsSimulating] = useState(false);
     const [showAIGenerator, setShowAIGenerator] = useState(openAI || false);
@@ -300,7 +300,10 @@ function FlowCanvasInner({ initialNodes: propsNodes, initialEdges: propsEdges, i
         try {
             setIsSaving(true);
             if (typeof window !== 'undefined' && (window as any).saveFlowData) {
-                await (window as any).saveFlowData(payload);
+                const result = await (window as any).saveFlowData(payload);
+                if (result && result.id) {
+                    setSavedRuleId(result.id);
+                }
             } else {
                 console.warn("[React Flow] window.saveFlowData is undefined. Logging payload:", payload);
                 setTimeout(() => setIsSaving(false), 2000); // mock
@@ -318,13 +321,17 @@ function FlowCanvasInner({ initialNodes: propsNodes, initialEdges: propsEdges, i
         const triggerNode = nodes.find(n => n.type === 'trigger');
         if (!triggerNode) return setErrorMsg('Flow must start with a Trigger');
 
+        if (!savedRuleId) {
+            setErrorMsg('Please save the flow first before simulating.');
+            setIsSimulating(false);
+            return;
+        }
+
         const payload = {
-            name: ruleName,
-            description: `Visual graph automation flow`,
-            trigger: { type: triggerNode.data.triggerType || 'CONTACT_CREATED', ...triggerNode.data },
-            eventType: (triggerNode.data.triggerType as string || 'CONTACT_CREATED').toLowerCase(),
-            actions: [],
-            flowDefinition: { nodes, edges }
+            flowId: savedRuleId,
+            messageData: { text: 'test' }, // Mock message for now
+            crmPhone: 'simulation_crm',
+            leadPhone: 'simulation_lead'
         };
 
         try {

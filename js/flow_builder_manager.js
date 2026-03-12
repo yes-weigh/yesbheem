@@ -172,22 +172,36 @@ class FlowBuilderManager {
 
     _setupReactBindings() {
         window.saveFlowData = async (payload) => {
-            const { id, name, nodes, edges, viewport, ...meta } = payload;
+            const { id, name, nodes, edges, viewport, flowDefinition, ...meta } = payload;
             try {
                 const flowRef = id ? doc(db, "flows", id) : doc(collection(db, "flows"));
                 
+                // Unpack from flowDefinition if provided, otherwise root, otherwise empty array
+                const safeNodes = nodes || (flowDefinition && flowDefinition.nodes) || [];
+                const safeEdges = edges || (flowDefinition && flowDefinition.edges) || [];
+                
                 const flowData = {
                     name: name || 'Untitled Flow',
-                    nodes,
-                    edges,
-                    viewport,
+                    nodes: safeNodes,
+                    edges: safeEdges,
                     ...meta,
                     updatedAt: serverTimestamp()
                 };
                 
+                // Add valid viewport if it exists
+                if (viewport !== undefined) flowData.viewport = viewport;
+                if (flowDefinition) flowData.flowDefinition = flowDefinition;
+
                 if (!id) {
                     flowData.createdAt = serverTimestamp();
                 }
+
+                // Strip any accidental top-level undefined fields to prevent Firebase crashes
+                Object.keys(flowData).forEach(key => {
+                    if (flowData[key] === undefined) {
+                        delete flowData[key];
+                    }
+                });
 
                 await setDoc(flowRef, flowData, { merge: true });
                 Toast.success("Flow saved successfully");
