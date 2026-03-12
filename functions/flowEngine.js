@@ -1,15 +1,20 @@
 const admin = require("firebase-admin");
+const { getCompiledFlows, getCompiledFlowMeta } = require('./flowCompiler');
 
 if (!admin.apps.length) {
     admin.initializeApp();
 }
+
+const MAX_STEPS = 50;
+const MAX_EXECUTION_MS = 15000;
 
 /**
  * Evaluate an inbound WhatsApp message against active flows.
  * @returns {Promise<boolean>} True if a flow was triggered and executed, false otherwise.
  */
 async function evaluateFlows(messageData, chatId, crmPhone, leadPhone) {
-    const msgText = (messageData.text || messageData.content?.text || messageData.content?.caption || messageData.body || '').toLowerCase().trim();
+    const rawMsgText = messageData.text || messageData.content?.text || messageData.content?.caption || messageData.body || '';
+    const msgText = rawMsgText.toLowerCase().trim();
     if (!msgText) return false;
 
     const db = admin.firestore();
@@ -17,43 +22,62 @@ async function evaluateFlows(messageData, chatId, crmPhone, leadPhone) {
     try {
         console.log(`[Flow Engine] Analyzing inbound message from ${leadPhone} to ${crmPhone}: "${msgText}"`);
 
-        // 1. Fetch all enabled flows
-        const flowsSnapshot = await db.collection('flows').where('enabled', '==', true).get();
-        if (flowsSnapshot.empty) {
-            console.log(`[Flow Engine] No active flows found.`);
-            return false;
-        }
+        // 1. Fetch from Cache (O(1))
+        const { triggerCache, metadata } = await getCompiledFlows(db);
 
-        // 2. Evaluate Triggers
-        for (const flowDoc of flowsSnapshot.docs) {
-            const flow = flowDoc.data();
-            const drawflowData = flow.drawflowData?.drawflow?.Home?.data;
-            if (!drawflowData) continue;
+        // 2. O(1) Search via Trigger Lookups
+        // Note: For a robust system, we would iterate splits for keywords, but for exact match:
+        let matchingTriggers = [];
 
-            // Find all trigger nodes in this flow
-            const triggerNodes = Object.values(drawflowData).filter(node => node.name === 'trigger');
-
-            for (const triggerNode of triggerNodes) {
-                const config = triggerNode.data?.config || {};
-
-                // Evaluate Keyword Match
-                if (config.type === 'keyword' && config.value) {
-                    const keyword = config.value.toLowerCase().trim();
-                    if (msgText.includes(keyword)) {
-                        console.log(`[Flow Engine] Flow '${flow.name}' triggered by keyword '${keyword}'`);
-
-                        // Fire the flow execution
-                        await executeFlowPath(drawflowData, triggerNode, { crmPhone, leadPhone, messageData, db, chatId });
-
-                        // Return true to indicate a flow handled this message
-                        return true;
-                    }
-                }
+        // Exact Keyword matching
+        for (const [keyword, flows] of Object.entries(triggerCache.keyword)) {
+            // "includes" allows substring matching if desired, matching old logic
+            if (msgText.includes(keyword)) {
+                matchingTriggers.push(...flows);
             }
         }
 
-        console.log(`[Flow Engine] No flows matched criteria.`);
-        return false;
+        if (matchingTriggers.length === 0) {
+            console.log(`[Flow Engine] No compiled flows matched trigger criteria.`);
+            return false;
+        }
+
+        console.log(`[Flow Engine] Found ${matchingTriggers.length} potential triggers.`);
+
+        // 3. Setup Context and Execute First Match
+        // Assuming we fire the first matched flow:
+        const trigger = matchingTriggers[0];
+        const flowMeta = metadata[trigger.flowId];
+
+        if (!flowMeta || !flowMeta.valid) {
+            console.warn(`[Flow Engine] Flow ${trigger.flowId} matched but graph metadata was marked invalid.`);
+            return false;
+        }
+
+        console.log(`[Flow Engine] Initiating Flow '${flowMeta.name}' starting at node '${trigger.startNodeId}'`);
+
+        const context = {
+            crmPhone, 
+            leadPhone, 
+            messageData, 
+            db, 
+            chatId,
+            simulationMode: false,
+            // Protection Framework
+            startTime: Date.now(),
+            stepCount: 0,
+            visitedNodes: new Set(),
+            // Trace Data
+            executionTrace: [],
+            interceptedActions: []
+        };
+
+        // Inject the trigger execution mark
+        context.executionTrace.push({ nodeId: trigger.startNodeId, type: 'trigger', status: 'executed' });
+
+        await executeFlowPath(flowMeta, trigger.startNodeId, context);
+
+        return true;
 
     } catch (error) {
         console.error(`[Flow Engine] Error evaluating flows:`, error);
@@ -62,94 +86,164 @@ async function evaluateFlows(messageData, chatId, crmPhone, leadPhone) {
 }
 
 /**
- * Execute the nodes connected from the current node in the Drawflow JSON
+ * Execute the nodes connected from the current node recursively or via stack.
  */
-async function executeFlowPath(drawflowData, currentNode, context) {
-    const outputs = currentNode.outputs || {};
+async function executeFlowPath(flowMeta, currentNodeId, context) {
+    // 1. Runtime Protection Validations
+    context.stepCount++;
+    if (context.stepCount >= MAX_STEPS) {
+        throw new Error(`[Flow Engine] MAX_STEPS exception: Infinite loop suspected.`);
+    }
 
-    for (const outputKey in outputs) {
-        const connections = outputs[outputKey].connections || [];
-        for (const conn of connections) {
-            const nextNodeId = conn.node;
-            const nextNode = drawflowData[nextNodeId];
+    if (Date.now() - context.startTime > MAX_EXECUTION_MS) {
+        throw new Error(`[Flow Engine] MAX_EXECUTION_MS exception: Flow timeout.`);
+    }
 
-            if (nextNode) {
-                await processNode(drawflowData, nextNode, context);
-            }
+    // 2. Fetch O(1) Edge lookup resolution (Multiple Outgoing Edges)
+    const outEdges = flowMeta.edgeLookupBySource[currentNodeId] || [];
+
+    for (const edge of outEdges) {
+        const nextNodeId = edge.target;
+        
+        // Loop protection
+        if (context.visitedNodes.has(nextNodeId)) {
+            console.warn(`[Flow Engine] Cyclic loop intercepted at Node ID ${nextNodeId}`);
+            continue;
+        }
+
+        context.visitedNodes.add(nextNodeId);
+        
+        const nextNode = flowMeta.nodeMap[nextNodeId];
+        if (!nextNode) continue;
+
+        // 3. Process the Node Logic
+        const continueBranch = await processNode(flowMeta, nextNode, context, edge.handle);
+
+        // 4. Trace the execution
+        context.executionTrace.push({
+            nodeId: nextNodeId, 
+            type: nextNode.type || nextNode.name || 'unknown',
+            name: flowMeta.formatVersion === 'v1_drawflow' ? nextNode.name : nextNode.type,
+            status: 'executed'
+        });
+
+        // Continue execution to the next connected nodes if requested
+        if (continueBranch) {
+            await executeFlowPath(flowMeta, nextNodeId, context);
         }
     }
 }
 
 /**
- * Process a specific node action (Action, Condition, AI, Wait)
+ * Transforms v1 vs v2 definitions into unified variables, handles specific actions
+ * @returns {Promise<boolean>} False if path traversal should halt for this branch
  */
-async function processNode(drawflowData, node, context) {
-    const { crmPhone, leadPhone, messageData, db, chatId } = context;
-    const config = node.data?.config || {};
+async function processNode(flowMeta, node, context, incomingHandleKey) {
+    const { crmPhone, leadPhone, simulationMode } = context;
+    let config = {};
+    let typeName = '';
 
-    console.log(`[Flow Engine] Processing node: ${node.name} (ID: ${node.id})`);
+    // Unified Abstraction Mapping
+    if (flowMeta.formatVersion === 'v1_drawflow') {
+        config = node.data?.config || {};
+        typeName = node.name;
+    } else { // v2_xyflow
+        config = node.data?.config || {};
+        // Use actionType from data, or standard type
+        typeName = node.type;
+        if (typeName === 'action' && node.data?.actionType) {
+            typeName = node.data.actionType;
+        } 
+        if (typeName === 'condition' && node.data?.conditionType) {
+            typeName = node.data.conditionType;
+        }
+    }
 
+    // Process mapped config types
     try {
-        switch (node.name) {
+        switch (typeName) {
             case 'action':
-                if (config.type === 'send_message' && config.value) {
-                    let text = config.value;
+            case 'send_message': {
+                // v1 relies on `config.type === 'send_message'` under `node.name === 'action'`
+                // v2 might just pass `typeName === 'send_message'` directly.
+                if (config.type === 'send_message' || typeName === 'send_message') {
+                    let text = config.value || '';
                     text = text.replace(/\{\{lead\.phone\}\}/g, leadPhone);
-                    await sendWhatsAppAPI(crmPhone, leadPhone, text);
-                } else if (config.type === 'update_crm') {
-                    console.log(`[Flow Engine] CRM Update action:`, config.value);
-                }
-                break;
 
-            case 'condition':
-                // Simple placeholder logic: evaluates to true
-                const conditionMet = true;
-
-                if (conditionMet) {
-                    const trueConnections = node.outputs?.output_1?.connections || [];
-                    for (const conn of trueConnections) {
-                        const nextNode = drawflowData[conn.node];
-                        if (nextNode) await processNode(drawflowData, nextNode, context);
-                    }
-                } else {
-                    const falseConnections = node.outputs?.output_2?.connections || [];
-                    for (const conn of falseConnections) {
-                        const nextNode = drawflowData[conn.node];
-                        if (nextNode) await processNode(drawflowData, nextNode, context);
+                    if (simulationMode) {
+                        context.interceptedActions.push({ actionType: 'send_message', payload: { to: leadPhone, text }});
+                    } else {
+                        await sendWhatsAppAPI(crmPhone, leadPhone, text);
                     }
                 }
-                return; // Branches explicitly handled
+                return true;
+            }
+
+            case 'condition': {
+                // Condition nodes usually branch. We return false here and handle explicit next execution for the true/false paths if needed. 
+                // Or simply evaluate all edges down true/false handles if edge handles exist.
+                // In generic `executeFlowPath`, it loops over ALL outgoing edges. We should ideally only execute edges matching the condition.
+                
+                // For a proper structure, we return `false` indicating manual branching logic.
+                const conditionMet = true; // Hardcoded placeholder true
+
+                // To integrate with executeFlowPath, if this branch evaluation is dynamic, we explicitly execute the chosen branch edges here.
+                const handleKeyToFollow = conditionMet ? (flowMeta.formatVersion === 'v1_drawflow' ? 'output_1' : 'true') 
+                                                       : (flowMeta.formatVersion === 'v1_drawflow' ? 'output_2' : 'false');
+                
+                const outEdges = flowMeta.edgeLookupBySource[node.id] || [];
+                for (const edge of outEdges) {
+                    if (edge.handle === handleKeyToFollow) {
+                        const targetNode = flowMeta.nodeMap[edge.target];
+                        if (targetNode) {
+                            if (!context.visitedNodes.has(targetNode.id)) {
+                                context.visitedNodes.add(targetNode.id);
+                                await processNode(flowMeta, targetNode, context, edge.handle);
+                                await executeFlowPath(flowMeta, targetNode.id, context);
+                            }
+                        }
+                    }
+                }
+
+                // Return false so executeFlowPath doesn't double-execute edges
+                return false; 
+            }
 
             case 'wait':
-                console.log(`[Flow Engine] Wait node execution requested. Delaying logic needed.`);
-                break;
+                if (simulationMode) {
+                    context.interceptedActions.push({ actionType: 'wait', payload: config });
+                } else {
+                    console.log(`[Flow Engine] Wait logic not integrated with external delays yet.`);
+                }
+                return true;
 
             case 'ai':
-                console.log(`[Flow Engine] Custom AI Node execution requested.`);
-                break;
+            case 'crm_update':
+                if (simulationMode) {
+                    context.interceptedActions.push({ actionType: typeName, payload: config });
+                }
+                return true;
 
             default:
-                console.warn(`[Flow Engine] Unknown node type: ${node.name}`);
+                if (!simulationMode) console.warn(`[Flow Engine] Unknown logical path type: ${typeName}`);
+                return true;
         }
 
-        // Continue execution to the next connected nodes
-        await executeFlowPath(drawflowData, node, context);
-
     } catch (error) {
-        console.error(`[Flow Engine] Error processing node ${node.id}:`, error);
+        console.error(`[Flow Engine] Error processing node ${node.id || 'unknown'}:`, error);
+        return false;
     }
 }
 
 /**
- * Call the YesBheem WhatsApp Backend API
+ * Dispatch API Request
  */
 async function sendWhatsAppAPI(crmPhone, leadPhone, text) {
     const apiUrl = process.env.WHATSAPP_API_URL || 'http://localhost:3000';
-    console.log(`[Flow Engine] Sending WA message to ${leadPhone} via ${apiUrl}`);
+    console.log(`[Flow Engine] Dispatching message to ${leadPhone} via ${apiUrl}`);
 
     try {
         const db = admin.firestore();
-        // Fallback or exact match normalize
         const normalizeDigits = p => String(p || '').replace(/\D/g, '').slice(-10);
         const crmNorm10 = normalizeDigits(crmPhone);
 
@@ -184,15 +278,83 @@ async function sendWhatsAppAPI(crmPhone, leadPhone, text) {
         });
 
         if (!response.ok) {
-            console.error(`[Flow Engine] API request failed with status ${response.status}`);
-        } else {
-            console.log(`[Flow Engine] Successfully dispatched message via API.`);
+            console.error(`[Flow Engine] Dispatch failure. (HTTP ${response.status})`);
         }
     } catch (err) {
-        console.error(`[Flow Engine] Failed to dispatch API request:`, err);
+        console.error(`[Flow Engine] API dispatch error:`, err);
+    }
+}
+
+/**
+ * Isolated Simulation Entrypoint
+ * Called by `/simulateFlow` HTTP cloud function
+ */
+async function simulateFlowExecution(flowId, messageData, crmPhone, leadPhone) {
+    const db = admin.firestore();
+
+    const { getCompiledFlowMeta } = require('./flowCompiler');
+    const flowMeta = await getCompiledFlowMeta(db, flowId);
+
+    if (!flowMeta || !flowMeta.valid) {
+        return { success: false, error: 'Flow is completely invalid or compilation failed.' };
+    }
+
+    const context = {
+        crmPhone: crmPhone || 'simulation_crm',
+        leadPhone: leadPhone || 'simulation_lead',
+        messageData: messageData || { text: 'simulator trigger' },
+        db,
+        chatId: 'simulator_chat',
+        simulationMode: true,
+        startTime: Date.now(),
+        stepCount: 0,
+        visitedNodes: new Set(),
+        executionTrace: [],
+        interceptedActions: []
+    };
+
+    try {
+        // Find simulation trigger entrypoints
+        let triggerNodeId = null;
+        for (const [id, node] of Object.entries(flowMeta.nodeMap)) {
+            // Unify trigger lookup over varying struct formats
+            if ((flowMeta.formatVersion === 'v1_drawflow' && node.name === 'trigger') ||
+                (flowMeta.formatVersion !== 'v1_drawflow' && node.type === 'trigger')) {
+                triggerNodeId = id;
+                break;
+            }
+        }
+
+        if (!triggerNodeId) {
+            return { success: false, error: 'No trigger node present in graph.' };
+        }
+
+        context.executionTrace.push({ nodeId: triggerNodeId, type: 'trigger', status: 'executed' });
+        
+        // Let it run under constraints
+        await executeFlowPath(flowMeta, triggerNodeId, context);
+
+        return {
+            success: true,
+            executionTrace: context.executionTrace,
+            interceptedActions: context.interceptedActions,
+            meta: {
+                steps: context.stepCount,
+                durationMs: Date.now() - context.startTime
+            }
+        };
+
+    } catch (e) {
+        return {
+            success: false,
+            error: e.message,
+            executionTrace: context.executionTrace,
+            interceptedActions: context.interceptedActions
+        };
     }
 }
 
 module.exports = {
-    evaluateFlows
+    evaluateFlows,
+    simulateFlowExecution
 };

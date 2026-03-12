@@ -47,6 +47,19 @@
     display: none !important;
 }
 
+.fb-h-full {
+    height: 100%;
+}
+
+.fb-flow-list-scroll {
+    height: calc(100% - 60px);
+    overflow-y: auto;
+}
+
+.fb-main-relative {
+    position: relative;
+}
+
 .fb-sidebar {
     background: var(--surface);
     display: flex;

@@ -1,4 +1,4 @@
-﻿const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onDocumentUpdated, onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onObjectFinalized } = require("firebase-functions/v2/storage");
@@ -7,8 +7,7 @@ const admin = require('firebase-admin');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
-const { evaluateFlows } = require('./flowEngine');
-
+const { evaluateFlows, simulateFlowExecution } = require('./flowEngine');
 
 admin.initializeApp();
 
@@ -1426,5 +1425,32 @@ If you need to perform an action on the CRM, politely let them know that a human
 
     } catch (error) {
         console.error('[handleWhatsAppInbound] Failed to process auto-reply:', error);
+    }
+});
+
+// ============================================================================
+// FLOW ENGINE SIMULATION ENDPOINT
+// ============================================================================
+
+/**
+ * Callable Function: Dry Run a Workflow for UI Testing
+ */
+exports.simulateFlow = onCall(async (request) => {
+    // 1. Authentication Check
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'User must be authenticated to run flow simulations.');
+    }
+
+    const { flowId, messageData, crmPhone, leadPhone } = request.data;
+    if (!flowId) {
+        throw new HttpsError('invalid-argument', 'flowId is required for simulation.');
+    }
+
+    try {
+        const simulationResult = await simulateFlowExecution(flowId, messageData, crmPhone, leadPhone);
+        return simulationResult;
+    } catch (error) {
+        console.error(`[simulateFlow] Error simulating flow ${flowId}:`, error);
+        throw new HttpsError('internal', `Simulation Runtime Error: ${error.message}`);
     }
 });
