@@ -267,7 +267,7 @@ export function NodePropertiesPanel({ selectedNode, onClose, onUpdateNodeData, o
                                 <>
                                     <SessionSelector
                                         sessions={sessions}
-                                        label="Only from WhatsApp Accounts (optional)"
+                                        label="Only To WhatsApp Accounts (optional)"
                                         value={data.sessionIds || []}
                                         onChange={(v) => handleUpdate('sessionIds', v)}
                                         isMulti

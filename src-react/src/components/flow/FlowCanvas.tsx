@@ -283,6 +283,7 @@ function FlowCanvasInner({ initialNodes: propsNodes, initialEdges: propsEdges, i
 
         // Strip undefined properties which Firebase rejects aggressively
         const payload = cleanDeep({
+            id: savedRuleId || undefined,
             name: ruleName,
             description: `Visual graph automation flow`,
             trigger: { 
