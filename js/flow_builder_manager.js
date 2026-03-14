@@ -287,7 +287,50 @@ class FlowBuilderManager {
                 const functions = getFunctions(app);
                 const aiGen = httpsCallable(functions, 'generateAIFlow');
                 const result = await aiGen({ prompt });
-                return result.data;
+                
+                if (!result.data || !result.data.flowData || !result.data.flowData.drawflow) {
+                    throw new Error("Invalid format returned by AI generation.");
+                }
+
+                const drawflowData = result.data.flowData.drawflow.Home.data;
+                const nodes = [];
+                const edges = [];
+
+                // Convert drawflow JSON to React Flow format
+                Object.values(drawflowData).forEach((node) => {
+                    const id = node.id.toString();
+                    
+                    // Create Node
+                    nodes.push({
+                        id: `node_${id}`,
+                        type: node.name,
+                        position: { x: node.pos_x, y: node.pos_y },
+                        data: {
+                            label: node.html || node.name,
+                            actionType: node.name === 'trigger' ? 'CONTACT_CREATED' : 'SEND_WHATSAPP', 
+                            ...node.data
+                        }
+                    });
+
+                    // Create Edges
+                    if (node.outputs) {
+                        Object.keys(node.outputs).forEach(outputKey => {
+                            const connections = node.outputs[outputKey].connections;
+                            connections.forEach(conn => {
+                                edges.push({
+                                    id: `edge_${id}_${conn.node}`,
+                                    source: `node_${id}`,
+                                    target: `node_${conn.node}`,
+                                    sourceHandle: outputKey === 'output_2' ? 'false' : 'true',
+                                    animated: true,
+                                    style: { stroke: '#3b82f6', strokeWidth: 2 }
+                                });
+                            });
+                        });
+                    }
+                });
+
+                return { name: `AI Generated ${new Date().toLocaleTimeString()}`, nodes, edges };
             } catch(e) {
                 console.error("generateAIFlow error", e);
                 throw e;
