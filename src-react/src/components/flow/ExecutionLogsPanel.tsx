@@ -73,7 +73,11 @@ export function ExecutionLogsPanel({ ruleId, onClose, onLogsLoaded }: { ruleId: 
                             </button>
                             <div className="flex flex-col">
                                 <span className="text-sm font-medium text-primary">Run details</span>
-                                <span className="text-xs text-muted">{new Date(selectedExecution.startedAt || selectedExecution.createdAt).toLocaleString()}</span>
+                                <span className="text-xs text-muted">
+                                    {selectedExecution.startedAt 
+                                        ? (selectedExecution.startedAt.toDate ? selectedExecution.startedAt.toDate().toLocaleString() : new Date(selectedExecution.startedAt).toLocaleString()) 
+                                        : 'Unknown Time'}
+                                </span>
                             </div>
                         </div>
                         
@@ -102,8 +106,8 @@ export function ExecutionLogsPanel({ ruleId, onClose, onLogsLoaded }: { ruleId: 
                                         {/* Log Content */}
                                         <div className="bg-elevated border border-theme rounded-xl p-3 shadow-sm">
                                             <div className="flex justify-between items-start mb-1">
-                                                <span className="text-sm font-semibold text-primary">{log.nodeType}</span>
-                                                <span className="text-[10px] text-muted">{log.durationMs}ms</span>
+                                                <span className="text-sm font-semibold text-primary">{log.name || log.type || log.nodeType}</span>
+                                                <span className="text-[10px] text-muted">{Math.max(0, log.durationMs || 0)}ms</span>
                                             </div>
                                             
                                             {log.error && (
@@ -132,14 +136,16 @@ export function ExecutionLogsPanel({ ruleId, onClose, onLogsLoaded }: { ruleId: 
                                 <div className="flex flex-col gap-1">
                                     <span className="text-sm font-medium text-primary flex items-center gap-2">
                                         <PlayCircle size={14} className="text-secondary" />
-                                        {new Date(exec.startedAt || exec.createdAt).toLocaleString()}
+                                        {exec.startedAt 
+                                            ? (exec.startedAt.toDate ? exec.startedAt.toDate().toLocaleString() : new Date(exec.startedAt).toLocaleString()) 
+                                            : 'Unknown Time'}
                                     </span>
                                     <span className={`text-xs w-fit px-1.5 rounded ${
                                         exec.status === 'FAILED' ? 'bg-red-500/10 text-red-500' : 
                                         exec.status === 'RUNNING' ? 'bg-blue-500/10 text-blue-500' : 
                                         'bg-success/10 text-success'
                                     }`}>
-                                        {exec.status}
+                                        {exec.status} {exec.simulationMode ? '(Simulated)' : ''}
                                     </span>
                                 </div>
                                 <ChevronRight size={16} className="text-muted" />

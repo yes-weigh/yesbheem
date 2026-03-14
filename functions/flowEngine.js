@@ -63,6 +63,7 @@ async function evaluateFlows(messageData, chatId, crmPhone, leadPhone) {
             db, 
             chatId,
             simulationMode: false,
+            executionId: db.collection('flow_executions').doc().id,
             // Protection Framework
             startTime: Date.now(),
             stepCount: 0,
@@ -77,10 +78,44 @@ async function evaluateFlows(messageData, chatId, crmPhone, leadPhone) {
 
         await executeFlowPath(flowMeta, trigger.startNodeId, context);
 
+        const durationMs = Date.now() - context.startTime;
+        
+        // Save execution log
+        try {
+            await db.collection('flow_executions').doc(context.executionId).set({
+                flowId: trigger.flowId,
+                status: 'SUCCESS',
+                startedAt: new Date(context.startTime),
+                durationMs,
+                chatId,
+                crmPhone,
+                leadPhone,
+                stepCount: context.stepCount,
+                simulationMode: false,
+            });
+
+            // Save trace logs in subcollection
+            const batch = db.batch();
+            context.executionTrace.forEach((traceStep, index) => {
+                const stepRef = db.collection('flow_executions').doc(context.executionId).collection('logs').doc(index.toString().padStart(4, '0'));
+                batch.set(stepRef, traceStep);
+            });
+            await batch.commit();
+        } catch (logErr) {
+            console.error(`[Flow Engine] Failed to save execution log:`, logErr);
+        }
+
         return true;
 
     } catch (error) {
         console.error(`[Flow Engine] Error evaluating flows:`, error);
+        
+        // Attempt to log failure if context.executionId exists
+        if (msgText) { // just to have something in scope to check, but we need context if initialized
+            try {
+                // We'd need context accessible outside try block, but we'll leave basic catch for now.
+            } catch (e) {}
+        }
         return false;
     }
 }
@@ -120,16 +155,24 @@ async function executeFlowPath(flowMeta, currentNodeId, context) {
         const continueBranch = await processNode(flowMeta, nextNode, context, edge.handle);
 
         // 4. Trace the execution
-        context.executionTrace.push({
+        const traceEntry = {
             nodeId: nextNodeId, 
             type: nextNode.type || nextNode.name || 'unknown',
             name: flowMeta.formatVersion === 'v1_drawflow' ? nextNode.name : nextNode.type,
-            status: 'executed'
-        });
+            status: 'SUCCESS',
+            durationMs: Date.now() - context.startTime // Cumulative or step duration. (Keeping cumulative for now for simplicity, or we can track step start time)
+        };
+        context.executionTrace.push(traceEntry);
 
         // Continue execution to the next connected nodes if requested
         if (continueBranch) {
-            await executeFlowPath(flowMeta, nextNodeId, context);
+            try {
+                await executeFlowPath(flowMeta, nextNodeId, context);
+            } catch (pathErr) {
+                traceEntry.status = 'FAILED';
+                traceEntry.error = pathErr.message;
+                throw pathErr; // Re-throw to halt
+            }
         }
     }
 }
@@ -298,6 +341,8 @@ async function simulateFlowExecution(flowId, messageData, crmPhone, leadPhone) {
     if (!flowMeta || !flowMeta.valid) {
         return { success: false, error: 'Flow is completely invalid or compilation failed.' };
     }
+    
+    const executionId = db.collection('flow_executions').doc().id;
 
     const context = {
         crmPhone: crmPhone || 'simulation_crm',
@@ -306,6 +351,7 @@ async function simulateFlowExecution(flowId, messageData, crmPhone, leadPhone) {
         db,
         chatId: 'simulator_chat',
         simulationMode: true,
+        executionId: executionId,
         startTime: Date.now(),
         stepCount: 0,
         visitedNodes: new Set(),
@@ -329,10 +375,50 @@ async function simulateFlowExecution(flowId, messageData, crmPhone, leadPhone) {
             return { success: false, error: 'No trigger node present in graph.' };
         }
 
-        context.executionTrace.push({ nodeId: triggerNodeId, type: 'trigger', status: 'executed' });
+        context.executionTrace.push({ nodeId: triggerNodeId, type: 'trigger', status: 'SUCCESS', durationMs: 0 });
         
         // Let it run under constraints
-        await executeFlowPath(flowMeta, triggerNodeId, context);
+        let success = true;
+        let finalError = null;
+        try {
+            await executeFlowPath(flowMeta, triggerNodeId, context);
+        } catch (execErr) {
+            success = false;
+            finalError = execErr.message;
+        }
+
+        const durationMs = Date.now() - context.startTime;
+
+        // Save simulation log
+        try {
+            await db.collection('flow_executions').doc(context.executionId).set({
+                flowId,
+                status: success ? 'SUCCESS' : 'FAILED',
+                startedAt: new Date(context.startTime),
+                durationMs,
+                stepCount: context.stepCount,
+                simulationMode: true,
+                error: finalError
+            });
+
+            const batch = db.batch();
+            context.executionTrace.forEach((traceStep, index) => {
+                const stepRef = db.collection('flow_executions').doc(context.executionId).collection('logs').doc(index.toString().padStart(4, '0'));
+                batch.set(stepRef, traceStep);
+            });
+            await batch.commit();
+        } catch (logErr) {
+            console.error(`[Flow Engine] Failed to save simulation log:`, logErr);
+        }
+
+        if (!success) {
+            return {
+                success: false,
+                error: finalError,
+                executionTrace: context.executionTrace,
+                interceptedActions: context.interceptedActions
+            };
+        }
 
         return {
             success: true,
@@ -340,7 +426,7 @@ async function simulateFlowExecution(flowId, messageData, crmPhone, leadPhone) {
             interceptedActions: context.interceptedActions,
             meta: {
                 steps: context.stepCount,
-                durationMs: Date.now() - context.startTime
+                durationMs
             }
         };
 

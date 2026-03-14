@@ -248,24 +248,51 @@ class FlowBuilderManager {
         };
 
         window.getFlowExecutions = async (ruleId) => {
-            return []; // To be implemented later if needed
+            try {
+                const logsRef = collection(db, "flow_executions");
+                // Fetch basic executions for this flow
+                const q = query(logsRef, orderBy("startedAt", "desc")); 
+                const snapshots = await getDocs(q);
+                const executions = [];
+                snapshots.forEach(doc => {
+                    const data = doc.data();
+                    if (data.flowId === ruleId) {
+                        executions.push({ id: doc.id, ...data });
+                    }
+                });
+                return executions;
+            } catch (e) {
+                console.error("getFlowExecutions error", e);
+                return [];
+            }
         };
 
         window.getFlowSimulationLogs = async (ruleId, executionId) => {
-            return [];
+            try {
+                const logsRef = collection(db, "flow_executions", executionId, "logs");
+                const snapshots = await getDocs(logsRef);
+                const logs = [];
+                snapshots.forEach(doc => {
+                    logs.push({ id: doc.id, ...doc.data() });
+                });
+                return logs;
+            } catch (e) {
+                console.error("getFlowSimulationLogs error", e);
+                return [];
+            }
         };
 
-        window.generateAIFlow = async (description) => {
+        window.generateAIFlow = async (prompt) => {
             try {
                 const functions = getFunctions(app);
                 const aiGen = httpsCallable(functions, 'generateAIFlow');
-                const result = await aiGen({ description });
+                const result = await aiGen({ prompt });
                 return result.data;
             } catch(e) {
                 console.error("generateAIFlow error", e);
                 throw e;
             }
-        }
+        };
     }
 
     escapeHTML(str) {

@@ -1454,3 +1454,135 @@ exports.simulateFlow = onCall(async (request) => {
         throw new HttpsError('internal', `Simulation Runtime Error: ${error.message}`);
     }
 });
+
+// ============================================================================
+// AI FLOW GENERATOR ENDPOINT
+// ============================================================================
+
+/**
+ * Callable Function: Generate a flow configuration using Gemini AI
+ */
+exports.generateAIFlow = onCall({ secrets: [geminiApiKey] }, async (request) => {
+    // 1. Authentication Check
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'User must be authenticated to generate flows.');
+    }
+
+    const { prompt } = request.data;
+    if (!prompt || typeof prompt !== 'string') {
+        throw new HttpsError('invalid-argument', 'A valid text prompt is required to generate a flow.');
+    }
+
+    const { GoogleGenAI } = require('@google/genai');
+    const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
+
+    const systemInstruction = `You are an expert conversational AI designer for the Yes Bheem CRM system. 
+Your task is to convert a user's plain text description of a workflow into a valid JSON configuration for the Visual Flow Builder (v1_drawflow format).
+
+## Output Format Requirements
+You must return ONLY a JSON object representing the flow configuration. Do not include any markdown formatting like \`\`\`json or \`\`\`. Just the raw JSON.
+
+The general structure of the JSON should be:
+{
+    "drawflow": {
+        "Home": {
+            "data": {
+                "1": { /* Node 1 */ },
+                "2": { /* Node 2 */ }
+            }
+        }
+    }
+}
+
+## Supported Node Types
+1. **trigger**: (Required, always the starting point). 
+   - \`name: 'trigger'\`
+   - \`data: { keyword: "optional trigger word", condition: "exact" | "contains" }\`
+   - \`outputs: { "output_1": { "connections": [{ "node": "TARGET_NODE_ID", "output": "input_1" }] } }\`
+2. **message**: Sends a text message. 
+   - \`name: 'message'\`
+   - \`data: { text: "Message content here" }\`
+   - \`inputs: { "input_1": { "connections": [...] } }\`
+   - \`outputs: { "output_1": { "connections": [...] } }\`
+3. **condition**: Branches logic based on user input. 
+   - \`name: 'condition'\`
+   - \`data: { operator: "equals" | "contains", value: "expected answer" }\`
+   - Must have TWO outputs: \`output_1\` (True/Match) and \`output_2\` (False/No Match).
+   - \`inputs: { "input_1": { "connections": [...] } }\`
+   - \`outputs: { "output_1": { "connections": [...] }, "output_2": { "connections": [...] } }\`
+
+## Example Flow (Trigger -> Message)
+{
+  "drawflow": {
+    "Home": {
+      "data": {
+        "1": {
+          "id": 1,
+          "name": "trigger",
+          "data": { "keyword": "hello", "condition": "exact" },
+          "class": "trigger",
+          "html": "Trigger",
+          "typenode": false,
+          "inputs": {},
+          "outputs": { "output_1": { "connections": [ { "node": "2", "output": "input_1" } ] } },
+          "pos_x": 100,
+          "pos_y": 100
+        },
+        "2": {
+          "id": 2,
+          "name": "message",
+          "data": { "text": "Hi there!" },
+          "class": "message",
+          "html": "Message",
+          "typenode": false,
+          "inputs": { "input_1": { "connections": [ { "node": "1", "input": "output_1" } ] } },
+          "outputs": { "output_1": { "connections": [] } },
+          "pos_x": 400,
+          "pos_y": 100
+        }
+      }
+    }
+  }
+}
+
+Ensure coordinates (pos_x, pos_y) are spaced out logically (e.g., pos_x increases by 250 for each step).
+Always include one 'trigger' node.
+Return ONLY valid JSON.`;
+
+    try {
+        console.log(`[generateAIFlow] Generating flow for prompt: "${prompt.substring(0, 50)}..."`);
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            config: { systemInstruction }
+        });
+
+        const replyText = response.text;
+        if (!replyText) {
+             throw new Error("AI returned an empty string.");
+        }
+
+        // Clean up markdown if the AI mistakenly included it
+        let cleanJson = replyText.trim();
+        if (cleanJson.startsWith('```json')) {
+            cleanJson = cleanJson.substring(7);
+        }
+        if (cleanJson.endsWith('```')) {
+            cleanJson = cleanJson.substring(0, cleanJson.length - 3);
+        }
+
+        const flowData = JSON.parse(cleanJson);
+        
+        // Basic validation
+        if (!flowData || !flowData.drawflow || !flowData.drawflow.Home || !flowData.drawflow.Home.data) {
+             throw new Error("Invalid format returned by AI. Missing drawflow.Home.data structure.");
+        }
+
+        console.log(`[generateAIFlow] Successfully generated flow data.`);
+        return { success: true, flowData };
+
+    } catch (error) {
+        console.error(`[generateAIFlow] Error generating flow:`, error);
+        throw new HttpsError('internal', `Flow Generation Error: ${error.message}`);
+    }
+});
