@@ -300,15 +300,43 @@ class FlowBuilderManager {
                 Object.values(drawflowData).forEach((node) => {
                     const id = node.id.toString();
                     
+                    let reactFlowType = 'action';
+                    let actionType = undefined;
+                    let triggerType = undefined;
+                    const cleanData = { ...node.data };
+
+                    if (node.name === 'trigger') {
+                        reactFlowType = 'trigger';
+                        triggerType = cleanData.triggerType || cleanData.keyword || 'CONTACT_CREATED';
+                        cleanData.label = node.html || node.name;
+                    } else if (node.name === 'message') {
+                        reactFlowType = 'action';
+                        actionType = 'SEND_WHATSAPP';
+                        cleanData.messageContent = cleanData.text || "Hello";
+                        cleanData.label = 'Send WhatsApp';
+                        delete cleanData.text;
+                    } else if (node.name === 'condition') {
+                        reactFlowType = 'condition';
+                        cleanData.label = 'Condition';
+                    } else if (node.name === 'delay') {
+                        reactFlowType = 'delay';
+                        actionType = 'DELAY';
+                        cleanData.label = `Wait ${cleanData.duration || 1} ${cleanData.unit || 'minutes'}`;
+                    } else {
+                        reactFlowType = 'action';
+                        cleanData.label = node.html || node.name;
+                    }
+
                     // Create Node
                     nodes.push({
                         id: `node_${id}`,
-                        type: node.name,
-                        position: { x: node.pos_x, y: node.pos_y },
+                        type: reactFlowType,
+                        position: { x: typeof node.pos_x === 'number' ? node.pos_x : 100, y: typeof node.pos_y === 'number' ? node.pos_y : 100 },
                         data: {
-                            label: node.html || node.name,
-                            actionType: node.name === 'trigger' ? 'CONTACT_CREATED' : 'SEND_WHATSAPP', 
-                            ...node.data
+                            label: cleanData.label,
+                            actionType,
+                            triggerType,
+                            ...cleanData
                         }
                     });
 

@@ -1510,6 +1510,11 @@ The general structure of the JSON should be:
    - Must have TWO outputs: \`output_1\` (True/Match) and \`output_2\` (False/No Match).
    - \`inputs: { "input_1": { "connections": [...] } }\`
    - \`outputs: { "output_1": { "connections": [...] }, "output_2": { "connections": [...] } }\`
+4. **delay**: Pauses the flow execution for a specified duration.
+   - \`name: 'delay'\`
+   - \`data: { duration: 5, unit: "minutes" | "hours" | "days" }\`
+   - \`inputs: { "input_1": { "connections": [...] } }\`
+   - \`outputs: { "output_1": { "connections": [...] } }\`
 
 ## Example Flow (Trigger -> Message)
 {
