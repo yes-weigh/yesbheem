@@ -349,7 +349,9 @@ class FlowBuilderManager {
                                     id: `edge_${id}_${conn.node}`,
                                     source: `node_${id}`,
                                     target: `node_${conn.node}`,
-                                    sourceHandle: outputKey === 'output_2' ? 'false' : 'true',
+                                    sourceHandle: reactFlowType === 'condition' 
+                                        ? (outputKey === 'output_2' ? 'false' : 'true') 
+                                        : undefined,
                                     animated: true,
                                     style: { stroke: '#3b82f6', strokeWidth: 2 }
                                 });
