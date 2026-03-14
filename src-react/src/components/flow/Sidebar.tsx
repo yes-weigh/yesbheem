@@ -30,14 +30,22 @@ export function Sidebar() {
         { type: 'handoff', actionType: 'HUMAN_HANDOFF', label: 'Human Handoff', icon: <UserPlus size={16} className="text-indigo-400 group-hover:text-indigo-300 transition-colors" /> },
     ];
 
-    const nodeItem = (node: typeof nodeTypes[0], i: number, gradientFrom: string, gradientTo: string) => (
+    const nodeItem = (node: typeof nodeTypes[0], i: number, colorPrefix: string) => {
+        // We explicitly map the classes because Tailwind cannot scan dynamic string interpolations.
+        const colorClasses: Record<string, { from: string, to: string, borderTarget: string }> = {
+            'blue': { from: 'from-blue-500', to: 'to-indigo-500', borderTarget: 'hover:border-blue-500/30' },
+            'purple': { from: 'from-purple-500', to: 'to-pink-500', borderTarget: 'hover:border-purple-500/30' },
+        };
+        const colors = colorClasses[colorPrefix] || colorClasses['blue'];
+
+        return (
         <div
             key={i}
-            className={`group relative overflow-hidden bg-[#151923] border border-white/5 rounded-2xl p-3 flex items-center gap-4 cursor-grab transition-all duration-300 hover:border-${gradientFrom}/30 hover:shadow-[0_0_25px_rgba(0,0,0,0.3)] hover:-translate-y-1`}
+            className={`group relative overflow-hidden bg-[#151923] border border-white/5 rounded-2xl p-3 flex items-center gap-4 cursor-grab transition-all duration-300 ${colors.borderTarget} hover:shadow-[0_0_25px_rgba(0,0,0,0.3)] hover:-translate-y-1`}
             onDragStart={(event) => onDragStart(event, node.type, node.actionType, node.label)}
             draggable
         >
-            <div className={`absolute inset-0 bg-gradient-to-r ${gradientFrom} ${gradientTo} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
+            <div className={`absolute inset-0 bg-gradient-to-r ${colors.from} ${colors.to} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
             <div className="relative p-2.5 rounded-xl bg-black/40 border border-white/10 shadow-inner group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
                 {node.icon}
             </div>
@@ -45,7 +53,8 @@ export function Sidebar() {
                 {node.label}
             </span>
         </div>
-    );
+        );
+    };
 
     return (
         <aside className="w-[320px] bg-[#0A0D14]/95 backdrop-blur-3xl border-r border-white/5 flex flex-col h-full overflow-y-auto z-10 p-6 shrink-0 shadow-[20px_0_50px_rgba(0,0,0,0.2)] relative">
@@ -64,7 +73,7 @@ export function Sidebar() {
                     </div>
                     <p className="text-slate-400 text-xs mb-5 font-medium leading-relaxed">Drag a trigger onto the canvas to replace the existing starting point.</p>
                     <div className="flex flex-col gap-3">
-                        {triggerTypes.map((node, i) => nodeItem(node, i, 'from-blue-500', 'to-indigo-500'))}
+                        {triggerTypes.map((node, i) => nodeItem(node, i, 'blue'))}
                     </div>
                 </div>
 
@@ -80,7 +89,7 @@ export function Sidebar() {
                         </div>
                     </div>
                     <div className="flex flex-col gap-3">
-                        {nodeTypes.map((node, i) => nodeItem(node, i, 'from-purple-500', 'to-pink-500'))}
+                        {nodeTypes.map((node, i) => nodeItem(node, i, 'purple'))}
                     </div>
                 </div>
             </div>
