@@ -297,7 +297,7 @@ class FlowBuilderManager {
                 const edges = [];
 
                 // Convert drawflow JSON to React Flow format
-                Object.values(drawflowData).forEach((node) => {
+                Object.values(drawflowData).forEach((node, index) => {
                     const id = node.id.toString();
                     
                     let reactFlowType = 'action';
@@ -327,11 +327,14 @@ class FlowBuilderManager {
                         cleanData.label = node.html || node.name;
                     }
 
-                    // Create Node
+                    // Create Node with automatic staggered layout
+                    const posX = 200 + (index * 350);
+                    const posY = 150 + (index * 120);
+
                     nodes.push({
                         id: `node_${id}`,
                         type: reactFlowType,
-                        position: { x: typeof node.pos_x === 'number' ? node.pos_x : 100, y: typeof node.pos_y === 'number' ? node.pos_y : 100 },
+                        position: { x: posX, y: posY },
                         data: {
                             label: cleanData.label,
                             actionType,

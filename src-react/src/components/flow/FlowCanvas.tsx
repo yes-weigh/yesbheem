@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
     ReactFlow,
     Background,
@@ -131,8 +131,13 @@ function FlowCanvasInner({ initialNodes: propsNodes, initialEdges: propsEdges, i
         loadReplayTrace();
     }, [initialRuleId, replayExecutionId, setNodes]);
 
+    const defaultEdgeOptions = useMemo(() => ({
+        animated: true,
+        style: { stroke: '#3b82f6', strokeWidth: 2 }
+    }), []);
+
     const onConnect = useCallback(
-        (params: Connection | Edge) => setEdges((eds) => addEdge({ ...params, animated: true }, eds)),
+        (params: Connection | Edge) => setEdges((eds) => addEdge(params, eds)),
         [setEdges]
     );
 
@@ -447,6 +452,7 @@ function FlowCanvasInner({ initialNodes: propsNodes, initialEdges: propsEdges, i
                         onDrop={onDrop}
                         onDragOver={onDragOver}
                         nodeTypes={nodeTypes}
+                        defaultEdgeOptions={defaultEdgeOptions}
                     fitView
                     className="bg-[#0b0d14]"
                     proOptions={{ hideAttribution: true }}
