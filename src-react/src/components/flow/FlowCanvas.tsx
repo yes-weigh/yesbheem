@@ -4,6 +4,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     ReactFlow,
     Background,
+    BackgroundVariant,
     Controls,
     MiniMap,
     useNodesState,
@@ -359,19 +360,22 @@ function FlowCanvasInner({ initialNodes: propsNodes, initialEdges: propsEdges, i
     return (
         <div className="flex flex-col h-screen w-full bg-base">
             {/* Topbar */}
-            <div className="h-16 border-b border-theme bg-surface flex items-center justify-between px-6 z-10">
-                <div className="flex items-center gap-4">
-                    <button onClick={() => { if (typeof window !== 'undefined' && (window as any).flowBuilderManager) { (window as any).flowBuilderManager.resetCanvas(); } }} title="Close Canvas" className="text-secondary hover:text-white transition-colors font-medium flex items-center gap-2">
-                        <X size={16} /> Close
+            <div className="h-20 border-b border-theme/50 bg-[#0A0D14]/80 backdrop-blur-2xl flex items-center justify-between px-8 z-10 shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
+                <div className="flex items-center gap-6">
+                    <button onClick={() => { if (typeof window !== 'undefined' && (window as any).flowBuilderManager) { (window as any).flowBuilderManager.resetCanvas(); } }} title="Close Canvas" className="text-secondary hover:text-white transition-all font-medium flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5">
+                        <X size={18} /> <span className="text-sm tracking-wide">Close</span>
                     </button>
-                    <div className="h-6 w-px bg-theme" />
-                    <input 
-                        type="text" 
-                        value={ruleName} 
-                        onChange={(e) => setRuleName(e.target.value)}
-                        className="bg-transparent border-none text-lg font-bold text-primary focus:outline-none focus:ring-0 w-64 p-0"
-                        placeholder="Rule Name"
-                    />
+                    <div className="h-8 w-px bg-gradient-to-b from-transparent via-theme to-transparent opacity-50" />
+                    <div className="relative group">
+                        <input 
+                            type="text" 
+                            value={ruleName} 
+                            onChange={(e) => setRuleName(e.target.value)}
+                            className="bg-transparent border-none text-xl font-extrabold text-white focus:outline-none focus:ring-0 w-80 p-0 placeholder-slate-600 transition-all"
+                            placeholder="Name your flow..."
+                        />
+                        <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 group-hover:w-full transition-all duration-500" />
+                    </div>
                     {replayExecutionId && (
                         <div className="flex items-center gap-1.5 ml-4 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded-md text-amber-500 font-medium text-xs">
                             <Clock size={14} />
@@ -394,33 +398,36 @@ function FlowCanvasInner({ initialNodes: propsNodes, initialEdges: propsEdges, i
                     )}
                 </div>
                 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                     {errorMsg && (
-                        <div className="flex items-center gap-2 text-red-400 text-sm">
-                            <AlertCircle size={16} />
-                            <span>{errorMsg}</span>
+                        <div className="flex items-center gap-2 text-rose-400 bg-rose-500/10 px-4 py-2 rounded-xl border border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.1)] animate-in fade-in zoom-in duration-300">
+                            <AlertCircle size={16} className="animate-pulse" />
+                            <span className="text-sm font-medium">{errorMsg}</span>
                         </div>
                     )}
-                    <button onClick={clearAllNodes} className="btn bg-body border border-theme text-red-500 hover:text-red-400">
+                    <button onClick={clearAllNodes} className="px-4 py-2 text-sm font-semibold rounded-xl text-rose-400 border border-rose-500/20 hover:bg-rose-500/10 hover:border-rose-500/40 transition-all duration-300">
                         Clear Canvas
                     </button>
                     {savedRuleId && (
-                        <button onClick={() => setShowLogs(true)} className="btn bg-elevated border border-theme text-primary flex items-center gap-2">
+                        <button onClick={() => setShowLogs(true)} className="px-4 py-2 text-sm font-semibold rounded-xl text-slate-300 border border-slate-700 bg-slate-800/50 hover:bg-slate-700/50 hover:text-white transition-all flex items-center gap-2">
                             <Activity size={16} />
                             Logs
                         </button>
                     )}
-                    <button onClick={handleSimulate} disabled={isSimulating} className="btn bg-elevated border border-theme text-success hover:border-success/30 flex items-center gap-2">
+                    <button onClick={handleSimulate} disabled={isSimulating} className="px-4 py-2 text-sm font-semibold rounded-xl text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.05)] hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] disabled:opacity-50">
                         {isSimulating ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
                         Test Flow
                     </button>
-                    <button onClick={() => setShowAIGenerator(true)} className="btn bg-elevated border border-blue-500/30 text-blue-400 hover:text-blue-300 flex items-center gap-2">
+                    <button onClick={() => setShowAIGenerator(true)} className="px-4 py-2 text-sm font-semibold rounded-xl text-indigo-400 border border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/10 transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(99,102,241,0.05)] hover:shadow-[0_0_20px_rgba(99,102,241,0.15)]">
                         <Sparkles size={16} />
                         AI Generate
                     </button>
-                    <button onClick={handleSave} disabled={isSaving} className="btn btn-primary flex items-center gap-2 shadow-lg shadow-primary/20">
-                        {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                        Save & Activate
+                    <button onClick={handleSave} disabled={isSaving} className="relative group px-6 py-2 text-sm font-bold text-white rounded-xl overflow-hidden shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] transition-all disabled:opacity-50">
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 group-hover:bg-[length:200%_auto] animate-gradient" />
+                        <div className="relative flex items-center gap-2">
+                            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                            Save & Activate
+                        </div>
                     </button>
                 </div>
             </div>
@@ -441,12 +448,25 @@ function FlowCanvasInner({ initialNodes: propsNodes, initialEdges: propsEdges, i
                         onDragOver={onDragOver}
                         nodeTypes={nodeTypes}
                     fitView
-                    className="bg-base"
+                    className="bg-[#0b0d14]"
                     proOptions={{ hideAttribution: true }}
                 >
-                    <Background color="#1e1f29" gap={16} />
-                    <Controls className="!bg-surface !border-theme !text-secondary" />
-                    <MiniMap className="!bg-surface !border-theme" maskColor="rgba(0,0,0,0.2)" />
+                    <Background color="#1e293b" gap={24} size={2} variant={BackgroundVariant.Dots} />
+                    <Controls className="!bg-[#151b2b] !border-[#2a3040] !text-slate-400 !rounded-xl !shadow-2xl overflow-hidden [&>button]:!border-b-[#2a3040] hover:[&>button]:!bg-[#1e2538] transition-all" />
+                    <MiniMap 
+                        className="!bg-[#151b2b] !border-[#2a3040] !rounded-xl !shadow-2xl" 
+                        maskColor="rgba(11, 13, 20, 0.7)" 
+                        nodeColor={(n) => {
+                            if (n.type === 'trigger') return '#3b82f6';
+                            if (n.type === 'action') return '#a855f7';
+                            if (n.type === 'condition') return '#ec4899';
+                            if (n.type === 'delay') return '#f97316';
+                            if (n.type === 'ai') return '#10b981';
+                            if (n.type === 'integration') return '#06b6d4';
+                            if (n.type === 'handoff') return '#6366f1';
+                            return '#475569';
+                        }}
+                    />
                 </ReactFlow>
 
                 <NodePropertiesPanel 

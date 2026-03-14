@@ -17,9 +17,14 @@ const FIELD_PRESETS = [
     { label: 'Contact: Email',        value: 'contact.email' },
     { label: 'Contact: Status',       value: 'contact.status' },
     { label: 'Contact: Tags',         value: 'contact.tags' },
-    { label: 'Contact: Custom Data…', value: 'contact.customData.' },
+    { label: 'CRM: State',            value: 'contact.customData.state' },
+    { label: 'CRM: Language',         value: 'contact.customData.language' },
+    { label: 'CRM: Dealer Category',  value: 'contact.customData.dealerCategory' },
+    { label: 'CRM: B2B Lead Stage',   value: 'contact.customData.leadStage' },
+    { label: 'Lead: Product Interest',value: 'contact.customData.productInterest' },
     { label: 'Message: Body',         value: 'event.content' },
     { label: 'Message: Session ID',   value: 'event.sessionId' },
+    { label: 'Contact: Custom Data…', value: 'contact.customData.' },
     { label: 'Custom Path…',          value: '_custom_' },
 ];
 
@@ -256,6 +261,8 @@ export function NodePropertiesPanel({ selectedNode, onClose, onUpdateNodeData, o
                                     <option value="MESSAGE_RECEIVED">Message Received</option>
                                     <option value="CONTACT_CREATED">Contact Created</option>
                                     <option value="CONTACT_UPDATED">Contact Updated</option>
+                                    <option value="LEAD_STAGE_CHANGED">Lead Stage Changed</option>
+                                    <option value="B2B_INQUIRY">New B2B Inquiry</option>
                                     <option value="CAMPAIGN_SENT">Campaign Sent</option>
                                     <option value="CAMPAIGN_REPLIED">Campaign Replied</option>
                                     <option value="TAG_ADDED">Tag Added</option>
@@ -299,6 +306,27 @@ export function NodePropertiesPanel({ selectedNode, onClose, onUpdateNodeData, o
                                     />
                                 </div>
                             )}
+                            {/* Conditional Triggers Context Fields */}
+                            {(data.triggerType === 'LEAD_STAGE_CHANGED') && (
+                                <div className="flex flex-col gap-2 mt-2">
+                                    <label className="text-sm font-medium text-secondary">Target Stage (Leave blank for any)</label>
+                                    <select
+                                        title="Target Stage filter"
+                                        className={inputClasses}
+                                        value={data.leadStageFilter || ''}
+                                        onChange={(e) => handleUpdate('leadStageFilter', e.target.value)}
+                                    >
+                                        <option value="">Any Stage</option>
+                                        <option value="NEW">New</option>
+                                        <option value="CONTACTED">Contacted</option>
+                                        <option value="QUALIFIED">Qualified</option>
+                                        <option value="PROPOSAL_SENT">Proposal Sent</option>
+                                        <option value="WON">Closed Won</option>
+                                        <option value="LOST">Closed Lost</option>
+                                    </select>
+                                </div>
+                            )}
+
                         </>
                     )}
 
@@ -317,14 +345,18 @@ export function NodePropertiesPanel({ selectedNode, onClose, onUpdateNodeData, o
                                             handleUpdate('actionType', a);
                                             const labels: Record<string, string> = {
                                                 'ADD_TAG': 'Add Tag',
-                                                'SEND_WHATSAPP': 'Send WhatsApp Message'
+                                                'SEND_WHATSAPP': 'Send WhatsApp Message',
+                                                'UPDATE_LEAD_STAGE': 'Update Lead Stage',
+                                                'ASSIGN_AGENT': 'Assign Agent/KAM',
                                             };
                                             handleUpdate('label', labels[a] || 'Action');
                                         }}
                                         className={inputClasses}
                                     >
-                                        <option value="ADD_TAG">Add Tag</option>
                                         <option value="SEND_WHATSAPP">Send WhatsApp Message</option>
+                                        <option value="ADD_TAG">Add Tag</option>
+                                        <option value="UPDATE_LEAD_STAGE">Update Lead Stage</option>
+                                        <option value="ASSIGN_AGENT">Assign Agent/KAM</option>
                                     </select>
                                 </div>
                             )}
@@ -339,6 +371,40 @@ export function NodePropertiesPanel({ selectedNode, onClose, onUpdateNodeData, o
                                         placeholder="e.g. VIP"
                                         value={data.tagValue || ''}
                                         onChange={(e) => handleUpdate('tagValue', e.target.value)}
+                                    />
+                                </div>
+                            )}
+
+                            {/* UPDATE_LEAD_STAGE */}
+                            {data.actionType === 'UPDATE_LEAD_STAGE' && (
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-sm font-medium text-secondary">New Lead Stage</label>
+                                    <select
+                                        title="New Lead Stage selection"
+                                        className={inputClasses}
+                                        value={data.newLeadStage || ''}
+                                        onChange={(e) => handleUpdate('newLeadStage', e.target.value)}
+                                    >
+                                        <option value="NEW">New</option>
+                                        <option value="CONTACTED">Contacted</option>
+                                        <option value="QUALIFIED">Qualified</option>
+                                        <option value="PROPOSAL_SENT">Proposal Sent</option>
+                                        <option value="WON">Closed Won</option>
+                                        <option value="LOST">Closed Lost</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* ASSIGN_AGENT */}
+                            {data.actionType === 'ASSIGN_AGENT' && (
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-sm font-medium text-secondary">Agent Email or ID</label>
+                                    <input
+                                        type="text"
+                                        className={inputClasses}
+                                        placeholder="Select or type Agent ID/Email"
+                                        value={data.assignedAgent || ''}
+                                        onChange={(e) => handleUpdate('assignedAgent', e.target.value)}
                                     />
                                 </div>
                             )}
