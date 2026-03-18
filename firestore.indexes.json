@@ -15,16 +15,6 @@
             ]
         },
         {
-            "collectionGroup": "messages",
-            "queryScope": "COLLECTION_GROUP",
-            "fields": [
-                {
-                    "fieldPath": "timestamp",
-                    "order": "DESCENDING"
-                }
-            ]
-        },
-        {
             "collectionGroup": "wa_messages",
             "queryScope": "COLLECTION",
             "fields": [
