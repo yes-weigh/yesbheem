@@ -45,10 +45,16 @@
         </div>
 
         <div class="controls-right">
-            <!-- View Toggle (Optional, sticking to Grid for now) -->
-            <div class="view-mode-toggle">
-                <button class="view-btn active" data-view="grid" title="Grid View">
-                    <span class="view-icon">▦</span>
+            <!-- View Toggles (Grid, Categories, Languages) -->
+            <div class="view-mode-toggle" id="media-view-toggles" style="display: flex; gap: 0.2rem; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                <button class="view-btn active" data-view="grid" title="Grid View" style="background: rgba(255,255,255,0.1); border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; color: var(--text-primary); transition: all 0.2s; font-size: 0.9rem;">
+                    <span class="view-icon">▦</span> Grid
+                </button>
+                <button class="view-btn" data-view="category" title="Category Folders" style="background: transparent; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; color: var(--text-muted); transition: all 0.2s; font-size: 0.9rem;">
+                    📁 Categories
+                </button>
+                <button class="view-btn" data-view="language" title="Language Folders" style="background: transparent; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; color: var(--text-muted); transition: all 0.2s; font-size: 0.9rem;">
+                    📁 Languages
                 </button>
             </div>
         </div>

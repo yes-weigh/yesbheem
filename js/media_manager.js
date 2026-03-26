@@ -17,6 +17,7 @@ class MediaManager {
             type: '',
             sort: 'newest'
         };
+        this.viewMode = 'grid';
         this.uploadFile = null;
         this.editingMediaId = null;
 
@@ -197,23 +198,109 @@ class MediaManager {
             return;
         }
 
-        this.gridContainer.innerHTML = filtered.map(m => this.createCardHtml(m)).join('');
+        if (this.viewMode === 'category' || this.viewMode === 'language') {
+            this.gridContainer.innerHTML = this.renderFolderView(filtered, this.viewMode);
+        } else {
+            this.gridContainer.innerHTML = filtered.map(m => this.createCardHtml(m)).join('');
 
-        // Generate PDF thumbnails
-        const pdfsNeedingClientRendering = filtered.filter(m =>
-            (m.type === 'document' || m.mimeType === 'application/pdf') && !m.thumbnailUrl
-        );
-        if (pdfsNeedingClientRendering.length > 0) {
-            this.generatePdfThumbnails(pdfsNeedingClientRendering, renderId);
+            // Generate PDF thumbnails
+            const pdfsNeedingClientRendering = filtered.filter(m =>
+                (m.type === 'document' || m.mimeType === 'application/pdf') && !m.thumbnailUrl
+            );
+            if (pdfsNeedingClientRendering.length > 0) {
+                this.generatePdfThumbnails(pdfsNeedingClientRendering, renderId);
+            }
+
+            // Generate Video thumbnails
+            const videosNeedingThumbnails = filtered.filter(m =>
+                (m.type === 'video' || m.mimeType?.startsWith('video')) && !m.thumbnailUrl
+            );
+            if (videosNeedingThumbnails.length > 0) {
+                this.generateVideoThumbnails(videosNeedingThumbnails, renderId);
+            }
+        }
+    }
+
+    renderFolderView(items, mode) {
+        const groups = {};
+        items.forEach(m => {
+            const key = mode === 'category' ? (m.category || 'Uncategorized') : (m.language || 'Unknown Language');
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(m);
+        });
+
+        return Object.keys(groups).sort().map(key => {
+            return this.createFolderHtml(key, groups[key], mode);
+        }).join('');
+    }
+
+    createFolderHtml(title, items, mode) {
+        // Get up to 4 items for thumbnail
+        const previewItems = items.slice(0, 4);
+        let thumbnailsHtml = previewItems.map(m => {
+            const isVideo = m.type === 'video' || m.mimeType?.startsWith('video');
+            const isDoc = m.type === 'document' || m.mimeType === 'application/pdf';
+            
+            if (m.thumbnailUrl || (!isVideo && !isDoc)) {
+                return `<img src="${m.thumbnailUrl || m.url}" style="width: 100%; height: 100%; object-fit: cover;">`;
+            } else if (isDoc) {
+                return `<div style="width:100%;height:100%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;"><span style="font-size:0.8rem;">📄</span></div>`;
+            } else {
+                return `<div style="width:100%;height:100%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;"><span style="font-size:0.8rem;">🎥</span></div>`;
+            }
+        }).join('');
+        
+        // Pad with empty blocks if less than 4
+        const emptyCount = 4 - previewItems.length;
+        for(let i=0; i<emptyCount; i++) {
+            thumbnailsHtml += `<div style="width:100%;height:100%;background:rgba(255,255,255,0.02);"></div>`;
         }
 
-        // Generate Video thumbnails
-        const videosNeedingThumbnails = filtered.filter(m =>
-            (m.type === 'video' || m.mimeType?.startsWith('video')) && !m.thumbnailUrl
-        );
-        if (videosNeedingThumbnails.length > 0) {
-            this.generateVideoThumbnails(videosNeedingThumbnails, renderId);
+        const filterKey = mode === 'category' ? 'category' : 'language';
+        const rawValue = title === 'Uncategorized' || title === 'Unknown Language' ? '' : title;
+
+        return `
+            <div class="template-card folder-card" onclick="window.mediaMgr.enterFolder('${filterKey}', '${this.escapeHtml(rawValue).replace(/'/g, "\\'")}')" style="cursor: pointer; padding: 1rem; text-align: center; display: flex; flex-direction: column; gap: 0.8rem; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: transform 0.2s, background 0.2s;" onmouseenter="this.style.background='rgba(255,255,255,0.05)'; this.style.transform='translateY(-2px)';" onmouseleave="this.style.background='rgba(255,255,255,0.02)'; this.style.transform='none';">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; border-radius: 8px; overflow: hidden; height: 140px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);">
+                    ${thumbnailsHtml}
+                </div>
+                <div>
+                    <div style="font-weight: 600; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 4px;">📁 ${this.escapeHtml(title)}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">${items.length} item${items.length !== 1 ? 's' : ''}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    enterFolder(filterKey, filterValue) {
+        // Reset search
+        const searchEl = document.getElementById('search-media');
+        if (searchEl) searchEl.value = '';
+        this.filter.search = '';
+        
+        // Apply folder filter
+        const selectEl = document.getElementById(`filter-${filterKey}`);
+        if(selectEl) {
+            selectEl.value = filterValue;
+            this.filter[filterKey] = filterValue;
         }
+
+        // Switch to grid view visually
+        const viewBtns = document.querySelectorAll('#media-view-toggles .view-btn');
+        viewBtns.forEach(b => {
+            b.classList.remove('active');
+            b.style.background = 'transparent';
+            b.style.color = 'var(--text-muted)';
+        });
+        const gridBtn = document.querySelector('#media-view-toggles .view-btn[data-view="grid"]');
+        if(gridBtn) {
+            gridBtn.classList.add('active');
+            gridBtn.style.background = 'rgba(255,255,255,0.1)';
+            gridBtn.style.color = 'var(--text-primary)';
+        }
+
+        this.viewMode = 'grid';
+        this.renderFilteredGrid();
     }
 
     createCardHtml(m) {
@@ -417,6 +504,25 @@ class MediaManager {
                 console.warn(`MediaManager: Element ${id} not found for ${event} listener`);
             }
         };
+
+        // View Modes
+        const viewBtns = document.querySelectorAll('#media-view-toggles .view-btn');
+        viewBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                viewBtns.forEach(b => {
+                    b.classList.remove('active');
+                    b.style.background = 'transparent';
+                    b.style.color = 'var(--text-muted)';
+                });
+                const targetBtn = e.currentTarget;
+                targetBtn.classList.add('active');
+                targetBtn.style.background = 'rgba(255,255,255,0.1)';
+                targetBtn.style.color = 'var(--text-primary)';
+                
+                this.viewMode = targetBtn.dataset.view;
+                this.renderFilteredGrid();
+            });
+        });
 
         // Filters
         safeAddListener('search-media', 'input', (e) => {
