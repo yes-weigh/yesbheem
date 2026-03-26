@@ -155,6 +155,23 @@ class InstanceManager {
     }
 
     async fetchInstances() {
+        const isUrlValid = (url) => {
+            if (!url) return false;
+            const match = url.match(/oe=([0-9A-Fa-f]+)/);
+            if (match && match[1]) {
+                const expTime = parseInt(match[1], 16);
+                const now = Math.floor(Date.now() / 1000) + 300; // 5 min buffer
+                return now < expTime;
+            }
+            return true;
+        };
+
+        const getValidProfilePicture = (metaUrl, liveUrl) => {
+            if (isUrlValid(liveUrl)) return liveUrl;
+            if (isUrlValid(metaUrl)) return metaUrl;
+            return null;
+        };
+
         try {
             // 1. Fetch live sessions from Backend
             const backendPromise = fetch(`${this.apiBase}/sessions`).then(r => r.json());
@@ -188,7 +205,7 @@ class InstanceManager {
                     sessionId: meta.sessionId,
                     name: meta.name || 'Unnamed Instance',
                     whatsappName: meta.whatsappName || live?.whatsappName, // Use live.whatsappName from backend
-                    profilePictureUrl: meta.profilePictureUrl || live?.profilePictureUrl, // Use live.profilePictureUrl from backend
+                    profilePictureUrl: getValidProfilePicture(meta.profilePictureUrl, live?.profilePictureUrl),
                     kam: meta.kam || 'Unassigned',
                     phoneNumber: live?.phoneNumber || live?.id?.split(':')[0] || 'Unknown', // Fallback extraction
                     connected: live ? (live.connected ?? false) : false,
@@ -205,6 +222,7 @@ class InstanceManager {
                         name: 'Unmanaged Instance',
                         kam: '-',
                         phoneNumber: live.phoneNumber || id.split(':')[0] || 'Unknown',
+                        profilePictureUrl: isUrlValid(live.profilePictureUrl) ? live.profilePictureUrl : null,
                         connected: live.connected ?? false,
                         isManaged: false
                     });
@@ -250,7 +268,7 @@ class InstanceManager {
             <div class="instance-card">
                 <div class="instance-header">
                     ${inst.profilePictureUrl
-                ? `<img src="${inst.profilePictureUrl}" class="instance-dp" alt="Profile" onerror="this.style.display='none'">`
+                ? `<img src="${inst.profilePictureUrl}" class="instance-dp" alt="Profile" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
                 : '<div class="instance-dp-placeholder">👤</div>'}
                     <div class="instance-name" title="${inst.name}">${inst.name}</div>
                     <div class="instance-status-dot ${inst.connected ? 'connected' : 'disconnected'}" title="${inst.connected ? 'Connected' : 'Disconnected'}"></div>
@@ -327,7 +345,7 @@ class InstanceManager {
                             <td class="col-serial">${index + 1}</td>
                             <td class="col-profile">
                                 ${inst.profilePictureUrl
-                ? `<img src="${inst.profilePictureUrl}" class="table-dp" alt="DP" onerror="this.style.display='none'">`
+                ? `<img src="${inst.profilePictureUrl}" class="table-dp" alt="DP" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
                 : '<div class="table-dp-placeholder">👤</div>'}
                             </td>
                             </td>
@@ -399,7 +417,7 @@ class InstanceManager {
             <div class="instance-card-detailed">
                 <div class="detailed-header">
                     ${inst.profilePictureUrl
-                ? `<img src="${inst.profilePictureUrl}" class="detailed-dp" alt="Profile" onerror="this.style.display='none'">`
+                ? `<img src="${inst.profilePictureUrl}" class="detailed-dp" alt="Profile" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
                 : '<div class="detailed-dp-placeholder">👤</div>'}
                     <div class="detailed-info">
                         <div class="detailed-name">${inst.name}</div>

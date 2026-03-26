@@ -43,13 +43,13 @@ exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail
             const userData = userDoc.data();
             const isAdmin = userData.role === 'admin';
 
-            // Multi-Device Logic for Admins, Strict for Users
+            // Provide Multi-Device Logic for all users
             let isAuthorized = false;
 
-            if (isAdmin && userData.authorizedDevices && Array.isArray(userData.authorizedDevices)) {
+            if (userData.authorizedDevices && Array.isArray(userData.authorizedDevices)) {
                 isAuthorized = userData.authorizedDevices.includes(deviceFingerprint);
             } else if (userData.authorizedDevice) {
-                // Legacy or User Single-Device Mode
+                // Legacy fallback if array not formed yet
                 isAuthorized = userData.authorizedDevice === deviceFingerprint;
             } else {
                 // No device bound yet (New User or Reset)
@@ -61,7 +61,7 @@ exports.sendDualSplitOTP = onCall({ secrets: [watiToken, watiEndpoint, smtpEmail
                 if (!isAuthorized) {
                     await admin.firestore().collection('security_audit').add({
                         event: 'UNAUTHORIZED_DEVICE_ATTEMPT',
-                        reason: isAdmin ? 'Admin Device Not Recognized' : 'User Device Mismatch',
+                        reason: 'Device Not Recognized',
                         user: email,
                         uid: uid,
                         fingerprint: deviceFingerprint,
@@ -301,14 +301,8 @@ exports.verifySplitOTP = onCall(async (request) => {
         [`activeSessions.${deviceFingerprint}`]: sessionInfo
     };
 
-    // Role-Based Binding Logic
-    if (userRole === 'admin') {
-        // Admins: Add to Array (Multi-Device)
-        updatePayload['authorizedDevices'] = admin.firestore.FieldValue.arrayUnion(deviceFingerprint);
-    } else {
-        // Users: Strict Single Device (Overwrite)
-        updatePayload['authorizedDevice'] = deviceFingerprint;
-    }
+    // All Users: Add to Array (Multi-Device) to allow simultaneous logins
+    updatePayload['authorizedDevices'] = admin.firestore.FieldValue.arrayUnion(deviceFingerprint);
 
     await userRef.set(updatePayload, { merge: true });
 
@@ -415,10 +409,9 @@ exports.cleanupStaleSessions = onSchedule("0 2 * * *", async (event) => {
                     const inactiveTime = now - lastActive;
 
                     if (inactiveTime > staleThreshold) {
-                        // Mark this specific session for deletion
-                        updates[`activeSessions.${fingerprint}`] = admin.firestore.FieldValue.delete();
-                        cleanedCount++;
-                        console.log(`[cleanupStaleSessions] Marking session ${fingerprint} for deletion (inactive for ${Math.round(inactiveTime / 3600000)} hours)`);
+                        // Stale sessions are logged but NOT removed to enforce persistent sessions 
+                        // requiring manual logout.
+                        console.log(`[cleanupStaleSessions] Session ${fingerprint} is stale (inactive for ${Math.round(inactiveTime / 3600000)} hours) but kept alive for persistent auth`);
                     }
                 }
             });

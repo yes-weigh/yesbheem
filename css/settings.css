@@ -5,8 +5,6 @@
     overflow-y: auto;
     width: 100%;
     /* Custom Scrollbar for the main page */
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-color) transparent;
 }
 
 .settings-scroll-wrapper::-webkit-scrollbar {
@@ -84,6 +82,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
 }
 
@@ -163,6 +162,7 @@
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.025em;
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
 }
 
@@ -242,8 +242,6 @@
     max-height: 400px;
     padding-right: 0.5rem;
     /* Custom Scrollbar */
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-color) transparent;
 }
 
 .data-list::-webkit-scrollbar {
@@ -411,8 +409,6 @@
     max-height: 300px;
     overflow-y: auto;
     padding-right: 0.5rem;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-color) transparent;
 }
 
 .reports-list::-webkit-scrollbar {
@@ -449,6 +445,7 @@
     cursor: grab;
     color: var(--text-secondary);
     opacity: 0.5;
+    -webkit-user-select: none;
     user-select: none;
 }
 
@@ -548,11 +545,7 @@
     background-clip: padding-box;
 }
 
-/* Firefox scrollbar */
-.data-table-wrapper {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
-}
+
 
 .data-table {
     width: 100%;
@@ -633,6 +626,7 @@
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.7);
+    -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
@@ -659,6 +653,7 @@
     transform: scale(0.9);
     transition: transform 0.3s ease;
     border: 1px solid var(--modal-border);
+    -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
 }
 
