@@ -190,30 +190,26 @@ class SecurityOverlay {
         // Listen to my own user document to detect remote termination
         if (!this.user || !this.fingerprint) return;
 
-        // Import onSnapshot dynamically if not already imported or use the one from global scope if available
-        // But since we are inside a module that already imports other firestore functions, we should add onSnapshot to the top imports.
-        // However, I can't easily change top imports in this chunk.
-        // Let's assume onSnapshot is available or import it.
-        // Wait, the file imports are at the top. I need to check if onSnapshot is imported.
-        // It is NOT imported in line 3.
-        // I need to add it to imports first.
+        // Grace period: ignore initial snapshots for the first 10 seconds after login.
+        // This prevents false-positive terminations on page refresh while the session
+        // document is still being loaded/written by the server.
+        const SESSION_GRACE_MS = 10000;
+        const startedAt = Date.now();
 
-        // Let's rely on dynamic import for this specific feature to minimize diff noise or I'll do a multi-replace.
-        // actually, I'll do a separate edit for imports. For now, let's implement the method using the module pattern 
-        // assuming I'll fix imports in next step.
-
-        // Actually, let's just use the global firebase if available or dynamic import.
         import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js").then(({ onSnapshot, doc }) => {
             const userRef = doc(db, 'users', this.user.uid);
-            this.sessionUnsubscribe = onSnapshot(userRef, (doc) => {
-                if (!doc.exists()) {
+            this.sessionUnsubscribe = onSnapshot(userRef, (snapshot) => {
+                if (!snapshot.exists()) {
+                    // Don't terminate during grace period
+                    if (Date.now() - startedAt < SESSION_GRACE_MS) {
+                        console.log('[SecurityOverlay] Grace period active, skipping user-not-found check.');
+                        return;
+                    }
                     this.terminate("User Account Not Found");
                     return;
                 }
 
-                const data = doc.data();
-                // Check if my session still exists
-                // We need to handle both flat keys and nested object structure
+                const data = snapshot.data();
 
                 let sessionExists = false;
 
@@ -228,6 +224,11 @@ class SecurityOverlay {
                 }
 
                 if (!sessionExists) {
+                    // Don't terminate during grace period on refresh
+                    if (Date.now() - startedAt < SESSION_GRACE_MS) {
+                        console.log('[SecurityOverlay] Grace period active, skipping session check.');
+                        return;
+                    }
                     console.warn("[SecurityOverlay] Remote termination detected! Session removed from server.");
                     this.terminate("Session Terminated Remotely");
                 }

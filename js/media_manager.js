@@ -372,7 +372,7 @@ class MediaManager {
 
         return `
             <div class="template-card media-card" data-id="${m.id}" style="flex-direction: column; gap: 0.8rem; padding: 0.8rem;" ${hoverAttrs}>
-                <div style="width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); position: relative; cursor: pointer;" onclick="window.mediaMgr.editMedia('${m.id}')">
+                <div style="width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); position: relative; cursor: pointer;" onclick="event.stopPropagation(); window.mediaMgr.viewMedia('${m.id}')">
                     ${previewHtml}
                     <div style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; color: white;">
                         ${badgeHtml}
@@ -426,9 +426,72 @@ class MediaManager {
                     <button class="action-btn-icon" onclick="event.stopPropagation(); window.mediaMgr.copyUrl('${m.url}')" title="Copy URL">
                         📋
                     </button>
+                    <button class="action-btn-icon" onclick="event.stopPropagation(); window.mediaMgr.editMedia('${m.id}')" title="Edit Metadata">
+                        ✏️
+                    </button>
                 </div>
             </div>
         `;
+    }
+
+    /* --- MEDIA LIGHTBOX VIEWER --- */
+
+    viewMedia(id) {
+        const m = this.media.find(x => x.id === id);
+        if (!m) return;
+
+        let lightbox = document.getElementById('media-lightbox');
+        if (!lightbox) {
+            lightbox = document.createElement('div');
+            lightbox.id = 'media-lightbox';
+            lightbox.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2147483647; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px);';
+            
+            lightbox.innerHTML = `
+                <div style="position: absolute; top: 20px; right: 20px; display: flex; gap: 1rem; z-index: 2;">
+                    <button id="lightbox-close" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">✕</button>
+                </div>
+                <div id="lightbox-content" style="width: 90vw; height: 85vh; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1;"></div>
+            `;
+            document.body.appendChild(lightbox);
+
+            lightbox.addEventListener('click', (e) => {
+                if (e.target === lightbox) this.closeLightbox();
+            });
+            document.getElementById('lightbox-close').addEventListener('click', () => this.closeLightbox());
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && lightbox.style.display === 'flex') {
+                    this.closeLightbox();
+                }
+            });
+        }
+
+        const content = document.getElementById('lightbox-content');
+        content.innerHTML = '';
+
+        if (m.type === 'video' || m.mimeType?.startsWith('video')) {
+            content.innerHTML = `<video src="${m.url}" controls autoplay style="max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); outline: none;"></video>`;
+        } else if (m.type === 'image' || m.mimeType?.startsWith('image')) {
+            content.innerHTML = `<img src="${m.url}" style="max-width: 100%; max-height: 100%; border-radius: 8px; object-fit: contain; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">`;
+        } else if (m.type === 'document' || m.mimeType === 'application/pdf') {
+            content.innerHTML = `<iframe src="${m.url}" style="width: 100%; height: 100%; border: none; border-radius: 8px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.5);"></iframe>`;
+        } else {
+            content.innerHTML = `<div style="color: white; font-size: 1.2rem; text-align: center;">Preview not available for this file type.<br><br><a href="${m.url}" target="_blank" style="color: #60a5fa; text-decoration: none;">Open File in New Tab</a></div>`;
+        }
+
+        lightbox.style.display = 'flex';
+    }
+
+    closeLightbox() {
+        const lightbox = document.getElementById('media-lightbox');
+        if (lightbox) {
+            const video = lightbox.querySelector('video');
+            if (video) {
+                video.pause();
+                video.src = '';
+            }
+            lightbox.style.display = 'none';
+        }
     }
 
     /* --- VIDEO HOVER PLAY --- */
@@ -744,20 +807,31 @@ class MediaManager {
         document.getElementById('upload-prompt').classList.add('hidden');
         document.getElementById('file-preview').classList.remove('hidden');
         document.getElementById('file-name-display').textContent = m.name;
-
         if (m.type === 'image' || m.mimeType?.startsWith('image')) {
-            container.innerHTML = `< img src = "${m.url}" style = "max-width:100%; max-height:100%;" > `;
+            const img = document.createElement('img');
+            img.src = m.url;
+            img.style.cssText = 'max-width:100%; max-height:100%; object-fit: contain;';
+            container.innerHTML = '';
+            container.appendChild(img);
         } else if (m.type === 'video' || m.mimeType?.startsWith('video')) {
-            container.innerHTML = `< video src = "${m.url}" controls style = "max-width:100%; max-height:100%;" ></video > `;
+            const vid = document.createElement('video');
+            vid.src = m.url;
+            vid.controls = true;
+            vid.style.cssText = 'max-width:100%; max-height:100%;';
+            container.innerHTML = '';
+            container.appendChild(vid);
         } else if (m.type === 'document' || m.mimeType === 'application/pdf') {
-            // PDF Preview
-            container.innerHTML = `< iframe src = "${m.url}" style = "width:100%; height:400px; border:none; border-radius:8px;" ></iframe > `;
+            const iframe = document.createElement('iframe');
+            iframe.src = m.url;
+            iframe.style.cssText = 'width:100%; height:400px; border:none; border-radius:8px;';
+            container.innerHTML = '';
+            container.appendChild(iframe);
         } else {
             container.innerHTML = `
-            < div style = "text-align: center; color: var(--text-muted); padding: 2rem;" >
+                <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
                     <div style="font-size: 3rem; margin-bottom: 0.5rem;">📄</div>
                     <div style="font-size: 0.9rem;">${m.type || m.mimeType}</div>
-                </div >
+                </div>
             `;
         }
 
