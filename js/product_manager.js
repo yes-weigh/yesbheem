@@ -67,7 +67,7 @@ class ProductManager {
                     <input type="text" id="pm-search" class="pm-search" placeholder="Search products, SKU..." autocomplete="off">
                 </div>
                 <select id="pm-category-filter" class="pm-category-select">
-                    <option value="">All Categories</option>
+                    <option value="">All Groups</option>
                 </select>
                 <span class="pm-count" id="pm-count"></span>
             </div>
@@ -176,7 +176,7 @@ class ProductManager {
         const catEl = document.getElementById('pm-category-filter');
         if (!catEl) return;
         const current = catEl.value;
-        catEl.innerHTML = '<option value="">All Categories</option>' +
+        catEl.innerHTML = '<option value="">All Groups</option>' +
             categories.map(c => `<option value="${c}" ${c === current ? 'selected' : ''}>${c}</option>`).join('');
     }
 
@@ -347,7 +347,6 @@ class ProductManager {
 
             <div class="pm-detail-grid">
                 ${p.description ? `<div class="pm-detail-section"><div class="pm-detail-label">Description</div><div class="pm-detail-val">${p.description}</div></div>` : ''}
-                <div class="pm-detail-section"><div class="pm-detail-label">Purchase Rate</div><div class="pm-detail-val">₹${(p.purchaseRate || 0).toFixed(2)}</div></div>
                 ${p.hsn ? `<div class="pm-detail-section"><div class="pm-detail-label">HSN / SAC</div><div class="pm-detail-val">${p.hsn}</div></div>` : ''}
                 ${p.taxName ? `<div class="pm-detail-section"><div class="pm-detail-label">Tax</div><div class="pm-detail-val">${p.taxName} (${p.taxPercentage}%)</div></div>` : ''}
                 ${p.reorderLevel ? `<div class="pm-detail-section"><div class="pm-detail-label">Reorder Level</div><div class="pm-detail-val">${p.reorderLevel} ${p.unit || 'units'}</div></div>` : ''}
