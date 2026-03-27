@@ -91,7 +91,7 @@ const PAGE_REGISTRY = {
     'report': null,
     'integration': null,
     'pricelist': null,
-    'product': null,
+    'product': () => initManager('ProductManager', 'productManager'),
     'yesbheem': null,
 };
 

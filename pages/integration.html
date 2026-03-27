@@ -1,21 +1,197 @@
 <div class="page-container" id="integration-page">
-    <div class="page-content">
-        <div class="page-header-simple">
+    <div class="intg-titlebar">
+        <div class="intg-breadcrumb">
+            <span class="intg-bc-muted">Yes Bheem</span>
+            <span class="intg-bc-sep">/</span>
+            <span>Integrations</span>
+        </div>
+    </div>
+
+    <div class="intg-content">
+        <div class="intg-header">
             <h1>Integrations</h1>
-            <p class="subtitle">Connect with third-party services</p>
+            <p>Connect third-party services to sync data with your app.</p>
         </div>
 
-        <div class="placeholder-card">
-            <div class="icon-placeholder">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2Z"></path>
-                    <path d="M21 12h-6"></path>
-                    <path d="M9 12H3"></path>
-                </svg>
+        <!-- Zoho Card -->
+        <div class="intg-card" id="zoho-card">
+            <div class="intg-card-header">
+                <div class="intg-logo">
+                    <svg viewBox="0 0 120 40" width="90" height="30" xmlns="http://www.w3.org/2000/svg">
+                        <text y="32" font-size="34" font-weight="900" font-family="Arial,sans-serif" fill="#E42527">Z</text>
+                        <text x="28" y="32" font-size="28" font-weight="700" font-family="Arial,sans-serif" fill="#3a3a3a">oho</text>
+                    </svg>
+                </div>
+                <div class="intg-status connected" id="zoho-status-badge">
+                    <span class="intg-dot"></span> Connected
+                </div>
             </div>
-            <h2>Integrations Coming Soon</h2>
-            <p>Connect with CRM systems, APIs, and other third-party services.</p>
+
+            <div class="intg-card-body">
+                <div class="intg-desc">
+                    <strong>Zoho Inventory / Books</strong> — Real-time product catalog, pricing, and stock availability synced from your Zoho organisation (<strong>INTERWEIGHING PVT LTD</strong>).
+                </div>
+
+                <div class="intg-meta-grid">
+                    <div class="intg-meta-item">
+                        <div class="intg-meta-label">Organisation ID</div>
+                        <div class="intg-meta-val"><code>60001225303</code></div>
+                    </div>
+                    <div class="intg-meta-item">
+                        <div class="intg-meta-label">Scopes</div>
+                        <div class="intg-meta-val">Inventory Items · Books Items · Full Access</div>
+                    </div>
+                    <div class="intg-meta-item">
+                        <div class="intg-meta-label">Last Sync</div>
+                        <div class="intg-meta-val" id="zoho-last-sync">Checking…</div>
+                    </div>
+                    <div class="intg-meta-item">
+                        <div class="intg-meta-label">Products Synced</div>
+                        <div class="intg-meta-val" id="zoho-product-count">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="intg-card-footer">
+                <button class="intg-btn-primary" id="zoho-sync-now-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/><path d="M20.49 15a9 9 0 01-14.85 3.36L1 14"/></svg>
+                    Sync Now
+                </button>
+                <button class="intg-btn-secondary" onclick="window.navController && window.navController.navigateTo('product')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6c0 1.1.9 2 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="1"/></svg>
+                    View Products
+                </button>
+                <span class="intg-sync-msg" id="zoho-sync-msg"></span>
+            </div>
+        </div>
+
+        <!-- Placeholder for future integrations -->
+        <div class="intg-more-hint">
+            <span>More integrations coming soon…</span>
         </div>
     </div>
 </div>
+
+<style>
+#integration-page { display: flex; flex-direction: column; height: 100%; overflow: hidden; background: var(--bg-primary); }
+
+.intg-titlebar { height: 35px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-light); display: flex; align-items: center; padding: 0 16px; font-size: 13px; flex-shrink: 0; }
+.intg-breadcrumb { display: flex; align-items: center; gap: 8px; color: var(--text-main); }
+.intg-bc-muted { color: var(--text-muted); }
+.intg-bc-sep { color: var(--text-muted); }
+
+.intg-content { flex: 1; overflow-y: auto; padding: 28px 24px; max-width: 780px; width: 100%; }
+.intg-header { margin-bottom: 28px; }
+.intg-header h1 { margin: 0 0 6px; font-size: 22px; font-weight: 700; color: var(--text-main); }
+.intg-header p { margin: 0; color: var(--text-muted); font-size: 14px; }
+
+/* Card */
+.intg-card { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 14px; overflow: hidden; margin-bottom: 20px; }
+.intg-card-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 14px; border-bottom: 1px solid var(--border-light); }
+.intg-logo { display: flex; align-items: center; }
+.intg-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+.intg-status.connected { background: rgba(34,197,94,.1); color: #22c55e; border: 1px solid rgba(34,197,94,.2); }
+.intg-status.disconnected { background: rgba(239,68,68,.1); color: #ef4444; border: 1px solid rgba(239,68,68,.2); }
+.intg-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: intg-pulse 2s ease-in-out infinite; }
+@keyframes intg-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+
+.intg-card-body { padding: 18px 20px; }
+.intg-desc { font-size: 13.5px; color: var(--text-muted); margin-bottom: 18px; line-height: 1.6; }
+
+.intg-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.intg-meta-item { background: var(--bg-primary); border-radius: 8px; padding: 10px 14px; }
+.intg-meta-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.intg-meta-val { font-size: 13px; color: var(--text-main); font-weight: 500; }
+.intg-meta-val code { font-family: monospace; background: var(--bg-highlight, rgba(99,102,241,.08)); color: var(--primary, #6366f1); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+.intg-card-footer { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border-light); background: var(--bg-primary); flex-wrap: wrap; }
+.intg-btn-primary { display: inline-flex; align-items: center; gap: 6px; background: var(--primary, #6366f1); color: #fff; border: none; border-radius: 7px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity .2s; }
+.intg-btn-primary:hover { opacity: .85; }
+.intg-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.intg-btn-secondary { display: inline-flex; align-items: center; gap: 6px; background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-light); border-radius: 7px; padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all .2s; }
+.intg-btn-secondary:hover { border-color: var(--primary, #6366f1); color: var(--primary, #6366f1); }
+.intg-sync-msg { font-size: 12px; color: var(--text-muted); margin-left: 4px; }
+
+.intg-more-hint { text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px; opacity: .6; }
+
+@media (max-width: 600px) { .intg-meta-grid { grid-template-columns: 1fr; } }
+</style>
+
+<script>
+(function() {
+    // Load sync meta from Firestore and wire up Sync Now button
+    async function initIntegrationPage() {
+        try {
+            const basePath = (window.appConfig && window.appConfig.getBasePath()) || '/';
+            const configPath = `${basePath}js/services/firebase_config.js`.replace('//', '/');
+            const { db } = await import(configPath);
+            const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+
+            // Load sync meta
+            const metaDoc = await getDoc(doc(db, '_system_cache', 'zoho_sync_meta'));
+            if (metaDoc.exists()) {
+                const data = metaDoc.data();
+                const countEl = document.getElementById('zoho-product-count');
+                const syncEl = document.getElementById('zoho-last-sync');
+                if (countEl) countEl.textContent = `${data.productCount || 0} items`;
+                if (syncEl && data.lastSyncAt) {
+                    const d = data.lastSyncAt.toDate();
+                    syncEl.textContent = d.toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' });
+                } else if (syncEl) {
+                    syncEl.textContent = 'Never (will sync on first load)';
+                }
+            } else {
+                const syncEl = document.getElementById('zoho-last-sync');
+                if (syncEl) syncEl.textContent = 'Never (will sync on first product load)';
+            }
+        } catch (e) {
+            console.warn('[IntegrationPage] Meta load failed:', e.message);
+            const syncEl = document.getElementById('zoho-last-sync');
+            if (syncEl) syncEl.textContent = 'Not available';
+        }
+
+        // Wire Sync Now button
+        const syncBtn = document.getElementById('zoho-sync-now-btn');
+        const syncMsg = document.getElementById('zoho-sync-msg');
+
+        syncBtn?.addEventListener('click', async () => {
+            syncBtn.disabled = true;
+            syncBtn.innerHTML = `<div style="width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:intg-sp 0.7s linear infinite;display:inline-block"></div> Syncing…`;
+            if (syncMsg) syncMsg.textContent = 'Contacting Zoho…';
+
+            try {
+                const basePath = (window.appConfig && window.appConfig.getBasePath()) || '/';
+                const configPath = `${basePath}js/services/firebase_config.js`.replace('//', '/');
+                const { app } = await import(configPath);
+                const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js');
+                const fns = getFunctions(app, 'us-central1');
+                const syncFn = httpsCallable(fns, 'zohoSyncProducts');
+                const result = await syncFn({});
+                const { count } = result.data;
+
+                if (syncMsg) syncMsg.textContent = `✅ Synced ${count} products successfully`;
+                document.getElementById('zoho-product-count').textContent = `${count} items`;
+                document.getElementById('zoho-last-sync').textContent = new Date().toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' });
+            } catch (err) {
+                if (syncMsg) syncMsg.textContent = `❌ Sync failed: ${err.message}`;
+                console.error('[IntegrationPage] Sync failed:', err);
+            } finally {
+                syncBtn.disabled = false;
+                syncBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/><path d="M20.49 15a9 9 0 01-14.85 3.36L1 14"/></svg> Sync Now`;
+                setTimeout(() => { if (syncMsg) syncMsg.textContent = ''; }, 8000);
+            }
+        });
+
+        // Spin keyframe (inline since we're in a page fragment)
+        if (!document.getElementById('intg-spin-style')) {
+            const s = document.createElement('style');
+            s.id = 'intg-spin-style';
+            s.textContent = '@keyframes intg-sp { to { transform: rotate(360deg); } }';
+            document.head.appendChild(s);
+        }
+    }
+
+    // Small delay to let Firebase imports settle
+    setTimeout(initIntegrationPage, 100);
+})();
+</script>

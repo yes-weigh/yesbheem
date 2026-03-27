@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Zoho Token Helper</title>
+  <style>
+    body { font-family: monospace; padding: 30px; background: #111; color: #0f0; }
+    pre { background: #000; padding: 20px; border-radius: 8px; white-space: pre-wrap; word-break: break-all; }
+    button { background: #0f0; color: #000; border: none; padding: 10px 20px; cursor: pointer; font-size: 16px; border-radius: 4px; margin-top: 20px; }
+    h2 { color: #fff; }
+    .error { color: #f00; }
+    .success { color: #0f0; }
+  </style>
+</head>
+<body>
+  <h2>Zoho OAuth Token Helper</h2>
+  <div id="status">Checking URL for authorization code...</div>
+  <pre id="output"></pre>
+  <button id="startBtn" onclick="startOAuth()" style="display:none">🔑 Start OAuth Flow</button>
+
+  <script>
+    const CLIENT_ID = '1000.N992LKXQ5G5XG2JQU7H1G3SO6YU2DA';
+    const CLIENT_SECRET = '702c22ac2a32aa5969c354e961971a4bf9b3887eca';
+    const REDIRECT_URI = 'http://localhost:8000/zoho_token_helper.html';
+
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+
+    if (code) {
+      document.getElementById('status').innerHTML = '<span class="success">✅ Got authorization code! Exchanging for tokens...</span>';
+      exchangeCode(code);
+    } else {
+      document.getElementById('status').innerHTML = 'No code found. Click the button to start OAuth flow.';
+      document.getElementById('startBtn').style.display = 'inline-block';
+    }
+
+    function startOAuth() {
+      const scope = [
+        'ZohoInventory.items.READ',
+        'ZohoInventory.salesorders.READ',
+        'ZohoInventory.contacts.READ',
+        'ZohoBooks.items.READ',
+        'ZohoBooks.fullaccess.all'
+      ].join(',');
+      const url = `https://accounts.zoho.in/oauth/v2/auth?scope=${encodeURIComponent(scope)}&client_id=${CLIENT_ID}&response_type=code&access_type=offline&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+      window.location.href = url;
+    }
+
+    async function exchangeCode(code) {
+      const output = document.getElementById('output');
+      try {
+        const body = new URLSearchParams({
+          code,
+          client_id: CLIENT_ID,
+          client_secret: CLIENT_SECRET,
+          redirect_uri: REDIRECT_URI,
+          grant_type: 'authorization_code'
+        });
+
+        const resp = await fetch('https://accounts.zoho.in/oauth/v2/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body.toString()
+        });
+        const data = await resp.json();
+
+        if (data.refresh_token) {
+          document.getElementById('status').innerHTML = '<span class="success">🎉 SUCCESS! Tokens received:</span>';
+          output.textContent = JSON.stringify(data, null, 2);
+          output.innerHTML += '\n\n<span style="color:#ff0;font-size:18px">⭐ REFRESH TOKEN:\n' + data.refresh_token + '</span>';
+        } else {
+          document.getElementById('status').innerHTML = '<span class="error">❌ Error exchanging code:</span>';
+          output.textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (e) {
+        document.getElementById('status').innerHTML = '<span class="error">❌ Network error:</span>';
+        output.textContent = e.message;
+      }
+    }
+  </script>
+</body>
+</html>

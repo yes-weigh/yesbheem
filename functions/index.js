@@ -1584,3 +1584,171 @@ Return ONLY valid JSON.`;
         throw new HttpsError('internal', `Flow Generation Error: ${error.message}`);
     }
 });
+
+// ============================================================================
+// ZOHO INTEGRATION — PRODUCT CATALOG & STOCK
+// ============================================================================
+
+const zohoClientId     = defineSecret('ZOHO_CLIENT_ID');
+const zohoClientSecret = defineSecret('ZOHO_CLIENT_SECRET');
+const zohoRefreshToken = defineSecret('ZOHO_REFRESH_TOKEN');
+// ZOHO_ORG_ID is hardcoded in zoho_service.js (not a secret, avoids CRLF corruption)
+
+/**
+ * zohoGetProducts — Returns paginated product list.
+ * First tries Firestore cache (zoho_products collection).
+ * If cache is empty or forceRefresh=true, fetches from Zoho live.
+ */
+exports.zohoGetProducts = onCall({
+    secrets: [zohoClientId, zohoClientSecret, zohoRefreshToken]
+}, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Authentication required.');
+    }
+
+    const { search = '', category = '', page = 1, perPage = 50, forceRefresh = false } = request.data || {};
+    const db = admin.firestore();
+    const { getAccessToken, fetchAllProducts, syncProductsToFirestore, PRODUCTS_COLLECTION, ZOHO_ORG_ID } = require('./zoho_service');
+
+    try {
+        // Check if Firestore cache has data
+        const cacheMetaRef = db.collection('_system_cache').doc('zoho_sync_meta');
+        const cacheMeta = await cacheMetaRef.get();
+        let useCache = !forceRefresh && cacheMeta.exists && cacheMeta.data().productCount > 0;
+
+        if (!useCache) {
+            // Populate cache from Zoho live
+            console.log('[zohoGetProducts] Cache empty or force refresh. Syncing from Zoho...');
+            const token = await getAccessToken(
+                zohoClientId.value(),
+                zohoClientSecret.value(),
+                zohoRefreshToken.value()
+            );
+            await syncProductsToFirestore(token, ZOHO_ORG_ID);
+        }
+
+        // Query Firestore cache
+        let query = db.collection(PRODUCTS_COLLECTION).where('status', '==', 'active');
+        if (category) {
+            query = query.where('categoryName', '==', category);
+        }
+
+        const snapshot = await query.orderBy('name').get();
+        let products = snapshot.docs.map(d => d.data());
+
+        // Client-side search filter
+        if (search) {
+            const q = search.toLowerCase();
+            products = products.filter(p =>
+                (p.name && p.name.toLowerCase().includes(q)) ||
+                (p.sku && p.sku.toLowerCase().includes(q)) ||
+                (p.description && p.description.toLowerCase().includes(q))
+            );
+        }
+
+        // Pagination
+        const total = products.length;
+        const start = (page - 1) * perPage;
+        const paginated = products.slice(start, start + perPage);
+
+        // Get unique categories for filter UI
+        const allCategories = [...new Set(snapshot.docs.map(d => d.data().categoryName).filter(Boolean))].sort();
+
+        return {
+            success: true,
+            products: paginated,
+            total,
+            page,
+            perPage,
+            hasMore: start + perPage < total,
+            categories: allCategories,
+            syncedAt: cacheMeta.exists ? cacheMeta.data().lastSyncAt?.toMillis?.() || null : null
+        };
+
+    } catch (error) {
+        console.error('[zohoGetProducts] Error:', error);
+        throw new HttpsError('internal', `Failed to fetch products: ${error.message}`);
+    }
+});
+
+/**
+ * zohoGetProductDetail — Returns full detail for a single product by ID.
+ */
+exports.zohoGetProductDetail = onCall({
+    secrets: [zohoClientId, zohoClientSecret, zohoRefreshToken]
+}, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Authentication required.');
+    }
+
+    const { itemId } = request.data || {};
+    if (!itemId) throw new HttpsError('invalid-argument', 'itemId is required.');
+
+    const { getAccessToken, fetchProductById, ZOHO_ORG_ID } = require('./zoho_service');
+
+    try {
+        const token = await getAccessToken(
+            zohoClientId.value(),
+            zohoClientSecret.value(),
+            zohoRefreshToken.value()
+        );
+        const product = await fetchProductById(token, ZOHO_ORG_ID, itemId);
+        return { success: true, product };
+    } catch (error) {
+        console.error('[zohoGetProductDetail] Error:', error);
+        throw new HttpsError('internal', `Failed to fetch product: ${error.message}`);
+    }
+});
+
+/**
+ * zohoSyncProducts (callable) — Triggers a manual sync from Zoho to Firestore.
+ * Admin only.
+ */
+exports.zohoSyncProducts = onCall({
+    secrets: [zohoClientId, zohoClientSecret, zohoRefreshToken]
+}, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Authentication required.');
+    }
+
+    const role = request.auth.token.role;
+    if (role !== 'admin') {
+        throw new HttpsError('permission-denied', 'Admin access required.');
+    }
+
+    const { getAccessToken, syncProductsToFirestore, ZOHO_ORG_ID } = require('./zoho_service');
+
+    try {
+        const token = await getAccessToken(
+            zohoClientId.value(),
+            zohoClientSecret.value(),
+            zohoRefreshToken.value()
+        );
+        const count = await syncProductsToFirestore(token, ZOHO_ORG_ID);
+        return { success: true, count, message: `Synced ${count} products from Zoho.` };
+    } catch (error) {
+        console.error('[zohoSyncProducts] Error:', error);
+        throw new HttpsError('internal', `Sync failed: ${error.message}`);
+    }
+});
+
+/**
+ * zohoScheduledSync — Auto-syncs every 2 hours.
+ */
+exports.zohoScheduledSync = onSchedule('every 2 hours', async () => {
+    console.log('[zohoScheduledSync] Starting scheduled Zoho sync...');
+    const { getAccessToken, syncProductsToFirestore, ZOHO_ORG_ID } = require('./zoho_service');
+
+    try {
+        // Access secrets via process.env (scheduled functions need ZOHO_ env vars set or use defineSecret)
+        const token = await getAccessToken(
+            zohoClientId.value(),
+            zohoClientSecret.value(),
+            zohoRefreshToken.value()
+        );
+        const count = await syncProductsToFirestore(token, ZOHO_ORG_ID);
+        console.log(`[zohoScheduledSync] ✅ Synced ${count} products`);
+    } catch (error) {
+        console.error('[zohoScheduledSync] ❌ Sync failed:', error);
+    }
+});
