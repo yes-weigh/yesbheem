@@ -22,22 +22,22 @@
             <input type="text" id="search-media" class="search-input" placeholder="🔍 Search media..."
                 style="min-width: 200px;">
 
-            <select id="filter-type" class="filter-select">
+            <select id="filter-type" class="filter-select" title="Filter by file type">
                 <option value="">All Types</option>
                 <option value="image">Images</option>
                 <option value="video">Videos</option>
                 <option value="document">PDFs</option>
             </select>
 
-            <select id="filter-language" class="filter-select">
+            <select id="filter-language" class="filter-select" title="Filter by language">
                 <option value="">All Languages</option>
             </select>
 
-            <select id="filter-category" class="filter-select">
+            <select id="filter-category" class="filter-select" title="Filter by category">
                 <option value="">All Categories</option>
             </select>
 
-            <select id="sort-media" class="filter-select">
+            <select id="sort-media" class="filter-select" title="Sort order">
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
                 <option value="name">Name A-Z</option>
@@ -84,7 +84,7 @@
                 <!-- File Input -->
                 <div id="drop-zone"
                     style="border: 2px dashed var(--border); border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.02);">
-                    <input type="file" id="file-input" class="hidden" accept="image/*,video/*,application/pdf">
+                    <input type="file" id="file-input" class="hidden" accept="image/*,video/*,application/pdf" aria-label="Choose a file to upload">
                     <div id="upload-prompt">
                         <div style="font-size: 2rem; margin-bottom: 0.5rem;">📁</div>
                         <div style="color: var(--text-primary); font-weight: 600;">Click or Drag file here</div>
@@ -110,14 +110,14 @@
                     <div>
                         <label
                             style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem;">Language</label>
-                        <select id="upload-language" class="modern-input" style="width: 100%;">
+                        <select id="upload-language" class="modern-input" style="width: 100%;" title="Select language">
                             <option value="">Select Language</option>
                         </select>
                     </div>
                     <div>
                         <label
                             style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem;">Category</label>
-                        <select id="upload-category" class="modern-input" style="width: 100%;">
+                        <select id="upload-category" class="modern-input" style="width: 100%;" title="Select category">
                             <option value="">Select Category</option>
                         </select>
                     </div>

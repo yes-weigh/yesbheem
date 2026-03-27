@@ -115,7 +115,7 @@
 .pm-pg-ellipsis { color: var(--text-muted); padding: 0 4px; }
 
 /* Modal */
-.pm-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.pm-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .pm-modal { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 14px; width: 100%; max-width: 680px; max-height: 85vh; overflow-y: auto; position: relative; box-shadow: 0 25px 60px rgba(0,0,0,.4); }
 .pm-modal-close { position: sticky; top: 12px; float: right; margin: 12px 12px 0 0; background: var(--bg-primary); border: 1px solid var(--border-light); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; color: var(--text-muted); z-index: 2; transition: all .2s; }
 .pm-modal-close:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
