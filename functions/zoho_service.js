@@ -235,8 +235,8 @@ function normaliseItem(item) {
         // We no longer set imageUrl here blindly — syncProductsToFirestore will handle it
         imageUrl: null, 
         hasImage: !!(item.image_url || item.image_document_id),
-        categoryId: item.group_id || item.category_id || '',
-        categoryName: item.group_name || item.category_name || 'Ungrouped',
+        groupId: item.group_id || '',
+        groupName: item.group_name || '',
         status: item.status || 'active',
         hsn: item.hsn_or_sac || '',
         taxId: item.tax_id || '',

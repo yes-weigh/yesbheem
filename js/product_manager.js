@@ -8,12 +8,12 @@ class ProductManager {
         this.products = [];
         this.categories = [];
         this.categoryPreviews = {};
-        this.currentView = localStorage.getItem('pm-view') || 'grid';
+        this.currentView = localStorage.getItem('pm-view') || 'folder';
         this.currentPage = 1;
         this.perPage = 48;
         this.total = 0;
         this.searchQuery = '';
-        this.selectedCategory = '';
+        this.selectedGroup = '';
         this.loading = false;
         this.syncedAt = null;
         this.callZohoGetProducts = null;
@@ -74,14 +74,14 @@ class ProductManager {
                     <option value="">All Groups</option>
                 </select>
                 <div class="pm-view-toggles" id="pm-view-toggles">
+                    <button class="pm-view-btn ${this.currentView === 'folder' ? 'active' : ''}" data-view="folder" title="Folder View">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2v11z"/></svg>
+                    </button>
                     <button class="pm-view-btn ${this.currentView === 'grid' ? 'active' : ''}" data-view="grid" title="Grid View">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
                     </button>
                     <button class="pm-view-btn ${this.currentView === 'list' ? 'active' : ''}" data-view="list" title="List View">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                    </button>
-                    <button class="pm-view-btn ${this.currentView === 'folder' ? 'active' : ''}" data-view="folder" title="Folder View">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2v11z"/></svg>
                     </button>
                 </div>
                 <span class="pm-count" id="pm-count"></span>
@@ -123,7 +123,7 @@ class ProductManager {
         });
 
         catEl?.addEventListener('change', (e) => {
-            this.selectedCategory = e.target.value;
+            this.selectedGroup = e.target.value;
             this.currentPage = 1;
             this.loadProducts();
         });
@@ -155,22 +155,22 @@ class ProductManager {
         try {
             const result = await this.callZohoGetProducts({
                 search: this.searchQuery,
-                category: this.selectedCategory,
+                group: this.selectedGroup,
                 page: this.currentPage,
                 perPage: this.perPage
             });
 
-            const { products, total, categories, categoryPreviews, syncedAt, hasMore } = result.data;
+            const { products, total, groups, groupPreviews, syncedAt, hasMore } = result.data;
             this.products = products;
             this.total = total;
             this.syncedAt = syncedAt;
-            if (categoryPreviews) {
-                this.categoryPreviews = categoryPreviews;
+            if (groupPreviews) {
+                this.categoryPreviews = groupPreviews;
             }
 
-            if (categories && categories.length) {
-                this.categories = categories;
-                this._populateCategories(categories);
+            if (groups && groups.length) {
+                this.categories = groups;
+                this._populateCategories(groups);
             }
 
             this._renderActiveView();
@@ -259,7 +259,7 @@ class ProductManager {
             <div class="pm-list-info">
                 <div class="pm-list-main">
                     <span class="pm-list-name">${p.name}</span>
-                    <span class="pm-list-sku">${p.sku ? 'SKU: ' + p.sku : ''} <span style="margin-left:8px;" class="pm-list-cat">${p.categoryName || 'General'}</span></span>
+                    <span class="pm-list-sku">${p.sku ? 'SKU: ' + p.sku : ''} <span style="margin-left:8px;" class="pm-list-cat">${p.groupName || ''}</span></span>
                 </div>
                 <div class="pm-list-stock-col">
                     <span class="pm-list-price">₹${(p.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
@@ -276,12 +276,12 @@ class ProductManager {
         }
         grid.className = 'pm-folder-grid';
         
-        let catsToShow = this.categories;
-        if (this.selectedCategory) {
-            catsToShow = [this.selectedCategory];
+        let groupsToShow = this.categories;
+        if (this.selectedGroup) {
+            groupsToShow = [this.selectedGroup];
         }
 
-        grid.innerHTML = catsToShow.map(cat => {
+        grid.innerHTML = groupsToShow.map(cat => {
             const previewData = this.categoryPreviews[cat];
             let imageHtml = '';
             
@@ -325,7 +325,7 @@ class ProductManager {
                 const cat = card.dataset.cat;
                 const filter = document.getElementById('pm-category-filter');
                 if (filter) filter.value = cat;
-                this.selectedCategory = cat;
+                this.selectedGroup = cat;
                 this.currentView = 'grid'; // Default to grid when opening a folder
                 localStorage.setItem('pm-view', 'grid');
                 
@@ -461,7 +461,7 @@ class ProductManager {
                 </div>
             </div>
             <div class="pm-card-body">
-                <div class="pm-card-cat">${p.categoryName || 'General'}</div>
+                <div class="pm-card-cat">${p.groupName || ''}</div>
                 <div class="pm-card-name">${p.name}</div>
                 ${p.sku ? `<div class="pm-card-sku">SKU: ${p.sku}</div>` : ''}
                 <div class="pm-card-footer">
@@ -574,7 +574,7 @@ class ProductManager {
                         : '<div class="pm-detail-icon">📦</div>'}
                 </div>
                 <div class="pm-detail-info">
-                    <div class="pm-detail-cat">${p.categoryName || 'General'}</div>
+                    <div class="pm-detail-cat">${p.groupName || ''}</div>
                     <h2 class="pm-detail-name">${p.name}</h2>
                     ${p.sku ? `<div class="pm-detail-sku">SKU: <strong>${p.sku}</strong></div>` : ''}
                     <div class="pm-detail-price">₹${(p.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} <span class="pm-detail-unit">/ ${p.unit || 'pcs'}</span></div>

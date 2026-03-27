@@ -1606,7 +1606,7 @@ exports.zohoGetProducts = onCall({
         throw new HttpsError('unauthenticated', 'Authentication required.');
     }
 
-    const { search = '', category = '', page = 1, perPage = 50, forceRefresh = false } = request.data || {};
+    const { search = '', group = '', page = 1, perPage = 50, forceRefresh = false } = request.data || {};
     const db = admin.firestore();
     const { getAccessToken, fetchAllProducts, syncProductsToFirestore, PRODUCTS_COLLECTION, ZOHO_ORG_ID } = require('./zoho_service');
 
@@ -1629,8 +1629,8 @@ exports.zohoGetProducts = onCall({
 
         // Query Firestore cache
         let query = db.collection(PRODUCTS_COLLECTION).where('status', '==', 'active');
-        if (category) {
-            query = query.where('categoryName', '==', category);
+        if (group) {
+            query = query.where('groupName', '==', group);
         }
 
         const snapshot = await query.orderBy('name').get();
@@ -1651,28 +1651,28 @@ exports.zohoGetProducts = onCall({
         const start = (page - 1) * perPage;
         const paginated = products.slice(start, start + perPage);
 
-        // Read settings/product_categories for order and custom thumbnails
-        const settingsRef = db.collection('settings').doc('product_categories');
+        // Read settings/product_groups for order and custom thumbnails
+        const settingsRef = db.collection('settings').doc('product_groups');
         const settingsSnap = await settingsRef.get();
-        const settingsData = settingsSnap.exists ? settingsSnap.data().categories || {} : {};
+        const settingsData = settingsSnap.exists ? settingsSnap.data().groups || {} : {};
 
-        // Get unique categories and sort
-        const allCategories = [...new Set(snapshot.docs.map(d => d.data().categoryName).filter(Boolean))];
-        allCategories.sort((a, b) => {
+        // Get unique groups and sort
+        const allGroups = [...new Set(snapshot.docs.map(d => d.data().groupName).filter(Boolean))];
+        allGroups.sort((a, b) => {
             const orderA = settingsData[a] && typeof settingsData[a].order === 'number' ? settingsData[a].order : 999;
             const orderB = settingsData[b] && typeof settingsData[b].order === 'number' ? settingsData[b].order : 999;
             if (orderA === orderB) return a.localeCompare(b);
             return orderA - orderB;
         });
 
-        // Build category previews (custom single thumbnail OR 4-image collage)
-        const categoryPreviews = {};
-        allCategories.forEach(cat => {
-            if (settingsData[cat] && settingsData[cat].thumbnailUrl) {
-                categoryPreviews[cat] = settingsData[cat].thumbnailUrl; // String overrides Array
+        // Build group previews (custom single thumbnail OR 4-image collage)
+        const groupPreviews = {};
+        allGroups.forEach(grp => {
+            if (settingsData[grp] && settingsData[grp].thumbnailUrl) {
+                groupPreviews[grp] = settingsData[grp].thumbnailUrl; // String overrides Array
             } else {
-                const catProducts = products.filter(p => p.categoryName === cat && p.imageUrl);
-                categoryPreviews[cat] = catProducts.slice(0, 4).map(p => p.imageUrl);
+                const grpProducts = products.filter(p => p.groupName === grp && p.imageUrl);
+                groupPreviews[grp] = grpProducts.slice(0, 4).map(p => p.imageUrl);
             }
         });
 
@@ -1683,8 +1683,8 @@ exports.zohoGetProducts = onCall({
             page,
             perPage,
             hasMore: start + perPage < total,
-            categories: allCategories,
-            categoryPreviews,
+            groups: allGroups,
+            groupPreviews,
             syncedAt: cacheMeta.exists ? cacheMeta.data().lastSyncAt?.toMillis?.() || null : null
         };
 
@@ -1839,8 +1839,8 @@ exports.uploadCategoryThumbnail = onCall(async (request) => {
     // Given the prompt "i should be able to set thumb nails for folderview groups", we might not strictly enforce admin if KAMs are doing it. 
     // To be safe and align with existing upload logic, we'll allow authenticated users, but it's best to log it.
     
-    const { categoryName, imageBase64, mimeType } = request.data || {};
-    if (!categoryName || !imageBase64 || !mimeType) {
+    const { groupName, imageBase64, mimeType } = request.data || {};
+    if (!groupName || !imageBase64 || !mimeType) {
         throw new HttpsError('invalid-argument', 'Missing parameters.');
     }
 
@@ -1849,7 +1849,7 @@ exports.uploadCategoryThumbnail = onCall(async (request) => {
 
     try {
         const bucket = admin.storage().bucket();
-        const safeName = categoryName.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const safeName = groupName.replace(/[^a-zA-Z0-9_-]/g, '_');
         const filePath = `settings/categories/${safeName}_${Date.now()}.jpg`;
         const file = bucket.file(filePath);
 
@@ -1863,15 +1863,15 @@ exports.uploadCategoryThumbnail = onCall(async (request) => {
         const publicUrl = `https://storage.googleapis.com/${bucket.name}/${file.name}`;
 
         const db = admin.firestore();
-        const docRef = db.collection('settings').doc('product_categories');
+        const docRef = db.collection('settings').doc('product_groups');
         
         await docRef.set({
-            categories: {
-                [categoryName]: { thumbnailUrl: publicUrl }
+            groups: {
+                [groupName]: { thumbnailUrl: publicUrl }
             }
         }, { merge: true });
 
-        console.log(`[uploadCategoryThumbnail] Updated thumb for ${categoryName}`);
+        console.log(`[uploadCategoryThumbnail] Updated thumb for ${groupName}`);
         return { success: true, url: publicUrl };
     } catch (e) {
         console.error('[uploadCategoryThumbnail] Error:', e);
@@ -1890,20 +1890,20 @@ exports.updateCategoryOrder = onCall(async (request) => {
 
     try {
         const db = admin.firestore();
-        const docRef = db.collection('settings').doc('product_categories');
+        const docRef = db.collection('settings').doc('product_groups');
         
         const updates = {};
-        orderedCategories.forEach((cat, index) => {
-            updates[`categories.${cat}.order`] = index;
+        orderedCategories.forEach((grp, index) => {
+            updates[`groups.${grp}.order`] = index;
         });
 
         try {
             await docRef.update(updates);
         } catch (updateErr) {
             if (updateErr.code === 5) { // NOT_FOUND
-                const buildObj = { categories: {} };
-                orderedCategories.forEach((cat, index) => {
-                    buildObj.categories[cat] = { order: index };
+                const buildObj = { groups: {} };
+                orderedCategories.forEach((grp, index) => {
+                    buildObj.groups[grp] = { order: index };
                 });
                 await docRef.set(buildObj);
             } else {
