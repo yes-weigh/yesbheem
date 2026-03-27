@@ -234,6 +234,7 @@ function normaliseItem(item) {
         stockStatus: getStockStatus(stock, item.reorder_level),
         // We no longer set imageUrl here blindly — syncProductsToFirestore will handle it
         imageUrl: null, 
+        hasImage: !!(item.image_url || item.image_document_id),
         categoryId: item.category_id || '',
         categoryName: item.category_name || 'Uncategorised',
         status: item.status || 'active',
@@ -300,14 +301,14 @@ async function syncProductsToFirestore(accessToken, orgId) {
             
             let finalImageUrl = existingData.imageUrl || null;
             
-            // If Zoho says an image exists, but we don't have a storage URL yet, cache it
-            // (Note: we rely on raw products data from fetchAllProducts which has image_document_id)
-            const rawZohoItem = products.find(p => p.id === product.id);
-            if (rawZohoItem && rawZohoItem.image_document_id && !finalImageUrl) {
+            // If the item has an image in Zoho but we don't have a storage URL yet, cache it
+            if (product.hasImage && !finalImageUrl) {
                 finalImageUrl = await cacheZohoImageToStorage(accessToken, orgId, product.id);
             }
 
             product.imageUrl = finalImageUrl;
+            delete product.hasImage; // Internal flag, no need to store in Firestore
+
             batch.set(ref, product, { merge: true });
             count++;
         }
