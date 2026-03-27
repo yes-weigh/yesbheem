@@ -38,6 +38,8 @@ class ProductManager {
             this.callZohoGetProductDetail = httpsCallable(functions, 'zohoGetProductDetail');
             this.callZohoSyncProducts = httpsCallable(functions, 'zohoSyncProducts');
             this.callZohoUploadProductImage = httpsCallable(functions, 'zohoUploadProductImage');
+            this.callUploadCategoryThumbnail = httpsCallable(functions, 'uploadCategoryThumbnail');
+            this.callUpdateCategoryOrder = httpsCallable(functions, 'updateCategoryOrder');
             console.log('[ProductManager] Firebase functions ready');
         } catch (err) {
             console.error('[ProductManager] Firebase init failed:', err);
@@ -280,29 +282,46 @@ class ProductManager {
         }
 
         grid.innerHTML = catsToShow.map(cat => {
-            const images = this.categoryPreviews[cat] || [];
-            let collageHtml = '';
+            const previewData = this.categoryPreviews[cat];
+            let imageHtml = '';
             
-            if (images.length > 0) {
-                const padded = [...images, null, null, null, null].slice(0, 4);
-                collageHtml = padded.map(src => 
-                    src ? `<div class="pm-folder-thumb"><img src="${src}" loading="lazy" onerror="this.style.display='none'"></div>` 
-                        : `<div class="pm-folder-thumb"></div>`
-                ).join('');
-                collageHtml = `<div class="pm-folder-collage">${collageHtml}</div>`;
+            if (typeof previewData === 'string') {
+                // Custom single thumbnail
+                imageHtml = `<div class="pm-folder-custom-thumb"><img src="${previewData}" loading="lazy" onerror="this.style.display='none'"></div>`;
             } else {
-                collageHtml = `<div class="pm-folder-icon">📁</div>`;
+                const images = previewData || [];
+                if (images.length > 0) {
+                    const padded = [...images, null, null, null, null].slice(0, 4);
+                    let collageHtml = padded.map(src => 
+                        src ? `<div class="pm-folder-thumb"><img src="${src}" loading="lazy" onerror="this.style.display='none'"></div>` 
+                            : `<div class="pm-folder-thumb"></div>`
+                    ).join('');
+                    imageHtml = `<div class="pm-folder-collage">${collageHtml}</div>`;
+                } else {
+                    imageHtml = `<div class="pm-folder-icon">📁</div>`;
+                }
             }
 
             return `
-            <div class="pm-folder-card" data-cat="${cat}">
-                ${collageHtml}
+            <div class="pm-folder-card" data-cat="${cat}" draggable="true">
+                <div class="pm-folder-overlay" id="pm-f-overlay-${cat}">
+                    <label class="pm-folder-edit-btn" onclick="event.stopPropagation()">
+                        📷 Edit Image
+                        <input type="file" style="display:none" accept="image/*" onchange="window.productManager && window.productManager.uploadCategoryThumb('${cat}', this.files[0])">
+                    </label>
+                </div>
+                ${imageHtml}
                 <div class="pm-folder-name">${cat}</div>
             </div>`;
         }).join('');
 
+        let draggedElement = null;
+
         grid.querySelectorAll('.pm-folder-card').forEach(card => {
-            card.addEventListener('click', () => {
+            card.addEventListener('click', (e) => {
+                // Prevent navigation if interacting with the overlay edit button
+                if (e.target.closest('.pm-folder-edit-btn') || e.target.closest('.pm-folder-overlay')) return;
+
                 const cat = card.dataset.cat;
                 const filter = document.getElementById('pm-category-filter');
                 if (filter) filter.value = cat;
@@ -317,7 +336,111 @@ class ProductManager {
                 this.currentPage = 1;
                 this.loadProducts();
             });
+
+            // Drag and Drop Events
+            card.addEventListener('dragstart', (e) => {
+                // Ensure edit buttons and text selection aren't firing drag
+                if (e.target.tagName.toLowerCase() === 'label' || e.target.tagName.toLowerCase() === 'input') {
+                    e.preventDefault();
+                    return;
+                }
+                draggedElement = card;
+                e.dataTransfer.effectAllowed = 'move';
+                setTimeout(() => card.classList.add('dragging'), 0);
+            });
+
+            card.addEventListener('dragend', () => {
+                draggedElement = null;
+                card.classList.remove('dragging');
+                grid.querySelectorAll('.pm-folder-card').forEach(c => c.classList.remove('drag-over'));
+            });
+
+            card.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (card !== draggedElement && draggedElement) {
+                    card.classList.add('drag-over');
+                }
+            });
+
+            card.addEventListener('dragleave', () => {
+                card.classList.remove('drag-over');
+            });
+
+            card.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                card.classList.remove('drag-over');
+                
+                if (draggedElement && draggedElement !== card) {
+                    const allCards = [...grid.querySelectorAll('.pm-folder-card')];
+                    const draggedIdx = allCards.indexOf(draggedElement);
+                    const droppedIdx = allCards.indexOf(card);
+                    
+                    if (draggedIdx < droppedIdx) {
+                        card.after(draggedElement);
+                    } else {
+                        card.before(draggedElement);
+                    }
+                    
+                    const newOrder = [...grid.querySelectorAll('.pm-folder-card')].map(c => c.dataset.cat);
+                    this.categories = newOrder;
+                    this._populateCategories(this.categories);
+                    
+                    try {
+                        if (this.callUpdateCategoryOrder) {
+                            await this.callUpdateCategoryOrder({ orderedCategories: newOrder });
+                            console.log('[ProductManager] Category order saved globally.');
+                        }
+                    } catch (err) {
+                        console.error('[ProductManager] Failed to save category order:', err);
+                    }
+                }
+            });
         });
+    }
+
+    async uploadCategoryThumb(cat, file) {
+        if (!file) return;
+        const overlay = document.getElementById(`pm-f-overlay-${cat}`);
+        if (overlay) {
+            overlay.style.opacity = '1';
+            overlay.innerHTML = `<div class="pm-folder-edit-loading"><div class="pm-spinner-sm"></div> Uploading...</div>`;
+        }
+
+        try {
+            const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            if (this.callUploadCategoryThumbnail) {
+                const res = await this.callUploadCategoryThumbnail({
+                    categoryName: cat,
+                    imageBase64: base64,
+                    mimeType: file.type
+                });
+
+                if (res.data && res.data.success) {
+                    this.categoryPreviews[cat] = res.data.url;
+                    
+                    if (overlay) {
+                        overlay.innerHTML = `<div class="pm-folder-edit-loading" style="color:#22c55e">✓ Done</div>`;
+                        setTimeout(() => this._renderActiveView(), 1000);
+                    } else {
+                        this._renderActiveView();
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('[ProductManager] Error uploading thumbnail:', err);
+            if (overlay) {
+                overlay.innerHTML = `<div class="pm-folder-edit-loading" style="color:#ef4444">✗ Failed</div>`;
+                setTimeout(() => {
+                    this._renderActiveView();
+                }, 2000);
+            }
+        }
     }
 
     _productCard(p) {

@@ -1651,14 +1651,29 @@ exports.zohoGetProducts = onCall({
         const start = (page - 1) * perPage;
         const paginated = products.slice(start, start + perPage);
 
-        // Get unique categories for filter UI
-        const allCategories = [...new Set(snapshot.docs.map(d => d.data().categoryName).filter(Boolean))].sort();
+        // Read settings/product_categories for order and custom thumbnails
+        const settingsRef = db.collection('settings').doc('product_categories');
+        const settingsSnap = await settingsRef.get();
+        const settingsData = settingsSnap.exists ? settingsSnap.data().categories || {} : {};
 
-        // Build category previews (up to 4 images per category)
+        // Get unique categories and sort
+        const allCategories = [...new Set(snapshot.docs.map(d => d.data().categoryName).filter(Boolean))];
+        allCategories.sort((a, b) => {
+            const orderA = settingsData[a] && typeof settingsData[a].order === 'number' ? settingsData[a].order : 999;
+            const orderB = settingsData[b] && typeof settingsData[b].order === 'number' ? settingsData[b].order : 999;
+            if (orderA === orderB) return a.localeCompare(b);
+            return orderA - orderB;
+        });
+
+        // Build category previews (custom single thumbnail OR 4-image collage)
         const categoryPreviews = {};
         allCategories.forEach(cat => {
-            const catProducts = products.filter(p => p.categoryName === cat && p.imageUrl);
-            categoryPreviews[cat] = catProducts.slice(0, 4).map(p => p.imageUrl);
+            if (settingsData[cat] && settingsData[cat].thumbnailUrl) {
+                categoryPreviews[cat] = settingsData[cat].thumbnailUrl; // String overrides Array
+            } else {
+                const catProducts = products.filter(p => p.categoryName === cat && p.imageUrl);
+                categoryPreviews[cat] = catProducts.slice(0, 4).map(p => p.imageUrl);
+            }
         });
 
         return {
@@ -1814,3 +1829,92 @@ exports.zohoUploadProductImage = onCall({
     }
 });
 
+/**
+ * uploadCategoryThumbnail — Upload a custom thumbnail for a product category.
+ */
+exports.uploadCategoryThumbnail = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Authentication required.');
+    
+    // Allow users with roles to modify layout, or just admins. Assuming CRM users can.
+    // Given the prompt "i should be able to set thumb nails for folderview groups", we might not strictly enforce admin if KAMs are doing it. 
+    // To be safe and align with existing upload logic, we'll allow authenticated users, but it's best to log it.
+    
+    const { categoryName, imageBase64, mimeType } = request.data || {};
+    if (!categoryName || !imageBase64 || !mimeType) {
+        throw new HttpsError('invalid-argument', 'Missing parameters.');
+    }
+
+    const imageBuffer = Buffer.from(imageBase64, 'base64');
+    if (imageBuffer.length > 5 * 1024 * 1024) throw new HttpsError('invalid-argument', 'Image must be under 5MB.');
+
+    try {
+        const bucket = admin.storage().bucket();
+        const safeName = categoryName.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const filePath = `settings/categories/${safeName}_${Date.now()}.jpg`;
+        const file = bucket.file(filePath);
+
+        await file.save(imageBuffer, {
+            metadata: {
+                contentType: mimeType,
+                cacheControl: 'public, max-age=31536000'
+            }
+        });
+        await file.makePublic();
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${file.name}`;
+
+        const db = admin.firestore();
+        const docRef = db.collection('settings').doc('product_categories');
+        
+        await docRef.set({
+            categories: {
+                [categoryName]: { thumbnailUrl: publicUrl }
+            }
+        }, { merge: true });
+
+        console.log(`[uploadCategoryThumbnail] Updated thumb for ${categoryName}`);
+        return { success: true, url: publicUrl };
+    } catch (e) {
+        console.error('[uploadCategoryThumbnail] Error:', e);
+        throw new HttpsError('internal', `Upload failed: ${e.message}`);
+    }
+});
+
+/**
+ * updateCategoryOrder — Batch update the order of categories
+ */
+exports.updateCategoryOrder = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Authentication required.');
+    
+    const { orderedCategories } = request.data || {};
+    if (!Array.isArray(orderedCategories)) throw new HttpsError('invalid-argument', 'Invalid array.');
+
+    try {
+        const db = admin.firestore();
+        const docRef = db.collection('settings').doc('product_categories');
+        
+        const updates = {};
+        orderedCategories.forEach((cat, index) => {
+            updates[`categories.${cat}.order`] = index;
+        });
+
+        try {
+            await docRef.update(updates);
+        } catch (updateErr) {
+            if (updateErr.code === 5) { // NOT_FOUND
+                const buildObj = { categories: {} };
+                orderedCategories.forEach((cat, index) => {
+                    buildObj.categories[cat] = { order: index };
+                });
+                await docRef.set(buildObj);
+            } else {
+                throw updateErr;
+            }
+        }
+
+        console.log(`[updateCategoryOrder] Order updated. Length: ${orderedCategories.length}`);
+        return { success: true };
+    } catch (e) {
+        console.error('[updateCategoryOrder] Error:', e);
+        throw new HttpsError('internal', e.message);
+    }
+});
