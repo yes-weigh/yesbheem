@@ -5,6 +5,7 @@
  */
 
 const admin = require('firebase-admin');
+const { getStorage } = require('firebase-admin/storage');
 const axios = require('axios');
 
 const ZOHO_TOKEN_URL = 'https://accounts.zoho.in/oauth/v2/token';
@@ -161,18 +162,58 @@ async function uploadItemImage(accessToken, orgId, itemId, imageBuffer, mimeType
 }
 
 /**
+ * Download an image from Zoho and save it to Firebase Storage for CDN serving.
+ * @returns {string|null} The public Firebase Storage URL, or null on failure.
+ */
+async function cacheZohoImageToStorage(accessToken, orgId, itemId) {
+    try {
+        const url = `${ZOHO_API_BASE}/inventory/v1/items/${itemId}/image`;
+        const response = await axios({
+            method: 'GET',
+            url: url,
+            params: { organization_id: orgId.trim() },
+            headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}` },
+            responseType: 'arraybuffer'
+        });
+
+        const buffer = Buffer.from(response.data, 'binary');
+        const bucket = getStorage().bucket();
+        const file = bucket.file(`products/${itemId}.jpg`);
+
+        await file.save(buffer, {
+            metadata: {
+                contentType: response.headers['content-type'] || 'image/jpeg',
+                cacheControl: 'public, max-age=31536000'
+            }
+        });
+        
+        await file.makePublic();
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${file.name}`;
+        console.log(`[ZohoService] Cached image for item ${itemId} to Storage`);
+        return publicUrl;
+    } catch (error) {
+        if (error.response && error.response.status === 404) return null;
+        console.error(`[ZohoService] Failed to cache image for item ${itemId}:`, error.message);
+        return null;
+    }
+}
+
+/**
  * Update the image URL in the Firestore cache for a given product.
  * Called after a successful Zoho image upload.
  */
-async function updateProductImageInFirestore(itemId, orgId) {
+async function updateProductImageInFirestore(itemId, orgId, accessToken) {
     const db = admin.firestore();
-    // Use the proxy endpoint so the frontend can load it securely without auth headers
-    const imageUrl = `https://us-central1-yesweighmomentumhub.cloudfunctions.net/zohoGetImage?itemId=${itemId}`;
-    await db.collection(PRODUCTS_COLLECTION).doc(itemId).update({
-        imageUrl,
-        syncedAt: Date.now()
-    });
-    console.log(`[ZohoService] Firestore image URL updated for item ${itemId}`);
+    // Cache the newly uploaded image to Firebase Storage CDN
+    const imageUrl = await cacheZohoImageToStorage(accessToken, orgId, itemId);
+    
+    if (imageUrl) {
+        await db.collection(PRODUCTS_COLLECTION).doc(itemId).update({
+            imageUrl,
+            syncedAt: Date.now()
+        });
+        console.log(`[ZohoService] Firestore image URL updated for item ${itemId}`);
+    }
     return imageUrl;
 }
 
@@ -191,7 +232,8 @@ function normaliseItem(item) {
         purchaseRate: parseFloat(item.purchase_rate || 0),
         stock: stock,
         stockStatus: getStockStatus(stock, item.reorder_level),
-        imageUrl: item.image_url || item.image_document_id ? `https://us-central1-yesweighmomentumhub.cloudfunctions.net/zohoGetImage?itemId=${item.item_id}` : null,
+        // We no longer set imageUrl here blindly — syncProductsToFirestore will handle it
+        imageUrl: null, 
         categoryId: item.category_id || '',
         categoryName: item.category_name || 'Uncategorised',
         status: item.status || 'active',
@@ -248,11 +290,27 @@ async function syncProductsToFirestore(accessToken, orgId) {
         const batch = db.batch();
         const chunk = products.slice(i, i + BATCH_SIZE);
 
-        chunk.forEach(product => {
+        for (const product of chunk) {
             const ref = db.collection(PRODUCTS_COLLECTION).doc(product.id);
+            
+            // Check if we need to cache the image
+            // We fetch the current doc to see if we already have a valid Storage URL
+            const docSnap = await ref.get();
+            const existingData = docSnap.exists ? docSnap.data() : {};
+            
+            let finalImageUrl = existingData.imageUrl || null;
+            
+            // If Zoho says an image exists, but we don't have a storage URL yet, cache it
+            // (Note: we rely on raw products data from fetchAllProducts which has image_document_id)
+            const rawZohoItem = products.find(p => p.id === product.id);
+            if (rawZohoItem && rawZohoItem.image_document_id && !finalImageUrl) {
+                finalImageUrl = await cacheZohoImageToStorage(accessToken, orgId, product.id);
+            }
+
+            product.imageUrl = finalImageUrl;
             batch.set(ref, product, { merge: true });
             count++;
-        });
+        }
 
         await batch.commit();
     }
@@ -275,6 +333,7 @@ module.exports = {
     syncProductsToFirestore,
     uploadItemImage,
     updateProductImageInFirestore,
+    cacheZohoImageToStorage,
     PRODUCTS_COLLECTION,
     ZOHO_ORG_ID
 };
