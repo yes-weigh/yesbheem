@@ -7,6 +7,8 @@ class ProductManager {
     constructor() {
         this.products = [];
         this.categories = [];
+        this.categoryPreviews = {};
+        this.currentView = localStorage.getItem('pm-view') || 'grid';
         this.currentPage = 1;
         this.perPage = 48;
         this.total = 0;
@@ -69,6 +71,17 @@ class ProductManager {
                 <select id="pm-category-filter" class="pm-category-select">
                     <option value="">All Groups</option>
                 </select>
+                <div class="pm-view-toggles" id="pm-view-toggles">
+                    <button class="pm-view-btn ${this.currentView === 'grid' ? 'active' : ''}" data-view="grid" title="Grid View">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                    </button>
+                    <button class="pm-view-btn ${this.currentView === 'list' ? 'active' : ''}" data-view="list" title="List View">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    </button>
+                    <button class="pm-view-btn ${this.currentView === 'folder' ? 'active' : ''}" data-view="folder" title="Folder View">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2v11z"/></svg>
+                    </button>
+                </div>
                 <span class="pm-count" id="pm-count"></span>
             </div>
 
@@ -119,6 +132,17 @@ class ProductManager {
         modalOverlay?.addEventListener('click', (e) => {
             if (e.target === modalOverlay) this.closeModal();
         });
+
+        const viewBtns = document.querySelectorAll('.pm-view-btn');
+        viewBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.currentView = btn.dataset.view;
+                localStorage.setItem('pm-view', this.currentView);
+                viewBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this._renderActiveView();
+            });
+        });
     }
 
     async loadProducts() {
@@ -134,16 +158,20 @@ class ProductManager {
                 perPage: this.perPage
             });
 
-            const { products, total, categories, syncedAt, hasMore } = result.data;
+            const { products, total, categories, categoryPreviews, syncedAt, hasMore } = result.data;
             this.products = products;
             this.total = total;
             this.syncedAt = syncedAt;
+            if (categoryPreviews) {
+                this.categoryPreviews = categoryPreviews;
+            }
 
             if (categories && categories.length) {
+                this.categories = categories;
                 this._populateCategories(categories);
             }
 
-            this._renderGrid(products);
+            this._renderActiveView();
             this._renderPagination(total, hasMore);
             this._updateSyncInfo(syncedAt);
             this._updateCount(total);
@@ -180,20 +208,115 @@ class ProductManager {
             categories.map(c => `<option value="${c}" ${c === current ? 'selected' : ''}>${c}</option>`).join('');
     }
 
-    _renderGrid(products) {
+    _renderActiveView() {
         const grid = document.getElementById('pm-grid');
         if (!grid) return;
+        
+        grid.className = '';
+        
+        if (this.currentView === 'folder') {
+            this._renderFolder(grid);
+        } else if (this.currentView === 'list') {
+            this._renderList(grid);
+        } else {
+            this._renderGridArray(grid);
+        }
+    }
 
-        if (!products || products.length === 0) {
+    _renderGridArray(grid) {
+        if (!this.products || this.products.length === 0) {
             grid.innerHTML = `<div class="pm-empty"><div class="pm-empty-icon">📦</div><p>No products found</p><small>Try adjusting your search or filter</small></div>`;
             return;
         }
-
-        grid.innerHTML = products.map(p => this._productCard(p)).join('');
-
-        // Attach click events
+        grid.className = 'pm-grid';
+        grid.innerHTML = this.products.map(p => this._productCard(p)).join('');
         grid.querySelectorAll('.pm-card').forEach(card => {
             card.addEventListener('click', () => this.openDetail(card.dataset.id));
+        });
+    }
+
+    _renderList(grid) {
+        if (!this.products || this.products.length === 0) {
+            grid.innerHTML = `<div class="pm-empty"><div class="pm-empty-icon">📦</div><p>No products found</p><small>Try adjusting your search or filter</small></div>`;
+            return;
+        }
+        grid.className = 'pm-list';
+        grid.innerHTML = this.products.map(p => this._listCard(p)).join('');
+        grid.querySelectorAll('.pm-list-card').forEach(card => {
+            card.addEventListener('click', () => this.openDetail(card.dataset.id));
+        });
+    }
+
+    _listCard(p) {
+        const stockClass = { in_stock: 'pm-stock-in', low_stock: 'pm-stock-low', out_of_stock: 'pm-stock-out' }[p.stockStatus] || 'pm-stock-in';
+        return `
+        <div class="pm-list-card" data-id="${p.id}">
+            <div class="pm-list-img">
+                ${p.imageUrl ? `<img src="${p.imageUrl}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=pm-list-icon>📦</div>'">` : '<div class="pm-list-icon">📦</div>'}
+            </div>
+            <div class="pm-list-info">
+                <div class="pm-list-main">
+                    <span class="pm-list-name">${p.name}</span>
+                    <span class="pm-list-sku">${p.sku ? 'SKU: ' + p.sku : ''} <span style="margin-left:8px;" class="pm-list-cat">${p.categoryName || 'General'}</span></span>
+                </div>
+                <div class="pm-list-stock-col">
+                    <span class="pm-list-price">₹${(p.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <div class="pm-stock-badge ${stockClass}"><span>${p.stock}</span> <span class="pm-stock-qty">${p.unit || 'units'}</span></div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    _renderFolder(grid) {
+        if (!this.categories || this.categories.length === 0) {
+            grid.innerHTML = `<div class="pm-empty"><div class="pm-empty-icon">📁</div><p>No groups found</p><small>No categories exist in the catalog.</small></div>`;
+            return;
+        }
+        grid.className = 'pm-folder-grid';
+        
+        let catsToShow = this.categories;
+        if (this.selectedCategory) {
+            catsToShow = [this.selectedCategory];
+        }
+
+        grid.innerHTML = catsToShow.map(cat => {
+            const images = this.categoryPreviews[cat] || [];
+            let collageHtml = '';
+            
+            if (images.length > 0) {
+                const padded = [...images, null, null, null, null].slice(0, 4);
+                collageHtml = padded.map(src => 
+                    src ? `<div class="pm-folder-thumb"><img src="${src}" loading="lazy" onerror="this.style.display='none'"></div>` 
+                        : `<div class="pm-folder-thumb"></div>`
+                ).join('');
+                collageHtml = `<div class="pm-folder-collage">${collageHtml}</div>`;
+            } else {
+                collageHtml = `<div class="pm-folder-icon">📁</div>`;
+            }
+
+            return `
+            <div class="pm-folder-card" data-cat="${cat}">
+                ${collageHtml}
+                <div class="pm-folder-name">${cat}</div>
+            </div>`;
+        }).join('');
+
+        grid.querySelectorAll('.pm-folder-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const cat = card.dataset.cat;
+                const filter = document.getElementById('pm-category-filter');
+                if (filter) filter.value = cat;
+                this.selectedCategory = cat;
+                this.currentView = 'grid'; // Default to grid when opening a folder
+                localStorage.setItem('pm-view', 'grid');
+                
+                document.querySelectorAll('.pm-view-btn').forEach(b => {
+                    b.classList.toggle('active', b.dataset.view === 'grid');
+                });
+                
+                this.currentPage = 1;
+                this.loadProducts();
+            });
         });
     }
 

@@ -1654,6 +1654,13 @@ exports.zohoGetProducts = onCall({
         // Get unique categories for filter UI
         const allCategories = [...new Set(snapshot.docs.map(d => d.data().categoryName).filter(Boolean))].sort();
 
+        // Build category previews (up to 4 images per category)
+        const categoryPreviews = {};
+        allCategories.forEach(cat => {
+            const catProducts = products.filter(p => p.categoryName === cat && p.imageUrl);
+            categoryPreviews[cat] = catProducts.slice(0, 4).map(p => p.imageUrl);
+        });
+
         return {
             success: true,
             products: paginated,
@@ -1662,6 +1669,7 @@ exports.zohoGetProducts = onCall({
             perPage,
             hasMore: start + perPage < total,
             categories: allCategories,
+            categoryPreviews,
             syncedAt: cacheMeta.exists ? cacheMeta.data().lastSyncAt?.toMillis?.() || null : null
         };
 
