@@ -301,8 +301,8 @@ async function syncProductsToFirestore(accessToken, orgId) {
             
             let finalImageUrl = existingData.imageUrl || null;
             
-            // If the item has an image in Zoho but we don't have a storage URL yet, cache it
-            if (product.hasImage && !finalImageUrl) {
+            // If the item has an image in Zoho but we don't have a storage URL yet (or we have the old proxy URL), cache it
+            if (product.hasImage && (!finalImageUrl || finalImageUrl.includes('zohoGetImage'))) {
                 finalImageUrl = await cacheZohoImageToStorage(accessToken, orgId, product.id);
             }
 
