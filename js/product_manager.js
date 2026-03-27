@@ -416,7 +416,7 @@ class ProductManager {
 
             if (this.callUploadCategoryThumbnail) {
                 const res = await this.callUploadCategoryThumbnail({
-                    categoryName: cat,
+                    groupName: cat,
                     imageBase64: base64,
                     mimeType: file.type
                 });
