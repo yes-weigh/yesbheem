@@ -1,4 +1,4 @@
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onDocumentUpdated, onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onObjectFinalized } = require("firebase-functions/v2/storage");
@@ -1752,3 +1752,110 @@ exports.zohoScheduledSync = onSchedule('every 2 hours', async () => {
         console.error('[zohoScheduledSync] ❌ Sync failed:', error);
     }
 });
+
+/**
+ * zohoUploadProductImage — Upload an image to a Zoho item from the CRM.
+ * Accepts: { itemId: string, imageBase64: string, mimeType: string }
+ * Returns: { success: true, imageUrl: string }
+ */
+exports.zohoUploadProductImage = onCall({
+    secrets: [zohoClientId, zohoClientSecret, zohoRefreshToken]
+}, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Authentication required.');
+    }
+
+    const { itemId, imageBase64, mimeType } = request.data || {};
+    if (!itemId) throw new HttpsError('invalid-argument', 'itemId is required.');
+    if (!imageBase64) throw new HttpsError('invalid-argument', 'imageBase64 is required.');
+    if (!mimeType || !['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mimeType)) {
+        throw new HttpsError('invalid-argument', 'mimeType must be image/jpeg, image/png, image/gif, or image/webp.');
+    }
+
+    // Decode base64 to Buffer
+    const imageBuffer = Buffer.from(imageBase64, 'base64');
+
+    // Limit: 5MB
+    if (imageBuffer.length > 5 * 1024 * 1024) {
+        throw new HttpsError('invalid-argument', 'Image must be under 5MB.');
+    }
+
+    const {
+        getAccessToken,
+        uploadItemImage,
+        updateProductImageInFirestore,
+        ZOHO_ORG_ID
+    } = require('./zoho_service');
+
+    try {
+        const token = await getAccessToken(
+            zohoClientId.value(),
+            zohoClientSecret.value(),
+            zohoRefreshToken.value()
+        );
+
+        await uploadItemImage(token, ZOHO_ORG_ID, itemId, imageBuffer, mimeType);
+        const imageUrl = await updateProductImageInFirestore(itemId, ZOHO_ORG_ID);
+
+        console.log(`[zohoUploadProductImage] ✅ Image uploaded for item ${itemId}`);
+        return { success: true, imageUrl };
+
+    } catch (error) {
+        console.error('[zohoUploadProductImage] Error:', error);
+        throw new HttpsError('internal', `Image upload failed: ${error.message}`);
+    }
+});
+
+/**
+ * zohoGetImage — HTTP proxy to serve Zoho images to browser <img> tags.
+ * Browsers cannot send OAuth headers in <img> src requests, so this endpoint
+ * acts as a proxy: fetches image from Zoho using backend token, pipes to client.
+ * Usage: <img src="https://.../zohoGetImage?itemId=123">
+ */
+exports.zohoGetImage = onRequest({
+    secrets: [zohoClientId, zohoClientSecret, zohoRefreshToken],
+    cors: true
+}, async (req, res) => {
+    const itemId = req.query.itemId;
+    if (!itemId) {
+        return res.status(400).send('Missing itemId parameter');
+    }
+
+    const { getAccessToken, ZOHO_ORG_ID } = require('./zoho_service');
+    const axios = require('axios');
+
+    try {
+        const token = await getAccessToken(
+            zohoClientId.value(),
+            zohoClientSecret.value(),
+            zohoRefreshToken.value()
+        );
+
+        const url = `https://www.zohoapis.in/inventory/v1/items/${itemId}/image`;
+        
+        // Fetch image as stream from Zoho
+        const response = await axios({
+            method: 'GET',
+            url: url,
+            params: { organization_id: ZOHO_ORG_ID },
+            headers: { 'Authorization': `Zoho-oauthtoken ${token}` },
+            responseType: 'stream'
+        });
+
+        // Forward content-type and cache-control headers
+        res.set('Content-Type', response.headers['content-type']);
+        res.set('Cache-Control', 'public, max-age=86400, s-maxage=86400'); // Cache for 24h
+
+        // Pipe the image stream directly to the Express response
+        response.data.pipe(res);
+
+    } catch (error) {
+        console.error(`[zohoGetImage] Failed to fetch image for item ${itemId}:`, error.message);
+        // If 404/No image, return a transparent 1x1 pixel or 404
+        if (error.response && error.response.status === 404) {
+            return res.status(404).send('Image not found');
+        }
+        res.status(500).send('Failed to fetch image proxy');
+    }
+});
+

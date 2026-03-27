@@ -35,6 +35,7 @@ class ProductManager {
             this.callZohoGetProducts = httpsCallable(functions, 'zohoGetProducts');
             this.callZohoGetProductDetail = httpsCallable(functions, 'zohoGetProductDetail');
             this.callZohoSyncProducts = httpsCallable(functions, 'zohoSyncProducts');
+            this.callZohoUploadProductImage = httpsCallable(functions, 'zohoUploadProductImage');
             console.log('[ProductManager] Firebase functions ready');
         } catch (err) {
             console.error('[ProductManager] Firebase init failed:', err);
@@ -296,10 +297,18 @@ class ProductManager {
             const result = await this.callZohoGetProductDetail({ itemId });
             const p = result.data.product;
             body.innerHTML = this._detailHTML(p);
+
+        // Wire up upload button after render
+        const input = document.getElementById(`pm-upload-input-${p.id}`);
+        if (input) {
+            input.addEventListener('change', (e) => this.uploadImage(p.id, e.target.files[0]));
+        }
         } catch (err) {
             // Fallback to cached card data
             if (cached) {
                 body.innerHTML = this._detailHTML(cached);
+                const input = document.getElementById(`pm-upload-input-${cached.id}`);
+                if (input) input.addEventListener('change', (e) => this.uploadImage(cached.id, e.target.files[0]));
             } else {
                 body.innerHTML = `<div class="pm-error"><p>Failed to load product details</p><small>${err.message}</small></div>`;
             }
@@ -327,6 +336,15 @@ class ProductManager {
                 </div>
             </div>
 
+            <div class="pm-upload-row">
+                <label class="pm-upload-btn" id="pm-upload-label-${p.id}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Upload Image to Zoho
+                    <input type="file" id="pm-upload-input-${p.id}" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
+                </label>
+                <span class="pm-upload-status" id="pm-upload-status-${p.id}"></span>
+            </div>
+
             <div class="pm-detail-grid">
                 ${p.description ? `<div class="pm-detail-section"><div class="pm-detail-label">Description</div><div class="pm-detail-val">${p.description}</div></div>` : ''}
                 <div class="pm-detail-section"><div class="pm-detail-label">Purchase Rate</div><div class="pm-detail-val">₹${(p.purchaseRate || 0).toFixed(2)}</div></div>
@@ -346,6 +364,51 @@ class ProductManager {
                     </div>`).join('')}
             </div>` : ''}
         </div>`;
+    }
+
+    async uploadImage(itemId, file) {
+        if (!file) return;
+        const statusEl = document.getElementById(`pm-upload-status-${itemId}`);
+        const labelEl  = document.getElementById(`pm-upload-label-${itemId}`);
+        if (!statusEl || !labelEl) return;
+
+        // Show uploading state
+        statusEl.className = 'pm-upload-status uploading';
+        statusEl.textContent = 'Uploading…';
+        labelEl.classList.add('disabled');
+
+        try {
+            // Read file as base64
+            const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            const result = await this.callZohoUploadProductImage({
+                itemId,
+                imageBase64: base64,
+                mimeType: file.type
+            });
+
+            // Update the image displayed in the modal
+            const detailImg = document.querySelector('.pm-detail-img');
+            if (detailImg && result.data.imageUrl) {
+                detailImg.innerHTML = `<img src="${result.data.imageUrl}&t=${Date.now()}" alt="Product" onerror="this.parentElement.innerHTML='<div class=pm-detail-icon>📦</div>'">`;
+            }
+
+            statusEl.className = 'pm-upload-status success';
+            statusEl.textContent = '✓ Uploaded to Zoho!';
+            setTimeout(() => { statusEl.textContent = ''; statusEl.className = 'pm-upload-status'; }, 4000);
+
+        } catch (err) {
+            console.error('[ProductManager] uploadImage error:', err);
+            statusEl.className = 'pm-upload-status error';
+            statusEl.textContent = `✗ ${err.message || 'Upload failed'}`;
+        } finally {
+            labelEl.classList.remove('disabled');
+        }
     }
 
     closeModal() {

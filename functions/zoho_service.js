@@ -124,6 +124,59 @@ async function fetchProductById(accessToken, orgId, itemId) {
 }
 
 /**
+ * Upload an image to a Zoho Inventory item.
+ * @param {string} accessToken  - Valid Zoho OAuth access token
+ * @param {string} orgId        - Zoho organisation ID
+ * @param {string} itemId       - Zoho item_id
+ * @param {Buffer} imageBuffer  - Raw image bytes
+ * @param {string} mimeType     - e.g. 'image/jpeg', 'image/png'
+ * @returns {object}            - Zoho API response data
+ */
+async function uploadItemImage(accessToken, orgId, itemId, imageBuffer, mimeType) {
+    const url = `${ZOHO_API_BASE}/inventory/v1/items/${itemId}/image`;
+
+    const ext = mimeType.split('/')[1] || 'jpg';
+
+    // Use Node 22 built-in FormData + Blob (no external dependency)
+    const blob = new Blob([imageBuffer], { type: mimeType });
+    const form = new globalThis.FormData();
+    form.append('image', blob, `product.${ext}`);
+
+    const authHeaders = buildHeaders(accessToken, orgId);
+    // Do NOT set Content-Type manually — let fetch/axios set the multipart boundary
+    const response = await axios.post(url, form, {
+        headers: {
+            'Authorization': authHeaders['Authorization'],
+            'X-com-zoho-inventory-organizationid': authHeaders['X-com-zoho-inventory-organizationid']
+        },
+        params: { organization_id: orgId.trim() }
+    });
+
+    if (response.data.code !== 0) {
+        throw new Error(`Zoho image upload error: ${response.data.message}`);
+    }
+
+    console.log(`[ZohoService] Image uploaded for item ${itemId}`);
+    return response.data;
+}
+
+/**
+ * Update the image URL in the Firestore cache for a given product.
+ * Called after a successful Zoho image upload.
+ */
+async function updateProductImageInFirestore(itemId, orgId) {
+    const db = admin.firestore();
+    // Use the proxy endpoint so the frontend can load it securely without auth headers
+    const imageUrl = `https://us-central1-yesweighmomentumhub.cloudfunctions.net/zohoGetImage?itemId=${itemId}`;
+    await db.collection(PRODUCTS_COLLECTION).doc(itemId).update({
+        imageUrl,
+        syncedAt: Date.now()
+    });
+    console.log(`[ZohoService] Firestore image URL updated for item ${itemId}`);
+    return imageUrl;
+}
+
+/**
  * Normalise a Zoho item to a standard shape for product list view
  */
 function normaliseItem(item) {
@@ -138,7 +191,7 @@ function normaliseItem(item) {
         purchaseRate: parseFloat(item.purchase_rate || 0),
         stock: stock,
         stockStatus: getStockStatus(stock, item.reorder_level),
-        imageUrl: item.image_url || item.image_document_id ? `${ZOHO_API_BASE}/inventory/v1/items/${item.item_id}/image` : null,
+        imageUrl: item.image_url || item.image_document_id ? `https://us-central1-yesweighmomentumhub.cloudfunctions.net/zohoGetImage?itemId=${item.item_id}` : null,
         categoryId: item.category_id || '',
         categoryName: item.category_name || 'Uncategorised',
         status: item.status || 'active',
@@ -220,6 +273,8 @@ module.exports = {
     fetchAllProducts,
     fetchProductById,
     syncProductsToFirestore,
+    uploadItemImage,
+    updateProductImageInFirestore,
     PRODUCTS_COLLECTION,
     ZOHO_ORG_ID
 };

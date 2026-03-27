@@ -99,6 +99,16 @@
 .pm-wh-row { display: flex; justify-content: space-between; padding: 8px 14px; background: var(--bg-primary); border-radius: 6px; margin-top: 6px; font-size: 13px; color: var(--text-main); }
 .pm-wh-stock { font-weight: 700; color: var(--primary, #6366f1); }
 
+/* Upload Image button */
+.pm-upload-row { display: flex; align-items: center; gap: 10px; padding: 12px 0 4px; border-top: 1px solid var(--border-light); margin-top: 4px; }
+.pm-upload-btn { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; background: var(--bg-highlight, rgba(99,102,241,.1)); color: var(--primary, #6366f1); border: 1px solid rgba(99,102,241,.25); border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .2s; -webkit-user-select: none; user-select: none; }
+.pm-upload-btn:hover:not(.disabled) { background: var(--primary, #6366f1); color: #fff; border-color: var(--primary, #6366f1); }
+.pm-upload-btn.disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
+.pm-upload-status { font-size: 12px; font-weight: 600; }
+.pm-upload-status.uploading { color: var(--text-muted); }
+.pm-upload-status.success { color: #22c55e; }
+.pm-upload-status.error { color: #ef4444; }
+
 @media (max-width: 600px) {
     .pm-detail-header { flex-direction: column; }
     .pm-detail-grid { grid-template-columns: 1fr; }
