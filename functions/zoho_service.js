@@ -221,7 +221,13 @@ async function updateProductImageInFirestore(itemId, orgId, accessToken) {
  * Normalise a Zoho item to a standard shape for product list view
  */
 function normaliseItem(item) {
-    const stock = parseFloat(item.available_stock || item.actual_available_stock || 0);
+    // Prefer Accounting Stock on Hand but fallback to Physical Stock on Hand
+    let stockVal = item.accounting_stock_on_hand;
+    if (stockVal === undefined || stockVal === null) {
+        stockVal = item.available_stock || item.actual_available_stock || 0;
+    }
+    const stock = parseFloat(stockVal);
+    
     return {
         id: item.item_id,
         name: item.name || item.item_name,

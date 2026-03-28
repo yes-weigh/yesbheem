@@ -142,6 +142,16 @@ class ProductManager {
                 localStorage.setItem('pm-view', this.currentView);
                 viewBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+
+                if (this.currentView === 'folder') {
+                    this.selectedGroup = '';
+                    const filter = document.getElementById('pm-category-filter');
+                    if (filter) filter.value = '';
+                    this.currentPage = 1;
+                    this.loadProducts();
+                    return;
+                }
+
                 this._renderActiveView();
             });
         });
@@ -160,10 +170,11 @@ class ProductManager {
                 perPage: this.perPage
             });
 
-            const { products, total, groups, groupPreviews, syncedAt, hasMore } = result.data;
+            const { products, total, groups, groupCounts, groupPreviews, syncedAt, hasMore } = result.data;
             this.products = products;
             this.total = total;
             this.syncedAt = syncedAt;
+            this.groupCounts = groupCounts || {};
             if (groupPreviews) {
                 this.categoryPreviews = groupPreviews;
             }
@@ -259,7 +270,7 @@ class ProductManager {
             <div class="pm-list-info">
                 <div class="pm-list-main">
                     <span class="pm-list-name">${p.name}</span>
-                    <span class="pm-list-sku">${p.sku ? 'SKU: ' + p.sku : ''} <span style="margin-left:8px;" class="pm-list-cat">${p.groupName || ''}</span></span>
+                    <span class="pm-list-sku">${p.sku ? 'SKU: ' + p.sku : ''}</span>
                 </div>
                 <div class="pm-list-stock-col">
                     <span class="pm-list-price">₹${(p.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
@@ -304,14 +315,13 @@ class ProductManager {
 
             return `
             <div class="pm-folder-card" data-cat="${cat}" draggable="true">
-                <div class="pm-folder-overlay" id="pm-f-overlay-${cat}">
-                    <label class="pm-folder-edit-btn" onclick="event.stopPropagation()">
-                        📷 Edit Image
-                        <input type="file" style="display:none" accept="image/*" onchange="window.productManager && window.productManager.uploadCategoryThumb('${cat}', this.files[0])">
-                    </label>
-                </div>
+                <label class="pm-folder-edit-btn" onclick="event.stopPropagation()" title="Change Image">
+                    📷
+                    <input type="file" style="display:none" accept="image/*" onchange="window.productManager && window.productManager.uploadCategoryThumb('${cat}', this.files[0])">
+                </label>
+                <div id="pm-f-overlay-${cat}"></div>
                 ${imageHtml}
-                <div class="pm-folder-name">${cat}</div>
+                <div class="pm-folder-name">${cat} <span class="pm-group-count-badge">${this.groupCounts[cat] || 0}</span></div>
             </div>`;
         }).join('');
 
@@ -461,14 +471,10 @@ class ProductManager {
                 </div>
             </div>
             <div class="pm-card-body">
-                <div class="pm-card-cat">${p.groupName || ''}</div>
-                <div class="pm-card-name">${p.name}</div>
+                <div class="pm-card-name" style="margin-top: 4px;">${p.name}</div>
                 ${p.sku ? `<div class="pm-card-sku">SKU: ${p.sku}</div>` : ''}
                 <div class="pm-card-footer">
                     <div class="pm-card-price">₹${(p.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-                    <div class="pm-stock-badge ${stockClass}">
-                        <span>${stockIcon}</span> ${stockLabel}
-                    </div>
                 </div>
             </div>
         </div>`;
@@ -477,6 +483,11 @@ class ProductManager {
     _renderPagination(total, hasMore) {
         const el = document.getElementById('pm-pagination');
         if (!el) return;
+
+        if (this.currentView === 'folder') {
+            el.innerHTML = '';
+            return;
+        }
 
         const totalPages = Math.ceil(total / this.perPage);
         if (totalPages <= 1) { el.innerHTML = ''; return; }

@@ -1629,12 +1629,24 @@ exports.zohoGetProducts = onCall({
 
         // Query Firestore cache
         let query = db.collection(PRODUCTS_COLLECTION).where('status', '==', 'active');
-        if (group) {
-            query = query.where('groupName', '==', group);
-        }
-
         const snapshot = await query.orderBy('name').get();
-        let products = snapshot.docs.map(d => d.data());
+        let allProducts = snapshot.docs.map(d => d.data());
+
+        // Get unique groups and counts from all active products
+        const groupCounts = {};
+        allProducts.forEach(p => {
+            if (p.groupName) {
+                if (!groupCounts[p.groupName]) {
+                    groupCounts[p.groupName] = 0;
+                }
+                groupCounts[p.groupName]++;
+            }
+        });
+
+        let products = allProducts;
+        if (group) {
+            products = products.filter(p => p.groupName === group);
+        }
 
         // Client-side search filter
         if (search) {
@@ -1657,7 +1669,7 @@ exports.zohoGetProducts = onCall({
         const settingsData = settingsSnap.exists ? settingsSnap.data().groups || {} : {};
 
         // Get unique groups and sort
-        const allGroups = [...new Set(snapshot.docs.map(d => d.data().groupName).filter(Boolean))];
+        const allGroups = Object.keys(groupCounts);
         allGroups.sort((a, b) => {
             const orderA = settingsData[a] && typeof settingsData[a].order === 'number' ? settingsData[a].order : 999;
             const orderB = settingsData[b] && typeof settingsData[b].order === 'number' ? settingsData[b].order : 999;
@@ -1671,7 +1683,7 @@ exports.zohoGetProducts = onCall({
             if (settingsData[grp] && settingsData[grp].thumbnailUrl) {
                 groupPreviews[grp] = settingsData[grp].thumbnailUrl; // String overrides Array
             } else {
-                const grpProducts = products.filter(p => p.groupName === grp && p.imageUrl);
+                const grpProducts = allProducts.filter(p => p.groupName === grp && p.imageUrl);
                 groupPreviews[grp] = grpProducts.slice(0, 4).map(p => p.imageUrl);
             }
         });
@@ -1684,6 +1696,7 @@ exports.zohoGetProducts = onCall({
             perPage,
             hasMore: start + perPage < total,
             groups: allGroups,
+            groupCounts,
             groupPreviews,
             syncedAt: cacheMeta.exists ? cacheMeta.data().lastSyncAt?.toMillis?.() || null : null
         };
