@@ -98,6 +98,9 @@ async function fetchAllProducts(accessToken, orgId, page = 1, perPage = 200) {
     const hasMore = pageContext.has_more_page || false;
 
     const normalised = items.map(normaliseItem);
+    if (page === 1 && items.length > 0 && items[0]) {
+        normalised[0]._raw = JSON.stringify(items[0]);
+    }
 
     if (hasMore) {
         const nextPage = await fetchAllProducts(accessToken, orgId, page + 1, perPage);
@@ -221,11 +224,16 @@ async function updateProductImageInFirestore(itemId, orgId, accessToken) {
  * Normalise a Zoho item to a standard shape for product list view
  */
 function normaliseItem(item) {
-    // Prefer Accounting Stock on Hand but fallback to Physical Stock on Hand
-    let stockVal = item.accounting_stock_on_hand;
-    if (stockVal === undefined || stockVal === null) {
-        stockVal = item.available_stock || item.actual_available_stock || 0;
+    // We want the Accounting stock, which normally comes as stock_on_hand in item list
+    let stockVal = 0;
+    if (item.stock_on_hand !== undefined && item.stock_on_hand !== null) {
+        stockVal = item.stock_on_hand;
+    } else if (item.available_stock !== undefined && item.available_stock !== null) {
+        stockVal = item.available_stock;
+    } else if (item.actual_available_stock !== undefined && item.actual_available_stock !== null) {
+        stockVal = item.actual_available_stock;
     }
+
     const stock = parseFloat(stockVal);
     
     return {

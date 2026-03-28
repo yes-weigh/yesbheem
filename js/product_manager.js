@@ -473,8 +473,9 @@ class ProductManager {
             <div class="pm-card-body">
                 <div class="pm-card-name" style="margin-top: 4px;">${p.name}</div>
                 ${p.sku ? `<div class="pm-card-sku">SKU: ${p.sku}</div>` : ''}
-                <div class="pm-card-footer">
+                <div class="pm-card-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
                     <div class="pm-card-price">₹${(p.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                    <div class="pm-card-group" style="font-size: 10px; color: ${p.groupName ? '#8892b0' : '#8892b088'}; text-align: right; max-width: 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; ${!p.groupName ? 'font-style: italic;' : ''}" title="${p.groupName || 'Ungrouped'}">${p.groupName || 'Ungrouped'}</div>
                 </div>
             </div>
         </div>`;
