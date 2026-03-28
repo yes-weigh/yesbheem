@@ -40,6 +40,7 @@ class ProductManager {
             this.callZohoUploadProductImage = httpsCallable(functions, 'zohoUploadProductImage');
             this.callUploadCategoryThumbnail = httpsCallable(functions, 'uploadCategoryThumbnail');
             this.callUpdateCategoryOrder = httpsCallable(functions, 'updateCategoryOrder');
+            this.callZohoUpdateItemGroup = httpsCallable(functions, 'zohoUpdateItemGroup');
             console.log('[ProductManager] Firebase functions ready');
         } catch (err) {
             console.error('[ProductManager] Firebase init failed:', err);
@@ -170,11 +171,12 @@ class ProductManager {
                 perPage: this.perPage
             });
 
-            const { products, total, groups, groupCounts, groupPreviews, syncedAt, hasMore } = result.data;
+            const { products, total, groups, groupCounts, groupIds, groupPreviews, syncedAt, hasMore } = result.data;
             this.products = products;
             this.total = total;
             this.syncedAt = syncedAt;
             this.groupCounts = groupCounts || {};
+            this.groupIds = groupIds || {};
             if (groupPreviews) {
                 this.categoryPreviews = groupPreviews;
             }
@@ -244,7 +246,18 @@ class ProductManager {
         grid.className = 'pm-grid';
         grid.innerHTML = this.products.map(p => this._productCard(p)).join('');
         grid.querySelectorAll('.pm-card').forEach(card => {
-            card.addEventListener('click', () => this.openDetail(card.dataset.id));
+            card.addEventListener('click', (e) => {
+                // Don't open detail if clicking the group tag
+                if (e.target.closest('.pm-card-group')) return;
+                this.openDetail(card.dataset.id);
+            });
+        });
+        // Group-change click: show dropdown inline
+        grid.querySelectorAll('.pm-card-group').forEach(tag => {
+            tag.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this._showGroupPicker(tag);
+            });
         });
     }
 
@@ -475,7 +488,9 @@ class ProductManager {
                 ${p.sku ? `<div class="pm-card-sku">SKU: ${p.sku}</div>` : ''}
                 <div class="pm-card-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
                     <div class="pm-card-price">₹${(p.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-                    <div class="pm-card-group" style="font-size: 10px; color: ${p.groupName ? '#8892b0' : '#8892b088'}; text-align: right; max-width: 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; ${!p.groupName ? 'font-style: italic;' : ''}" title="${p.groupName || 'Ungrouped'}">${p.groupName || 'Ungrouped'}</div>
+                    <div class="pm-card-group-wrap" style="position:relative;">
+                        <div class="pm-card-group" data-item-id="${p.id}" data-group-id="${p.groupId || ''}" title="Click to change group" style="font-size: 10px; color: ${p.groupName ? '#8892b0' : '#8892b088'}; cursor:pointer; padding: 2px 5px; border-radius: 4px; border: 1px solid ${p.groupName ? '#8892b033' : '#8892b022'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; ${!p.groupName ? 'font-style: italic;' : ''} transition: background 0.15s;" onmouseenter="this.style.background='#1e2a3a'" onmouseleave="this.style.background='transparent'">${p.groupName || 'Ungrouped'} ✎</div>
+                    </div>
                 </div>
             </div>
         </div>`;
@@ -697,6 +712,140 @@ class ProductManager {
         }
 
         btn.disabled = false;
+    }
+
+    /**
+     * Show a floating group picker dropdown anchored to the group tag element.
+     * Populated with this.categories (already loaded from backend).
+     */
+    _showGroupPicker(tagEl) {
+        // Remove any existing picker
+        document.querySelectorAll('.pm-group-picker').forEach(p => p.remove());
+
+        const itemId = tagEl.dataset.itemId;
+        const currentGroupId = tagEl.dataset.groupId;
+
+        const groups = this.categories || [];
+        if (groups.length === 0) {
+            alert('No groups available. Please sync first.');
+            return;
+        }
+
+        // Build dropdown
+        const picker = document.createElement('div');
+        picker.className = 'pm-group-picker';
+        picker.style.cssText = `
+            position: absolute; z-index: 9999; min-width: 180px;
+            background: #1a2133; border: 1px solid #2d3f5a; border-radius: 8px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5); overflow: hidden;
+            font-size: 12px; color: #cdd6f4;
+        `;
+
+        // Header
+        const header = document.createElement('div');
+        header.style.cssText = 'padding: 8px 12px; font-size: 10px; color: #8892b0; border-bottom: 1px solid #2d3f5a; text-transform: uppercase; letter-spacing: 0.5px;';
+        header.textContent = 'Move to group';
+        picker.appendChild(header);
+
+        // Options
+        groups.forEach(cat => {
+            // cat is a group name string; try this.groupIds first, then products cache, fallback to cat
+            let grpId = this.groupIds && this.groupIds[cat] ? this.groupIds[cat] : null;
+            if (!grpId) {
+                const matchingProduct = this.products.find(p => p.groupName === cat);
+                grpId = matchingProduct?.groupId || cat;
+            }
+
+            const opt = document.createElement('div');
+            opt.style.cssText = `padding: 9px 14px; cursor: pointer; border-bottom: 1px solid #1e2a3a; display: flex; align-items: center; gap: 6px; transition: background 0.12s;`;
+            opt.onmouseenter = () => opt.style.background = '#263448';
+            opt.onmouseleave = () => opt.style.background = 'transparent';
+
+            const isCurrent = grpId === currentGroupId || cat === tagEl.textContent.replace(' ✎', '').trim();
+            opt.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${isCurrent ? '#64ffda' : '#2d3f5a'};display:inline-block;flex-shrink:0;"></span>${cat}`;
+
+            opt.addEventListener('click', (e) => {
+                e.stopPropagation();
+                picker.remove();
+                this.updateItemGroup(itemId, grpId, cat, tagEl);
+            });
+            picker.appendChild(opt);
+        });
+
+        // Position below the tag
+        const rect = tagEl.getBoundingClientRect();
+        picker.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+        picker.style.left = Math.max(8, rect.left + window.scrollX - 60) + 'px';
+        picker.style.position = 'fixed';
+        picker.style.top = (rect.bottom + 4) + 'px';
+        picker.style.left = Math.max(8, rect.left - 60) + 'px';
+
+        document.body.appendChild(picker);
+
+        // Close on outside click
+        const close = (e) => {
+            if (!picker.contains(e.target)) {
+                picker.remove();
+                document.removeEventListener('click', close);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', close), 10);
+    }
+
+    /**
+     * Call zohoUpdateItemGroup backend, then optimistically update the card UI.
+     */
+    async updateItemGroup(itemId, groupId, groupName, tagEl) {
+        if (!this.callZohoUpdateItemGroup) {
+            alert('Firebase not ready yet. Please wait a moment and try again.');
+            return;
+        }
+
+        // Optimistic UI
+        const originalText = tagEl.textContent;
+        tagEl.textContent = '⟳ Saving...';
+        tagEl.style.opacity = '0.6';
+        tagEl.style.pointerEvents = 'none';
+
+        try {
+            await this.callZohoUpdateItemGroup({ itemId, groupId, groupName });
+
+            // Update local products cache so re-renders stay correct
+            const prod = this.products.find(p => p.id === itemId);
+            if (prod) {
+                prod.groupId = groupId;
+                prod.groupName = groupName;
+            }
+
+            // Update tag display
+            tagEl.textContent = `${groupName} ✎`;
+            tagEl.dataset.groupId = groupId;
+            tagEl.style.color = '#8892b0';
+            tagEl.style.fontStyle = 'normal';
+            tagEl.style.border = '1px solid #8892b033';
+            tagEl.style.opacity = '1';
+            tagEl.style.pointerEvents = '';
+
+            // Brief success flash
+            tagEl.style.background = '#64ffda22';
+            setTimeout(() => { tagEl.style.background = 'transparent'; }, 1200);
+
+            console.log(`[ProductManager] ✅ Item ${itemId} moved to "${groupName}"`);
+
+        } catch (err) {
+            console.error('[ProductManager] updateItemGroup error:', err);
+            tagEl.textContent = originalText;
+            tagEl.style.opacity = '1';
+            tagEl.style.pointerEvents = '';
+            // Error flash
+            tagEl.style.background = '#ff4a4a22';
+            tagEl.style.color = '#ff4a4a';
+            setTimeout(() => {
+                tagEl.style.background = 'transparent';
+                tagEl.style.color = '#8892b0';
+            }, 2000);
+            alert(`Failed to update group: ${err.message}`);
+        }
     }
 }
 

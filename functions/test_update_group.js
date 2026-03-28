@@ -1,9 +1,9 @@
 const axios = require('axios');
 const fs = require('fs');
 
-const clientId = '1000.QF6JPR5IFOYIHPUUF6Q5ONP90H7KBT';
-const clientSecret = 'bd56478cfad01448a829c324fe1b6245dccf9eb4a7';
-const refreshToken = '1000.12f61456446269e734cc03521c69bf26.dda7598b7c9d08aea6bbbda51eff387f';
+const clientId = '1000.HZFLLMJSBILI6M6NQ5QMVSKE0W9Z1Y';
+const clientSecret = '9eee125bf23f319fe0689176114c8dbd0ec2b975cc';
+const refreshToken = '1000.c1567dd50ec78df9166f106ddb9530dc.aaeffb4e5916a9289d5f4b52989ee995';
 const orgId = '60001225303';
 const ZOHO_API_BASE = 'https://www.zohoapis.in';
 

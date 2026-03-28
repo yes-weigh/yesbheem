@@ -1634,12 +1634,16 @@ exports.zohoGetProducts = onCall({
 
         // Get unique groups and counts from all active products
         const groupCounts = {};
+        const groupIds = {};
         allProducts.forEach(p => {
             if (p.groupName) {
                 if (!groupCounts[p.groupName]) {
                     groupCounts[p.groupName] = 0;
                 }
                 groupCounts[p.groupName]++;
+                if (p.groupId && !groupIds[p.groupName]) {
+                    groupIds[p.groupName] = p.groupId;
+                }
             }
         });
 
@@ -1697,6 +1701,7 @@ exports.zohoGetProducts = onCall({
             hasMore: start + perPage < total,
             groups: allGroups,
             groupCounts,
+            groupIds,
             groupPreviews,
             syncedAt: cacheMeta.exists ? cacheMeta.data().lastSyncAt?.toMillis?.() || null : null
         };
@@ -1929,5 +1934,70 @@ exports.updateCategoryOrder = onCall(async (request) => {
     } catch (e) {
         console.error('[updateCategoryOrder] Error:', e);
         throw new HttpsError('internal', e.message);
+    }
+});
+
+/**
+ * zohoUpdateItemGroup — Move an item to a different Item Group in Zoho Inventory.
+ * Also patches the Firestore cache immediately so UI reflects the change without a full sync.
+ * Accepts: { itemId: string, groupId: string, groupName: string }
+ * Requires: ZohoInventory.items.ALL scope (credentials updated 2026-03-28)
+ */
+exports.zohoUpdateItemGroup = onCall({
+    secrets: [zohoClientId, zohoClientSecret, zohoRefreshToken]
+}, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Authentication required.');
+    }
+
+    const { itemId, groupId, groupName } = request.data || {};
+    if (!itemId) throw new HttpsError('invalid-argument', 'itemId is required.');
+    if (!groupId) throw new HttpsError('invalid-argument', 'groupId is required.');
+
+    const { getAccessToken, ZOHO_ORG_ID } = require('./zoho_service');
+    const axios = require('axios');
+    const ZOHO_API_BASE = 'https://www.zohoapis.in';
+
+    try {
+        const token = await getAccessToken(
+            zohoClientId.value(),
+            zohoClientSecret.value(),
+            zohoRefreshToken.value()
+        );
+
+        // Push the group change to Zoho Inventory
+        const params = new URLSearchParams();
+        params.append('organization_id', ZOHO_ORG_ID);
+        params.append('JSONString', JSON.stringify({ group_id: groupId }));
+
+        const res = await axios.put(
+            `${ZOHO_API_BASE}/inventory/v1/items/move/${itemId}`,
+            params.toString(),
+            {
+                headers: { 
+                    'Authorization': `Zoho-oauthtoken ${token}`,
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                }
+            }
+        );
+
+        if (res.data.code !== 0) {
+            throw new Error(`Zoho API error: ${res.data.message}`);
+        }
+
+        // Patch Firestore cache immediately — no full sync needed
+        const db = admin.firestore();
+        await db.collection('zoho_products').doc(itemId).update({
+            groupId: groupId,
+            groupName: groupName || '',
+            syncedAt: Date.now()
+        });
+
+        console.log(`[zohoUpdateItemGroup] ✅ Item ${itemId} moved to group "${groupName || groupId}"`);
+        return { success: true, message: `Item moved to group "${groupName || groupId}"` };
+
+    } catch (error) {
+        console.error('[zohoUpdateItemGroup] Error:', error.response?.data || error.message);
+        throw new HttpsError('internal', `Group update failed: ${error.message}`);
     }
 });
