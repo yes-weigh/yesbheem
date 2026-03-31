@@ -2001,3 +2001,67 @@ exports.zohoUpdateItemGroup = onCall({
         throw new HttpsError('internal', `Group update failed: ${error.message}`);
     }
 });
+
+/**
+ * zohoUngroupItem — Remove an item from its Item Group in Zoho.
+ * Uses the Zoho Books internal API (POST /api/v3/items/ungroup) discovered via network inspection.
+ * Also patches the Firestore cache to clear groupId/groupName immediately.
+ * Accepts: { itemId: string }
+ */
+exports.zohoUngroupItem = onCall({
+    secrets: [zohoClientId, zohoClientSecret, zohoRefreshToken]
+}, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Authentication required.');
+    }
+
+    const { itemId } = request.data || {};
+    if (!itemId) throw new HttpsError('invalid-argument', 'itemId is required.');
+
+    const { getAccessToken, ZOHO_ORG_ID } = require('./zoho_service');
+    const axios = require('axios');
+
+    try {
+        const token = await getAccessToken(
+            zohoClientId.value(),
+            zohoClientSecret.value(),
+            zohoRefreshToken.value()
+        );
+
+        // Zoho Books internal ungroup endpoint (no official Inventory equivalent exists)
+        const params = new URLSearchParams();
+        params.append('item_ids', itemId);
+        params.append('organization_id', ZOHO_ORG_ID);
+
+        const res = await axios.post(
+            'https://books.zoho.in/api/v3/items/ungroup',
+            params.toString(),
+            {
+                headers: {
+                    'Authorization': `Zoho-oauthtoken ${token}`,
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'X-com-zoho-inventory-organizationid': ZOHO_ORG_ID
+                }
+            }
+        );
+
+        if (res.data.code !== 0) {
+            throw new Error(`Zoho API error: ${res.data.message}`);
+        }
+
+        // Clear group in Firestore cache immediately
+        const db = admin.firestore();
+        await db.collection('zoho_products').doc(itemId).update({
+            groupId: '',
+            groupName: '',
+            syncedAt: Date.now()
+        });
+
+        console.log(`[zohoUngroupItem] ✅ Item ${itemId} removed from group`);
+        return { success: true, message: 'Item removed from group' };
+
+    } catch (error) {
+        console.error('[zohoUngroupItem] Error:', error.response?.data || error.message);
+        throw new HttpsError('internal', `Ungroup failed: ${error.message}`);
+    }
+});
