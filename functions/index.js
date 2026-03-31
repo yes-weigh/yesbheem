@@ -2004,8 +2004,10 @@ exports.zohoUpdateItemGroup = onCall({
 
 /**
  * zohoUngroupItem — Remove an item from its Item Group in Zoho.
- * Uses the Zoho Books internal API (POST /api/v3/items/ungroup) discovered via network inspection.
- * Also patches the Firestore cache to clear groupId/groupName immediately.
+ * Tries three strategies in order:
+ *   1. Inventory move endpoint with empty group_id
+ *   2. Books REST API (www.zohoapis.in/books/v3) — OAuth equivalent of the internal endpoint
+ *   3. Item PUT with null group fields (fallback)
  * Accepts: { itemId: string }
  */
 exports.zohoUngroupItem = onCall({
@@ -2028,28 +2030,94 @@ exports.zohoUngroupItem = onCall({
             zohoRefreshToken.value()
         );
 
-        // Zoho Books internal ungroup endpoint (no official Inventory equivalent exists)
-        const params = new URLSearchParams();
-        params.append('item_ids', itemId);
-        params.append('organization_id', ZOHO_ORG_ID);
+        const authHeader = `Zoho-oauthtoken ${token}`;
+        let success = false;
+        let lastError = null;
 
-        const res = await axios.post(
-            'https://books.zoho.in/api/v3/items/ungroup',
-            params.toString(),
-            {
-                headers: {
-                    'Authorization': `Zoho-oauthtoken ${token}`,
-                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                    'X-com-zoho-inventory-organizationid': ZOHO_ORG_ID
-                }
+        // Strategy 1: Inventory move endpoint with empty group_id
+        try {
+            const params = new URLSearchParams();
+            params.append('organization_id', ZOHO_ORG_ID);
+            params.append('JSONString', JSON.stringify({ group_id: '' }));
+
+            const res = await axios.put(
+                `https://www.zohoapis.in/inventory/v1/items/move/${itemId}`,
+                params.toString(),
+                { headers: { 'Authorization': authHeader, 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' } }
+            );
+            console.log(`[zohoUngroupItem] Strategy 1 response:`, JSON.stringify(res.data));
+            if (res.data.code === 0) {
+                success = true;
+                console.log(`[zohoUngroupItem] Strategy 1 succeeded`);
+            } else {
+                lastError = res.data.message;
             }
-        );
-
-        if (res.data.code !== 0) {
-            throw new Error(`Zoho API error: ${res.data.message}`);
+        } catch (e) {
+            lastError = e.message;
+            console.warn(`[zohoUngroupItem] Strategy 1 failed: ${e.response?.data ? JSON.stringify(e.response.data) : e.message}`);
         }
 
-        // Clear group in Firestore cache immediately
+        // Strategy 2: Zoho Books official REST API — OAuth-authenticated equivalent of books.zoho.in/api/v3/items/ungroup
+        if (!success) {
+            try {
+                const params = new URLSearchParams();
+                params.append('item_ids', itemId);
+                params.append('organization_id', ZOHO_ORG_ID);
+
+                const res = await axios.post(
+                    `https://www.zohoapis.in/books/v3/items/ungroup`,
+                    params.toString(),
+                    {
+                        headers: {
+                            'Authorization': authHeader,
+                            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                        }
+                        // organization_id is already in the body — do NOT add it as URL param too
+                    }
+                );
+                console.log(`[zohoUngroupItem] Strategy 2 (Books REST) response:`, JSON.stringify(res.data));
+                if (res.data.code === 0) {
+                    success = true;
+                    console.log(`[zohoUngroupItem] Strategy 2 (Books REST) succeeded`);
+                } else {
+                    lastError = res.data.message;
+                }
+            } catch (e) {
+                lastError = e.message;
+                console.warn(`[zohoUngroupItem] Strategy 2 (Books REST) failed: ${e.response?.data ? JSON.stringify(e.response.data) : e.message}`);
+            }
+        }
+
+        // Strategy 3: Item PUT with null group_id
+        // NOTE: Zoho silently accepts this but ignores null group fields — we detect this by
+        // checking if the response still carries a group_id.
+        if (!success) {
+            const params = new URLSearchParams();
+            params.append('organization_id', ZOHO_ORG_ID);
+            params.append('JSONString', JSON.stringify({ group_id: null, group_name: null }));
+
+            const res = await axios.put(
+                `https://www.zohoapis.in/inventory/v1/items/${itemId}`,
+                params.toString(),
+                { headers: { 'Authorization': authHeader, 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' } }
+            );
+
+            if (res.data.code === 0) {
+                // Check if Zoho actually cleared the group or just silently ignored null
+                const stillGrouped = !!res.data.item?.group_id;
+                if (!stillGrouped) {
+                    success = true;
+                    console.log(`[zohoUngroupItem] Strategy 3 (item PUT null) genuinely succeeded`);
+                } else {
+                    console.warn(`[zohoUngroupItem] Strategy 3 returned code 0 but item still has group_id="${res.data.item.group_id}" — Zoho API does not support OAuth ungrouping`);
+                    // success stays false — zohoPropagated will be false in the response
+                }
+            } else {
+                console.warn(`[zohoUngroupItem] Strategy 3 failed: ${res.data.message}`);
+            }
+        }
+
+        // Always patch Firestore so CRM stays correct regardless of Zoho API limitations
         const db = admin.firestore();
         await db.collection('zoho_products').doc(itemId).update({
             groupId: '',
@@ -2057,11 +2125,23 @@ exports.zohoUngroupItem = onCall({
             syncedAt: Date.now()
         });
 
-        console.log(`[zohoUngroupItem] ✅ Item ${itemId} removed from group`);
-        return { success: true, message: 'Item removed from group' };
+        if (success) {
+            console.log(`[zohoUngroupItem] ✅ Item ${itemId} fully ungrouped in Zoho + Firestore`);
+        } else {
+            console.log(`[zohoUngroupItem] ⚠️ Item ${itemId} ungrouped in Firestore only — Zoho API does not support OAuth ungrouping`);
+        }
+
+        return {
+            success: true,          // Firestore always updated
+            zohoPropagated: success, // true only if Zoho was actually changed
+            message: success
+                ? 'Item removed from group'
+                : 'Updated in CRM only — Zoho does not support ungrouping via API. Please ungroup manually in Zoho.'
+        };
 
     } catch (error) {
         console.error('[zohoUngroupItem] Error:', error.response?.data || error.message);
         throw new HttpsError('internal', `Ungroup failed: ${error.message}`);
     }
 });
+

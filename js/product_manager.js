@@ -938,7 +938,8 @@ class ProductManager {
         tagEl.style.pointerEvents = 'none';
 
         try {
-            await this.callZohoUngroupItem({ itemId });
+            const result = await this.callZohoUngroupItem({ itemId });
+            const propagated = result?.data?.zohoPropagated !== false;
 
             // Clear local cache
             const prod = this.products.find(p => p.id === itemId);
@@ -955,10 +956,18 @@ class ProductManager {
             tagEl.style.opacity = '1';
             tagEl.style.pointerEvents = '';
 
-            tagEl.style.background = '#ff4a4a22';
-            setTimeout(() => { tagEl.style.background = 'transparent'; }, 1200);
-
-            console.log(`[ProductManager] ✅ Item ${itemId} removed from group`);
+            if (propagated) {
+                // Full success — green flash
+                tagEl.style.background = '#64ffda22';
+                setTimeout(() => { tagEl.style.background = 'transparent'; }, 1200);
+                console.log(`[ProductManager] ✅ Item ${itemId} fully ungrouped`);
+            } else {
+                // CRM updated, Zoho not — amber flash + toast
+                tagEl.style.background = '#f59e0b22';
+                setTimeout(() => { tagEl.style.background = 'transparent'; }, 2500);
+                console.warn(`[ProductManager] ⚠️ Item ${itemId} ungrouped in CRM only — Zoho API limitation`);
+                this._showToast('⚠️ CRM updated. Zoho\'s API doesn\'t support ungrouping — please ungroup manually in Zoho.', 'warn');
+            }
 
         } catch (err) {
             console.error('[ProductManager] ungroupItem error:', err);
@@ -974,7 +983,29 @@ class ProductManager {
             alert(`Failed to ungroup item: ${err.message}`);
         }
     }
+
+    /** Show a lightweight toast notification */
+    _showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        const colors = { info: '#6366f1', warn: '#f59e0b', error: '#ef4444', success: '#22c55e' };
+        toast.style.cssText = `
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            background: #1a2133; border: 1px solid ${colors[type] || colors.info};
+            color: #cdd6f4; padding: 12px 20px; border-radius: 10px; font-size: 13px;
+            max-width: 420px; text-align: center; z-index: 99999;
+            box-shadow: 0 8px 30px rgba(0,0,0,.5);
+            animation: pm-toast-in 0.25s ease;
+        `;
+        const style = document.createElement('style');
+        style.textContent = `@keyframes pm-toast-in { from { opacity:0; transform:translateX(-50%) translateY(12px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`;
+        document.head.appendChild(style);
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 6000);
+    }
 }
+
+
 
 
 window.ProductManager = ProductManager;
