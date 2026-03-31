@@ -41,7 +41,6 @@ class ProductManager {
             this.callUploadCategoryThumbnail = httpsCallable(functions, 'uploadCategoryThumbnail');
             this.callUpdateCategoryOrder = httpsCallable(functions, 'updateCategoryOrder');
             this.callZohoUpdateItemGroup = httpsCallable(functions, 'zohoUpdateItemGroup');
-            this.callZohoUngroupItem    = httpsCallable(functions, 'zohoUngroupItem');
             console.log('[ProductManager] Firebase functions ready');
         } catch (err) {
             console.error('[ProductManager] Firebase init failed:', err);
@@ -778,22 +777,6 @@ class ProductManager {
         optList.style.cssText = 'overflow-y: auto; max-height: 220px;';
         picker.appendChild(optList);
 
-        // --- Ungroup option (only for items already in a group) ---
-        const currentGroupName = tagEl.textContent.replace(' ✎', '').trim();
-        if (currentGroupId && currentGroupName && currentGroupName !== 'Ungrouped') {
-            const ungroupOpt = document.createElement('div');
-            ungroupOpt.style.cssText = `padding: 9px 14px; cursor: pointer; border-bottom: 2px solid #2d3f5a; display: flex; align-items: center; gap: 6px; transition: background 0.12s; color: #f87171;`;
-            ungroupOpt.onmouseenter = () => ungroupOpt.style.background = '#3a1a1a';
-            ungroupOpt.onmouseleave = () => ungroupOpt.style.background = 'transparent';
-            ungroupOpt.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#f87171;display:inline-block;flex-shrink:0;"></span>Remove from group`;
-            ungroupOpt.addEventListener('click', (e) => {
-                e.stopPropagation();
-                picker.remove();
-                this.ungroupItem(itemId, tagEl);
-            });
-            optList.insertBefore(ungroupOpt, optList.firstChild);
-        }
-
         // Options — existing groups
         groups.forEach(cat => {
             // cat is a group name string; try this.groupIds first, then products cache, fallback to cat
@@ -920,88 +903,6 @@ class ProductManager {
             }, 2000);
             alert(`Failed to update group: ${err.message}`);
         }
-    }
-
-    /**
-     * Remove an item from its group via zohoUngroupItem Cloud Function.
-     * Optimistically resets the tag to "Ungrouped" and clears the local cache.
-     */
-    async ungroupItem(itemId, tagEl) {
-        if (!this.callZohoUngroupItem) {
-            alert('Firebase not ready yet. Please wait a moment and try again.');
-            return;
-        }
-
-        const originalText = tagEl.textContent;
-        tagEl.textContent = '⟳ Saving...';
-        tagEl.style.opacity = '0.6';
-        tagEl.style.pointerEvents = 'none';
-
-        try {
-            const result = await this.callZohoUngroupItem({ itemId });
-            const propagated = result?.data?.zohoPropagated !== false;
-
-            // Clear local cache
-            const prod = this.products.find(p => p.id === itemId);
-            if (prod) {
-                prod.groupId = '';
-                prod.groupName = '';
-            }
-
-            // Reset tag to Ungrouped style
-            tagEl.textContent = 'Ungrouped ✎';
-            tagEl.dataset.groupId = '';
-            tagEl.style.color = '#8892b088';
-            tagEl.style.fontStyle = 'italic';
-            tagEl.style.opacity = '1';
-            tagEl.style.pointerEvents = '';
-
-            if (propagated) {
-                // Full success — green flash
-                tagEl.style.background = '#64ffda22';
-                setTimeout(() => { tagEl.style.background = 'transparent'; }, 1200);
-                console.log(`[ProductManager] ✅ Item ${itemId} fully ungrouped`);
-            } else {
-                // CRM updated, Zoho not — amber flash + toast
-                tagEl.style.background = '#f59e0b22';
-                setTimeout(() => { tagEl.style.background = 'transparent'; }, 2500);
-                console.warn(`[ProductManager] ⚠️ Item ${itemId} ungrouped in CRM only — Zoho API limitation`);
-                this._showToast('⚠️ CRM updated. Zoho\'s API doesn\'t support ungrouping — please ungroup manually in Zoho.', 'warn');
-            }
-
-        } catch (err) {
-            console.error('[ProductManager] ungroupItem error:', err);
-            tagEl.textContent = originalText;
-            tagEl.style.opacity = '1';
-            tagEl.style.pointerEvents = '';
-            tagEl.style.background = '#ff4a4a22';
-            tagEl.style.color = '#ff4a4a';
-            setTimeout(() => {
-                tagEl.style.background = 'transparent';
-                tagEl.style.color = '#8892b0';
-            }, 2000);
-            alert(`Failed to ungroup item: ${err.message}`);
-        }
-    }
-
-    /** Show a lightweight toast notification */
-    _showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        const colors = { info: '#6366f1', warn: '#f59e0b', error: '#ef4444', success: '#22c55e' };
-        toast.style.cssText = `
-            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-            background: #1a2133; border: 1px solid ${colors[type] || colors.info};
-            color: #cdd6f4; padding: 12px 20px; border-radius: 10px; font-size: 13px;
-            max-width: 420px; text-align: center; z-index: 99999;
-            box-shadow: 0 8px 30px rgba(0,0,0,.5);
-            animation: pm-toast-in 0.25s ease;
-        `;
-        const style = document.createElement('style');
-        style.textContent = `@keyframes pm-toast-in { from { opacity:0; transform:translateX(-50%) translateY(12px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`;
-        document.head.appendChild(style);
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 6000);
     }
 }
 
