@@ -128,16 +128,46 @@ async function fetchProductById(accessToken, orgId, itemId) {
 }
 
 /**
+ * Delete the existing image from a Zoho Inventory item.
+ * Required before uploading a replacement — Zoho has no native update endpoint.
+ * Failure is non-fatal; the upload will still be attempted.
+ */
+async function deleteItemImage(accessToken, orgId, itemId) {
+    const url = `${ZOHO_API_BASE}/inventory/v1/items/${itemId}/image`;
+    try {
+        const response = await axios.delete(url, {
+            headers: buildHeaders(accessToken, orgId),
+            params: { organization_id: orgId.trim() }
+        });
+        if (response.data.code !== 0) {
+            console.warn(`[ZohoService] Delete image returned code ${response.data.code}: ${response.data.message}`);
+        } else {
+            console.log(`[ZohoService] Existing image deleted for item ${itemId}`);
+        }
+    } catch (err) {
+        // Non-fatal — the item may have no image yet or delete may not be supported
+        console.warn(`[ZohoService] Could not delete existing image for ${itemId}: ${err.message}`);
+    }
+}
+
+/**
  * Upload an image to a Zoho Inventory item.
+ * When update=true, deletes any existing image first (Zoho requires this).
  * @param {string} accessToken  - Valid Zoho OAuth access token
  * @param {string} orgId        - Zoho organisation ID
  * @param {string} itemId       - Zoho item_id
  * @param {Buffer} imageBuffer  - Raw image bytes
  * @param {string} mimeType     - e.g. 'image/jpeg', 'image/png'
+ * @param {boolean} update      - true = delete existing image first, then upload
  * @returns {object}            - Zoho API response data
  */
-async function uploadItemImage(accessToken, orgId, itemId, imageBuffer, mimeType) {
+async function uploadItemImage(accessToken, orgId, itemId, imageBuffer, mimeType, update = false) {
     const url = `${ZOHO_API_BASE}/inventory/v1/items/${itemId}/image`;
+
+    // Zoho has no native image-replace endpoint — delete first, then upload.
+    if (update) {
+        await deleteItemImage(accessToken, orgId, itemId);
+    }
 
     const ext = mimeType.split('/')[1] || 'jpg';
 
@@ -147,7 +177,7 @@ async function uploadItemImage(accessToken, orgId, itemId, imageBuffer, mimeType
     form.append('image', blob, `product.${ext}`);
 
     const authHeaders = buildHeaders(accessToken, orgId);
-    // Do NOT set Content-Type manually — let fetch/axios set the multipart boundary
+    // Do NOT set Content-Type manually — let fetch/axios set the multipart boundary.
     const response = await axios.post(url, form, {
         headers: {
             'Authorization': authHeaders['Authorization'],
@@ -160,14 +190,17 @@ async function uploadItemImage(accessToken, orgId, itemId, imageBuffer, mimeType
         throw new Error(`Zoho image upload error: ${response.data.message}`);
     }
 
-    console.log(`[ZohoService] Image uploaded for item ${itemId}`);
+    console.log(`[ZohoService] Image ${update ? 'replaced' : 'uploaded'} for item ${itemId}`);
     return response.data;
 }
+
+
 
 /**
  * Download an image from Zoho and save it to Firebase Storage for CDN serving.
  * @returns {string|null} The public Firebase Storage URL, or null on failure.
  */
+
 async function cacheZohoImageToStorage(accessToken, orgId, itemId) {
     try {
         const url = `${ZOHO_API_BASE}/inventory/v1/items/${itemId}/image`;
@@ -186,12 +219,15 @@ async function cacheZohoImageToStorage(accessToken, orgId, itemId) {
         await file.save(buffer, {
             metadata: {
                 contentType: response.headers['content-type'] || 'image/jpeg',
-                cacheControl: 'public, max-age=31536000'
+                // no-cache so browsers always revalidate — product images can be replaced
+                cacheControl: 'public, no-cache'
             }
         });
         
         await file.makePublic();
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${file.name}`;
+        // Append a version timestamp so each upload produces a unique URL.
+        // This busts browser caches even when the storage file path stays the same.
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${file.name}?v=${Date.now()}`;
         console.log(`[ZohoService] Cached image for item ${itemId} to Storage`);
         return publicUrl;
     } catch (error) {
@@ -267,8 +303,13 @@ function normaliseItem(item) {
  */
 function normaliseItemDetail(item) {
     const base = normaliseItem(item);
+    // normaliseItem hard-sets imageUrl:null (Firestore sync owns that path).
+    // For single-item detail fetches we read the image URL directly from the
+    // Zoho API response so the modal always shows the correct image.
+    const imageUrl = item.image_url || item.image_document_url || null;
     return {
         ...base,
+        imageUrl,
         purchaseDescription: item.purchase_description || '',
         salesDescription: item.description || '',
         preferredVendor: item.preferred_vendors?.[0]?.vendor_name || '',

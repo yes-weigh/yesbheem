@@ -1806,7 +1806,7 @@ exports.zohoUploadProductImage = onCall({
         throw new HttpsError('unauthenticated', 'Authentication required.');
     }
 
-    const { itemId, imageBase64, mimeType } = request.data || {};
+    const { itemId, imageBase64, mimeType, update } = request.data || {};
     if (!itemId) throw new HttpsError('invalid-argument', 'itemId is required.');
     if (!imageBase64) throw new HttpsError('invalid-argument', 'imageBase64 is required.');
     if (!mimeType || !['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mimeType)) {
@@ -1835,7 +1835,7 @@ exports.zohoUploadProductImage = onCall({
             zohoRefreshToken.value()
         );
 
-        await uploadItemImage(token, ZOHO_ORG_ID, itemId, imageBuffer, mimeType);
+        await uploadItemImage(token, ZOHO_ORG_ID, itemId, imageBuffer, mimeType, !!update);
         const imageUrl = await updateProductImageInFirestore(itemId, ZOHO_ORG_ID, token);
 
         console.log(`[zohoUploadProductImage] ✅ Image uploaded for item ${itemId}`);

@@ -8,7 +8,7 @@ class ProductManager {
         this.products = [];
         this.categories = [];
         this.categoryPreviews = {};
-        this.currentView = localStorage.getItem('pm-view') || 'folder';
+        this.currentView = 'folder';
         this.currentPage = 1;
         this.perPage = 48;
         this.total = 0;
@@ -140,7 +140,6 @@ class ProductManager {
         viewBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 this.currentView = btn.dataset.view;
-                localStorage.setItem('pm-view', this.currentView);
                 viewBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
 
@@ -350,7 +349,6 @@ class ProductManager {
                 if (filter) filter.value = cat;
                 this.selectedGroup = cat;
                 this.currentView = 'grid'; // Default to grid when opening a folder
-                localStorage.setItem('pm-view', 'grid');
                 
                 document.querySelectorAll('.pm-view-btn').forEach(b => {
                     b.classList.toggle('active', b.dataset.view === 'grid');
@@ -569,19 +567,24 @@ class ProductManager {
         try {
             const result = await this.callZohoGetProductDetail({ itemId });
             const p = result.data.product;
+            // Zoho live API may not return image_url — fall back to the Firestore-cached URL
+            // that the grid view already loaded successfully.
+            if (!p.imageUrl && cached && cached.imageUrl) {
+                p.imageUrl = cached.imageUrl;
+            }
             body.innerHTML = this._detailHTML(p);
 
         // Wire up upload button after render
         const input = document.getElementById(`pm-upload-input-${p.id}`);
         if (input) {
-            input.addEventListener('change', (e) => this.uploadImage(p.id, e.target.files[0]));
+            input.addEventListener('change', (e) => this.uploadImage(p.id, e.target.files[0], !!p.imageUrl));
         }
         } catch (err) {
             // Fallback to cached card data
             if (cached) {
                 body.innerHTML = this._detailHTML(cached);
                 const input = document.getElementById(`pm-upload-input-${cached.id}`);
-                if (input) input.addEventListener('change', (e) => this.uploadImage(cached.id, e.target.files[0]));
+                if (input) input.addEventListener('change', (e) => this.uploadImage(cached.id, e.target.files[0], !!cached.imageUrl));
             } else {
                 body.innerHTML = `<div class="pm-error"><p>Failed to load product details</p><small>${err.message}</small></div>`;
             }
@@ -638,7 +641,7 @@ class ProductManager {
         </div>`;
     }
 
-    async uploadImage(itemId, file) {
+    async uploadImage(itemId, file, hasExistingImage = false) {
         if (!file) return;
         const statusEl = document.getElementById(`pm-upload-status-${itemId}`);
         const labelEl  = document.getElementById(`pm-upload-label-${itemId}`);
@@ -648,6 +651,10 @@ class ProductManager {
         statusEl.className = 'pm-upload-status uploading';
         statusEl.textContent = 'Uploading…';
         labelEl.classList.add('disabled');
+
+        // Create a local blob URL so we can show the image the moment
+        // the upload completes — no CDN round-trip or page refresh needed.
+        const localPreviewUrl = URL.createObjectURL(file);
 
         try {
             // Read file as base64
@@ -661,13 +668,29 @@ class ProductManager {
             const result = await this.callZohoUploadProductImage({
                 itemId,
                 imageBase64: base64,
-                mimeType: file.type
+                mimeType: file.type,
+                update: hasExistingImage  // triggers delete-then-upload on backend
             });
 
-            // Update the image displayed in the modal
+            // Prefer the CDN URL returned by the backend; fall back to the local blob.
+            const newUrl = result.data?.imageUrl || localPreviewUrl;
+
+            // 1. Swap the modal image immediately
             const detailImg = document.querySelector('.pm-detail-img');
-            if (detailImg && result.data.imageUrl) {
-                detailImg.innerHTML = `<img src="${result.data.imageUrl}&t=${Date.now()}" alt="Product" onerror="this.parentElement.innerHTML='<div class=pm-detail-icon>📦</div>'">`;
+            if (detailImg) {
+                detailImg.innerHTML = `<img src="${newUrl}" alt="Product" onerror="this.parentElement.innerHTML='<div class=pm-detail-icon>📦</div>'">`;
+            }
+
+            // 2. Patch in-memory cache & refresh the grid/list card thumbnail in-place
+            const cached = this.products.find(p => p.id === itemId);
+            if (cached) {
+                cached.imageUrl = newUrl;
+                const cardImgEl = document.querySelector(
+                    `.pm-card[data-id="${itemId}"] .pm-card-img, .pm-list-card[data-id="${itemId}"] .pm-list-img`
+                );
+                if (cardImgEl) {
+                    cardImgEl.innerHTML = `<img src="${newUrl}" alt="${cached.name}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=pm-card-icon>📦</div>'">`;
+                }
             }
 
             statusEl.className = 'pm-upload-status success';
@@ -675,6 +698,7 @@ class ProductManager {
             setTimeout(() => { statusEl.textContent = ''; statusEl.className = 'pm-upload-status'; }, 4000);
 
         } catch (err) {
+            URL.revokeObjectURL(localPreviewUrl); // clean up on failure
             console.error('[ProductManager] uploadImage error:', err);
             statusEl.className = 'pm-upload-status error';
             statusEl.textContent = `✗ ${err.message || 'Upload failed'}`;
