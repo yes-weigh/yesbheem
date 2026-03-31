@@ -759,17 +759,23 @@ class ProductManager {
         const picker = document.createElement('div');
         picker.className = 'pm-group-picker';
         picker.style.cssText = `
-            position: absolute; z-index: 9999; min-width: 180px;
+            position: fixed; z-index: 9999; min-width: 200px; max-width: 280px;
             background: #1a2133; border: 1px solid #2d3f5a; border-radius: 8px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.5); overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
             font-size: 12px; color: #cdd6f4;
+            display: flex; flex-direction: column;
         `;
 
         // Header
         const header = document.createElement('div');
-        header.style.cssText = 'padding: 8px 12px; font-size: 10px; color: #8892b0; border-bottom: 1px solid #2d3f5a; text-transform: uppercase; letter-spacing: 0.5px;';
+        header.style.cssText = 'padding: 8px 12px; font-size: 10px; color: #8892b0; border-bottom: 1px solid #2d3f5a; text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0;';
         header.textContent = 'Move to group';
         picker.appendChild(header);
+
+        // Scrollable options list
+        const optList = document.createElement('div');
+        optList.style.cssText = 'overflow-y: auto; max-height: 220px;';
+        picker.appendChild(optList);
 
         // Options
         groups.forEach(cat => {
@@ -793,27 +799,54 @@ class ProductManager {
                 picker.remove();
                 this.updateItemGroup(itemId, grpId, cat, tagEl);
             });
-            picker.appendChild(opt);
+            optList.appendChild(opt);
         });
 
-        // Position below the tag
-        const rect = tagEl.getBoundingClientRect();
-        picker.style.top = (rect.bottom + window.scrollY + 4) + 'px';
-        picker.style.left = Math.max(8, rect.left + window.scrollX - 60) + 'px';
-        picker.style.position = 'fixed';
-        picker.style.top = (rect.bottom + 4) + 'px';
-        picker.style.left = Math.max(8, rect.left - 60) + 'px';
-
+        // --- Smart positioning: fixed, respects viewport edges ---
         document.body.appendChild(picker);
 
-        // Close on outside click
+        const rect = tagEl.getBoundingClientRect();
+        const pickerH = picker.offsetHeight;
+        const pickerW = picker.offsetWidth;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const GAP = 4;
+
+        // Horizontal: left-align to the tag, clamped to viewport
+        let left = rect.left - 60;
+        left = Math.max(8, Math.min(left, vw - pickerW - 8));
+
+        // Vertical: open below if enough room, else flip above
+        const spaceBelow = vh - rect.bottom - GAP;
+        let top;
+        if (spaceBelow >= 150) {
+            top = rect.bottom + GAP;
+            optList.style.maxHeight = Math.min(220, spaceBelow - 44) + 'px';
+        } else {
+            const spaceAbove = rect.top - GAP;
+            top = Math.max(8, rect.top - GAP - pickerH);
+            optList.style.maxHeight = Math.min(220, spaceAbove - 44) + 'px';
+        }
+
+        picker.style.top  = top  + 'px';
+        picker.style.left = left + 'px';
+
+        // Close on outside click or scroll — but NOT when scrolling inside the picker itself
         const close = (e) => {
-            if (!picker.contains(e.target)) {
-                picker.remove();
-                document.removeEventListener('click', close);
+            if (e.type === 'scroll') {
+                // Ignore scrolls that originate within the picker (e.g. scrolling the option list)
+                if (picker.contains(e.target)) return;
+            } else {
+                if (picker.contains(e.target)) return;
             }
+            picker.remove();
+            document.removeEventListener('click', close);
+            window.removeEventListener('scroll', close, true);
         };
+        // Capture-phase so we catch scroll on any ancestor (grid wrap, page body, etc.)
+        window.addEventListener('scroll', close, { capture: true });
         setTimeout(() => document.addEventListener('click', close), 10);
+
     }
 
     /**
