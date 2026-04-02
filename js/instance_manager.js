@@ -45,8 +45,10 @@ class InstanceManager {
         this.qrContainer = document.getElementById('qr-container');
         this.nameInput = document.getElementById('new-instance-name');
         this.kamSelect = document.getElementById('new-instance-kam');
+        this.newDisableAntiban = document.getElementById('new-instance-disable-antiban');
         this.editNameInput = document.getElementById('edit-instance-name');
         this.editKamSelect = document.getElementById('edit-instance-kam');
+        this.editDisableAntiban = document.getElementById('edit-instance-disable-antiban');
 
         if (!this.container || !this.qrModal || !this.setupModal || !this.editModal) {
             console.error(`InstanceManager ${this.VERSION}: Critical elements not found`);
@@ -518,6 +520,7 @@ class InstanceManager {
                 const data = docSnap.data();
                 this.editNameInput.value = data.name || '';
                 this.editKamSelect.value = data.kam || '';
+                if (this.editDisableAntiban) this.editDisableAntiban.checked = !!data.disableAntiban;
 
             } else {
                 // If no metadata exists, try to get from backend
@@ -540,6 +543,7 @@ class InstanceManager {
     async saveEdit() {
         const name = this.editNameInput.value.trim();
         const kam = this.editKamSelect.value;
+        const disableAntiban = this.editDisableAntiban ? this.editDisableAntiban.checked : false;
 
         if (!name) {
             alert('Please enter an instance name');
@@ -557,6 +561,7 @@ class InstanceManager {
             await setDoc(doc(db, "whatsapp_instances", this.editingSessionId), {
                 name,
                 kam,
+                disableAntiban,
                 updatedAt: new Date().toISOString()
             }, { merge: true });
 
@@ -574,6 +579,7 @@ class InstanceManager {
         this.editingSessionId = null;
         this.editNameInput.value = '';
         this.editKamSelect.value = '';
+        if (this.editDisableAntiban) this.editDisableAntiban.checked = false;
     }
 
     /* --- LOGOUT METHOD --- */
@@ -692,6 +698,7 @@ class InstanceManager {
     openSetupModal(existingSessionId = null) {
         this.nameInput.value = '';
         this.kamSelect.value = '';
+        if (this.newDisableAntiban) this.newDisableAntiban.checked = false;
         this.claimingSessionId = existingSessionId; // Store content
 
         const title = this.setupModal.querySelector('h2');
@@ -716,6 +723,7 @@ class InstanceManager {
     async handleCreateSessionClick() {
         const name = this.nameInput.value.trim();
         const kam = this.kamSelect.value;
+        const disableAntiban = this.newDisableAntiban ? this.newDisableAntiban.checked : false;
 
         if (!name) { alert('Please enter an Instance Name'); return; }
         if (!kam) { alert('Please select a Key Account Manager'); return; }
@@ -734,6 +742,7 @@ class InstanceManager {
                 sessionId,
                 name,
                 kam,
+                disableAntiban,
                 createdAt: new Date(),
                 createdBy: 'admin', // TODO: Get actual user
                 updatedAt: new Date()
