@@ -941,6 +941,12 @@ class CampaignManager {
                         </div>
                     </div>
                     ${scheduleHtml}
+                    <div style="margin-top: 16px; text-align: right;">
+                        <button id="resume-antiban-btn" style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px;">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            Force Resume Now
+                        </button>
+                    </div>
                 `;
 
                 // Insert before the action buttons row (last child of overview tab)
@@ -951,6 +957,27 @@ class CampaignManager {
                     injectionPoint.appendChild(panel);
                 } else {
                     overviewTab.appendChild(panel);
+                }
+
+                // Bind Resume Button
+                const forceResumeBtn = panel.querySelector('#resume-antiban-btn');
+                if (forceResumeBtn) {
+                    forceResumeBtn.onclick = async () => {
+                        if (!confirm('Are you sure you want to force resume this paused campaign? If AntiBan is not disabled, it may get blocked again immediately.')) return;
+                        try {
+                            const { deleteField, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+                            forceResumeBtn.disabled = true;
+                            forceResumeBtn.innerHTML = 'Resuming...';
+                            await updateDoc(doc(db, "campaigns", campaign.id), { 
+                                blockInfo: deleteField(), 
+                                nextRunAt: Date.now() 
+                            });
+                        } catch (e) {
+                            console.error('Error resuming campaign:', e);
+                            alert('Failed to resume campaign');
+                            forceResumeBtn.disabled = false;
+                        }
+                    };
                 }
             }
 
